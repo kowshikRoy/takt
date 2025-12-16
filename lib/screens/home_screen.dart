@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'practice/gender_practice_screen.dart';
 import 'practice/compound_practice_screen.dart';
 import 'practice/sentence_practice_screen.dart';
+import 'practice/vocabulary_practice_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -222,15 +223,19 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 20), // space-y-3 approx
               
               // Warm-up Item
-              _buildSessionItem(
-                context, 
-                iconWidget: Container(
-                  width: 24, height: 24, 
-                  decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle), // green-500
-                  child: const Icon(Icons.check, color: Colors.white, size: 14)
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen())),
+                child: _buildSessionItem(
+                  context,
+                  iconWidget: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle), // green-500
+                    child: const Icon(Icons.check, color: Colors.white, size: 14),
+                  ),
+                  title: 'Warm-up: Vocabulary',
+                  isCompleted: true,
                 ),
-                title: 'Warm-up: Vocabulary', 
-                isCompleted: true
               ),
               
               const SizedBox(height: 12),

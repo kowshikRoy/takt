@@ -8,12 +8,13 @@ class GenderPracticeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundLight,
       body: SafeArea(
         child: Column(
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Row(
                 children: [
                   IconButton(
@@ -22,32 +23,23 @@ class GenderPracticeScreen extends StatelessWidget {
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: 0.65,
-                          backgroundColor: Theme.of(context).dividerColor,
+                        child: const LinearProgressIndicator(
+                          value: 0.6,
+                          backgroundColor: AppTheme.borderLight,
                           color: AppTheme.primary,
-                          minHeight: 16,
+                          minHeight: 8,
                         ),
                       ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.favorite, color: AppTheme.primary, size: 20),
-                        SizedBox(width: 4),
-                        Text('3', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  )
+                  const Text('12 / 20', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textSubLight)),
+                  IconButton(
+                    icon: const Icon(Icons.more_horiz),
+                    onPressed: () {},
+                  ),
                 ],
               ),
             ),
@@ -57,21 +49,22 @@ class GenderPracticeScreen extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Animate(
                       effects: const [FadeEffect(), ScaleEffect()],
                       child: Container(
-                        padding: const EdgeInsets.all(24), // Reduced padding
+                        padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Theme.of(context).dividerColor, width: 2),
-                          boxShadow: [
-                             BoxShadow(
-                               color: Colors.black.withOpacity(0.05),
-                               blurRadius: 10,
-                               offset: const Offset(0, 4),
-                             )
+                          color: AppTheme.surfaceLight,
+                          borderRadius: BorderRadius.circular(32),
+                          border: Border.all(color: AppTheme.borderLight),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color.fromRGBO(0, 0, 0, 0.1),
+                              blurRadius: 15,
+                              offset: Offset(0, 10),
+                            )
                           ],
                         ),
                         child: Column(
@@ -80,46 +73,47 @@ class GenderPracticeScreen extends StatelessWidget {
                               width: 120,
                               height: 120,
                               decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [Colors.grey[100]!, Colors.white],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                border: Border.all(color: Theme.of(context).dividerColor),
+                                color: Colors.yellow.shade50,
+                                borderRadius: BorderRadius.circular(24),
                               ),
                               alignment: Alignment.center,
-                              child: const Text('🦋', style: TextStyle(fontSize: 64)),
+                              child: Image.asset('assets/images/bicycle.png', width: 80),
                             ),
                             const SizedBox(height: 24),
-                            Text(
-                              'Schmetterling',
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '?',
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primary,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Fahrrad',
+                                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              '/ˈfaːɐ̯ˌraːt/',
+                              style: TextStyle(color: AppTheme.textSubLight, fontSize: 16),
                             ),
                             const SizedBox(height: 16),
-                            const Divider(indent: 48, endIndent: 48),
+                            const Divider(),
                             const SizedBox(height: 16),
-                            Text(
-                              'Butterfly',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              ),
+                            const Text(
+                              'The Bicycle',
+                              style: TextStyle(color: AppTheme.textSubLight, fontSize: 16),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const Spacer(),
-                    Text(
-                      'Select the correct gender article',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -128,18 +122,23 @@ class GenderPracticeScreen extends StatelessWidget {
             // Footer / Buttons
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-              child: SizedBox(
-                height: 120,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildGenderButton(context, 'Der', 'Masc', AppTheme.genderMasc),
-                    const SizedBox(width: 16),
-                    _buildGenderButton(context, 'Die', 'Fem', AppTheme.genderFem),
-                    const SizedBox(width: 16),
-                    _buildGenderButton(context, 'Das', 'Neu', AppTheme.genderNeu),
-                  ],
-                ),
+              child: Column(
+                children: [
+                  const Text(
+                    'SELECT THE ARTICLE',
+                    style: TextStyle(color: AppTheme.textSubLight, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _buildGenderButton(context, 'Der', 'MASC', AppTheme.genderMasc),
+                      const SizedBox(width: 16),
+                      _buildGenderButton(context, 'Die', 'FEM', AppTheme.genderFem),
+                      const SizedBox(width: 16),
+                      _buildGenderButton(context, 'Das', 'NEU', AppTheme.genderNeu),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -150,19 +149,20 @@ class GenderPracticeScreen extends StatelessWidget {
 
   Widget _buildGenderButton(BuildContext context, String label, String subLabel, Color color) {
     return Expanded(
-      child: ElevatedButton(
+      child: OutlinedButton(
         onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: color.withOpacity(0.05),
+          side: BorderSide(color: color, width: 2),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 4,
-          padding: EdgeInsets.zero,
+          padding: const EdgeInsets.symmetric(vertical: 24),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-            Text(subLabel.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.8), letterSpacing: 1.5)),
+            Text(label, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 4),
+            Text(subLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color.withOpacity(0.7))),
           ],
         ),
       ),
