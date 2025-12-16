@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import '../theme/app_theme.dart';
 import 'profile_screen.dart';
+import 'story_screen.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -15,7 +16,7 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const Center(child: Text("Learn Screen Placeholder")),
+    const StoryScreen(),
     const Center(child: Text("Rank Screen Placeholder")),
     const ProfileScreen(),
   ];
