@@ -168,7 +168,7 @@ class WelcomeScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    // const SizedBox(height: 100), // Removed to check if it's causing overflow
                   ],
                 ),
               ),
@@ -258,20 +258,22 @@ class WelcomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              const SizedBox(height: 4),
-              Container(
-                height: 4,
-                width: barWidth,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
+          Expanded( // Added Expanded to avoid overflow in Row
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 4),
+                Container(
+                  height: 4,
+                  width: barWidth,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -281,7 +283,7 @@ class WelcomeScreen extends StatelessWidget {
   Widget _buildCarouselItem(BuildContext context, Color color, String title, String subtitle) {
     return Container(
       width: 180,
-      height: 140, // Fixed height for carousel items
+      height: 150, // Slightly increased height to avoid overflow in tests
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -306,12 +308,14 @@ class WelcomeScreen extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           const SizedBox(height: 4),
-           Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 10),
-          ),
+           Expanded( // Added Expanded to handle text overflow better
+             child: Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 10),
+            ),
+           ),
         ],
       ),
     );

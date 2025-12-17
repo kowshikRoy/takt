@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../models/story.dart';
 
 class StoryScreen extends StatefulWidget {
-  const StoryScreen({super.key});
+  final Story story;
+  const StoryScreen({super.key, required this.story});
 
   @override
   State<StoryScreen> createState() => _StoryScreenState();
@@ -12,6 +14,8 @@ class StoryScreen extends StatefulWidget {
 class _StoryScreenState extends State<StoryScreen> {
   // State for the interactive word tooltip
   bool _isTooltipVisible = false;
+  String _selectedWord = '';
+  String _selectedTranslation = '';
 
   @override
   Widget build(BuildContext context) {
@@ -59,17 +63,13 @@ class _StoryScreenState extends State<StoryScreen> {
             ),
           ),
           
-          // Tooltip Overlay (Custom implementation for simplicity without OverlayEntry complexity for this demo)
+          // Tooltip Overlay
           if (_isTooltipVisible)
             Positioned(
-              // Position relative to the screen, hardcoded estimate from "Schmetterling" position or dynamic if needed.
-              // For a robust implementation, we'd use CompositedTransformTarget, but here we can try a Stack alignment or just center/fixed for the demo since it's a specific "Mock" from HTML.
-              // However, since it points to "Schmetterling", let's make it look right.
-              // I'll wrap the word in a widget that updates the position or just position it near the text.
-              // Let's assume the text is roughly in the middle.
-              top: 350, 
+              // Simple positioning for demo purposes
+              top: MediaQuery.of(context).size.height / 2,
               left: 24,
-              right: 24, // width constraint
+              right: 24,
               child: _buildTooltipCard(context),
             ),
         ],
@@ -94,7 +94,9 @@ class _StoryScreenState extends State<StoryScreen> {
               decoration: const BoxDecoration(shape: BoxShape.circle),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppTheme.textMainLight),
-                onPressed: () {}, // No-op or pop
+                onPressed: () {
+                  Navigator.pop(context);
+                },
               ),
             ),
             // Title
@@ -162,7 +164,7 @@ class _StoryScreenState extends State<StoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'KAPITEL 3',
+            widget.story.difficulty.toUpperCase(),
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -172,7 +174,7 @@ class _StoryScreenState extends State<StoryScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Der verlorene Schlüssel',
+            widget.story.title,
             style: TextStyle(
               fontSize: 30, // text-3xl
               fontWeight: FontWeight.w800, // extrabold
@@ -182,7 +184,7 @@ class _StoryScreenState extends State<StoryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'The Lost Key',
+            widget.story.englishTitle,
             style: TextStyle(
               fontSize: 14,
               fontStyle: FontStyle.italic,
@@ -195,112 +197,113 @@ class _StoryScreenState extends State<StoryScreen> {
   }
 
   Widget _buildStoryContent(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Im alten Haus', AppTheme.primary),
-        const SizedBox(height: 12),
-        _buildParagraph(
-          'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.'
-        ),
-        const SizedBox(height: 32),
-        
-        _buildParagraph(
-          'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.'
-        ),
-        const SizedBox(height: 32),
-        
-        // Interactive Paragraph
-        RichText(
-          text: TextSpan(
-             style: TextStyle(
-                fontSize: 20, // text-xl
-                height: 1.6, // leading-9 approx
-                color: AppTheme.textMainLight,
-             ),
-             children: [
-               const TextSpan(text: 'Hannah ging näher heran. Es war ein kleiner, goldener '),
-               WidgetSpan(
-                 alignment: PlaceholderAlignment.baseline,
-                 baseline: TextBaseline.alphabetic,
-                 child: GestureDetector(
-                   onTap: () {
-                     setState(() {
-                       _isTooltipVisible = !_isTooltipVisible;
-                     });
-                   },
-                   child: Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-                     decoration: BoxDecoration(
-                       color: _isTooltipVisible ? AppTheme.primary.withValues(alpha: 0.1) : null,
-                       borderRadius: BorderRadius.circular(4),
-                       border: Border(bottom: BorderSide(color: AppTheme.primary.withValues(alpha: 0.4), width: 2, style: BorderStyle.solid)), // dotted not easy, solid for now
+    // This splits the content by vocab words to make them interactive.
+    // This is a naive implementation. In a real app, we'd want more robust parsing.
+
+    List<InlineSpan> spans = [];
+    String remainingText = widget.story.content;
+
+    // Sort keys by length desc to match longest first
+    final vocabKeys = widget.story.vocabulary.keys.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
+
+    // Simple matching loop - this is inefficient but works for small stories
+    // Ideally we would use regex with all keys
+
+    // For this demo, let's just make the whole text readable and only specific words clickable if we can find them
+    // Or just parse the whole string
+
+    // Simpler approach: Split by space and check if word exists in vocab
+    // Note: this misses multi-word phrases and punctuation handling
+
+    final words = widget.story.content.split(' ');
+
+    for (var wordWithPunct in words) {
+       // Extract the core word and surrounding punctuation using Regex
+       // This regex captures: Group 1 (prefix punctuation), Group 2 (word), Group 3 (suffix punctuation)
+       final match = RegExp(r'^([^\w\u00C0-\u00FF]*)([\w\u00C0-\u00FF]+)([^\w\u00C0-\u00FF]*)$').firstMatch(wordWithPunct);
+
+       String prefix = '';
+       String word = wordWithPunct;
+       String suffix = '';
+
+       if (match != null) {
+         prefix = match.group(1) ?? '';
+         word = match.group(2) ?? '';
+         suffix = match.group(3) ?? '';
+       } else {
+         // Fallback if no match (e.g. only punctuation or strange chars)
+         // Try to strip non-word chars for lookup
+         word = wordWithPunct.replaceAll(RegExp(r'[^\w\s\u00C0-\u00FF]'), '');
+       }
+
+       // Check if there is a match in vocabulary
+       String? translation = widget.story.vocabulary[word];
+
+       if (prefix.isNotEmpty) {
+          spans.add(TextSpan(text: prefix));
+       }
+
+       if (translation != null) {
+         spans.add(
+           WidgetSpan(
+             alignment: PlaceholderAlignment.baseline,
+             baseline: TextBaseline.alphabetic,
+             child: GestureDetector(
+               onTap: () {
+                 setState(() {
+                   _selectedWord = word;
+                   _selectedTranslation = translation;
+                   _isTooltipVisible = true;
+                 });
+               },
+               child: Container(
+                 padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                 decoration: BoxDecoration(
+                   color: (_isTooltipVisible && _selectedWord == word) ? AppTheme.primary.withValues(alpha: 0.1) : null,
+                   borderRadius: BorderRadius.circular(4),
+                   border: Border(bottom: BorderSide(color: AppTheme.primary.withValues(alpha: 0.4), width: 2, style: BorderStyle.solid)),
+                 ),
+                 child: Text(
+                   word,
+                     style: TextStyle(
+                       fontSize: 20,
+                       fontWeight: FontWeight.w600,
+                       color: AppTheme.primary,
                      ),
-                     child: Text(
-                       'Schmetterling',
-                         style: TextStyle(
-                           fontSize: 20,
-                           fontWeight: FontWeight.w600,
-                           color: AppTheme.primary,
-                         ),
-                     ),
-                   ),
                  ),
                ),
-               const TextSpan(text: ' aus Metall.'),
-             ]
-          ),
-        ),
+             ),
+           )
+         );
+       } else {
+         spans.add(TextSpan(text: word));
+       }
 
-        const SizedBox(height: 40),
-        
-         _buildSectionTitle('Das Geheimnis', const Color(0xFFFF9F43)), // secondary
-         const SizedBox(height: 12),
-         _buildParagraph(
-           '"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?'
-         ),
-         const SizedBox(height: 16),
-         _buildParagraph(
-           'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.'
-         ),
-         
-         const SizedBox(height: 40),
-      ],
-    );
-  }
+       if (suffix.isNotEmpty) {
+          spans.add(TextSpan(text: suffix));
+       }
 
-  Widget _buildParagraph(String text) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 20, // text-xl
-        height: 1.6, // leading-9
-        color: AppTheme.textMainLight,
+       spans.add(const TextSpan(text: ' '));
+    }
+
+    return RichText(
+      text: TextSpan(
+         style: TextStyle(
+            fontSize: 20,
+            height: 1.6,
+            color: AppTheme.textMainLight,
+         ),
+         children: spans,
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title, Color dotColor) {
-    return Row(
-      children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textMainLight,
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildTooltipCard(BuildContext context) {
     return Center(
       child: Container(
-        width: 280, // w-64 approx
+        width: 280,
         decoration: BoxDecoration(
           color: AppTheme.surfaceLight,
           borderRadius: BorderRadius.circular(16),
@@ -325,7 +328,7 @@ class _StoryScreenState extends State<StoryScreen> {
                   Row(
                     children: [
                       Text(
-                        'Schmetterling',
+                        _selectedWord,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -333,26 +336,15 @@ class _StoryScreenState extends State<StoryScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Masc',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primary,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.volume_up_rounded, size: 20, color: Colors.grey),
-                    onPressed: () {},
+                    icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                    onPressed: () {
+                      setState(() {
+                        _isTooltipVisible = false;
+                      });
+                    },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -366,7 +358,7 @@ class _StoryScreenState extends State<StoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '(noun) Butterfly',
+                    _selectedTranslation,
                     style: TextStyle(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,

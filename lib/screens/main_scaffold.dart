@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import '../theme/app_theme.dart';
 import 'profile_screen.dart';
-import 'story_screen.dart';
+// import 'story_screen.dart';
 import 'dictionary_screen.dart';
 
 class MainScaffold extends StatefulWidget {
@@ -17,7 +17,13 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const StoryScreen(),
+    // StoryScreen now requires a Story object, so we replace it with a placeholder or the list screen
+    // Since "Learn" tab probably shouldn't be just one story, we can put a placeholder or StoryListScreen here too if appropriate.
+    // However, the tab label is "Learn", maybe it should be the StoryListScreen? Or something else.
+    // Given the context, let's put StoryListScreen or keep it simple.
+    // Let's use a Placeholder for now as I don't know what "Learn" was intended to be besides the StoryScreen which was hardcoded.
+    // Actually, let's make it the StoryListScreen which is "Library".
+    const Center(child: Text("Learn Section - Coming Soon")),
     const DictionaryScreen(),
     const ProfileScreen(),
   ];
