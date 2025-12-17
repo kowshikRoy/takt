@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:google_fonts/google_fonts.dart'; // Keep if used for special things, otherwise remove if unused. Keeping for now as other imports might use it in project.
 import 'practice/gender_practice_screen.dart';
 import 'practice/compound_practice_screen.dart';
 import 'practice/sentence_practice_screen.dart';
@@ -37,7 +37,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Text(
                   'Practice Tools',
-                  style: GoogleFonts.splineSans(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
                     color: AppTheme.textMainLight,
@@ -45,7 +45,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 Text(
                   'View All',
-                  style: GoogleFonts.splineSans(
+                  style: TextStyle(
                     color: AppTheme.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
@@ -100,11 +100,11 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Guten Morgen!',
-                    style: GoogleFonts.splineSans(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textMainLight, height: 1.1),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textMainLight, height: 1.1),
                   ),
                   Text(
                     'Level 4 · Explorer',
-                    style: GoogleFonts.splineSans(
+                    style: TextStyle(
                       color: AppTheme.textSubLight,
                       fontSize: 12,
                     ),
@@ -129,7 +129,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   '12 Days',
-                  style: GoogleFonts.splineSans(
+                  style: TextStyle(
                     color: const Color(0xFFEA580C), // orange-600
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -193,7 +193,7 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Daily Session',
-                        style: GoogleFonts.splineSans(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                           color: AppTheme.textMainLight,
@@ -202,7 +202,7 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Keep your streak alive!',
-                        style: GoogleFonts.splineSans(
+                        style: TextStyle(
                               color: AppTheme.textSubLight,
                               fontSize: 14,
                             ),
@@ -262,7 +262,7 @@ class HomeScreen extends StatelessWidget {
                           children: [
                             Text(
                               'Core Lesson: Dative Case',
-                              style: GoogleFonts.splineSans(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                                 color: AppTheme.textMainLight,
@@ -270,7 +270,7 @@ class HomeScreen extends StatelessWidget {
                             ),
                             Text(
                               '60%',
-                              style: GoogleFonts.splineSans(
+                              style: TextStyle(
                                 color: AppTheme.primary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
@@ -338,7 +338,7 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Continue Lesson',
-                        style: GoogleFonts.splineSans(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -363,7 +363,7 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           title,
-          style: GoogleFonts.splineSans(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: isLocked ? AppTheme.textSubLight : AppTheme.textSubLight.withValues(alpha: 0.8), // text-sub-light/80
@@ -475,7 +475,7 @@ class HomeScreen extends StatelessWidget {
                children: [
                  Text(
                    'Compound Puzzle', 
-                   style: GoogleFonts.splineSans(
+                   style: TextStyle(
                      fontWeight: FontWeight.bold, 
                      fontSize: 18, 
                      color: const Color(0xFF1E293B) // slate-800
@@ -483,7 +483,7 @@ class HomeScreen extends StatelessWidget {
                  ),
                  Text(
                    'Build massive words', 
-                   style: GoogleFonts.splineSans(
+                   style: TextStyle(
                      color: const Color(0xFF64748B), // slate-500
                      fontSize: 12,
                      fontWeight: FontWeight.w500,
@@ -533,22 +533,20 @@ class HomeScreen extends StatelessWidget {
                ),
                const SizedBox(height: 12), // mb-3 (applied to icon wrapper but space below works differently in Flex)
                Text(
-                 title, 
-                 style: GoogleFonts.splineSans(
-                    fontWeight: FontWeight.bold, 
-                    fontSize: 18, 
-                    height: 1.1, // leading-tight
-                    color: const Color(0xFF1E293B) // slate-800
-                 )
+                 title,                  style: TextStyle(
+                     fontWeight: FontWeight.bold, 
+                     fontSize: 18, 
+                     height: 1.1, // leading-tight
+                     color: const Color(0xFF1E293B) // slate-800
+                  )
                ),
                const SizedBox(height: 4),
                Text(
-                 subtitle, 
-                 style: GoogleFonts.splineSans(
-                    fontSize: 12, 
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF64748B) // slate-500
-                 )
+                 subtitle,                  style: TextStyle(
+                     fontSize: 12, 
+                     fontWeight: FontWeight.w500,
+                     color: const Color(0xFF64748B) // slate-500
+                  )
                ),
              ],
            ),

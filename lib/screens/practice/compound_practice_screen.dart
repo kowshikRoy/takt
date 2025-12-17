@@ -25,7 +25,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                         const SizedBox(height: 8), // mt-2
                         Text(
                           'COMPOUND WORD PUZZLE',
-                          style: GoogleFonts.splineSans(
+                          style: TextStyle(
                             color: AppTheme.textSubLight,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -36,7 +36,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                         Text(
                           'What does this word mean?',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.splineSans(
+                          style: TextStyle(
                             color: AppTheme.textMainLight,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -69,7 +69,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                           child: RichText(
                             textAlign: TextAlign.center,
                             text: TextSpan(
-                              style: GoogleFonts.splineSans(
+                              style: TextStyle(
                                 color: AppTheme.textSubLight,
                                 fontSize: 14,
                               ),
@@ -120,7 +120,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Continue',
-                        style: GoogleFonts.splineSans(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -222,7 +222,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   '5',
-                  style: GoogleFonts.splineSans(
+                  style: TextStyle(
                     color: AppTheme.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -294,7 +294,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                      padding: const EdgeInsets.fromLTRB(28, 20, 48, 20), // Extra right padding for knob
                      child: Text(
                        'Glüh',
-                       style: GoogleFonts.splineSans(
+                       style: TextStyle(
                          fontSize: 30, // text-3xl
                          fontWeight: FontWeight.bold,
                          letterSpacing: 0.5,
@@ -317,7 +317,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                        padding: const EdgeInsets.fromLTRB(48, 20, 28, 20), // Extra left padding for dent
                        child: Text(
                          'birne',
-                         style: GoogleFonts.splineSans(
+                         style: TextStyle(
                            fontSize: 30,
                            fontWeight: FontWeight.bold,
                            letterSpacing: 0.5,
@@ -370,7 +370,7 @@ class CompoundPracticeScreen extends StatelessWidget {
               ),
               child: Text(
                 label.toUpperCase(),
-                style: GoogleFonts.splineSans(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 10,
                   color: color[700],
@@ -384,7 +384,7 @@ class CompoundPracticeScreen extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 title,
-                style: GoogleFonts.splineSans(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                   color: AppTheme.textMainLight,
@@ -393,7 +393,7 @@ class CompoundPracticeScreen extends StatelessWidget {
               ),
               Text(
                 subtitle,
-                style: GoogleFonts.splineSans(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textSubLight.withValues(alpha: 0.7),
                 ),
@@ -449,7 +449,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           'FEMININE',
-                          style: GoogleFonts.splineSans(
+                          style: TextStyle(
                             color: AppTheme.genderFem,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -461,7 +461,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Lightbulb',
-                      style: GoogleFonts.splineSans(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 24,
                         color: AppTheme.textMainLight,
@@ -470,7 +470,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                     ),
                     Text(
                       'Die Glühbirne',
-                      style: GoogleFonts.splineSans(
+                      style: TextStyle(
                         fontStyle: FontStyle.italic,
                         color: AppTheme.textSubLight,
                         fontSize: 14,

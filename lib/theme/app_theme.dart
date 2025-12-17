@@ -51,6 +51,8 @@ class AppTheme {
         ),
       ),
       */
+      dividerColor: borderLight,
+      cardColor: surfaceLight,
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
@@ -86,16 +88,8 @@ class AppTheme {
         displayColor: textMainDark,
       ),
       useMaterial3: true,
-      /*
-      cardTheme: CardTheme(
-        color: surfaceLight,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: borderLight),
-        ),
-      ),
-      */
+      dividerColor: borderDark,
+      cardColor: surfaceDark,
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,

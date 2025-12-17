@@ -1,14 +1,20 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/theme_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -19,14 +25,26 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 32),
             Text(
               'Your Growth',
-              style: GoogleFonts.splineSans(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.textMainLight,
+                color: colorScheme.onBackground,
               ),
             ),
             const SizedBox(height: 16),
             _buildGrowthCard(context),
+            const SizedBox(height: 32),
+             Text(
+              'Appearance',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onBackground,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildAppearanceSection(context),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -41,7 +59,7 @@ class ProfileScreen extends StatelessWidget {
           height: 80,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 4),
+            border: Border.all(color: Theme.of(context).cardColor, width: 4),
             boxShadow: const [
               BoxShadow(
                 color: Color.fromRGBO(0, 0, 0, 0.1),
@@ -61,18 +79,18 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Text(
               'Matrix Code',
-              style: GoogleFonts.splineSans(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppTheme.textMainLight,
+                color: Theme.of(context).colorScheme.onBackground,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               'Joined December 2025',
-              style: GoogleFonts.splineSans(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.textSubLight,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -82,14 +100,17 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildGrowthCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderLight),
-        boxShadow: const [
-          BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: [
+          BoxShadow(color: (isDark ? Colors.black : Colors.black).withValues(alpha: 0.05), blurRadius: 2, offset: const Offset(0, 1))
         ],
       ),
       child: Column(
@@ -111,7 +132,7 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Divider(height: 1, color: AppTheme.borderLight),
+          Divider(height: 1, color: theme.dividerColor),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -119,17 +140,17 @@ class ProfileScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Weekly Words', style: GoogleFonts.splineSans(color: AppTheme.textSubLight, fontSize: 12)),
+                  Text('Weekly Words', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
                   const SizedBox(height: 2),
-                  Text('124', style: GoogleFonts.splineSans(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMainLight)),
+                  Text('124', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onBackground)),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Total XP', style: GoogleFonts.splineSans(color: AppTheme.textSubLight, fontSize: 12)),
+                  Text('Total XP', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
                   const SizedBox(height: 2),
-                  Text('3,450', style: GoogleFonts.splineSans(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textMainLight)),
+                  Text('3,450', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onBackground)),
                 ],
               ),
             ],
@@ -140,13 +161,14 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildBar(BuildContext context, String day, double heightPct, {bool isFaint = false, bool isToday = false}) {
+    final theme = Theme.of(context);
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         if (isToday)
-          Text(day, style: GoogleFonts.splineSans(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 10))
+          Text(day, style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 10))
         else
-          Text(day, style: GoogleFonts.splineSans(color: AppTheme.textSubLight.withValues(alpha: 0.0), fontSize: 10)),
+          Text(day, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.0), fontSize: 10)),
         
         const SizedBox(height: 4),
         
@@ -155,12 +177,12 @@ class ProfileScreen extends StatelessWidget {
           height: 80 * heightPct,
           decoration: BoxDecoration(
             color: isToday 
-                ? AppTheme.primary 
-                : (isFaint ? AppTheme.primary.withValues(alpha: 0.4) : AppTheme.borderLight),
+                ? theme.primaryColor 
+                : (isFaint ? theme.primaryColor.withValues(alpha: 0.4) : theme.dividerColor),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
             boxShadow: isToday ? [
               BoxShadow(
-                 color: const Color(0xFFEA2A33).withValues(alpha: 0.4),
+                 color: theme.primaryColor.withValues(alpha: 0.4),
                  blurRadius: 15,
                  spreadRadius: 0,
               )
@@ -178,6 +200,61 @@ class ProfileScreen extends StatelessWidget {
           ) : null,
         ),
       ],
+    );
+  }
+
+  Widget _buildAppearanceSection(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final currentMode = themeProvider.themeMode;
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: const [
+          BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildThemeOption(context, 'System', ThemeMode.system, currentMode, themeProvider),
+          Divider(height: 1, color: theme.dividerColor),
+          _buildThemeOption(context, 'Light Mode', ThemeMode.light, currentMode, themeProvider),
+          Divider(height: 1, color: theme.dividerColor),
+          _buildThemeOption(context, 'Dark Mode', ThemeMode.dark, currentMode, themeProvider),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeOption(BuildContext context, String title, ThemeMode mode, ThemeMode currentGroupValue, ThemeProvider provider) {
+    final isSelected = mode == currentGroupValue;
+    final theme = Theme.of(context);
+    
+    return InkWell(
+      onTap: () => provider.setThemeMode(mode),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle_rounded, color: theme.primaryColor)
+            else 
+               Icon(Icons.circle_outlined, color: theme.dividerColor),
+          ],
+        ),
+      ),
     );
   }
 }

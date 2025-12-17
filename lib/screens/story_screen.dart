@@ -102,7 +102,7 @@ class _StoryScreenState extends State<StoryScreen> {
               children: [
                 Text(
                   'LIBRARY',
-                  style: GoogleFonts.nunito(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.5,
@@ -111,7 +111,7 @@ class _StoryScreenState extends State<StoryScreen> {
                 ),
                 Text(
                   'Short Stories',
-                  style: GoogleFonts.nunito(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textMainLight,
@@ -163,7 +163,7 @@ class _StoryScreenState extends State<StoryScreen> {
         children: [
           Text(
             'KAPITEL 3',
-            style: GoogleFonts.nunito(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: AppTheme.primary,
@@ -173,7 +173,7 @@ class _StoryScreenState extends State<StoryScreen> {
           const SizedBox(height: 12),
           Text(
             'Der verlorene Schlüssel',
-            style: GoogleFonts.nunito(
+            style: TextStyle(
               fontSize: 30, // text-3xl
               fontWeight: FontWeight.w800, // extrabold
               height: 1.1,
@@ -183,7 +183,7 @@ class _StoryScreenState extends State<StoryScreen> {
           const SizedBox(height: 8),
           Text(
             'The Lost Key',
-            style: GoogleFonts.lora(
+            style: TextStyle(
               fontSize: 14,
               fontStyle: FontStyle.italic,
               color: AppTheme.textSubLight,
@@ -213,7 +213,7 @@ class _StoryScreenState extends State<StoryScreen> {
         // Interactive Paragraph
         RichText(
           text: TextSpan(
-             style: GoogleFonts.lora(
+             style: TextStyle(
                 fontSize: 20, // text-xl
                 height: 1.6, // leading-9 approx
                 color: AppTheme.textMainLight,
@@ -238,11 +238,11 @@ class _StoryScreenState extends State<StoryScreen> {
                      ),
                      child: Text(
                        'Schmetterling',
-                       style: GoogleFonts.lora(
-                         fontSize: 20,
-                         fontWeight: FontWeight.w600,
-                         color: AppTheme.primary,
-                       ),
+                         style: TextStyle(
+                           fontSize: 20,
+                           fontWeight: FontWeight.w600,
+                           color: AppTheme.primary,
+                         ),
                      ),
                    ),
                  ),
@@ -272,7 +272,7 @@ class _StoryScreenState extends State<StoryScreen> {
   Widget _buildParagraph(String text) {
     return Text(
       text,
-      style: GoogleFonts.lora(
+      style: TextStyle(
         fontSize: 20, // text-xl
         height: 1.6, // leading-9
         color: AppTheme.textMainLight,
@@ -287,7 +287,7 @@ class _StoryScreenState extends State<StoryScreen> {
         const SizedBox(width: 8),
         Text(
           title,
-          style: GoogleFonts.nunito(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: AppTheme.textMainLight,
@@ -326,7 +326,7 @@ class _StoryScreenState extends State<StoryScreen> {
                     children: [
                       Text(
                         'Schmetterling',
-                        style: GoogleFonts.nunito(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textMainLight,
@@ -341,7 +341,7 @@ class _StoryScreenState extends State<StoryScreen> {
                         ),
                         child: Text(
                           'Masc',
-                          style: GoogleFonts.nunito(
+                          style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.primary,
@@ -367,7 +367,7 @@ class _StoryScreenState extends State<StoryScreen> {
                 children: [
                   Text(
                     '(noun) Butterfly',
-                    style: GoogleFonts.lora(
+                    style: TextStyle(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
                       color: AppTheme.textSubLight,
@@ -398,7 +398,7 @@ class _StoryScreenState extends State<StoryScreen> {
                           const SizedBox(width: 8),
                           Text(
                             'Add to Vocabulary',
-                            style: GoogleFonts.nunito(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),

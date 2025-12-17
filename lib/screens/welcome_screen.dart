@@ -51,7 +51,7 @@ class WelcomeScreen extends StatelessWidget {
                           Text(
                             'German grammar,\nfinally demystified.',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.splineSans(
+                            style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
                               height: 1.15,
