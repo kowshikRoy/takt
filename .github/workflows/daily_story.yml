@@ -1,0 +1,31 @@
+name: Daily Content Generation
+
+on:
+  schedule:
+    # Run at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  generate-content:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Generate Story
+        run: python scripts/generate_stories.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name 'Content Bot'
+          git config --global user.email 'bot@example.com'
+          git add assets/data/stories.json
+          git commit -m "Generate daily story [skip ci]" || exit 0
+          git push

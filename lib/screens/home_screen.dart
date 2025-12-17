@@ -5,6 +5,7 @@ import 'practice/gender_practice_screen.dart';
 import 'practice/compound_practice_screen.dart';
 import 'practice/sentence_practice_screen.dart';
 import 'practice/vocabulary_practice_screen.dart';
+import 'story_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -60,6 +61,15 @@ class HomeScreen extends StatelessWidget {
             child: _buildPracticeGrid(context),
           ),
 
+          const SizedBox(height: 24),
+
+          // Stories Section
+           Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+             child: _buildStoriesButton(context),
+           ),
+
+          const SizedBox(height: 24),
 
         ],
       ),
@@ -493,6 +503,61 @@ class HomeScreen extends StatelessWidget {
              ),
            ),
            const Icon(Icons.chevron_right_rounded, color: Color(0xFF34D399), size: 28), // emerald-400
+         ],
+       ),
+    ),
+   );
+  }
+
+  Widget _buildStoriesButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const StoryListScreen())),
+      child: Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: AppTheme.surfaceLight,
+           borderRadius: BorderRadius.circular(16),
+           border: Border.all(color: AppTheme.borderLight),
+           boxShadow: const [
+             BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 4, offset: Offset(0, 2))
+           ]
+         ),
+       child: Row(
+         children: [
+           Container(
+             width: 48,
+             height: 48,
+             alignment: Alignment.center,
+             decoration: BoxDecoration(
+               color: AppTheme.primary.withValues(alpha: 0.1),
+               borderRadius: BorderRadius.circular(12),
+             ),
+             child: const Icon(Icons.menu_book_rounded, color: AppTheme.primary, size: 24),
+           ),
+           const SizedBox(width: 16),
+           Expanded(
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Text(
+                   'Short Stories Library',
+                   style: TextStyle(
+                     fontWeight: FontWeight.bold,
+                     fontSize: 16,
+                     color: AppTheme.textMainLight,
+                   )
+                 ),
+                 Text(
+                   'New story every day!',
+                   style: TextStyle(
+                     color: AppTheme.textSubLight,
+                     fontSize: 12,
+                   ),
+                 ),
+               ],
+             ),
+           ),
+           const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.textSubLight, size: 16),
          ],
        ),
     ),
