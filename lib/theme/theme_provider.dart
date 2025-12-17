@@ -31,4 +31,12 @@ class ThemeProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void toggleTheme() {
+    if (_themeMode == ThemeMode.dark) {
+      setThemeMode(ThemeMode.light);
+    } else {
+      setThemeMode(ThemeMode.dark);
+    }
+  }
 }

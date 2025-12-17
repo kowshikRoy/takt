@@ -20,19 +20,19 @@ class SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textMainLight,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           if (onViewAll != null)
             GestureDetector(
               onTap: onViewAll,
-              child: const Text(
+              child: Text(
                 'View All',
                 style: TextStyle(
-                  color: AppTheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),

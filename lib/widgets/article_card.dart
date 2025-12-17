@@ -19,7 +19,7 @@ class ArticleCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.surfaceLight,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -58,11 +58,11 @@ class ArticleCard extends StatelessWidget {
                 children: [
                   Text(
                     article.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       height: 1.2,
-                      color: AppTheme.textMainLight,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -72,7 +72,7 @@ class ArticleCard extends StatelessWidget {
                     article.description,
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.textSubLight,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       height: 1.4,
                     ),
                     maxLines: 3,
@@ -90,14 +90,14 @@ class ArticleCard extends StatelessWidget {
                             DateFormat('d MMMM yyyy').format(article.date),
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppTheme.textSubLight,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
                       ),
                       Icon(
                         article.isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: article.isLiked ? Colors.red : AppTheme.textSubLight.withOpacity(0.5),
+                        color: article.isLiked ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
                         size: 20,
                       ),
                     ],

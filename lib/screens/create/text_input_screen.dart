@@ -43,13 +43,13 @@ class _TextInputScreenState extends State<TextInputScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('New Lesson', style: TextStyle(color: AppTheme.textMainLight, fontWeight: FontWeight.bold)),
-        backgroundColor: AppTheme.backgroundLight,
+        title: Text('New Lesson', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: AppTheme.textMainLight),
+          icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -85,7 +85,8 @@ class _TextInputScreenState extends State<TextInputScreen> {
               child: ElevatedButton(
                 onPressed: _createLesson,
                 style: ElevatedButton.styleFrom(
-                   backgroundColor: AppTheme.primary,
+                   backgroundColor: Theme.of(context).colorScheme.primary,
+                   foregroundColor: Theme.of(context).colorScheme.onPrimary,
                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Create Lesson', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -97,3 +98,4 @@ class _TextInputScreenState extends State<TextInputScreen> {
     );
   }
 }
+

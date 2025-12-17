@@ -22,7 +22,7 @@ class CompactArticleCard extends StatelessWidget {
         width: width,
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceLight,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
              BoxShadow(
@@ -78,11 +78,11 @@ class CompactArticleCard extends StatelessWidget {
                 children: [
                    Text(
                     article.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       height: 1.2,
-                      color: AppTheme.textMainLight,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

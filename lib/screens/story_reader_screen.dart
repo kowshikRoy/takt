@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/theme_provider.dart';
 
 import '../models/article_model.dart';
 
@@ -21,7 +23,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Content
@@ -50,20 +52,24 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: AppTheme.surfaceLight,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.borderLight),
-                boxShadow: const [
-                  BoxShadow(color: Color.fromRGBO(234, 46, 51, 0.15), blurRadius: 20, spreadRadius: 0) // shadow-glow
+                border: Border.all(color: Theme.of(context).dividerColor),
+                boxShadow: [
+                  BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      spreadRadius: 0) // shadow-glow
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.translate_rounded, color: AppTheme.primary),
+                icon: Icon(Icons.translate_rounded,
+                    color: Theme.of(context).colorScheme.primary),
                 onPressed: () {},
               ),
             ),
           ),
-          
+
           // Tooltip Overlay (Custom implementation for simplicity without OverlayEntry complexity for this demo)
           if (_isTooltipVisible)
             Positioned(
@@ -72,7 +78,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               // However, since it points to "Schmetterling", let's make it look right.
               // I'll wrap the word in a widget that updates the position or just position it near the text.
               // Let's assume the text is roughly in the middle.
-              top: 350, 
+              top: 350,
               left: 24,
               right: 24, // width constraint
               child: _buildTooltipCard(context),
@@ -85,7 +91,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   Widget _buildStickyHeader(BuildContext context) {
     return SliverAppBar(
       pinned: true,
-      backgroundColor: AppTheme.backgroundLight.withValues(alpha: 0.95),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
       elevation: 0,
        automaticallyImplyLeading: false,
       title: Padding(
@@ -98,7 +104,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               width: 40, height: 40,
               decoration: const BoxDecoration(shape: BoxShape.circle),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppTheme.textMainLight),
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 20, color: Theme.of(context).colorScheme.onSurface),
                 onPressed: () {}, // No-op or pop
               ),
             ),
@@ -111,7 +118,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.5,
-                    color: AppTheme.textSubLight,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 Text(
@@ -119,7 +126,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textMainLight,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -129,8 +136,11 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               width: 40, height: 40,
               decoration: const BoxDecoration(shape: BoxShape.circle),
               child: IconButton(
-                icon: const Icon(Icons.text_fields_rounded, size: 24, color: AppTheme.textMainLight),
-                onPressed: () {},
+                icon: Icon(Icons.brightness_6_rounded, // Changed icon to represent theme toggle better
+                    size: 24, color: Theme.of(context).colorScheme.onSurface),
+                onPressed: () {
+                  Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+                },
               ),
             ),
           ],
@@ -143,14 +153,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     return Container(
       height: 4,
       width: double.infinity,
-      color: Colors.grey[200], // bg-gray-200
+      color: Theme.of(context).dividerColor.withValues(alpha: 0.3), // bg-gray-200 equivalentish
       child: FractionallySizedBox(
         alignment: Alignment.centerLeft,
         widthFactor: 0.32,
         child: Container(
-          decoration: const BoxDecoration(
-            color: AppTheme.primary,
-            borderRadius: BorderRadius.horizontal(right: Radius.circular(999)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+            borderRadius: const BorderRadius.horizontal(right: Radius.circular(999)),
           ),
         ),
       ),
@@ -161,7 +171,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     return Container(
       padding: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppTheme.primary.withValues(alpha: 0.2), width: 2)),
+        border: Border(
+            bottom: BorderSide(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                width: 2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,7 +184,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: AppTheme.primary,
+              color: Theme.of(context).colorScheme.primary,
               letterSpacing: 1.5,
             ),
           ),
@@ -182,7 +195,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               fontSize: 30, // text-3xl
               fontWeight: FontWeight.w800, // extrabold
               height: 1.1,
-              color: AppTheme.textMainLight,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
@@ -191,7 +204,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             style: TextStyle(
               fontSize: 14,
               fontStyle: FontStyle.italic,
-              color: AppTheme.textSubLight,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -201,21 +214,23 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
   Widget _buildStoryContent(BuildContext context) {
     if (widget.customContent != null) {
-      return _buildParagraph(widget.customContent!);
+      return _buildParagraph(context, widget.customContent!);
     }
     
     // Fallback to static content if no custom content provided (existing logic)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Im alten Haus', AppTheme.primary),
+        _buildSectionTitle(context, 'Im alten Haus', Theme.of(context).colorScheme.primary),
         const SizedBox(height: 12),
         _buildParagraph(
+          context,
           'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.'
         ),
         const SizedBox(height: 32),
         
         _buildParagraph(
+          context,
           'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.'
         ),
         const SizedBox(height: 32),
@@ -226,7 +241,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
              style: TextStyle(
                 fontSize: 20, // text-xl
                 height: 1.6, // leading-9 approx
-                color: AppTheme.textMainLight,
+                color: Theme.of(context).colorScheme.onSurface,
              ),
              children: [
                const TextSpan(text: 'Hannah ging näher heran. Es war ein kleiner, goldener '),
@@ -243,16 +258,16 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                    child: Container(
                      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                      decoration: BoxDecoration(
-                       color: _isTooltipVisible ? AppTheme.primary.withValues(alpha: 0.1) : null,
+                       color: _isTooltipVisible ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : null,
                        borderRadius: BorderRadius.circular(4),
-                       border: Border(bottom: BorderSide(color: AppTheme.primary.withValues(alpha: 0.4), width: 2, style: BorderStyle.solid)), 
+                       border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4), width: 2, style: BorderStyle.solid)), 
                      ),
                      child: Text(
                        'Schmetterling',
                          style: TextStyle(
                            fontSize: 20,
                            fontWeight: FontWeight.w600,
-                           color: AppTheme.primary,
+                           color: Theme.of(context).colorScheme.primary,
                          ),
                      ),
                    ),
@@ -265,13 +280,15 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
         const SizedBox(height: 40),
         
-         _buildSectionTitle('Das Geheimnis', const Color(0xFFFF9F43)), // secondary
+         _buildSectionTitle(context, 'Das Geheimnis', const Color(0xFFFF9F43)), // secondary
          const SizedBox(height: 12),
          _buildParagraph(
+           context,
            '"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?'
          ),
          const SizedBox(height: 16),
          _buildParagraph(
+           context,
            'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.'
          ),
          
@@ -280,18 +297,18 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     );
   }
 
-  Widget _buildParagraph(String text) {
+  Widget _buildParagraph(BuildContext context, String text) {
     return Text(
       text,
       style: TextStyle(
         fontSize: 20, // text-xl
         height: 1.6, // leading-9
-        color: AppTheme.textMainLight,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title, Color dotColor) {
+  Widget _buildSectionTitle(BuildContext context, String title, Color dotColor) {
     return Row(
       children: [
         Container(width: 6, height: 6, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
@@ -301,7 +318,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppTheme.textMainLight,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ],
@@ -313,9 +330,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
       child: Container(
         width: 280, // w-64 approx
         decoration: BoxDecoration(
-          color: AppTheme.surfaceLight,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderLight),
+          border: Border.all(color: Theme.of(context).dividerColor),
           boxShadow: const [
              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 20, offset: Offset(0, 10))
           ],
@@ -328,7 +345,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppTheme.borderLight)),
+                border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -340,14 +357,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.textMainLight,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -355,14 +372,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.primary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ),
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.volume_up_rounded, size: 20, color: Colors.grey),
+                    icon: Icon(Icons.volume_up_rounded, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     onPressed: () {},
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -381,7 +398,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
-                      color: AppTheme.textSubLight,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -396,9 +413,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Vocabulary!')));
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         elevation: 4,
-                        shadowColor: AppTheme.primary.withValues(alpha: 0.2),
+                        shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: EdgeInsets.zero,
                       ),
@@ -427,3 +444,4 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     );
   }
 }
+

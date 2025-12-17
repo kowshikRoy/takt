@@ -81,10 +81,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateOptions(context),
-        backgroundColor: AppTheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
       body: SafeArea(
@@ -176,16 +176,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Create Lesson',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textMainLight,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 20),
@@ -195,8 +199,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
                   child: const Icon(Icons.paste_rounded, color: Colors.blue),
                 ),
-                title: const Text('Paste Text', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Create from clipboard'),
+                title: Text('Paste Text', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
+                subtitle: Text('Create from clipboard', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 onTap: () {
                   Navigator.pop(context); // Close modal
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const TextInputScreen()));
@@ -208,8 +212,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                    decoration: BoxDecoration(color: Colors.purple[50], borderRadius: BorderRadius.circular(8)),
                    child: const Icon(Icons.link_rounded, color: Colors.purple),
                 ),
-                title: const Text('Web Article', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Import from URL (Coming Soon)'),
+                title: Text('Web Article', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
+                subtitle: Text('Import from URL (Coming Soon)', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 onTap: () {}, 
                 enabled: false, 
               ),
@@ -219,8 +223,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                    decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8)),
                    child: const Icon(Icons.upload_file_rounded, color: Colors.orange),
                 ),
-                title: const Text('Upload PDF', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Import from file (Coming Soon)'),
+                title: Text('Upload PDF', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
+                subtitle: Text('Import from file (Coming Soon)', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 onTap: () {}, 
                  enabled: false,
               ),

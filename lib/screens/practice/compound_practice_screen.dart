@@ -9,7 +9,7 @@ class CompoundPracticeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           SafeArea(
@@ -26,7 +26,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                         Text(
                           'COMPOUND WORD PUZZLE',
                           style: TextStyle(
-                            color: AppTheme.textSubLight,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.2, // tracking-wider
@@ -37,7 +37,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                           'What does this word mean?',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: AppTheme.textMainLight,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
@@ -59,9 +59,9 @@ class CompoundPracticeScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceLight,
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.borderLight),
+                            border: Border.all(color: Theme.of(context).dividerColor),
                             boxShadow: const [
                               BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
                             ],
@@ -70,13 +70,13 @@ class CompoundPracticeScreen extends StatelessWidget {
                             textAlign: TextAlign.center,
                             text: TextSpan(
                               style: TextStyle(
-                                color: AppTheme.textSubLight,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 fontSize: 14,
                               ),
                               children: [
                                 TextSpan(
                                   text: 'Fun Fact: ',
-                                  style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
                                 ),
                                 const TextSpan(text: 'German uses descriptive words to name new inventions!'),
                               ],
@@ -98,8 +98,8 @@ class CompoundPracticeScreen extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 40), // pb-8 + safe area approx
               decoration: BoxDecoration(
-                color: AppTheme.surfaceLight,
-                border: const Border(top: BorderSide(color: AppTheme.borderLight)),
+                color: Theme.of(context).cardColor,
+                border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
                 boxShadow: const [
                   BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 6, offset: Offset(0, -4))
                 ],
@@ -110,9 +110,9 @@ class CompoundPracticeScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     elevation: 4,
-                    shadowColor: AppTheme.primary.withValues(alpha: 0.2),
+                 shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: Row(
@@ -142,7 +142,7 @@ class CompoundPracticeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundLight.withValues(alpha: 0.95),
+        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
       ),
       child: Row(
         children: [
@@ -153,7 +153,7 @@ class CompoundPracticeScreen extends StatelessWidget {
               height: 40,
               decoration: const BoxDecoration(shape: BoxShape.circle),
               child: IconButton(
-                icon: const Icon(Icons.close_rounded, size: 24, color: AppTheme.textSubLight),
+                icon: Icon(Icons.close_rounded, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
@@ -163,7 +163,7 @@ class CompoundPracticeScreen extends StatelessWidget {
             child: Container(
               height: 16,
               decoration: BoxDecoration(
-                color: AppTheme.borderLight,
+                color: Theme.of(context).dividerColor.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(999),
                 boxShadow: const [
                   BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.06), blurRadius: 4, offset: Offset(0, 2), spreadRadius: 0) // inset shadow approx
@@ -209,21 +209,21 @@ class CompoundPracticeScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceLight,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppTheme.borderLight),
+              border: Border.all(color: Theme.of(context).dividerColor),
               boxShadow: const [
                 BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1)),
               ],
             ),
             child: Row(
               children: [
-                const Icon(Icons.favorite_rounded, color: AppTheme.primary, size: 20),
+                Icon(Icons.favorite_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
                 const SizedBox(width: 4),
                 Text(
                   '5',
                   style: TextStyle(
-                    color: AppTheme.primary,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -349,7 +349,7 @@ class CompoundPracticeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color[100]!, width: 2),
         boxShadow: const [
@@ -387,7 +387,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: AppTheme.textMainLight,
+                  color: Theme.of(context).colorScheme.onSurface,
                   height: 1.1,
                 ),
               ),
@@ -395,7 +395,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.textSubLight.withValues(alpha: 0.7),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -411,7 +411,7 @@ class CompoundPracticeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, Color(0xFFF8FAFC)]),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: const [
            BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 15, offset: Offset(0, 10), spreadRadius: -3)
         ],
@@ -419,7 +419,7 @@ class CompoundPracticeScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceLight.withValues(alpha: 0.8),
+          color: Theme.of(context).cardColor.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -464,7 +464,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 24,
-                        color: AppTheme.textMainLight,
+                        color: Theme.of(context).colorScheme.onSurface,
                         height: 1.0,
                       ),
                     ),
@@ -472,7 +472,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                       'Die Glühbirne',
                       style: TextStyle(
                         fontStyle: FontStyle.italic,
-                        color: AppTheme.textSubLight,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 14,
                       ),
                     ),

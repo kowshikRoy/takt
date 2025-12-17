@@ -62,7 +62,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -87,7 +87,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                           const SizedBox(height: 16),
                          // _buildCompoundCard(context), // Only show if compound data exists (TODO)
                         ] else ...[
-                           Center(child: Text("Search for a word", style: TextStyle(color: AppTheme.textSubLight))),
+                           Center(child: Text("Search for a word", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))),
                         ]
                       ],
                     ),
@@ -101,7 +101,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                       child: Container(
                         constraints: const BoxConstraints(maxHeight: 300),
                         decoration: BoxDecoration(
-                          color: AppTheme.surfaceLight,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
                         ),
@@ -113,8 +113,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                           itemBuilder: (context, index) {
                             final word = _searchResults[index];
                             return ListTile(
-                              title: Text(word['word'], style: TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text(word['pos'] ?? 'unknown', style: TextStyle(fontSize: 12, color: AppTheme.textSubLight)),
+                              title: Text(word['word'], style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
+                              subtitle: Text(word['pos'] ?? 'unknown', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                               onTap: () => _onResultSelected(word),
                             );
                           },
@@ -134,8 +134,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundLight.withValues(alpha: 0.95),
-        border: Border(bottom: BorderSide(color: AppTheme.borderLight.withValues(alpha: 0.5))),
+        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.5))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -144,7 +144,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             width: 40, height: 40,
             decoration: const BoxDecoration(shape: BoxShape.circle),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textSubLight),
+              icon: Icon(Icons.arrow_back_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
               onPressed: () {}, // No backnav context here usually, or mock pop
             ),
           ),
@@ -153,14 +153,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textMainLight,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           Container(
             width: 40, height: 40,
             decoration: const BoxDecoration(shape: BoxShape.circle),
             child: IconButton(
-              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textSubLight),
+              icon: Icon(Icons.more_vert_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
               onPressed: () {},
             ),
           ),
@@ -172,9 +172,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Widget _buildSearchBar(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderLight, width: 2),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 2),
         boxShadow: const [
            BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 4, offset: Offset(0, 2))
         ],
@@ -183,9 +183,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         controller: _searchController,
         onChanged: _onSearchChanged,
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSubLight),
+          prefixIcon: Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
           suffixIcon: IconButton(
-            icon: const Icon(Icons.close_rounded, color: AppTheme.textSubLight),
+            icon: Icon(Icons.close_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
             onPressed: () {
               _searchController.clear();
               setState(() {
@@ -195,14 +195,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             },
           ),
           hintText: 'Search German or English...',
-          hintStyle: TextStyle(color: AppTheme.textSubLight.withValues(alpha: 0.5)),
+          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
-          color: AppTheme.textMainLight,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
@@ -215,7 +215,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     final defs = wordData['definitions'] as List?;
     final definition = (defs != null && defs.isNotEmpty) ? defs.first : 'No definition found';
 
-    Color genderColor = AppTheme.primary; // Default/Fem
+    Color genderColor = Theme.of(context).colorScheme.primary; // Default/Fem
     String genderText = "TERM";
     String article = "";
     
@@ -236,9 +236,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     return Container(
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: const [
           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 15, offset: Offset(0, 10), spreadRadius: -3)
         ],
@@ -292,7 +292,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                          child: Container(
                            width: 96, height: 96,
                            decoration: BoxDecoration(
-                             color: AppTheme.surfaceLight,
+                             color: Theme.of(context).cardColor,
                              borderRadius: BorderRadius.circular(16),
                              border: Border.all(color: genderColor.withValues(alpha: 0.3)),
                              boxShadow: const [
@@ -300,7 +300,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                              ],
                            ),
                            alignment: Alignment.center,
-                           child: Text(word.toString().substring(0, 1).toUpperCase(), style: const TextStyle(fontSize: 48)),
+                           child: Text(word.toString().substring(0, 1).toUpperCase(), style: TextStyle(fontSize: 48, color: Theme.of(context).colorScheme.onSurface)),
                          ),
                        ),
                      ],
@@ -351,7 +351,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                          style: TextStyle(
                            fontSize: 30,
                            fontWeight: FontWeight.bold,
-                           color: AppTheme.textMainLight,
+                           color: Theme.of(context).colorScheme.onSurface,
                          ),
                        ),
                      ),
@@ -366,7 +366,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                    ipa,
                    style: GoogleFonts.notoSans( 
                      fontSize: 14,
-                     color: AppTheme.textSubLight.withValues(alpha: 0.75),
+                     color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
                    ),
                  ),
                  const SizedBox(height: 4),
@@ -378,7 +378,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                    style: TextStyle(
                      fontSize: 18,
                      fontWeight: FontWeight.w500,
-                     color: AppTheme.textMainLight,
+                     color: Theme.of(context).colorScheme.onSurface,
                    ),
                  ),
                  
@@ -391,10 +391,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                        child: ElevatedButton(
                          onPressed: () {},
                          style: ElevatedButton.styleFrom(
-                           backgroundColor: AppTheme.primary,
+                           backgroundColor: Theme.of(context).colorScheme.primary,
                            padding: const EdgeInsets.symmetric(vertical: 12),
                            elevation: 4,
-                           shadowColor: AppTheme.primary.withValues(alpha: 0.2),
+                           shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                          ),
                          child: Row(
@@ -417,12 +417,12 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                      Container(
                        width: 48, height: 48,
                        decoration: BoxDecoration(
-                         color: AppTheme.surfaceLight,
+                         color: Theme.of(context).cardColor,
                          borderRadius: BorderRadius.circular(12),
-                         border: Border.all(color: AppTheme.borderLight.withValues(alpha: 0.5), width: 2),
+                         border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5), width: 2),
                        ),
                        child: IconButton(
-                         icon: const Icon(Icons.volume_up_rounded, color: AppTheme.primary),
+                         icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary),
                          onPressed: () {},
                        ),
                      ),
@@ -439,8 +439,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Widget _buildTabs(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(left: 8, right: 8, bottom: 4),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppTheme.borderLight)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -459,14 +459,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     return Container(
       padding: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        border: isActive ? const Border(bottom: BorderSide(color: AppTheme.primary, width: 2)) : null,
+        border: isActive ? Border(bottom: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)) : null,
       ),
       child: Text(
         title,
         style: TextStyle(
           fontSize: 14,
           fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-          color: isActive ? AppTheme.primary : AppTheme.textSubLight,
+          color: isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -483,9 +483,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: const [
           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
         ],
@@ -511,14 +511,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundLight,
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(14)), // slightly less to fit
       ),
       child: Row(
         children: [
-          Expanded(flex: 1, child: Text('CASE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSubLight))),
-          Expanded(flex: 2, child: Text('SINGULAR', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSubLight))),
-          Expanded(flex: 2, child: Text('PLURAL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSubLight))),
+          Expanded(flex: 1, child: Text('CASE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant))),
+          Expanded(flex: 2, child: Text('SINGULAR', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant))),
+          Expanded(flex: 2, child: Text('PLURAL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant))),
         ],
       ),
     );
@@ -539,7 +539,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 children: [
                   TextSpan(text: '$sArt ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.genderMasc)),
                   TextSpan(text: sNoun.substring(0, sNoun.length - (suffix != null && caseName == 'Gen' ? 1 : 0))),
-                  if (suffix != null && caseName == 'Gen') TextSpan(text: suffix, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                  if (suffix != null && caseName == 'Gen') TextSpan(text: suffix, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                 ],
               ),
             ),
@@ -549,11 +549,11 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             flex: 2,
             child: RichText(
               text: TextSpan(
-                style: TextStyle(fontSize: 14, color: AppTheme.textMainLight),
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
                 children: [
                   TextSpan(text: '$pArt ', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF97316))), // Orange for Plural
                   TextSpan(text: pNoun.substring(0, pNoun.length - (suffix != null && caseName == 'Dat' ? 1 : 0))),
-                  if (suffix != null && caseName == 'Dat') TextSpan(text: suffix, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                  if (suffix != null && caseName == 'Dat') TextSpan(text: suffix, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                 ],
               ),
             ),
@@ -597,14 +597,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textMainLight,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     'Schmetter (Smash) + ling (Suffix)',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.textSubLight,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

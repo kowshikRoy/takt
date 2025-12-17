@@ -7,7 +7,7 @@ class MeaningPracticeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -25,16 +25,16 @@ class MeaningPracticeScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: const LinearProgressIndicator(
+                        child: LinearProgressIndicator(
                           value: 0.6,
-                          backgroundColor: AppTheme.borderLight,
-                          color: AppTheme.primary,
+                          backgroundColor: Theme.of(context).dividerColor.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.primary,
                           minHeight: 8,
                         ),
                       ),
                     ),
                   ),
-                  const Text('12 / 20', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textSubLight)),
+                  Text('12 / 20', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -49,9 +49,9 @@ class MeaningPracticeScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceLight,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppTheme.borderLight),
+                        border: Border.all(color: Theme.of(context).dividerColor),
                         boxShadow: const [
                           BoxShadow(
                             color: Color.fromRGBO(0, 0, 0, 0.1),
@@ -66,7 +66,7 @@ class MeaningPracticeScreen extends StatelessWidget {
                             width: 80,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             alignment: Alignment.center,
@@ -78,22 +78,22 @@ class MeaningPracticeScreen extends StatelessWidget {
                             style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             '/ˈʃmɛtɐlɪŋ/',
-                            style: TextStyle(color: AppTheme.textSubLight, fontSize: 16),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
                           ),
                           const SizedBox(height: 16),
                           IconButton(
                             onPressed: () {},
-                            icon: const Icon(Icons.volume_up, color: AppTheme.genderMasc),
+                            icon: Icon(Icons.volume_up, color: Theme.of(context).colorScheme.primary),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 32),
-                    const Text(
+                    Text(
                       'Select the correct meaning:',
-                      style: TextStyle(color: AppTheme.textSubLight, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     _buildMeaningOption(context, 'The Dragonfly', false),
@@ -112,11 +112,11 @@ class MeaningPracticeScreen extends StatelessWidget {
         child: ElevatedButton(
           onPressed: () {},
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primary,
+            backgroundColor: Theme.of(context).colorScheme.primary,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          child: const Text('Check Answer', style: TextStyle(fontSize: 16)),
+          child: const Text('Check Answer', style: TextStyle(fontSize: 16, color: Colors.white)),
         ),
       ),
     );
@@ -130,8 +130,8 @@ class MeaningPracticeScreen extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          side: BorderSide(color: isSelected ? AppTheme.primary : AppTheme.borderLight, width: 2),
-          backgroundColor: isSelected ? AppTheme.primary.withOpacity(0.05) : AppTheme.surfaceLight,
+          side: BorderSide(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor, width: 2),
+          backgroundColor: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.05) : Theme.of(context).cardColor,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -140,18 +140,18 @@ class MeaningPracticeScreen extends StatelessWidget {
               text,
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppTheme.primary : AppTheme.textMainLight,
+                color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle, color: AppTheme.primary)
+              Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
             else
               Container(
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.borderLight, width: 2),
+                  border: Border.all(color: Theme.of(context).dividerColor, width: 2),
                 ),
               ),
           ],

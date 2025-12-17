@@ -8,7 +8,7 @@ class SentencePracticeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -29,20 +29,20 @@ class SentencePracticeScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
                           value: 0.65,
-                          backgroundColor: Colors.grey[300],
-                          color: AppTheme.primary,
+                          backgroundColor: Theme.of(context).dividerColor.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.primary,
                           minHeight: 12,
                         ),
                       ),
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(right: 16.0),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
                     child: Row(
                       children: [
-                        Icon(Icons.favorite, color: AppTheme.primary),
-                        SizedBox(width: 4),
-                        Text('5', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                        Icon(Icons.favorite, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 4),
+                        Text('5', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -61,9 +61,9 @@ class SentencePracticeScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceLight,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppTheme.borderLight),
+                        border: Border.all(color: Theme.of(context).dividerColor),
                         boxShadow: const [
                           BoxShadow(
                             color: Color.fromRGBO(0, 0, 0, 0.1),
@@ -82,15 +82,15 @@ class SentencePracticeScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'Translate this sentence',
-                            style: TextStyle(color: AppTheme.textSubLight, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                          Text(
                             '"The small cat sleeps on the sofa."',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                           ),
                         ],
                       ),
@@ -100,17 +100,17 @@ class SentencePracticeScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.05),
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.lightbulb_outline, color: AppTheme.primary),
+                          Icon(Icons.lightbulb_outline, color: Theme.of(context).colorScheme.primary),
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               "Tip: 'auf' (location) requires Dative case.",
-                              style: TextStyle(color: AppTheme.textSubLight),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                             ),
                           ),
                         ],
@@ -134,9 +134,9 @@ class SentencePracticeScreen extends StatelessWidget {
                     ),
                     const Spacer(),
                     // Choices
-                    const Text(
+                    Text(
                       'Choose the missing article:',
-                      style: TextStyle(color: AppTheme.textSubLight),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 16),
                     GridView.count(
@@ -163,8 +163,8 @@ class SentencePracticeScreen extends StatelessWidget {
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceLight,
-          border: Border(top: BorderSide(color: AppTheme.borderLight)),
+          color: Theme.of(context).cardColor,
+          border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -174,13 +174,13 @@ class SentencePracticeScreen extends StatelessWidget {
               children: [
                 TextButton.icon(
                   onPressed: () {},
-                  icon: const Icon(Icons.flag_outlined, color: AppTheme.textSubLight),
-                  label: const Text('Report', style: TextStyle(color: AppTheme.textSubLight)),
+                  icon: Icon(Icons.flag_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  label: Text('Report', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 ),
                 TextButton.icon(
                   onPressed: () {},
-                  label: const Text('Skip', style: TextStyle(color: AppTheme.textSubLight)),
-                  icon: const Icon(Icons.skip_next, color: AppTheme.textSubLight),
+                  label: Text('Skip', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  icon: Icon(Icons.skip_next, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -190,11 +190,11 @@ class SentencePracticeScreen extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('Check Answer', style: TextStyle(fontSize: 16)),
+                child: const Text('Check Answer', style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
             ),
           ],
@@ -207,13 +207,13 @@ class SentencePracticeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isArticle || isNoun ? AppTheme.surfaceLight : Colors.transparent,
-        border: isArticle || isNoun ? Border.all(color: AppTheme.borderLight) : null,
+        color: isArticle || isNoun ? Theme.of(context).cardColor : Colors.transparent,
+        border: isArticle || isNoun ? Border.all(color: Theme.of(context).dividerColor) : null,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         word,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
       ),
     );
   }
@@ -223,7 +223,7 @@ class SentencePracticeScreen extends StatelessWidget {
       width: 80,
       height: 50,
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.primary.withOpacity(0.5), width: 2, style: BorderStyle.solid),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.5), width: 2, style: BorderStyle.solid),
         borderRadius: BorderRadius.circular(12),
       ),
     );
@@ -233,16 +233,16 @@ class SentencePracticeScreen extends StatelessWidget {
     return OutlinedButton(
       onPressed: () {},
       style: OutlinedButton.styleFrom(
-        backgroundColor: isSelected ? AppTheme.primary.withOpacity(0.05) : AppTheme.surfaceLight,
+        backgroundColor: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.05) : Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        side: BorderSide(color: isSelected ? AppTheme.primary : AppTheme.borderLight, width: 2),
+        side: BorderSide(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).dividerColor, width: 2),
       ),
       child: Text(
         text,
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: isSelected ? AppTheme.primary : AppTheme.textMainLight,
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );

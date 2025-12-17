@@ -40,13 +40,13 @@ class HomeScreen extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
-                    color: AppTheme.textMainLight,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   'View All',
                   style: TextStyle(
-                    color: AppTheme.primary,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -70,8 +70,8 @@ class HomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundLight.withValues(alpha: 0.95),
-        border: Border(bottom: BorderSide(color: AppTheme.borderLight.withValues(alpha: 0.5))),
+        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.5))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -82,9 +82,9 @@ class HomeScreen extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceLight,
+                  color: Theme.of(context).cardColor,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.borderLight, width: 2),
+                  border: Border.all(color: Theme.of(context).dividerColor, width: 2),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 2, offset: const Offset(0, 1)),
                   ],
@@ -100,12 +100,12 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Guten Morgen!',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textMainLight, height: 1.1),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(context).colorScheme.onSurface, height: 1.1),
                   ),
                   Text(
                     'Level 4 · Explorer',
                     style: TextStyle(
-                      color: AppTheme.textSubLight,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 12,
                     ),
                   ),
@@ -116,9 +116,9 @@ class HomeScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceLight,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppTheme.borderLight),
+              border: Border.all(color: Theme.of(context).dividerColor),
               boxShadow: [
                 BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 2, offset: const Offset(0, 1)),
               ],
@@ -150,9 +150,9 @@ class HomeScreen extends StatelessWidget {
       // relative overflow-hidden group
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16), // rounded-2xl
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: const [
            BoxShadow(
              color: Color.fromRGBO(0, 0, 0, 0.05),
@@ -176,7 +176,7 @@ class HomeScreen extends StatelessWidget {
                width: 96,
                height: 96,
                decoration: BoxDecoration(
-                 color: AppTheme.primary.withValues(alpha: 0.1),
+                 color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                  shape: BoxShape.circle,
                ),
                // Approximation of blur-xl
@@ -196,14 +196,14 @@ class HomeScreen extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: AppTheme.textMainLight,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Keep your streak alive!',
                         style: TextStyle(
-                              color: AppTheme.textSubLight,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontSize: 14,
                             ),
                       ),
@@ -213,10 +213,10 @@ class HomeScreen extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.play_arrow_rounded, color: AppTheme.primary, size: 24),
+                    child: Icon(Icons.play_arrow_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
                   ),
                 ],
               ),
@@ -247,11 +247,11 @@ class HomeScreen extends StatelessWidget {
                   Container(
                     width: 24, height: 24,
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.primary, width: 2),
+                      border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
                     ),
-                    child: Center(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle))),
+                    child: Center(child: Container(width: 10, height: 10, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, shape: BoxShape.circle))),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -265,13 +265,13 @@ class HomeScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
-                                color: AppTheme.textMainLight,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             Text(
                               '60%',
                               style: TextStyle(
-                                color: AppTheme.primary,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -283,7 +283,7 @@ class HomeScreen extends StatelessWidget {
                           height: 6,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: AppTheme.borderLight,
+                            color: Theme.of(context).dividerColor,
                             borderRadius: BorderRadius.circular(999), 
                           ),
                           child: FractionallySizedBox(
@@ -291,7 +291,7 @@ class HomeScreen extends StatelessWidget {
                             widthFactor: 0.6,
                             child: Container(
                               decoration: BoxDecoration(
-                                color: AppTheme.primary,
+                                color: Theme.of(context).colorScheme.primary,
                                 borderRadius: BorderRadius.circular(999),
                               ),
                             ),
@@ -311,10 +311,10 @@ class HomeScreen extends StatelessWidget {
                 iconWidget: Container(
                    width: 24, height: 24,
                    decoration: BoxDecoration(
-                     border: Border.all(color: AppTheme.borderLight, width: 2),
+                     border: Border.all(color: Theme.of(context).dividerColor, width: 2),
                      shape: BoxShape.circle,
                    ),
-                   child: const Icon(Icons.lock_outline_rounded, color: AppTheme.textSubLight, size: 14),
+                   child: Icon(Icons.lock_outline_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 14),
                 ),
                 title: 'Daily Review',
                 isLocked: true
@@ -328,9 +328,9 @@ class HomeScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     elevation: 4,
-                    shadowColor: AppTheme.primary.withValues(alpha: 0.2), // shadow-lg shadow-primary/20
+                    shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2), // shadow-lg shadow-primary/20
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // rounded-xl
                   ),
                   child: Row(
@@ -366,9 +366,9 @@ class HomeScreen extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: isLocked ? AppTheme.textSubLight : AppTheme.textSubLight.withValues(alpha: 0.8), // text-sub-light/80
+            color: isLocked ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8), // text-sub-light/80
             decoration: isCompleted ? TextDecoration.lineThrough : null,
-            decorationColor: AppTheme.borderDark,
+            decorationColor: Theme.of(context).dividerColor,
           ),
         ),
       ],
@@ -389,7 +389,10 @@ class HomeScreen extends StatelessWidget {
                   subtitle: 'Gender Trainer',
                   icon: Icons.swipe_rounded, 
                   // bg-gradient-to-br from-blue-50 to-pink-50
-                  gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFEFF6FF), Color(0xFFFDF2F8)]),
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
+                    Theme.of(context).brightness == Brightness.light ? const Color(0xFFEFF6FF) : const Color(0xFF1E3A8A).withOpacity(0.3),
+                    Theme.of(context).brightness == Brightness.light ? const Color(0xFFFDF2F8) : const Color(0xFF831843).withOpacity(0.3),
+                  ]),
                   borderColor: const Color(0xFFDBEAFE), // border-blue-100
                   iconColor: const Color(0xFF3B82F6), // blue-500
                   child: Row(
@@ -414,7 +417,10 @@ class HomeScreen extends StatelessWidget {
                   subtitle: 'Sentence Builder',
                   icon: Icons.palette_rounded,
                   // bg-gradient-to-br from-orange-50 to-yellow-50
-                  gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFF7ED), Color(0xFFFEFCE8)]),
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
+                    Theme.of(context).brightness == Brightness.light ? const Color(0xFFFFF7ED) : const Color(0xFF7C2D12).withOpacity(0.3),
+                    Theme.of(context).brightness == Brightness.light ? const Color(0xFFFEFCE8) : const Color(0xFF713F12).withOpacity(0.3),
+                  ]),
                    borderColor: const Color(0xFFFFEDD5), // border-orange-100
                   iconColor: const Color(0xFFF97316), // orange-500
                   child: SizedBox(
@@ -446,9 +452,12 @@ class HomeScreen extends StatelessWidget {
          padding: const EdgeInsets.all(16),
          decoration: BoxDecoration(
            // bg-gradient-to-r from-emerald-50 to-teal-50
-           gradient: const LinearGradient(colors: [Color(0xFFECFDF5), Color(0xFFF0FDFA)]),
+           gradient: LinearGradient(colors: [
+             Theme.of(context).brightness == Brightness.light ? const Color(0xFFECFDF5) : const Color(0xFF064E3B).withOpacity(0.3),
+             Theme.of(context).brightness == Brightness.light ? const Color(0xFFF0FDFA) : const Color(0xFF134E4A).withOpacity(0.3),
+           ]),
            borderRadius: BorderRadius.circular(16), // rounded-2xl
-           border: Border.all(color: const Color(0xFFD1FAE5)), // border-emerald-100
+           border: Border.all(color: const Color(0xFFD1FAE5)), // border-emerald-100 (Keep fixed or adapt if needed, lighter green)
            boxShadow: const [
              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1)) // shadow-sm
            ]
@@ -460,7 +469,7 @@ class HomeScreen extends StatelessWidget {
              height: 48,
              alignment: Alignment.center,
              decoration: BoxDecoration(
-               color: Colors.white,
+               color: Theme.of(context).cardColor,
                borderRadius: BorderRadius.circular(8), // rounded-lg
                boxShadow: const [
                   BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
@@ -478,13 +487,13 @@ class HomeScreen extends StatelessWidget {
                    style: TextStyle(
                      fontWeight: FontWeight.bold, 
                      fontSize: 18, 
-                     color: const Color(0xFF1E293B) // slate-800
+                     color: Theme.of(context).colorScheme.onSurfaceVariant
                    )
                  ),
                  Text(
                    'Build massive words', 
                    style: TextStyle(
-                     color: const Color(0xFF64748B), // slate-500
+                     color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7), // slate-500 equivalent
                      fontSize: 12,
                      fontWeight: FontWeight.w500,
                    )
@@ -523,7 +532,7 @@ class HomeScreen extends StatelessWidget {
                  height: 40,
                  alignment: Alignment.center,
                  decoration: BoxDecoration(
-                   color: Colors.white,
+                   color: Theme.of(context).cardColor,
                    borderRadius: BorderRadius.circular(8), // rounded-lg
                    boxShadow: const [
                      BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1)) // shadow-sm
@@ -537,7 +546,7 @@ class HomeScreen extends StatelessWidget {
                      fontWeight: FontWeight.bold, 
                      fontSize: 18, 
                      height: 1.1, // leading-tight
-                     color: const Color(0xFF1E293B) // slate-800
+                     color: Theme.of(context).colorScheme.onSurfaceVariant
                   )
                ),
                const SizedBox(height: 4),
@@ -545,7 +554,7 @@ class HomeScreen extends StatelessWidget {
                  subtitle,                  style: TextStyle(
                      fontSize: 12, 
                      fontWeight: FontWeight.w500,
-                     color: const Color(0xFF64748B) // slate-500
+                     color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7)
                   )
                ),
              ],
