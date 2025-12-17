@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import '../theme/app_theme.dart';
 import 'profile_screen.dart';
-import 'story_screen.dart';
+import 'discover_screen.dart';
 import 'dictionary_screen.dart';
 
 class MainScaffold extends StatefulWidget {
@@ -17,7 +17,7 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const StoryScreen(),
+    const DiscoverScreen(),
     const DictionaryScreen(),
     const ProfileScreen(),
   ];

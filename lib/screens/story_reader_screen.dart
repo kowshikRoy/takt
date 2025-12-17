@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
-class StoryScreen extends StatefulWidget {
-  const StoryScreen({super.key});
+import '../models/article_model.dart';
+
+class StoryReaderScreen extends StatefulWidget {
+  final Article? article;
+  final String? customContent;
+
+  const StoryReaderScreen({super.key, this.article, this.customContent});
 
   @override
-  State<StoryScreen> createState() => _StoryScreenState();
+  State<StoryReaderScreen> createState() => _StoryReaderScreenState();
 }
 
-class _StoryScreenState extends State<StoryScreen> {
+class _StoryReaderScreenState extends State<StoryReaderScreen> {
   // State for the interactive word tooltip
   bool _isTooltipVisible = false;
 
@@ -162,7 +167,7 @@ class _StoryScreenState extends State<StoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'KAPITEL 3',
+            widget.article?.level ?? 'KAPITEL 3',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -172,7 +177,7 @@ class _StoryScreenState extends State<StoryScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Der verlorene Schlüssel',
+            widget.article?.title ?? 'Der verlorene Schlüssel',
             style: TextStyle(
               fontSize: 30, // text-3xl
               fontWeight: FontWeight.w800, // extrabold
@@ -182,7 +187,7 @@ class _StoryScreenState extends State<StoryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'The Lost Key',
+            widget.article != null ? '' : 'The Lost Key', // Hide subtitle for custom articles for now
             style: TextStyle(
               fontSize: 14,
               fontStyle: FontStyle.italic,
@@ -195,6 +200,11 @@ class _StoryScreenState extends State<StoryScreen> {
   }
 
   Widget _buildStoryContent(BuildContext context) {
+    if (widget.customContent != null) {
+      return _buildParagraph(widget.customContent!);
+    }
+    
+    // Fallback to static content if no custom content provided (existing logic)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -227,6 +237,7 @@ class _StoryScreenState extends State<StoryScreen> {
                    onTap: () {
                      setState(() {
                        _isTooltipVisible = !_isTooltipVisible;
+                       // Hack to make sure we don't float forever if this moves
                      });
                    },
                    child: Container(
@@ -234,7 +245,7 @@ class _StoryScreenState extends State<StoryScreen> {
                      decoration: BoxDecoration(
                        color: _isTooltipVisible ? AppTheme.primary.withValues(alpha: 0.1) : null,
                        borderRadius: BorderRadius.circular(4),
-                       border: Border(bottom: BorderSide(color: AppTheme.primary.withValues(alpha: 0.4), width: 2, style: BorderStyle.solid)), // dotted not easy, solid for now
+                       border: Border(bottom: BorderSide(color: AppTheme.primary.withValues(alpha: 0.4), width: 2, style: BorderStyle.solid)), 
                      ),
                      child: Text(
                        'Schmetterling',
