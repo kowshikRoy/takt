@@ -74,7 +74,7 @@ flutter:
     - assets/images/bicycle.png
     - assets/images/bicycle.png
     - assets/images/butterfly.png
-    - assets/german_dictionary_v3.db
+    - assets/german_dictionary_v7.db
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

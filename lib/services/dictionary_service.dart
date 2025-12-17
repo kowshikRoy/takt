@@ -32,8 +32,8 @@ class DictionaryService {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    // Using v3 to force fresh copy on devices that have v1/v2
-    String path = join(documentsDirectory.path, "german_dictionary_v3.db");
+    // Using v7 to force fresh copy on devices that have v1-v6
+    String path = join(documentsDirectory.path, "german_dictionary_v7.db");
     
     // Explicitly define anticipated tables to verify
     bool isValid = false;
@@ -66,7 +66,7 @@ class DictionaryService {
   Future<void> _copyFromAsset(String path) async {
     print("Copying dictionary database from assets...");
     try {
-        ByteData data = await rootBundle.load(join("assets", "german_dictionary_v3.db"));
+        ByteData data = await rootBundle.load(join("assets", "german_dictionary_v7.db"));
         List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
         await File(path).writeAsBytes(bytes, flush: true);
         print("Database copied successfully.");
@@ -104,13 +104,97 @@ class DictionaryService {
     final List<Map<String, dynamic>> wordRes = await db.query('words', where: 'id = ?', whereArgs: [wordId]);
     if (wordRes.isEmpty) return null;
     final word = Map<String, dynamic>.from(wordRes.first);
+    // print("DEBUG: Fetched word data: $word");
 
     final List<Map<String, dynamic>> defRes = await db.query('definitions', where: 'word_id = ?', whereArgs: [wordId]);
-    word['definitions'] = defRes.map((d) => d['definition']).toList();
+    List<String> definitions = defRes.map((d) => d['definition'] as String).toList();
+    
+    // If no definitions found but we have a base_form, fetch definitions for the base form
+    if (definitions.isEmpty && word['base_form'] != null) {
+       String baseForm = word['base_form'];
+       // print("DEBUG: No definitions for '${word['word']}', fetching base form '$baseForm'");
+       
+       // Allow fetching ONLY the base form row to get its ID
+       final List<Map<String, dynamic>> baseRes = await db.query(
+         'words', 
+         where: 'word = ? COLLATE NOCASE', 
+         whereArgs: [baseForm], 
+         limit: 1
+       );
+       
+       if (baseRes.isNotEmpty) {
+          int baseId = baseRes.first['id'] as int;
+          // Fetch definitions for the base word
+          final List<Map<String, dynamic>> baseDefRes = await db.query('definitions', where: 'word_id = ?', whereArgs: [baseId]);
+          definitions = baseDefRes.map((d) => d['definition'] as String).toList();
+          
+          // Optionally: Could also fetch other properties from base form if needed (IPA, gender)
+          // But strict definition lookup is the main request.
+       }
+    }
+
+    word['definitions'] = definitions;
 
     final List<Map<String, dynamic>> formsRes = await db.query('forms', where: 'word_id = ?', whereArgs: [wordId]);
     word['forms'] = formsRes;
 
     return word;
+  }
+
+  Future<Map<String, dynamic>?> lookupWord(String word) async {
+    print("DEBUG: lookupWord called with: '$word'");
+    final db = await database;
+    try {
+      // Try exact match first
+      final List<Map<String, dynamic>> results = await db.query(
+        'words',
+        where: 'word = ? COLLATE NOCASE',
+        whereArgs: [word.trim()],
+        limit: 1,
+      );
+
+      print("DEBUG: lookupWord found ${results.length} results for '$word'");
+
+      if (results.isNotEmpty) {
+        return await getWordDetails(results.first['id'] as int);
+      }
+      return null;
+    } catch (e) {
+      print("Lookup error: $e");
+      return null;
+    }
+  }
+
+  Future<Map<String, String>> getGendersForWords(List<String> words) async {
+      final db = await database;
+      if (words.isEmpty) return {};
+
+      try {
+        // Create placeholders for the IN clause
+        String placeholders = List.filled(words.length, '?').join(',');
+        
+        // Query for words that match and have a non-null gender
+        // We look for nouns specifically? The prompt implies nouns based on gender. 
+        // Usually only nouns have gender in German learning context (der/die/das).
+        // Let's filter by type='noun' to be safe, or just take any word with a gender.
+        final List<Map<String, dynamic>> results = await db.query(
+          'words',
+          columns: ['word', 'gender'],
+          where: 'word COLLATE NOCASE IN ($placeholders) AND gender IS NOT NULL',
+          whereArgs: words,
+        );
+
+        Map<String, String> genderMap = {};
+        for (var row in results) {
+            if (row['word'] != null && row['gender'] != null) {
+                genderMap[row['word'].toString()] = row['gender'].toString();
+            }
+        }
+        return genderMap;
+
+      } catch (e) {
+          print("Batch gender lookup error: $e");
+          return {};
+      }
   }
 }
