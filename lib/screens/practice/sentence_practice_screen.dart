@@ -122,35 +122,38 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 10),
-                    // Image / Context
-                    SizedBox(
-                      height: 100,
-                      child: Center(
-                         child: _currentIndex == 0
-                              ? Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Image.asset('assets/images/cat.png', height: 80, errorBuilder: (c, e, s) => const SizedBox()),
-                                    Image.asset('assets/images/sofa.png', height: 80, errorBuilder: (c, e, s) => const SizedBox()),
-                                  ],
-                                )
-                              : const Icon(Icons.translate, size: 48, color: Colors.grey),
-                      ),
-                    ),
 
-                    // When not checked, we push content down slightly, but not too much.
-                    // When checked, we want the feedback to take up most of the space.
+                    // Image / Context (Hidden when checked to save space)
+                    if (!_isChecked)
+                      SizedBox(
+                        height: 100,
+                        child: Center(
+                           child: _currentIndex == 0
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Image.asset('assets/images/cat.png', height: 80, errorBuilder: (c, e, s) => const SizedBox()),
+                                      Image.asset('assets/images/sofa.png', height: 80, errorBuilder: (c, e, s) => const SizedBox()),
+                                    ],
+                                  )
+                                : const Icon(Icons.translate, size: 48, color: Colors.grey),
+                        ),
+                      ),
+
+                    // Spacing
                     if (!_isChecked) const Spacer(flex: 1),
 
                     // Question & Translation
                     Column(
                       children: [
-                        Text(
-                          'Translate this sentence',
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
+                        if (!_isChecked) ...[
+                          Text(
+                            'Translate this sentence',
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         Text(
                           exercise.translation,
                           textAlign: TextAlign.center,
@@ -162,7 +165,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 16), // Reduced from 24
+                    SizedBox(height: _isChecked ? 12 : 16),
 
                     // Tip
                     Container(
@@ -193,7 +196,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 16), // Reduced from 24
+                    SizedBox(height: _isChecked ? 12 : 16),
 
                     // Sentence Construction (The Fill-in-the-blank part)
                     Wrap(
@@ -252,41 +255,43 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                        Expanded(
                          flex: 3,
                          child: Center(
-                           child: Column(
-                             mainAxisSize: MainAxisSize.min,
-                             children: [
-                               Icon(
-                                 _isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                                 size: 64,
-                                 color: _isCorrect ? Colors.green : Colors.red,
-                               ),
-                               const SizedBox(height: 16),
-                               Text(
-                                 _isCorrect ? 'Correct!' : 'Incorrect',
-                                 style: TextStyle(
-                                   fontSize: 24,
-                                   fontWeight: FontWeight.bold,
+                           child: SingleChildScrollView(
+                             child: Column(
+                               mainAxisSize: MainAxisSize.min,
+                               children: [
+                                 Icon(
+                                   _isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                                   size: 64,
                                    color: _isCorrect ? Colors.green : Colors.red,
                                  ),
-                               ),
-                               if (!_isCorrect) ...[
-                                 const SizedBox(height: 8),
+                                 const SizedBox(height: 16),
                                  Text(
-                                   'Correct answer:',
+                                   _isCorrect ? 'Correct!' : 'Incorrect',
                                    style: TextStyle(
-                                     color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                   ),
-                                 ),
-                                 Text(
-                                   exercise.correctAnswer,
-                                   style: TextStyle(
-                                     fontSize: 20,
+                                     fontSize: 24,
                                      fontWeight: FontWeight.bold,
-                                     color: Theme.of(context).colorScheme.onSurface,
+                                     color: _isCorrect ? Colors.green : Colors.red,
                                    ),
                                  ),
-                               ]
-                             ],
+                                 if (!_isCorrect) ...[
+                                   const SizedBox(height: 8),
+                                   Text(
+                                     'Correct answer:',
+                                     style: TextStyle(
+                                       color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                     ),
+                                   ),
+                                   Text(
+                                     exercise.correctAnswer,
+                                     style: TextStyle(
+                                       fontSize: 20,
+                                       fontWeight: FontWeight.bold,
+                                       color: Theme.of(context).colorScheme.onSurface,
+                                     ),
+                                   ),
+                                 ]
+                               ],
+                             ),
                            ),
                          ),
                        )
