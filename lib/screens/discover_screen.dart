@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/lesson_service.dart';
 import '../theme/app_theme.dart';
 import '../models/article_model.dart';
 import '../widgets/article_card.dart';
@@ -65,21 +67,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     ),
   ];
 
-  // Mock Data - Imported
-  final List<Article> _importedArticles = [
-     Article(
-      id: 'imp1',
-      title: 'My Favorite Recipe',
-      description: '',
-      level: 'Custom',
-      date: DateTime.now(),
-      imageUrl: 'assets/images/story_hair.png', 
-    ),
-  ];
-
 
   @override
   Widget build(BuildContext context) {
+    final lessonService = Provider.of<LessonService>(context);
+    final importedArticles = lessonService.importedArticles;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: FloatingActionButton(
@@ -118,11 +111,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   scrollDirection: Axis.horizontal,
-                  itemCount: _importedArticles.length,
+                  itemCount: importedArticles.length,
                   itemBuilder: (context, index) {
                     return CompactArticleCard(
-                      article: _importedArticles[index],
-                      onTap: () => _openReader(_importedArticles[index]),
+                      article: importedArticles[index],
+                      onTap: () => _openReader(importedArticles[index]),
                     );
                   },
                 ),

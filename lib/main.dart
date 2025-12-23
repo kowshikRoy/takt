@@ -3,11 +3,15 @@ import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/welcome_screen.dart';
 import 'theme/theme_provider.dart';
+import 'services/lesson_service.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LessonService()),
+      ],
       child: const MyApp(),
     ),
   );

@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../theme/theme_provider.dart';
 import '../services/dictionary_service.dart';
 import '../services/vocabulary_service.dart';
+import '../services/lesson_service.dart';
 
 import '../models/article_model.dart';
 
@@ -24,10 +25,23 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   final VocabularyService _vocabularyService = VocabularyService();
   Map<String, String> _wordGenders = {};
   bool _isLoadingGenders = true;
+  String? _loadedContent;
 
   @override
   void initState() {
     super.initState();
+    _loadContent();
+  }
+
+  Future<void> _loadContent() async {
+    if (widget.customContent != null) {
+      _loadedContent = widget.customContent;
+    } else if (widget.article != null && widget.article!.id.startsWith('custom_')) {
+      final lessonService = Provider.of<LessonService>(context, listen: false);
+      _loadedContent = await lessonService.getCustomContent(widget.article!.id);
+      if (mounted) setState(() {});
+    }
+
     _loadWordGenders();
   }
 
@@ -37,8 +51,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
       // Ideally this should be dynamic based on the article content
       
       List<String> textChunks = [];
-      if (widget.customContent != null) {
-          textChunks.add(widget.customContent!);
+      if (_loadedContent != null) {
+          textChunks.add(_loadedContent!);
       } else {
           // Add the static content pieces
           textChunks.add('Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.');
@@ -225,8 +239,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   }
 
   Widget _buildStoryContent(BuildContext context) {
-    if (widget.customContent != null) {
-      return _buildInteractiveParagraph(context, widget.customContent!);
+    if (_loadedContent != null) {
+      return _buildInteractiveParagraph(context, _loadedContent!);
     }
     
     // Fallback to static content if no custom content provided (existing logic)

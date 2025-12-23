@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/article_model.dart';
 import '../story_reader_screen.dart';
+import '../../services/lesson_service.dart';
 
 class TextInputScreen extends StatefulWidget {
   const TextInputScreen({super.key});
@@ -14,7 +16,7 @@ class _TextInputScreenState extends State<TextInputScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
 
-  void _createLesson() {
+  void _createLesson() async {
     if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter both title and content')),
@@ -29,15 +31,19 @@ class _TextInputScreenState extends State<TextInputScreen> {
       level: 'Custom',
       date: DateTime.now(),
       imageUrl: 'assets/images/story_desert.png', // Use placeholder for now
-      // Logic for providing full content needs to be handled in StoryReader
     );
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StoryReaderScreen(article: newArticle, customContent: _contentController.text),
-      ),
-    );
+    final lessonService = Provider.of<LessonService>(context, listen: false);
+    await lessonService.addImportedArticle(newArticle, _contentController.text);
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StoryReaderScreen(article: newArticle),
+        ),
+      );
+    }
   }
 
   @override
