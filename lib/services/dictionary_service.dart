@@ -31,9 +31,8 @@ class DictionaryService {
   }
 
   Future<Database> _initDatabase() async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    // Using v7 to force fresh copy on devices that have v1-v6
-    String path = join(documentsDirectory.path, "german_dictionary_v7.db");
+    // Using v11 to force fresh copy on devices
+    var path = join(await getDatabasesPath(), "german_dictionary_v16.db");
     
     // Explicitly define anticipated tables to verify
     bool isValid = false;
@@ -66,7 +65,7 @@ class DictionaryService {
   Future<void> _copyFromAsset(String path) async {
     print("Copying dictionary database from assets...");
     try {
-        ByteData data = await rootBundle.load(join("assets", "german_dictionary_v7.db"));
+        ByteData data = await rootBundle.load(join("assets", "german_dictionary_v16.db"));
         List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
         await File(path).writeAsBytes(bytes, flush: true);
         print("Database copied successfully.");
@@ -135,8 +134,44 @@ class DictionaryService {
 
     word['definitions'] = definitions;
 
-    final List<Map<String, dynamic>> formsRes = await db.query('forms', where: 'word_id = ?', whereArgs: [wordId]);
+    // v9: Join forms with tags table
+    final List<Map<String, dynamic>> formsRes = await db.rawQuery('''
+      SELECT f.form, t.tags 
+      FROM forms f
+      LEFT JOIN tags t ON f.tag_id = t.id
+      WHERE f.word_id = ?
+    ''', [wordId]);
     word['forms'] = formsRes;
+
+    // v16: Fetch relations (synonyms, antonyms, related)
+    final List<Map<String, dynamic>> relationsRes = await db.query(
+      'relations',
+      columns: ['relation_type', 'related_word'],
+      where: 'word_id = ?',
+      whereArgs: [wordId],
+    );
+    
+    // Group relations by type
+    List<String> synonyms = [];
+    List<String> antonyms = [];
+    List<String> related = [];
+    
+    for (var rel in relationsRes) {
+      String type = rel['relation_type'] as String;
+      String relWord = rel['related_word'] as String;
+      
+      if (type == 'synonym') {
+        synonyms.add(relWord);
+      } else if (type == 'antonym') {
+        antonyms.add(relWord);
+      } else if (type == 'related') {
+        related.add(relWord);
+      }
+    }
+    
+    word['synonyms'] = synonyms;
+    word['antonyms'] = antonyms;
+    word['related'] = related;
 
     return word;
   }

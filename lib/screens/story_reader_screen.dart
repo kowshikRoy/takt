@@ -446,19 +446,21 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                 child: CustomPaint(
                                   painter: TooltipShapePainter(
                                     color: Theme.of(context).cardColor,
+                                    borderColor: Theme.of(context).dividerColor.withValues(alpha: 0.5),
                                     isTop: isTopHalf,
                                     arrowX: tapPosition.dx - horizontalMargin,
                                   ),
                                   child: Container(
                                     constraints: BoxConstraints(
+                                      maxWidth: cardWidth,
                                       maxHeight: availableHeight > 400 ? 400 : availableHeight,
                                     ),
                                     // Add extra padding for the arrow area
                                     padding: EdgeInsets.only(
                                         left: 20, 
                                         right: 20, 
-                                        top: isTopHalf ? 16 + 12.0 : 16, // Arrow is top
-                                        bottom: !isTopHalf ? 16 + 12.0 : 16 // Arrow is bottom
+                                        top: isTopHalf ? 20 + 10.0 : 20, // Arrow is top
+                                        bottom: !isTopHalf ? 20 + 10.0 : 20 // Arrow is bottom
                                     ),
                                     child: SingleChildScrollView(
                                       child: Column(
@@ -675,17 +677,19 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
 class TooltipShapePainter extends CustomPainter {
   final Color color;
-  final bool isTop; // If true, arrow points up (popup is below tap). Else points down.
-  final double arrowX; // X offset within the popup logic coordinates
+  final Color borderColor;
+  final bool isTop; 
+  final double arrowX; 
   final double arrowSize;
   final double radius;
 
   TooltipShapePainter({
     required this.color,
+    required this.borderColor,
     required this.isTop,
     required this.arrowX,
-    this.arrowSize = 12.0,
-    this.radius = 16.0,
+    this.arrowSize = 10.0,
+    this.radius = 20.0,
   });
 
   @override
@@ -694,92 +698,88 @@ class TooltipShapePainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.fill;
     
-    // We can draw shadow too if we want, but Container shadow is easier if we match shape.
-    // For CustomPainter, shadow is manual.
-    // Let's rely on standard box shadow for the main box if we can, but simpler:
-    // Draw the whole shape with shadow.
-    
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
     final path = Path();
     final width = size.width;
     final height = size.height;
     
-    // The "box" part starts at y=arrowSize if isTop, else at y=0.
     final boxTop = isTop ? arrowSize : 0.0;
     final boxBottom = isTop ? height : height - arrowSize;
     
-    // Clamp arrowX to be within safe bounds (radius + arrow width)
-    final safeArrowX = arrowX.clamp(radius + arrowSize, width - radius - arrowSize);
+    // Smooth arrow curve parameters
+    const arrowWidthFactor = 2.4; 
+    final aw = arrowSize * arrowWidthFactor;
+    final safeArrowX = arrowX.clamp(radius + aw, width - radius - aw);
 
-    // Start top-left
-    path.moveTo(radius, boxTop);
-    
     if (isTop) {
-       // Top Line with Arrow pointing UP
-       // We are moving clockwise from Top-Left
-       
-       // Top Left Corner
-       path.quadraticBezierTo(0, boxTop, 0, boxTop + radius);
-       
-       // Left Wall
-       path.lineTo(0, boxBottom - radius);
-       
-       // Bottom Left Corner
-       path.quadraticBezierTo(0, boxBottom, radius, boxBottom);
-       
-       // Bottom Wall
-       path.lineTo(width - radius, boxBottom);
-       
-       // Bottom Right Corner
-       path.quadraticBezierTo(width, boxBottom, width, boxBottom - radius);
-       
-       // Right Wall
-       path.lineTo(width, boxTop + radius);
-       
-       // Top Right Corner
-       path.quadraticBezierTo(width, boxTop, width - radius, boxTop);
-       
-       // Top Wall back to arrow
-       path.lineTo(safeArrowX + arrowSize / 1.5, boxTop);
-       path.lineTo(safeArrowX, 0); // Tip
-       path.lineTo(safeArrowX - arrowSize / 1.5, boxTop);
-       
-       path.close();
+      path.moveTo(radius, boxTop);
+      
+      // Arrow pointing up
+      path.lineTo(safeArrowX - aw / 2, boxTop);
+      path.cubicTo(
+        safeArrowX - aw / 4, boxTop, 
+        safeArrowX - aw / 8, 0, 
+        safeArrowX, 0
+      );
+      path.cubicTo(
+        safeArrowX + aw / 8, 0, 
+        safeArrowX + aw / 4, boxTop, 
+        safeArrowX + aw / 2, boxTop
+      );
+
+      path.lineTo(width - radius, boxTop);
+      path.quadraticBezierTo(width, boxTop, width, boxTop + radius);
+      path.lineTo(width, boxBottom - radius);
+      path.quadraticBezierTo(width, boxBottom, width - radius, boxBottom);
+      path.lineTo(radius, boxBottom);
+      path.quadraticBezierTo(0, boxBottom, 0, boxBottom - radius);
+      path.lineTo(0, boxTop + radius);
+      path.quadraticBezierTo(0, boxTop, radius, boxTop);
     } else {
-       // Arrow pointing DOWN (at the bottom)
-       
-       // Top Left Corner
-       path.quadraticBezierTo(0, boxTop, 0, boxTop + radius);
-       
-       // Left Wall
-       path.lineTo(0, boxBottom - radius);
-       
-       // Bottom Left Corner
-       path.quadraticBezierTo(0, boxBottom, radius, boxBottom);
-       
-        // Bottom Wall with Arrow
-       path.lineTo(safeArrowX - arrowSize / 1.5, boxBottom);
-       path.lineTo(safeArrowX, height); // Tip
-       path.lineTo(safeArrowX + arrowSize / 1.5, boxBottom);
-       
-       path.lineTo(width - radius, boxBottom);
-       
-       // Bottom Right Corner
-       path.quadraticBezierTo(width, boxBottom, width, boxBottom - radius);
-       
-       // Right Wall
-       path.lineTo(width, boxTop + radius);
-       
-       // Top Right Corner
-       path.quadraticBezierTo(width, boxTop, width - radius, boxTop);
-       
-       path.close();
+      path.moveTo(radius, boxTop);
+      path.lineTo(width - radius, boxTop);
+      path.quadraticBezierTo(width, boxTop, width, boxTop + radius);
+      path.lineTo(width, boxBottom - radius);
+      path.quadraticBezierTo(width, boxBottom, width - radius, boxBottom);
+      
+      // Arrow pointing down
+      path.lineTo(safeArrowX + aw / 2, boxBottom);
+      path.cubicTo(
+        safeArrowX + aw / 4, boxBottom, 
+        safeArrowX + aw / 8, height, 
+        safeArrowX, height
+      );
+      path.cubicTo(
+        safeArrowX - aw / 8, height, 
+        safeArrowX - aw / 4, boxBottom, 
+        safeArrowX - aw / 2, boxBottom
+      );
+
+      path.lineTo(radius, boxBottom);
+      path.quadraticBezierTo(0, boxBottom, 0, boxBottom - radius);
+      path.lineTo(0, boxTop + radius);
+      path.quadraticBezierTo(0, boxTop, radius, boxTop);
     }
     
-    canvas.drawShadow(path, Colors.black.withOpacity(0.2), 6.0, true);
+    path.close();
+
+    // Shadow
+    canvas.drawShadow(path.shift(const Offset(0, 4)), Colors.black.withValues(alpha: 0.15), 12.0, false);
+    
+    // Fill
     canvas.drawPath(path, paint);
+    
+    // Border
+    canvas.drawPath(path, borderPaint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant TooltipShapePainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.isTop != isTop || oldDelegate.arrowX != arrowX;
+  }
 }
 

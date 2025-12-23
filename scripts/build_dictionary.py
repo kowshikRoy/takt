@@ -8,8 +8,10 @@ import sys
 # Using a smaller subset/test URL or the full one?
 # The user wants "process it and integrate it". Let's use the full URL but maybe limit for testing if it takes too long.
 # However, usually we want the full thing. I'll add a limit arg.
+MAX_WORDS = None
+
 URL = "https://kaikki.org/dictionary/German/kaikki.org-dictionary-German.jsonl"
-DB_PATH = "../assets/german_dictionary_v3.db" 
+DB_PATH = "../assets/german_dictionary_v16.db"
 TEMP_JSONL = "temp_dictionary.jsonl"
 
 def setup_database(conn):
@@ -17,6 +19,8 @@ def setup_database(conn):
     c.execute("DROP TABLE IF EXISTS words")
     c.execute("DROP TABLE IF EXISTS definitions")
     c.execute("DROP TABLE IF EXISTS forms")
+    c.execute("DROP TABLE IF EXISTS tags")
+    c.execute("DROP TABLE IF EXISTS relations")
 
     # Main words table
     c.execute("""
@@ -40,12 +44,30 @@ def setup_database(conn):
         )
     """)
     
-    # Forms (Declensions/Conjugations)
+    c.execute("""
+        CREATE TABLE tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tags TEXT UNIQUE
+        )
+    """)
+
+    # Forms (Declensions/Conjugations) - Modified for Recommendation 2
     c.execute("""
         CREATE TABLE forms (
             word_id INTEGER,
             form TEXT,
-            tags TEXT,
+            tag_id INTEGER,
+            FOREIGN KEY(word_id) REFERENCES words(id),
+            FOREIGN KEY(tag_id) REFERENCES tags(id)
+        )
+    """)
+    
+    # Relations (Synonyms, Antonyms, Related)
+    c.execute("""
+        CREATE TABLE relations (
+            word_id INTEGER,
+            relation_type TEXT,
+            related_word TEXT,
             FOREIGN KEY(word_id) REFERENCES words(id)
         )
     """)
@@ -54,6 +76,9 @@ def setup_database(conn):
     c.execute("CREATE INDEX idx_word ON words(word)")
     c.execute("CREATE INDEX idx_base_form ON words(base_form)") # Useful for finding all forms of a base
     c.execute("CREATE INDEX idx_def_word_id ON definitions(word_id)")
+    c.execute("CREATE INDEX idx_forms_word_id ON forms(word_id)")
+    c.execute("CREATE INDEX idx_forms_tag_id ON forms(tag_id)")
+    c.execute("CREATE INDEX idx_relations_word_id ON relations(word_id)")
     
     conn.commit()
 
@@ -62,6 +87,7 @@ def setup_database(conn):
 def process_file(file_path, conn):
     c = conn.cursor()
     count = 0
+    tag_cache = {} # Map JSON string -> ID
     
     print("Processing JSONL...")
     
@@ -97,7 +123,10 @@ def process_file(file_path, conn):
                     if not gender and "tags" in sense:
                         for t in sense["tags"]:
                             if t in ["masculine", "feminine", "neuter"]:
-                                gender = t
+                                # Recommendation 3: Normalize Gender
+                                if t == "masculine": gender = "m"
+                                elif t == "feminine": gender = "f"
+                                elif t == "neuter": gender = "n"
                                 break
             
             # Extract Base Form (if it's an inflection)
@@ -142,56 +171,128 @@ def process_file(file_path, conn):
             # Insert Definitions
             for d in definitions:
                 c.execute("INSERT INTO definitions (word_id, definition) VALUES (?, ?)", (word_id, d))
+            
+            # Extract and Insert Relations (Synonyms, Antonyms, Related)
+            relations = set()  # Use set to deduplicate
+            if not base_form and "senses" in data:  # Only for base words
+                for sense in data["senses"]:
+                    # Extract synonyms
+                    if "synonyms" in sense:
+                        for syn in sense["synonyms"]:
+                            if isinstance(syn, dict) and "word" in syn:
+                                relations.add(("synonym", syn["word"]))
+                    
+                    # Extract antonyms
+                    if "antonyms" in sense:
+                        for ant in sense["antonyms"]:
+                            if isinstance(ant, dict) and "word" in ant:
+                                relations.add(("antonym", ant["word"]))
+                    
+                    # Extract related words
+                    if "related" in sense:
+                        for rel in sense["related"]:
+                            if isinstance(rel, dict) and "word" in rel:
+                                relations.add(("related", rel["word"]))
+            
+            # Insert relations
+            for relation_type, related_word in relations:
+                c.execute("INSERT INTO relations (word_id, relation_type, related_word) VALUES (?, ?, ?)", 
+                         (word_id, relation_type, related_word))
                 
             # Insert Forms (Simplified)
             if "forms" in data:
+                seen_forms = set()
                 for form_data in data["forms"]:
                     form_text = form_data.get("form")
                     tags = form_data.get("tags", [])
                     
                     if not form_text: continue
                     
-                    # Form Filtering Logic
-                    keep_form = False
+                    # Recommendation 1: Filter "Junk" Rows (Metadata)
+                    if "inflection-template" in tags or "table-tags" in tags:
+                        continue
                     
+                    # Recommendation 2: Filter forms
+                    tags_set = set(tags)
+                    remove_markers = {
+                        'future-i', 'future-ii',
+                        'perfect', 'pluperfect',
+                        'subjunctive-i',
+                        'rare', 'archaic', 'obsolete', 'proscribed', 'nonstandard',
+                        'subordinate-clause',
+                        'multiword-construction', 'future',
+                                            }
+
+                    should_remove = False
+
+                    if not tags_set.isdisjoint(remove_markers):
+                        should_remove = True
+                    
+                    # Exception: Keep Subjunctive II (unless it's multiword/future)
+                    if 'subjunctive-ii' in tags_set:
+                        if 'multiword-construction' in tags_set or 'future' in tags_set or 'future-ii' in tags_set:
+                            pass # Don't rescue
+                        else:
+                            should_remove = False
+
+                    if should_remove:
+                        continue
+                    
+                    # Noun Optimizations (v13)
+                    if pos == "noun":
+                        # 1. Filter Diminutives (Redundant, exist as standalone words)
+                        if "diminutive" in tags_set:
+                            continue
+                        
+                        if "definite" in tags: tags.remove("definite")
+                        if "indefinite" in tags: tags.remove("indefinite")
+                        
+                    # Adjective Optimizations (v14)
                     if pos == "adj":
-                        # Keep only positive, comparative, superlative (without extra declension tags)
-                        # Identify declension vs basic forms.
-                        # Complex tags example: ["masculine", "genitive", "singular", "positive"]
-                        # Simple tags: ["positive"], ["comparative"], ["superlative"] (or empty/predicative)
-                        if len(tags) <= 2: # heuristic: usually essential forms have few tags
-                             # Check for declension tags to exclude
-                             declension_tags = ["masculine", "feminine", "neuter", "genitive", "dative", "accusative", "nominative", "plural", "singular"]
-                             if not any(t in declension_tags for t in tags):
-                                 keep_form = True
+                        # NEW: Remove multi-word forms (e.g. "der schwere", "am schwersten")
+                        if " " in form_text:
+                            continue
+
+                        # Remove redundant declension info
+                        tags_to_remove = {
+                            "strong", "weak", "mixed",
+                            "includes-article", "without-article",
+                            "definite", "indefinite"
+                        }
+                        # Keep only tags NOT in the remove list
+                        tags = [t for t in tags if t not in tags_to_remove]
                     
-                    elif pos == "verb":
-                        # Keep infinitive, present, past, participle
-                        # Filter out subjunctive, imperative if desired, or keep basics.
-                        # User's script kept: present, past/preterite, perfect, pluperfect.
-                        # We will aggressively filter to keep table size down.
-                        valid_tenses = ["present", "past", "preterite", "perfect", "participle"]
-                        if any(t in valid_tenses for t in tags) and not any(t.startswith("subjunctive") for t in tags):
-                             keep_form = True
-                        if "infinitive" in tags:
-                            keep_form = True
+                    # Recommendation 4: Enable Full Declension
+                    # We KEEP all case forms.
+                    
+                    # Normalize tags & Get ID
+                    # Sort tags to ensure uniqueness for same set
+                    tags.sort()
+                    tags_json = json.dumps(tags)
 
-                    elif pos == "noun":
-                        # Keep singular/plural nominative?
-                        # Noun forms are often voluminous too.
-                        if "nominative" in tags or "plural" in tags or "singular" in tags:
-                             # Exclude oblique cases if possible
-                             oblique = ["genitive", "dative", "accusative"]
-                             if not any(t in oblique for t in tags):
-                                 keep_form = True
-                    else:
-                        # For other POS, keep all or aggressive filter?
-                        # Let's keep all for typically smaller classes (adverbs etc)
-                        keep_form = True
-
-                    if keep_form:
-                        tags_json = json.dumps(tags)
-                        c.execute("INSERT INTO forms (word_id, form, tags) VALUES (?, ?, ?)", (word_id, form_text, tags_json))
+                    # Deduplication (v13)
+                    # Avoid inserting exact same form + tag combo for the same word
+                    # (e.g. if trimming 'definite' made two entries identical)
+                    form_key = (form_text, tags_json)
+                    if form_key in seen_forms:
+                        continue
+                    seen_forms.add(form_key)
+                    
+                    tag_id = tag_cache.get(tags_json)
+                    if tag_id is None:
+                        # Insert new tag set
+                        # Use INSERT OR IGNORE just in case, though cache handles it mostly
+                        try:
+                            c.execute("INSERT INTO tags (tags) VALUES (?)", (tags_json,))
+                            tag_id = c.lastrowid
+                            tag_cache[tags_json] = tag_id
+                        except sqlite3.IntegrityError:
+                            # It existed (race condition unlikely here but good practice), fetch it
+                            c.execute("SELECT id FROM tags WHERE tags = ?", (tags_json,))
+                            tag_id = c.fetchone()[0]
+                            tag_cache[tags_json] = tag_id
+                    
+                    c.execute("INSERT INTO forms (word_id, form, tag_id) VALUES (?, ?, ?)", (word_id, form_text, tag_id))
 
             count += 1
             if count % 1000 == 0:
@@ -200,6 +301,19 @@ def process_file(file_path, conn):
                 
     conn.commit()
     print(f"Finished processing {count} words.")
+
+def download_dictionary():
+    print(f"Downloading dictionary from {URL}...")
+    try:
+        r = requests.get(URL, stream=True)
+        r.raise_for_status()
+        with open(TEMP_JSONL, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print("Download complete.")
+    except Exception as e:
+        print(f"Error downloading: {e}")
+        sys.exit(1)
 
 def build_dictionary():
     # Ensure assets dir exists
@@ -210,7 +324,7 @@ def build_dictionary():
     if not os.path.exists("../assets"):
         os.makedirs("../assets")
     
-    db_path = "../assets/german_dictionary_v7.db"
+    db_path = DB_PATH
     
     if os.path.exists(db_path):
         os.remove(db_path)
