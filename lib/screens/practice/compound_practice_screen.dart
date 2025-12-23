@@ -1,10 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
+import '../../models/compound_word.dart';
+import '../../services/compound_service.dart';
 
-class CompoundPracticeScreen extends StatelessWidget {
+class CompoundPracticeScreen extends StatefulWidget {
   const CompoundPracticeScreen({super.key});
+
+  @override
+  State<CompoundPracticeScreen> createState() => _CompoundPracticeScreenState();
+}
+
+class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
+  final CompoundService _compoundService = CompoundService();
+  late CompoundWord _currentWord;
+  late List<String> _options;
+
+  bool _isAnswered = false;
+  bool _isCorrect = false;
+  String? _selectedOption;
+  int _score = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNextWord();
+  }
+
+  void _loadNextWord() {
+    setState(() {
+      _currentWord = _compoundService.getRandomWord();
+      final distractors = _compoundService.getDistractors(_currentWord.fullMeaning, 3);
+      _options = [...distractors, _currentWord.fullMeaning];
+      _options.shuffle();
+
+      _isAnswered = false;
+      _isCorrect = false;
+      _selectedOption = null;
+    });
+  }
+
+  void _handleAnswer(String answer) {
+    if (_isAnswered) return;
+
+    setState(() {
+      _selectedOption = answer;
+      _isAnswered = true;
+      _isCorrect = answer == _currentWord.fullMeaning;
+      if (_isCorrect) {
+        _score++;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,18 +65,18 @@ class CompoundPracticeScreen extends StatelessWidget {
                 _buildHeader(context),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 128), // 24=px-6, 128=pb-32
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 128),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 8), // mt-2
+                        const SizedBox(height: 8),
                         Text(
                           'COMPOUND WORD PUZZLE',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2, // tracking-wider
+                            letterSpacing: 1.2,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -42,20 +89,33 @@ class CompoundPracticeScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 40), // mb-10
+                        const SizedBox(height: 40),
                         
                         _buildWordSplitVisual(context),
                         
-                        const SizedBox(height: 32), // mb-8 (gap between visual and grid)
+                        const SizedBox(height: 32),
                         
-                        _buildChoiceGrid(context),
+                        // If answered and correct, show the breakdown.
+                        // Otherwise, maybe hide it or show it only on result?
+                        // The original design showed it as part of the "learning".
+                        // Let's show it only if answered (correct or incorrect) to explain the word.
+                        if (_isAnswered) ...[
+                            _buildChoiceGrid(context),
+                            const SizedBox(height: 16),
+                        ] else ...[
+                            // Placeholder or empty space if we want to keep layout stable?
+                            // No, let's just let it appear.
+                        ],
                         
-                        const SizedBox(height: 16), // mt-4
-                        
-                        _buildResultCard(context),
+                        if (!_isAnswered)
+                          _buildOptionsGrid(context)
+                        else
+                          _buildResultCard(context),
                         
                         const SizedBox(height: 32),
                         
+                        // Hint / Fun Fact
+                        if (!_isAnswered)
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -75,10 +135,10 @@ class CompoundPracticeScreen extends StatelessWidget {
                               ),
                               children: [
                                 TextSpan(
-                                  text: 'Fun Fact: ',
+                                  text: 'Hint: ',
                                   style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
                                 ),
-                                const TextSpan(text: 'German uses descriptive words to name new inventions!'),
+                                const TextSpan(text: 'Combine the meanings of the two parts!'),
                               ],
                             ),
                           ),
@@ -96,7 +156,7 @@ class CompoundPracticeScreen extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40), // pb-8 + safe area approx
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
@@ -108,25 +168,31 @@ class CompoundPracticeScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _isAnswered ? _loadNextWord : null, // Disable if not answered? Or let them exit?
+                  // If not answered, button should probably be disabled or "Skip"?
+                  // Let's make it "Check" if we selected an option? No, selection is instant.
+                  // So only active if answered.
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    elevation: 4,
-                 shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                    backgroundColor: _isAnswered ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
+                    elevation: _isAnswered ? 4 : 0,
+                    shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Continue',
+                        _isAnswered ? 'Continue' : 'Select an answer',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: _isAnswered ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.arrow_forward_rounded, size: 24),
+                      if (_isAnswered) ...[
+                        const SizedBox(width: 12),
+                        const Icon(Icons.arrow_forward_rounded, size: 24, color: Colors.white),
+                      ]
                     ],
                   ),
                 ),
@@ -166,16 +232,16 @@ class CompoundPracticeScreen extends StatelessWidget {
                 color: Theme.of(context).dividerColor.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(999),
                 boxShadow: const [
-                  BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.06), blurRadius: 4, offset: Offset(0, 2), spreadRadius: 0) // inset shadow approx
+                  BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.06), blurRadius: 4, offset: Offset(0, 2), spreadRadius: 0)
                 ],
               ),
               child: Stack(
                 children: [
                   FractionallySizedBox(
-                    widthFactor: 0.65,
+                    widthFactor: (_score % 10) / 10 + 0.1, // Fake progress
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.genderNeu, // green
+                        color: AppTheme.genderNeu,
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: const [
                            BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 4, offset: Offset(0, 2))
@@ -195,7 +261,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                           ),
                           Positioned(
                              top: 4, right: 8, left: 12,
-                             child: Container(height: 4, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(999),)), // blur-[1px]
+                             child: Container(height: 4, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(999),)),
                           )
                         ],
                       ),
@@ -221,7 +287,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                 Icon(Icons.favorite_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
                 const SizedBox(width: 4),
                 Text(
-                  '5',
+                  '$_score',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -244,30 +310,30 @@ class CompoundPracticeScreen extends StatelessWidget {
           children: [
              // Connector lines
              Positioned(
-               top: 50, // Top full
+               top: 50,
                child: SizedBox(
                  width: 200,
                  height: 64,
                  child: Stack(
                    children: [
-                     // Left dashed line (-rotate-12)
+                     // Left dashed line
                      Positioned(
                        left: 40,
                        top: 0, bottom: 0,
                        child: Transform.rotate(
-                         angle: -0.2, // ~ -12 deg
+                         angle: -0.2,
                          child: CustomPaint(
                            size: const Size(2, 64),
                            painter: DashedLinePainter(color: Colors.amber[300]!),
                          ),
                        ),
                      ),
-                     // Right dashed line (rotate-12)
+                     // Right dashed line
                      Positioned(
                        right: 40,
                        top: 0, bottom: 0,
                        child: Transform.rotate(
-                         angle: 0.2, // ~ 12 deg
+                         angle: 0.2,
                          child: CustomPaint(
                            size: const Size(2, 64),
                            painter: DashedLinePainter(color: Colors.lime[300]!),
@@ -282,7 +348,7 @@ class CompoundPracticeScreen extends StatelessWidget {
              Row(
                mainAxisAlignment: MainAxisAlignment.center,
                children: [
-                 // Part 1 (Left Piece with Bump)
+                 // Part 1
                  CustomPaint(
                    painter: PuzzlePiecePainter(
                      isLeft: true,
@@ -291,21 +357,21 @@ class CompoundPracticeScreen extends StatelessWidget {
                      borderColor: Colors.amber[600]!,
                    ),
                    child: Container(
-                     padding: const EdgeInsets.fromLTRB(28, 20, 48, 20), // Extra right padding for knob
+                     padding: const EdgeInsets.fromLTRB(28, 20, 48, 20),
                      child: Text(
-                       'Glüh',
+                       _currentWord.part1,
                        style: TextStyle(
-                         fontSize: 30, // text-3xl
+                         fontSize: 30,
                          fontWeight: FontWeight.bold,
                          letterSpacing: 0.5,
-                         color: const Color(0xFF78350F), // amber-900
+                         color: const Color(0xFF78350F),
                        ),
                      ),
                    ),
                  ),
-                 // Part 2 (Right Piece with Dent)
+                 // Part 2
                  Transform.translate(
-                   offset: const Offset(-2, 0), // Slight overlap to hide seam
+                   offset: const Offset(-2, 0),
                    child: CustomPaint(
                      painter: PuzzlePiecePainter(
                        isLeft: false,
@@ -314,14 +380,14 @@ class CompoundPracticeScreen extends StatelessWidget {
                        borderColor: Colors.lime[700]!,
                      ),
                      child: Container(
-                       padding: const EdgeInsets.fromLTRB(48, 20, 28, 20), // Extra left padding for dent
+                       padding: const EdgeInsets.fromLTRB(48, 20, 28, 20),
                        child: Text(
-                         'birne',
+                         _currentWord.part2,
                          style: TextStyle(
                            fontSize: 30,
                            fontWeight: FontWeight.bold,
                            letterSpacing: 0.5,
-                           color: const Color(0xFF365314), // lime-900
+                           color: const Color(0xFF365314),
                          ),
                        ),
                      ),
@@ -330,7 +396,7 @@ class CompoundPracticeScreen extends StatelessWidget {
                ],
              )
           ],
-        ).animate().scale(duration: 800.ms, curve: Curves.elasticOut),
+        ).animate(key: ValueKey(_currentWord.fullWord)).scale(duration: 800.ms, curve: Curves.elasticOut),
       ],
     );
   }
@@ -338,11 +404,11 @@ class CompoundPracticeScreen extends StatelessWidget {
   Widget _buildChoiceGrid(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _buildChoiceCard(context, 'Part 1', Icons.local_fire_department_rounded, 'Glow', '"Glüh-"', Colors.amber)),
+        Expanded(child: _buildChoiceCard(context, 'Part 1', _currentWord.part1Icon ?? Icons.help_outline, _currentWord.part1Meaning, _currentWord.part1Subtitle, Colors.amber)),
         const SizedBox(width: 16),
-        Expanded(child: _buildChoiceCard(context, 'Part 2', Icons.eco_rounded, 'Pear', '"-birne"', Colors.lime)),
+        Expanded(child: _buildChoiceCard(context, 'Part 2', _currentWord.part2Icon ?? Icons.help_outline, _currentWord.part2Meaning, _currentWord.part2Subtitle, Colors.lime)),
       ],
-    );
+    ).animate().fadeIn().slideY(begin: 0.2, end: 0);
   }
 
   Widget _buildChoiceCard(BuildContext context, String label, IconData icon, String title, String subtitle, MaterialColor color) {
@@ -384,6 +450,7 @@ class CompoundPracticeScreen extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 title,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -405,13 +472,88 @@ class CompoundPracticeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildOptionsGrid(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          alignment: WrapAlignment.center,
+          children: _options.map((option) {
+            final width = (constraints.maxWidth - 12) / 2;
+            return SizedBox(
+              width: width,
+              child: _buildOptionButton(context, option),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildOptionButton(BuildContext context, String text) {
+    Color backgroundColor = Theme.of(context).cardColor;
+    Color textColor = Theme.of(context).colorScheme.onSurface;
+    Color borderColor = Theme.of(context).dividerColor;
+
+    if (_isAnswered) {
+      if (text == _currentWord.fullMeaning) {
+        // Correct Answer
+        backgroundColor = Colors.green[50]!;
+        borderColor = Colors.green;
+        textColor = Colors.green[800]!;
+      } else if (text == _selectedOption && text != _currentWord.fullMeaning) {
+        // Wrong Selection
+        backgroundColor = Colors.red[50]!;
+        borderColor = Colors.red;
+        textColor = Colors.red[800]!;
+      } else {
+        // Other options
+        textColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+      }
+    }
+
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: _isAnswered ? null : () => _handleAnswer(text),
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: 300.ms,
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: _isAnswered && (text == _currentWord.fullMeaning || text == _selectedOption) ? 2 : 1),
+            boxShadow: const [
+              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.03), blurRadius: 2, offset: Offset(0, 1))
+            ],
+          ),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildResultCard(BuildContext context) {
+    final color = _isCorrect ? Colors.green : Colors.red;
+    final icon = _isCorrect ? Icons.check_rounded : Icons.close_rounded;
+    final title = _isCorrect ? 'Correct!' : 'Incorrect';
+
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, Color(0xFFF8FAFC)]),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, const Color(0xFFF8FAFC)]),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(color: color.withOpacity(0.3)),
         boxShadow: const [
            BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 15, offset: Offset(0, 10), spreadRadius: -3)
         ],
@@ -425,73 +567,95 @@ class CompoundPracticeScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.yellow[300]!, Colors.amber[500]!]),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(color: Colors.amber.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5))
-                    ],
+            Expanded(
+              child: Row(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.yellow[300]!, Colors.amber[500]!]),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: Colors.amber.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5))
+                      ],
+                    ),
+                    child: Icon(_currentWord.fullIcon ?? Icons.lightbulb_rounded, color: Colors.white, size: 36),
                   ),
-                  child: const Icon(Icons.lightbulb_rounded, color: Colors.white, size: 36),
-                ),
-                const SizedBox(width: 20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppTheme.genderFem, shape: BoxShape.circle)),
-                        const SizedBox(width: 6),
+                        Row(
+                          children: [
+                            Container(width: 8, height: 8, decoration: BoxDecoration(color: _getGenderColor(_currentWord.gender), shape: BoxShape.circle)),
+                            const SizedBox(width: 6),
+                            Text(
+                              _getGenderLabel(_currentWord.gender),
+                              style: TextStyle(
+                                color: _getGenderColor(_currentWord.gender),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
                         Text(
-                          'FEMININE',
+                          _currentWord.fullMeaning,
                           style: TextStyle(
-                            color: AppTheme.genderFem,
-                            fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                            fontSize: 24,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            height: 1.0,
+                          ),
+                        ),
+                        Text(
+                          '${_currentWord.gender} ${_currentWord.fullWord}',
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 14,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Lightbulb',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 24,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        height: 1.0,
-                      ),
-                    ),
-                    Text(
-                      'Die Glühbirne',
-                      style: TextStyle(
-                        fontStyle: FontStyle.italic,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
             Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
-                color: Colors.green[50], // green-100
+                color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.check_rounded, color: Colors.green[600], size: 20),
+              child: Icon(icon, color: color, size: 20),
             )
           ],
         ),
       ),
-    );
+    ).animate().fadeIn().slideY(begin: 0.2, end: 0);
+  }
+
+  Color _getGenderColor(String gender) {
+    switch (gender.toLowerCase()) {
+      case 'die': return AppTheme.genderFem;
+      case 'der': return AppTheme.genderMasc;
+      case 'das': return AppTheme.genderNeu;
+      default: return AppTheme.genderNeu;
+    }
+  }
+
+  String _getGenderLabel(String gender) {
+    switch (gender.toLowerCase()) {
+      case 'die': return 'FEMININE';
+      case 'der': return 'MASCULINE';
+      case 'das': return 'NEUTER';
+      default: return 'NEUTER';
+    }
   }
 }
 
