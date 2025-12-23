@@ -92,11 +92,11 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               _buildStickyHeader(context),
               SliverToBoxAdapter(child: _buildProgressBar(context)),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 128), // pb-32 approx
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 96), // pb-32 approx
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     _buildTitleSection(context),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                     _buildStoryContent(context),
                   ]),
                 ),
@@ -195,7 +195,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
   Widget _buildTitleSection(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         border: Border(
             bottom: BorderSide(
@@ -208,27 +208,27 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           Text(
             widget.article?.level ?? 'KAPITEL 3',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.primary,
               letterSpacing: 1.5,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             widget.article?.title ?? 'Der verlorene Schlüssel',
             style: TextStyle(
-              fontSize: 30, // text-3xl
+              fontSize: 24, // text-3xl
               fontWeight: FontWeight.w800, // extrabold
               height: 1.1,
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             widget.article != null ? '' : 'The Lost Key', // Hide subtitle for custom articles for now
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               fontStyle: FontStyle.italic,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -253,20 +253,20 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           context,
           'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.'
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         
         _buildInteractiveParagraph(
           context,
           'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.'
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         
         _buildInteractiveParagraph(
            context,
            'Hannah ging näher heran. Es war ein kleiner, goldener Schmetterling aus Metall.'
         ),
 
-        const SizedBox(height: 40),
+        const SizedBox(height: 24),
         
          _buildSectionTitle(context, 'Das Geheimnis', const Color(0xFFFF9F43)), // secondary
          const SizedBox(height: 12),
@@ -280,7 +280,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
            'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.'
          ),
          
-         const SizedBox(height: 40),
+         const SizedBox(height: 24),
       ],
     );
   }
@@ -359,8 +359,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     return RichText(
       text: TextSpan(
         style: TextStyle(
-          fontSize: 20, // text-xl
-          height: 1.6, // leading-9
+          fontSize: 17, // text-xl
+          height: 1.5, // leading-9
           color: Theme.of(context).colorScheme.onSurface,
           // fontFamily: GoogleFonts.outfit().fontFamily, // Removed to match app theme (Spline Sans)
         ),
@@ -495,7 +495,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                                       Text(
                                                         details['word'] ?? word,
                                                         style: TextStyle(
-                                                          fontSize: 22, // Compact Title
+                                                          fontSize: 18, // Compact Title
                                                           fontWeight: FontWeight.bold,
                                                           color: Theme.of(context).colorScheme.onSurface,
                                                           height: 1.2,
@@ -595,7 +595,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                            child: Text(
                                              '• $def',
                                              style: TextStyle(
-                                               fontSize: 15,
+                                               fontSize: 14,
                                                height: 1.3,
                                                color: Theme.of(context).colorScheme.onSurface,
                                              ),
@@ -679,7 +679,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         Text(
           title,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.onSurface,
           ),
