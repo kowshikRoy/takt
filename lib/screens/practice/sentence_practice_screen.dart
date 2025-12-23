@@ -138,7 +138,9 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                       ),
                     ),
 
-                    const Spacer(flex: 1),
+                    // When not checked, we push content down slightly, but not too much.
+                    // When checked, we want the feedback to take up most of the space.
+                    if (!_isChecked) const Spacer(flex: 1),
 
                     // Question & Translation
                     Column(
@@ -160,7 +162,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16), // Reduced from 24
 
                     // Tip
                     Container(
@@ -191,7 +193,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16), // Reduced from 24
 
                     // Sentence Construction (The Fill-in-the-blank part)
                     Wrap(
@@ -221,12 +223,10 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                       }),
                     ),
 
-                    const Spacer(flex: 2),
 
-                    // Options Grid (Hidden if checked, or maybe keep it but disabled?)
-                    // Hiding it to make space for feedback is good, or keep it to see what was clicked.
-                    // User request: "fits into a single screen". Hiding makes it cleaner.
+                    // Options Grid (Hidden if checked) or Feedback
                     if (!_isChecked) ...[
+                      const Spacer(flex: 2), // Push inputs to bottom
                       Text(
                         'Choose the missing part:',
                         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
@@ -248,7 +248,9 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                        const Spacer(flex: 1),
                     ] else ...[
                        // Result Feedback Area when checked
+                       // Use Expanded with a high flex to force it to take available space
                        Expanded(
+                         flex: 3,
                          child: Center(
                            child: Column(
                              mainAxisSize: MainAxisSize.min,
