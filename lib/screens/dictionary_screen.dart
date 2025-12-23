@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:characters/characters.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../services/dictionary_service.dart';
+import '../services/vocabulary_service.dart';
+import 'vocabulary_list_screen.dart';
 
 class DictionaryScreen extends StatefulWidget {
-  const DictionaryScreen({super.key});
+  final String? initialWord;
+  const DictionaryScreen({super.key, this.initialWord});
 
   @override
   State<DictionaryScreen> createState() => _DictionaryScreenState();
@@ -15,15 +17,60 @@ class DictionaryScreen extends StatefulWidget {
 class _DictionaryScreenState extends State<DictionaryScreen> {
   final TextEditingController _searchController = TextEditingController();
   final DictionaryService _dictionaryService = DictionaryService();
+  final VocabularyService _vocabularyService = VocabularyService();
   
   List<Map<String, dynamic>> _searchResults = [];
   Map<String, dynamic>? _selectedWord;
   bool _isSearching = false;
+  bool _isSaved = false;
+  int _selectedTabIndex = 0; // 0: Declension, 1: Examples, 2: Related
 
   @override
   void initState() {
     super.initState();
-    // Pre-load default word "Schmetterling" logic or just start empty
+    if (widget.initialWord != null) {
+      _loadInitialWord(widget.initialWord!);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadInitialWord(String word) async {
+      final lookup = await _dictionaryService.lookupWord(word);
+      if (lookup != null && mounted) {
+        setState(() {
+          _selectedWord = lookup;
+          _searchController.text = lookup['word'] ?? '';
+        });
+        _checkIfSaved();
+      }
+  }
+
+  Future<void> _checkIfSaved() async {
+    if (_selectedWord == null) {
+        setState(() => _isSaved = false);
+        return;
+    }
+    final saved = await _vocabularyService.isWordSaved(_selectedWord!['word']);
+    if (mounted) {
+      setState(() => _isSaved = saved);
+    }
+  }
+
+  Future<void> _toggleSaved() async {
+    if (_selectedWord == null) return;
+    final word = _selectedWord!['word'];
+
+    if (_isSaved) {
+      await _vocabularyService.removeWord(word);
+    } else {
+      await _vocabularyService.saveWord(word);
+    }
+    await _checkIfSaved();
   }
 
   void _onSearchChanged(String query) async {
@@ -55,7 +102,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         _selectedWord = fullWord;
         _isSearching = false;
         _searchController.text = fullWord?['word'] ?? '';
+        // Reset tab to 0 on new word selection
+        _selectedTabIndex = 0;
       });
+      _checkIfSaved();
     }
   }
 
@@ -82,10 +132,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                           const SizedBox(height: 24),
                           _buildTabs(context),
                           const SizedBox(height: 16),
-                          if (_selectedWord!['forms'] != null && (_selectedWord!['forms'] as List).isNotEmpty)
-                             _buildDeclensionTable(context, _selectedWord!),
+                          _buildTabContent(),
                           const SizedBox(height: 16),
-                         // _buildCompoundCard(context), // Only show if compound data exists (TODO)
                         ] else ...[
                            Center(child: Text("Search for a word", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))),
                         ]
@@ -145,7 +193,11 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             decoration: const BoxDecoration(shape: BoxShape.circle),
             child: IconButton(
               icon: Icon(Icons.arrow_back_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
-              onPressed: () {}, // No backnav context here usually, or mock pop
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              },
             ),
           ),
           Text(
@@ -159,9 +211,25 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           Container(
             width: 40, height: 40,
             decoration: const BoxDecoration(shape: BoxShape.circle),
-            child: IconButton(
+            child: PopupMenuButton<String>(
               icon: Icon(Icons.more_vert_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
-              onPressed: () {},
+              onSelected: (value) {
+                if (value == 'vocabulary') {
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => const VocabularyListScreen()));
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'vocabulary',
+                  child: Row(
+                    children: [
+                       Icon(Icons.book, size: 20),
+                       SizedBox(width: 8),
+                       Text('My Vocabulary'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -191,6 +259,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
               setState(() {
                 _isSearching = false;
                 _selectedWord = null;
+                _isSaved = false;
               });
             },
           ),
@@ -389,9 +458,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                    children: [
                      Expanded(
                        child: ElevatedButton(
-                         onPressed: () {},
+                         onPressed: _toggleSaved,
                          style: ElevatedButton.styleFrom(
-                           backgroundColor: Theme.of(context).colorScheme.primary,
+                           backgroundColor: _isSaved ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.primary,
                            padding: const EdgeInsets.symmetric(vertical: 12),
                            elevation: 4,
                            shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
@@ -400,11 +469,11 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                          child: Row(
                            mainAxisAlignment: MainAxisAlignment.center,
                            children: [
-                             const Icon(Icons.add_circle_outline_rounded, size: 20),
+                             Icon(_isSaved ? Icons.check_rounded : Icons.add_circle_outline_rounded, size: 20),
                              const SizedBox(width: 8),
                              Text(
-                               'Add to Learning List',
-                               style: TextStyle(
+                               _isSaved ? 'Saved to List' : 'Add to Learning List',
+                               style: const TextStyle(
                                  fontSize: 14,
                                  fontWeight: FontWeight.bold,
                                ),
@@ -445,41 +514,208 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          _buildTabItem(context, 'Declension', isActive: true),
+          _buildTabItem(context, 'Declension', index: 0),
           const SizedBox(width: 24),
-          _buildTabItem(context, 'Examples'),
+          _buildTabItem(context, 'Examples', index: 1),
           const SizedBox(width: 24),
-          _buildTabItem(context, 'Related'),
+          _buildTabItem(context, 'Related', index: 2),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem(BuildContext context, String title, {bool isActive = false}) {
-    return Container(
-      padding: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        border: isActive ? Border(bottom: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)) : null,
+  Widget _buildTabItem(BuildContext context, String title, {required int index}) {
+    bool isActive = _selectedTabIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedTabIndex = index);
+      },
+      child: Container(
+        padding: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          border: isActive ? Border(bottom: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)) : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+            color: isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-          color: isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+  }
+
+  Widget _buildTabContent() {
+    if (_selectedWord == null) return const SizedBox.shrink();
+
+    switch (_selectedTabIndex) {
+      case 0:
+        if (_selectedWord!['forms'] != null && (_selectedWord!['forms'] as List).isNotEmpty) {
+          return _buildDeclensionTable(context, _selectedWord!);
+        } else {
+           return const Padding(
+             padding: EdgeInsets.all(16.0),
+             child: Center(child: Text("No declension forms found.")),
+           );
+        }
+      case 1:
+        return _buildExamplesContent();
+      case 2:
+        return _buildRelatedContent();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildExamplesContent() {
+    // If examples are not in the main word object, we can't show them yet.
+    // Assuming a future update will add them, or we can check definitions for example usage.
+    // For now, if 'examples' is present (list of strings), show them.
+    final examples = _selectedWord!['examples'] as List<dynamic>?;
+
+    if (examples != null && examples.isNotEmpty) {
+       return ListView.separated(
+         shrinkWrap: true,
+         physics: const NeverScrollableScrollPhysics(),
+         padding: const EdgeInsets.all(16),
+         itemCount: examples.length,
+         separatorBuilder: (_, __) => const SizedBox(height: 12),
+         itemBuilder: (context, index) {
+           return Container(
+             padding: const EdgeInsets.all(12),
+             decoration: BoxDecoration(
+               color: Theme.of(context).cardColor,
+               borderRadius: BorderRadius.circular(12),
+               border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
+             ),
+             child: Text(examples[index].toString(), style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface)),
+           );
+         },
+       );
+    }
+
+    return const Padding(
+      padding: EdgeInsets.all(16.0),
+      child: Center(child: Text("No examples found.")),
+    );
+  }
+
+  Widget _buildRelatedContent() {
+    final synonyms = _selectedWord!['synonyms'] as List<dynamic>? ?? [];
+    final antonyms = _selectedWord!['antonyms'] as List<dynamic>? ?? [];
+    final related = _selectedWord!['related'] as List<dynamic>? ?? [];
+
+    if (synonyms.isEmpty && antonyms.isEmpty && related.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(child: Text("No related words found.")),
+      );
+    }
+
+    return Column(
+      children: [
+        if (synonyms.isNotEmpty) _buildRelationSection('Synonyms', synonyms),
+        if (antonyms.isNotEmpty) _buildRelationSection('Antonyms', antonyms),
+        if (related.isNotEmpty) _buildRelationSection('Related', related),
+      ],
+    );
+  }
+
+  Widget _buildRelationSection(String title, List<dynamic> words) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Container(
+         width: double.infinity,
+         decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: words.map((w) => ActionChip(
+                label: Text(w.toString()),
+                onPressed: () {
+                   _searchController.text = w.toString();
+                   _onSearchChanged(w.toString());
+                   // Or directly trigger lookup:
+                   _loadInitialWord(w.toString());
+                },
+              )).toList(),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildDeclensionTable(BuildContext context, Map<String, dynamic> wordData) {
-    // This assumes specific structure or just renders what we have. 
-    // For now, let's just make a placeholder table if we don't parse forms specifically into declension grid
-    // Or try to find nom/gen etc from list.
-    
-    // Simplification for demo: Just list forms found
     final forms = wordData['forms'] as List;
     
+    // Attempt to categorize forms by case/number from tags
+    // Tags example: "Masc.Nom.Sg", "Fem.Gen.Pl", "Dat" etc.
+    // We want a table with rows: Nom, Gen, Dat, Acc
+    // Columns: Singular, Plural
+
+    Map<String, String> singular = {}; // Key: Case (Nom, Gen, Dat, Acc)
+    Map<String, String> plural = {};
+
+    for (var f in forms) {
+      String form = f['form'] ?? '';
+      String tags = f['tags'] ?? '';
+
+      if (tags.isEmpty) continue;
+
+      String? caseKey;
+      if (tags.contains('Nom')) caseKey = 'Nom';
+      else if (tags.contains('Gen')) caseKey = 'Gen';
+      else if (tags.contains('Dat')) caseKey = 'Dat';
+      else if (tags.contains('Acc')) caseKey = 'Acc';
+
+      if (caseKey != null) {
+        if (tags.contains('Sg') || tags.contains('Sing')) {
+          singular[caseKey] = form;
+        } else if (tags.contains('Pl')) {
+          plural[caseKey] = form;
+        }
+      }
+    }
+
+    // If we couldn't parse enough, fallback to list
+    if (singular.isEmpty && plural.isEmpty) {
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Theme.of(context).dividerColor),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
+               const Text("Forms found:", style: TextStyle(fontWeight: FontWeight.bold)),
+               const SizedBox(height: 8),
+               Wrap(
+                 spacing: 8, runSpacing: 8,
+                 children: forms.take(20).map<Widget>((f) {
+                   return Chip(label: Text(f['form'] ?? ''));
+                 }).toList(),
+               )
+             ],
+           )
+        );
+    }
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -490,30 +726,22 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
         ],
       ),
-      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-         children: [
-           Text("Forms found:", style: TextStyle(fontWeight: FontWeight.bold)),
-           const SizedBox(height: 8),
-           Wrap(
-             spacing: 8, runSpacing: 8,
-             children: forms.take(10).map<Widget>((f) {
-               return Chip(label: Text(f['form'] ?? ''));
-             }).toList(),
-           )
-         ],
-       )
+        children: [
+          _buildTableHeader(),
+          const Divider(height: 1),
+          _buildTableRow('Nom', singular['Nom'] ?? '-', plural['Nom'] ?? '-'),
+          _buildTableRow('Gen', singular['Gen'] ?? '-', plural['Gen'] ?? '-'),
+          _buildTableRow('Dat', singular['Dat'] ?? '-', plural['Dat'] ?? '-'),
+          _buildTableRow('Acc', singular['Acc'] ?? '-', plural['Acc'] ?? '-'),
+        ],
+      ),
     );
   }
 
   Widget _buildTableHeader() {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)), // slightly less to fit
-      ),
       child: Row(
         children: [
           Expanded(flex: 1, child: Text('CASE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant))),
@@ -524,7 +752,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     );
   }
 
-  Widget _buildTableRow(String caseName, String sArt, String sNoun, String pArt, String pNoun, {String? suffix}) {
+  Widget _buildTableRow(String caseName, String sNoun, String pNoun) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -532,86 +760,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           Expanded(flex: 1, child: Text(caseName, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSubLight))),
           
           Expanded(
-            flex: 2 ,
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(fontSize: 14, color: AppTheme.textMainLight),
-                children: [
-                  TextSpan(text: '$sArt ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.genderMasc)),
-                  TextSpan(text: sNoun.substring(0, sNoun.length - (suffix != null && caseName == 'Gen' ? 1 : 0))),
-                  if (suffix != null && caseName == 'Gen') TextSpan(text: suffix, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-                ],
-              ),
-            ),
+            flex: 2,
+            child: Text(sNoun, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textMainLight)),
           ),
           
           Expanded(
             flex: 2,
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
-                children: [
-                  TextSpan(text: '$pArt ', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF97316))), // Orange for Plural
-                  TextSpan(text: pNoun.substring(0, pNoun.length - (suffix != null && caseName == 'Dat' ? 1 : 0))),
-                  if (suffix != null && caseName == 'Dat') TextSpan(text: suffix, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-                ],
-              ),
-            ),
+            child: Text(pNoun, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompoundCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        // bg-gradient-to-br from-indigo-50 to-purple-50
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFEEF2FF), Color(0xFFFAF5FF)]),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E7FF)), // indigo-100
-        boxShadow: const [
-          BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.extension_rounded, color: Color(0xFF6366F1)), // indigo-500
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Compound Breakdown',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    'Schmetter (Smash) + ling (Suffix)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const Icon(Icons.chevron_right_rounded, color: Color(0xFFA5B4FC)), // indigo-300
         ],
       ),
     );
