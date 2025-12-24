@@ -8,6 +8,8 @@ import '../widgets/section_header.dart';
 import '../widgets/compact_article_card.dart';
 import 'story_reader_screen.dart';
 import 'create/text_input_screen.dart';
+import 'create/url_import_screen.dart';
+
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -206,9 +208,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                    child: const Icon(Icons.link_rounded, color: Colors.purple),
                 ),
                 title: Text('Web Article', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
-                subtitle: Text('Import from URL (Coming Soon)', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                onTap: () {}, 
-                enabled: false, 
+                subtitle: Text('Import from URL', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                onTap: () {
+                  Navigator.pop(context); // Close modal
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const UrlImportScreen()));
+                },
               ),
               ListTile(
                  leading: Container(

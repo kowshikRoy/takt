@@ -9,3 +9,6 @@ sacremoses>=0.0.53
 pure_protobuf
 numpy<2.0.0
 langdetect
+beautifulsoup4
+requests
+lxml

@@ -94,4 +94,39 @@ class BackendService {
       return null;
     }
   }
+
+  Future<Map<String, dynamic>?> importFromUrl(String url) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/import_url'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'url': url,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        try {
+          return jsonDecode(utf8.decode(response.bodyBytes));
+        } catch (e) {
+          print('JSON decode error: $e');
+          print('Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+          return {'error': 'Backend returned invalid response. Please check if the backend is running properly.'};
+        }
+      } else {
+        print('Import error: ${response.statusCode} - ${response.body}');
+        try {
+          final errorData = jsonDecode(response.body);
+          return {'error': errorData['error'] ?? 'Failed to import from URL'};
+        } catch (e) {
+          // If we can't parse the error as JSON, return a generic error
+          return {'error': 'Server error (${response.statusCode}). Please check backend connection.'};
+        }
+      }
+    } catch (e) {
+      print('Import connection error: $e');
+      return {'error': 'Network error: Could not connect to backend. Please ensure the backend is running.'};
+    }
+  }
 }
+
