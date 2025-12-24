@@ -563,24 +563,20 @@ def import_url():
         # Create description (first 200 chars)
         description = content[:200] + '...' if len(content) > 200 else content
         
-        # Detect language and translate if needed
+        # Detect language but DON'T translate (translation happens in story reader)
         detected_lang = 'de'  # Default to German
-        translated_content = None
-        force_translate = data.get('force_translate', False)  # Allow manual override
         
         try:
             from langdetect import detect, detect_langs
             
-            # Combine title and content for better detection (if title exists)
+            # Combine title and content for better detection
             detection_text = content
             if title:
                 detection_text = f"{title}. {content}"
             
-            # Try to detect language with more confidence
             try:
                 lang_probs = detect_langs(detection_text)
                 logger.info(f"Language probabilities: {lang_probs}")
-                # Get the most likely language
                 if lang_probs:
                     detected_lang = lang_probs[0].lang
                     confidence = lang_probs[0].prob
@@ -588,66 +584,25 @@ def import_url():
                     
                     # If confidence is low and we detect German, check for English
                     if detected_lang == 'de' and confidence < 0.7:
-                        # Check if English is also probable
                         en_prob = next((p.prob for p in lang_probs if p.lang == 'en'), 0)
                         if en_prob > 0.3:
                             logger.info(f"Low confidence for German ({confidence:.2f}), English probability: {en_prob:.2f}. Treating as English.")
                             detected_lang = 'en'
             except:
-                # Fallback to simple detect
                 detected_lang = detect(detection_text)
                 logger.info(f"Detected language (fallback): {detected_lang}")
-            
-            # If content is in English or force_translate is True, translate to German
-            if detected_lang.startswith('en') or force_translate:
-                if force_translate:
-                    logger.info("Force translate requested, translating to German...")
-                else:
-                    logger.info("Content is in English, translating to German...")
-                    
-                translator = get_translator('en', 'de')
-                if translator:
-                    # Split into paragraphs for better translation
-                    paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
-                    translated_paragraphs = []
-                    
-                    for para in paragraphs:
-                        try:
-                            # Translate in chunks if paragraph is too long
-                            if len(para) > 500:
-                                # Split into sentences roughly
-                                sentences = para.split('. ')
-                                translated_sentences = []
-                                for sent in sentences:
-                                    if sent:
-                                        trans_result = translator(sent + '.')
-                                        translated_sentences.append(trans_result[0]['translation_text'])
-                                translated_paragraphs.append(' '.join(translated_sentences))
-                            else:
-                                trans_result = translator(para)
-                                translated_paragraphs.append(trans_result[0]['translation_text'])
-                        except Exception as e:
-                            logger.error(f"Translation error for paragraph: {e}")
-                            translated_paragraphs.append(para)  # Keep original on error
-                    
-                    translated_content = '\n\n'.join(translated_paragraphs)
-                    logger.info(f"Translation complete: {len(translated_content)} characters")
         except Exception as e:
-            logger.warning(f"Language detection/translation error: {e}")
-        
-        # Use translated content if available, otherwise use original
-        final_content = translated_content if translated_content else content
-        final_description = final_content[:200] + '...' if len(final_content) > 200 else final_content
+            logger.warning(f"Language detection error: {e}")
         
         logger.info(f"Successfully extracted {len(content)} characters from {url}")
         
         return jsonify({
             'title': title or 'Imported Article',
-            'content': final_content,
-            'description': final_description,
+            'content': content,  # Original language, no translation
+            'description': description,
             'url': url,
             'original_language': detected_lang,
-            'was_translated': translated_content is not None
+            'was_translated': False  # No longer translating in import
         })
         
     except requests.exceptions.Timeout:

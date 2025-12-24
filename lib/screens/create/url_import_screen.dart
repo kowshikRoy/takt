@@ -82,21 +82,20 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
       await lessonService.addImportedArticle(newArticle, content);
 
       if (mounted) {
-        // Show translation notification if content was translated
-        if (wasTranslated) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Content translated from ${originalLanguage.toUpperCase()} to German'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
+        // Navigate to Discover screen immediately (not Story Reader)
+        // Processing will happen when user opens the article
+        Navigator.of(context).popUntil((route) => route.isFirst);
         
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => StoryReaderScreen(article: newArticle),
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              originalLanguage == 'en' 
+                ? 'Article imported! Will be translated when you open it.'
+                : 'Article imported successfully!'
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
