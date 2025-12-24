@@ -194,7 +194,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 ),
               SliverToBoxAdapter(child: _buildProgressBar(context)),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 96), // pb-32 approx
+                padding: const EdgeInsets.fromLTRB(16, 16, 20, 96), // pb-32 approx
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     _buildTitleSection(context),
@@ -410,8 +410,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Column(
+                children: [
                 // Speaker icon
                 InkWell(
                   onTap: () => _ttsService.speak(text),
@@ -440,9 +442,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   constraints: const BoxConstraints(),
                   visualDensity: VisualDensity.compact,
                 ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,7 +563,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 }
 
                 if (finalGender != null) {
-                    wordWeight = FontWeight.bold; 
+                    wordWeight = FontWeight.normal; 
                     if (finalGender == 'm') wordColor = AppTheme.genderMasc;
                     else if (finalGender == 'f') wordColor = AppTheme.genderFem;
                     else if (finalGender == 'n') wordColor = AppTheme.genderNeu;
@@ -626,315 +629,224 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   }
 
   void _showContextualPopup(BuildContext context, String word, String contextText, List<Map<String, dynamic>> allPotentialDetails, Offset tapPosition, Future<Map<String, dynamic>?> backendFuture) {
-    bool isTranslationVisible = false; // Moved state variable here
-    showGeneralDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withValues(alpha: 0.1),
-      transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (context, animation, secondaryAnimation) {
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
           return StatefulBuilder(
             builder: (context, setPopupState) {
-               return Stack(
-                 children: [
-                    FutureBuilder<Map<String, dynamic>?>(
-                      future: backendFuture,
-                      builder: (context, backendSnapshot) {
-                        final backendData = backendSnapshot.data;
-                        // Extract specific word analysis if available
-                        Map<String, dynamic>? specificAnalysis;
-                        String? translatedSentence;
-                        
-                        if (backendData != null) {
-                           translatedSentence = backendData['translated_text'];
-                           List<dynamic> analysis = backendData['german_analysis'] ?? [];
-                           // Find our word
-                           try {
-                              var match = analysis.firstWhere(
-                                (w) => w['word'].toString().toLowerCase() == word.toLowerCase(),
-                                orElse: () => null
-                              );
-                              if (match != null) specificAnalysis = match;
-                           } catch (_) {}
-                        }
-                        
-                        // RELEVANT DEFINITION LOGIC:
-                        // If we have backend analysis, try to find the dictionary entry that matches that POS
-                        Map<String, dynamic> displayDetails;
-                        if (specificAnalysis != null) {
-                           String backendPos = specificAnalysis['pos'].toString().toLowerCase();
-                           try {
-                              displayDetails = allPotentialDetails.firstWhere(
-                                (d) => d['pos'].toString().toLowerCase() == backendPos,
-                                orElse: () => allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []}
-                              );
-                           } catch (_) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 30),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                       FutureBuilder<Map<String, dynamic>?>(
+                         future: backendFuture,
+                         builder: (context, backendSnapshot) {
+                           final backendData = backendSnapshot.data;
+                           // Extract specific word analysis if available
+                           Map<String, dynamic>? specificAnalysis;
+                           String? translatedSentence;
+                           
+                           if (backendData != null) {
+                              translatedSentence = backendData['translated_text'];
+                              List<dynamic> analysis = backendData['german_analysis'] ?? [];
+                              // Find our word
+                              try {
+                                 var match = analysis.firstWhere(
+                                   (w) => w['word'].toString().toLowerCase() == word.toLowerCase(),
+                                   orElse: () => null
+                                 );
+                                 if (match != null) specificAnalysis = match;
+                              } catch (_) {}
+                           }
+                           
+                           // RELEVANT DEFINITION LOGIC:
+                           Map<String, dynamic> displayDetails;
+                           if (specificAnalysis != null) {
+                              String backendPos = specificAnalysis['pos'].toString().toLowerCase();
+                              try {
+                                 displayDetails = allPotentialDetails.firstWhere(
+                                   (d) => d['pos'].toString().toLowerCase() == backendPos,
+                                   orElse: () => allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []}
+                                 );
+                              } catch (_) {
+                                 displayDetails = allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []};
+                              }
+                              displayDetails['pos'] = specificAnalysis['pos_detailed'] ?? specificAnalysis['pos'];
+                              if (specificAnalysis['gender'] != null) {
+                                displayDetails['gender'] = specificAnalysis['gender'];
+                              }
+                            } else {
                               displayDetails = allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []};
                            }
-                           // Override POS display with specific tag if available
-                           displayDetails['pos'] = specificAnalysis['pos_detailed'] ?? specificAnalysis['pos'];
-                           if (specificAnalysis['gender'] != null) {
-                             displayDetails['gender'] = specificAnalysis['gender'];
-                           }
-                         } else {
-                           displayDetails = allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []};
-                        }
 
-                        return FutureBuilder<bool>(
-                           future: _vocabularyService.isWordSaved(word),
-                           builder: (context, snapshot) {
-                             final isSaved = snapshot.data ?? false;
-                             
-                             // Calculate position (simple clamp logic from before)
-                             final screenHeight = MediaQuery.of(context).size.height;
-                             final screenWidth = MediaQuery.of(context).size.width;
-                             final isTopHalf = tapPosition.dy < screenHeight / 2;
-                             const horizontalMargin = 16.0;
-                             const cardWidth = 300.0;
-                             
-                             double top;
-                             double? bottom;
-                             if (isTopHalf) {
-                                 top = tapPosition.dy + 20; 
-                                 bottom = null;
-                             } else {
-                                 bottom = screenHeight - tapPosition.dy + 20;
-                                 top = 0; 
-                             }
-                             
-                             double availableHeight = isTopHalf ? screenHeight - top - 32 : tapPosition.dy - 60;
-                             
-                             return Stack(
-                               children: [
-                                 Positioned(
-                                   top: isTopHalf ? tapPosition.dy : null,
-                                   bottom: !isTopHalf ? (screenHeight - tapPosition.dy) : null,
-                                   left: horizontalMargin,
-                                   right: horizontalMargin,
-                                   child: Material(
-                                     color: Colors.transparent,
-                                     child: CustomPaint(
-                                       painter: TooltipShapePainter(
-                                         color: Theme.of(context).cardColor,
-                                         borderColor: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-                                         isTop: isTopHalf,
-                                         arrowX: tapPosition.dx - horizontalMargin,
-                                       ),
-                                       child: Container(
-                                         constraints: BoxConstraints(
-                                           maxWidth: cardWidth,
-                                           maxHeight: availableHeight > 500 ? 500 : availableHeight, // Increased height for translation
-                                         ),
-                                         padding: EdgeInsets.only(
-                                             left: 20, 
-                                             right: 20, 
-                                             top: isTopHalf ? 30.0 : 20, 
-                                             bottom: !isTopHalf ? 30.0 : 20
-                                         ),
-                                         child: Column(
-                                           mainAxisSize: MainAxisSize.min,
-                                           children: [
-                                             Padding(
-                                               padding: const EdgeInsets.only(bottom: 4.0),
-                                               child: Row(
-                                                 mainAxisAlignment: MainAxisAlignment.end,
-                                                 children: [
-                                                   Material(
-                                                     color: Colors.transparent,
-                                                     child: InkWell(
-                                                       borderRadius: BorderRadius.circular(20),
-                                                       onTap: () async {
-                                                         if (isSaved) {
-                                                           await _vocabularyService.removeWord(word);
-                                                         } else {
-                                                           await _vocabularyService.saveWord(word);
-                                                         }
-                                                         setPopupState(() {});
-                                                       },
-                                                       child: Container(
-                                                         padding: const EdgeInsets.all(8),
-                                                         child: Icon(
-                                                           isSaved ? Icons.bookmark : Icons.bookmark_border,
-                                                           color: isSaved ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
-                                                           size: 22,
-                                                         ),
-                                                       ),
-                                                     ),
-                                                   ),
-                                                   const SizedBox(width: 4),
-                                                   Material(
-                                                     color: Colors.transparent,
-                                                     child: InkWell(
-                                                       borderRadius: BorderRadius.circular(20),
-                                                       onTap: () => Navigator.of(context).pop(),
-                                                       child: Container(
-                                                         padding: const EdgeInsets.all(8),
-                                                         child: Icon(
-                                                           Icons.close_rounded,
-                                                           color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                           size: 22,
-                                                         ),
-                                                       ),
-                                                     ),
-                                                   ),
-                                                 ],
-                                               ),
-                                             ),
-                                             Flexible(
-                                               child: SingleChildScrollView(
+                           return FutureBuilder<bool>(
+                              future: _vocabularyService.isWordSaved(word),
+                              builder: (context, snapshot) {
+                                final isSaved = snapshot.data ?? false;
+                                
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+
+                                     
+                                     // Word Details
+                                     Row(
+                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                       crossAxisAlignment: CrossAxisAlignment.start,
+                                       children: [
+                                         Expanded(
                                            child: Column(
-                                             mainAxisSize: MainAxisSize.min,
                                              crossAxisAlignment: CrossAxisAlignment.start,
                                              children: [
-                                                // Word Details
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          Row(
-                                                            crossAxisAlignment: CrossAxisAlignment.center,
-                                                            children: [
-                                                              Text(
-                                                                displayDetails['word'] ?? word,
-                                                                style: TextStyle(
-                                                                  fontSize: 18, 
-                                                                  fontWeight: FontWeight.bold,
-                                                                  color: Theme.of(context).colorScheme.onSurface,
-                                                                  height: 1.2,
-                                                                ),
-                                                              ),
-                                                              if (displayDetails['gender'] != null && (displayDetails['pos']?.toString().toLowerCase().contains('noun') ?? false))
-                                                                Container(
-                                                                  margin: const EdgeInsets.only(left: 6),
-                                                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                                                                  decoration: BoxDecoration(
-                                                                    color: _getGenderColor(displayDetails['gender']).withValues(alpha: 0.1),
-                                                                    borderRadius: BorderRadius.circular(4),
-                                                                  ),
-                                                                  child: Text(
-                                                                    displayDetails['gender'].toString().toUpperCase(),
-                                                                    style: TextStyle(
-                                                                      fontSize: 10,
-                                                                      fontWeight: FontWeight.bold,
-                                                                      color: _getGenderColor(displayDetails['gender']),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              if (displayDetails['pos'] != null)
-                                                                Container(
-                                                                  margin: const EdgeInsets.only(left: 8),
-                                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                                  decoration: BoxDecoration(
-                                                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                                                    borderRadius: BorderRadius.circular(4),
-                                                                  ),
-                                                                  child: Row(
-                                                                    mainAxisSize: MainAxisSize.min,
-                                                                    children: [
-                                                                        Text(
-                                                                          displayDetails['pos'].toString().toLowerCase(),
-                                                                          style: TextStyle(
-                                                                            fontSize: 10,
-                                                                            fontWeight: FontWeight.bold,
-                                                                            color: Theme.of(context).colorScheme.primary,
-                                                                          ),
-                                                                        ),
-                                                                    ],
-                                                                  ),
-                                                                ),
-                                                            ],
-                                                          ),
-                                                          // Lemma
-                                                          if (displayDetails['base_form'] != null || specificAnalysis?['lemma'] != null)
-                                                            Padding(
-                                                              padding: const EdgeInsets.only(top: 2.0),
-                                                              child: Text(
-                                                                'Lemma: ${specificAnalysis?['lemma'] ?? displayDetails['base_form']}',
-                                                                style: TextStyle(
-                                                                  fontSize: 13,
-                                                                  fontStyle: FontStyle.italic,
-                                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                     Column(
-                                                       mainAxisSize: MainAxisSize.min,
-                                                       children: [
-                                                         IconButton(
-                                                           icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
-                                                           padding: EdgeInsets.zero,
-                                                           constraints: const BoxConstraints(),
-                                                           onPressed: () {
-                                                             _ttsService.speak(displayDetails['word'] ?? word);
-                                                           },
-                                                         ),
-                                                     ],
+                                               Row(
+                                                 crossAxisAlignment: CrossAxisAlignment.center,
+                                                 children: [
+                                                   Flexible(
+                                                     child: Text(
+                                                       displayDetails['word'] ?? word,
+                                                       style: TextStyle(
+                                                         fontSize: 18, 
+                                                         fontWeight: FontWeight.normal,
+                                                         color: Theme.of(context).colorScheme.onSurface,
+                                                         height: 1.2,
                                                        ),
-
-                                                  ],
-                                                ),
-                                           const SizedBox(height: 8),
-                                           // Removed redundant Contextual Analysis text block as it's now in the badge/dictionary entry
-                                           // Defs
-                                           Text(
-                                             'Definitions',
-                                             style: TextStyle(
-                                               fontSize: 12,
-                                               fontWeight: FontWeight.bold,
-                                               color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                             ),
+                                                       softWrap: true,
+                                                     ),
+                                                   ),
+                                                   if (displayDetails['gender'] != null && (displayDetails['pos']?.toString().toLowerCase().contains('noun') ?? false))
+                                                     Container(
+                                                       margin: const EdgeInsets.only(left: 8),
+                                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                       decoration: BoxDecoration(
+                                                         color: _getGenderColor(displayDetails['gender']).withValues(alpha: 0.1),
+                                                         borderRadius: BorderRadius.circular(4),
+                                                       ),
+                                                       child: Text(
+                                                         displayDetails['gender'].toString().toUpperCase(),
+                                                         style: TextStyle(
+                                                           fontSize: 12,
+                                                           fontWeight: FontWeight.bold,
+                                                           color: _getGenderColor(displayDetails['gender']),
+                                                         ),
+                                                       ),
+                                                     ),
+                                                   if (displayDetails['pos'] != null)
+                                                     Container(
+                                                       margin: const EdgeInsets.only(left: 8),
+                                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                       decoration: BoxDecoration(
+                                                         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                                         borderRadius: BorderRadius.circular(4),
+                                                       ),
+                                                       child: Row(
+                                                         mainAxisSize: MainAxisSize.min,
+                                                         children: [
+                                                             Text(
+                                                               displayDetails['pos'].toString().toLowerCase(),
+                                                               style: TextStyle(
+                                                                 fontSize: 12,
+                                                                 fontWeight: FontWeight.bold,
+                                                                 color: Theme.of(context).colorScheme.primary,
+                                                               ),
+                                                             ),
+                                                         ],
+                                                       ),
+                                                     ),
+                                                 ],
+                                               ),
+                                               // Lemma
+                                               if ((displayDetails['base_form'] != null || specificAnalysis?['lemma'] != null) && 
+                                                   (specificAnalysis?['lemma'] ?? displayDetails['base_form']).toString().toLowerCase() != (displayDetails['word'] ?? word).toString().toLowerCase())
+                                                 Padding(
+                                                   padding: const EdgeInsets.only(top: 4.0),
+                                                   child: Text(
+                                                     'Lemma: ${specificAnalysis?['lemma'] ?? displayDetails['base_form']}',
+                                                     style: TextStyle(
+                                                       fontSize: 14,
+                                                       fontStyle: FontStyle.italic,
+                                                       color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                     ),
+                                                   ),
+                                                 ),
+                                             ],
                                            ),
-                                           const SizedBox(height: 6),
-                                           if (displayDetails['definitions'] != null && (displayDetails['definitions'] as List).isNotEmpty)
-                                              ...((displayDetails['definitions'] as List).map((def) => Padding(
-                                                padding: const EdgeInsets.only(bottom: 6.0),
-                                                child: Text(
-                                                  '• $def',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    height: 1.3,
-                                                    color: Theme.of(context).colorScheme.onSurface,
+                                         ),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                                onPressed: () {
+                                                  _ttsService.speak(displayDetails['word'] ?? word);
+                                                },
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  borderRadius: BorderRadius.circular(20),
+                                                  onTap: () async {
+                                                    if (isSaved) {
+                                                      await _vocabularyService.removeWord(word);
+                                                    } else {
+                                                      await _vocabularyService.saveWord(word);
+                                                    }
+                                                    setPopupState(() {});
+                                                  },
+                                                  child: Container(
+                                                    padding: const EdgeInsets.all(4),
+                                                    child: Icon(
+                                                      isSaved ? Icons.bookmark : Icons.bookmark_border,
+                                                      color: isSaved ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+                                                      size: 24,
+                                                    ),
                                                   ),
                                                 ),
-                                              )).toList())
-                                           else
-                                               const Text('No definition available'),
-                                            ],
-                                          ),
-                                               ),
-                                             ),
-                                           ],
-                                         ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                              ),
+                                          ],
+                                            ),
 
-                             ],
-                           );
-                         },
-                      );
-                    },
-                  ),
-                ],
-              );
+                                       ],
+                                     ),
+                                     const SizedBox(height: 16),
+                                     
+                                     if (displayDetails['definitions'] != null && (displayDetails['definitions'] as List).isNotEmpty)
+                                        ...( (displayDetails['definitions'] as List).toSet().toList().map((def) => Padding(
+                                          padding: const EdgeInsets.only(bottom: 8.0),
+                                          child: Text(
+                                            '• $def',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              height: 1.4,
+                                              color: Theme.of(context).colorScheme.onSurface,
+                                            ),
+                                          ),
+                                        )).toList())
+                                     else
+                                         const Text('No definition available'),
+                                  ],
+                                );
+                             },
+                          );
+                       },
+                    ),
+                  ],
+                ));
             },
           );
-    },
-    transitionBuilder: (context, anim1, anim2, child) {
-        return FadeTransition(opacity: anim1, child: child);
-    },
+      },
     );
   }
-
   Color _getGenderColor(dynamic gender) {
     if (gender == null) return Colors.grey;
     String g = gender.toString().toLowerCase();
@@ -961,112 +873,3 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     );
   }
 }
-
-class TooltipShapePainter extends CustomPainter {
-  final Color color;
-  final Color borderColor;
-  final bool isTop; 
-  final double arrowX; 
-  final double arrowSize;
-  final double radius;
-
-  TooltipShapePainter({
-    required this.color,
-    required this.borderColor,
-    required this.isTop,
-    required this.arrowX,
-    this.arrowSize = 10.0,
-    this.radius = 20.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-
-    final path = Path();
-    final width = size.width;
-    final height = size.height;
-    
-    final boxTop = isTop ? arrowSize : 0.0;
-    final boxBottom = isTop ? height : height - arrowSize;
-    
-    // Smooth arrow curve parameters
-    const arrowWidthFactor = 2.4; 
-    final aw = arrowSize * arrowWidthFactor;
-    final safeArrowX = arrowX.clamp(radius + aw, width - radius - aw);
-
-    if (isTop) {
-      path.moveTo(radius, boxTop);
-      
-      // Arrow pointing up
-      path.lineTo(safeArrowX - aw / 2, boxTop);
-      path.cubicTo(
-        safeArrowX - aw / 4, boxTop, 
-        safeArrowX - aw / 8, 0, 
-        safeArrowX, 0
-      );
-      path.cubicTo(
-        safeArrowX + aw / 8, 0, 
-        safeArrowX + aw / 4, boxTop, 
-        safeArrowX + aw / 2, boxTop
-      );
-
-      path.lineTo(width - radius, boxTop);
-      path.quadraticBezierTo(width, boxTop, width, boxTop + radius);
-      path.lineTo(width, boxBottom - radius);
-      path.quadraticBezierTo(width, boxBottom, width - radius, boxBottom);
-      path.lineTo(radius, boxBottom);
-      path.quadraticBezierTo(0, boxBottom, 0, boxBottom - radius);
-      path.lineTo(0, boxTop + radius);
-      path.quadraticBezierTo(0, boxTop, radius, boxTop);
-    } else {
-      path.moveTo(radius, boxTop);
-      path.lineTo(width - radius, boxTop);
-      path.quadraticBezierTo(width, boxTop, width, boxTop + radius);
-      path.lineTo(width, boxBottom - radius);
-      path.quadraticBezierTo(width, boxBottom, width - radius, boxBottom);
-      
-      // Arrow pointing down
-      path.lineTo(safeArrowX + aw / 2, boxBottom);
-      path.cubicTo(
-        safeArrowX + aw / 4, boxBottom, 
-        safeArrowX + aw / 8, height, 
-        safeArrowX, height
-      );
-      path.cubicTo(
-        safeArrowX - aw / 8, height, 
-        safeArrowX - aw / 4, boxBottom, 
-        safeArrowX - aw / 2, boxBottom
-      );
-
-      path.lineTo(radius, boxBottom);
-      path.quadraticBezierTo(0, boxBottom, 0, boxBottom - radius);
-      path.lineTo(0, boxTop + radius);
-      path.quadraticBezierTo(0, boxTop, radius, boxTop);
-    }
-    
-    path.close();
-
-    // Shadow
-    canvas.drawShadow(path.shift(const Offset(0, 4)), Colors.black.withValues(alpha: 0.15), 12.0, false);
-    
-    // Fill
-    canvas.drawPath(path, paint);
-    
-    // Border
-    canvas.drawPath(path, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant TooltipShapePainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.isTop != isTop || oldDelegate.arrowX != arrowX;
-  }
-}
-
