@@ -106,44 +106,35 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
               ),
 
+              
               // Imported Section
-              SectionHeader(title: 'Imported', onViewAll: () {}),
-               SizedBox(
-                height: 150,
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: importedArticles.length,
-                  itemBuilder: (context, index) {
-                    return CompactArticleCard(
-                      article: importedArticles[index],
-                      onTap: () => _openReader(importedArticles[index]),
-                    );
-                  },
+              if (lessonService.importedArticles.isNotEmpty) ...[
+                SectionHeader(title: 'Imported', onViewAll: () {}),
+                SizedBox(
+                  height: 150,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: lessonService.importedArticles.length,
+                    itemBuilder: (context, index) {
+                      final article = lessonService.importedArticles[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 16.0),
+                        child: CompactArticleCard(
+                          article: article,
+                          onTap: () => _openReader(article),
+                          onDelete: () => _confirmDelete(context, article, lessonService),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-
-
+                const SizedBox(height: 24),
+              ],
+              
               // New Stories Section
               SectionHeader(title: 'New Stories'),
               // _buildFilters() removed
-              // Imported Articles
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: lessonService.importedArticles.length,
-                itemBuilder: (context, index) {
-                  final article = lessonService.importedArticles[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: ArticleCard(
-                      article: article,
-                      onTap: () => _openReader(article),
-                      onDelete: () => _confirmDelete(context, article, lessonService),
-                    ),
-                  );
-                },
-              ),
               ListView.separated(
                 padding: const EdgeInsets.all(20),
                 shrinkWrap: true, // Needed inside SingleChildScrollView
