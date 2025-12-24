@@ -324,7 +324,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                          angle: -0.2,
                          child: CustomPaint(
                            size: const Size(2, 64),
-                           painter: DashedLinePainter(color: Colors.amber[300]!),
+                           painter: DashedLinePainter(color: Theme.of(context).colorScheme.secondary),
                          ),
                        ),
                      ),
@@ -336,14 +336,14 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                          angle: 0.2,
                          child: CustomPaint(
                            size: const Size(2, 64),
-                           painter: DashedLinePainter(color: Colors.lime[300]!),
+                           painter: DashedLinePainter(color: Theme.of(context).colorScheme.tertiary),
                          ),
                        ),
                      ),
                    ],
                  ),
                ),
-             ),
+             ), // Added missing closing parenthesis and comma
              // Word Parts
              Row(
                mainAxisAlignment: MainAxisAlignment.center,
@@ -352,9 +352,9 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                  CustomPaint(
                    painter: PuzzlePiecePainter(
                      isLeft: true,
-                     colorStart: Colors.amber[300]!,
-                     colorEnd: Colors.amber[400]!,
-                     borderColor: Colors.amber[600]!,
+                     colorStart: Theme.of(context).colorScheme.secondaryContainer,
+                     colorEnd: Theme.of(context).colorScheme.secondaryContainer,
+                     borderColor: Theme.of(context).colorScheme.secondary,
                    ),
                    child: Container(
                      padding: const EdgeInsets.fromLTRB(28, 20, 48, 20),
@@ -364,20 +364,20 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                          fontSize: 30,
                          fontWeight: FontWeight.bold,
                          letterSpacing: 0.5,
-                         color: const Color(0xFF78350F),
+                         color: Theme.of(context).colorScheme.onSecondaryContainer,
                        ),
                      ),
                    ),
                  ),
                  // Part 2
                  Transform.translate(
-                   offset: const Offset(-2, 0),
+                   offset: const Offset(-1, 0), // Slight overlap for seamless visual join
                    child: CustomPaint(
                      painter: PuzzlePiecePainter(
                        isLeft: false,
-                       colorStart: Colors.lime[400]!,
-                       colorEnd: Colors.lime[500]!,
-                       borderColor: Colors.lime[700]!,
+                       colorStart: Theme.of(context).colorScheme.tertiaryContainer,
+                       colorEnd: Theme.of(context).colorScheme.tertiaryContainer,
+                       borderColor: Theme.of(context).colorScheme.tertiary,
                      ),
                      child: Container(
                        padding: const EdgeInsets.fromLTRB(48, 20, 28, 20),
@@ -387,7 +387,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                            fontSize: 30,
                            fontWeight: FontWeight.bold,
                            letterSpacing: 0.5,
-                           color: const Color(0xFF365314),
+                           color: Theme.of(context).colorScheme.onTertiaryContainer,
                          ),
                        ),
                      ),
@@ -404,20 +404,36 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
   Widget _buildChoiceGrid(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _buildChoiceCard(context, 'Part 1', _currentWord.part1Icon ?? Icons.help_outline, _currentWord.part1Meaning, _currentWord.part1Subtitle, Colors.amber)),
+        Expanded(child: _buildChoiceCard(
+          context, 
+          'Part 1', 
+          _currentWord.part1Icon ?? Icons.help_outline, 
+          _currentWord.part1Meaning, 
+          _currentWord.part1Subtitle, 
+          Theme.of(context).colorScheme.secondaryContainer,
+          Theme.of(context).colorScheme.onSecondaryContainer,
+        )),
         const SizedBox(width: 16),
-        Expanded(child: _buildChoiceCard(context, 'Part 2', _currentWord.part2Icon ?? Icons.help_outline, _currentWord.part2Meaning, _currentWord.part2Subtitle, Colors.lime)),
+        Expanded(child: _buildChoiceCard(
+          context, 
+          'Part 2', 
+          _currentWord.part2Icon ?? Icons.help_outline, 
+          _currentWord.part2Meaning, 
+          _currentWord.part2Subtitle, 
+          Theme.of(context).colorScheme.tertiaryContainer,
+          Theme.of(context).colorScheme.onTertiaryContainer,
+        )),
       ],
     ).animate().fadeIn().slideY(begin: 0.2, end: 0);
   }
 
-  Widget _buildChoiceCard(BuildContext context, String label, IconData icon, String title, String subtitle, MaterialColor color) {
+  Widget _buildChoiceCard(BuildContext context, String label, IconData icon, String title, String subtitle, Color color, Color onColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color[100]!, width: 2),
+        border: Border.all(color: color, width: 2),
         boxShadow: const [
           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
         ],
@@ -431,7 +447,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: color[100],
+                color: color,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
@@ -439,14 +455,14 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 10,
-                  color: color[700],
+                  color: onColor,
                 ),
               ),
             ),
           ),
           Column(
             children: [
-              Icon(icon, size: 40, color: color[500]),
+              Icon(icon, size: 40, color: onColor),
               const SizedBox(height: 4),
               Text(
                 title,
@@ -574,13 +590,16 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.yellow[300]!, Colors.amber[500]!]),
+                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
+                        Theme.of(context).colorScheme.tertiaryContainer,
+                        Theme.of(context).colorScheme.tertiary
+                      ]),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
-                        BoxShadow(color: Colors.amber.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5))
+                        BoxShadow(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5))
                       ],
                     ),
-                    child: Icon(_currentWord.fullIcon ?? Icons.lightbulb_rounded, color: Colors.white, size: 36),
+                    child: Icon(_currentWord.fullIcon ?? Icons.lightbulb_rounded, color: Theme.of(context).colorScheme.onTertiary, size: 36),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
@@ -709,32 +728,40 @@ class PuzzlePiecePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     Path path = Path();
-    double knobSize = 16.0;
+    
+    // Config for standard puzzle tab
+    double bumpSize = 16.0;   // How far it sticks out
+    double neckSize = 12.0;   // Width at the neck (base)
+    double headSize = 22.0;   // Width at the widest part
+    
     double radius = 16.0;
-    double borderHeight = 4.0;
+    double borderHeight = 0.0; // Flat 2D
+    double centerY = size.height / 2;
+    
+    // Circular Tab Config
+    double tabRadius = 12.0;
 
     if (isLeft) {
-      // Start top-left
+      // LEFT PIECE (Has Right Tab)
       path.moveTo(radius, 0);
-      path.lineTo(size.width, 0); // No inset for right side yet
+      path.lineTo(size.width, 0); // Straight line to Top-Right (No corner radius)
       
-      // Top-right corner (curved down)
-      path.quadraticBezierTo(size.width, 0, size.width, radius);
+      // Right edge down to Tab start
+      path.lineTo(size.width, centerY - tabRadius);
       
-      // Right edge with KNOB (Protrusion)
-      path.lineTo(size.width, size.height / 2 - knobSize / 1.5);
-      path.cubicTo(
-        size.width + knobSize, size.height / 2 - knobSize / 1.5, // Control point 1
-        size.width + knobSize, size.height / 2 + knobSize / 1.5, // Control point 2
-        size.width, size.height / 2 + knobSize / 1.5 // End point
+      // Draw Circular Tab (Outwards)
+      // arcToPoint uses the end point. We want a semi-circle protruding right.
+      path.arcToPoint(
+        Offset(size.width, centerY + tabRadius),
+        radius: Radius.circular(tabRadius),
+        clockwise: true,
       );
-      path.lineTo(size.width, size.height - radius - borderHeight);
       
-      // Bottom-right corner
-      path.quadraticBezierTo(size.width, size.height - borderHeight, size.width - radius, size.height - borderHeight);
+      path.lineTo(size.width, size.height - borderHeight); // Straight line to Bottom-Right (No corner radius)
       
       // Bottom edge
       path.lineTo(radius, size.height - borderHeight);
+      
       // Bottom-left corner
       path.quadraticBezierTo(0, size.height - borderHeight, 0, size.height - borderHeight - radius);
       
@@ -744,9 +771,8 @@ class PuzzlePiecePainter extends CustomPainter {
       path.quadraticBezierTo(0, 0, radius, 0);
       
     } else {
-      // RIGHT PIECE
-      // Start top-left (with socket offset)
-      path.moveTo(radius, 0);
+      // RIGHT PIECE (Has Left Socket)
+      path.moveTo(0, 0); // Top-Left starts sharp (0,0) as opposed to (radius, 0)
       path.lineTo(size.width - radius, 0);
       
       // Top-right corner
@@ -759,35 +785,36 @@ class PuzzlePiecePainter extends CustomPainter {
       path.quadraticBezierTo(size.width, size.height - borderHeight, size.width - radius, size.height - borderHeight);
       
       // Bottom edge
-      path.lineTo(radius, size.height - borderHeight);
+      path.lineTo(0, size.height - borderHeight); // Bottom-Left ends sharp
       
-      // Bottom-left corner
-      path.quadraticBezierTo(0, size.height - borderHeight, 0, size.height - borderHeight - radius);
+      // Left edge with SOCKET (Indents Inwards)
+      // Drawn Bottom-to-Top
+      path.lineTo(0, centerY + tabRadius);
       
-      // Left edge with SOCKET (Indentation)
-      path.lineTo(0, size.height / 2 + knobSize / 1.5);
-      path.cubicTo(
-        knobSize, size.height / 2 + knobSize / 1.5, // Control 1 (convex into shape)
-        knobSize, size.height / 2 - knobSize / 1.5, // Control 2
-        0, size.height / 2 - knobSize / 1.5 // End
+      // Socket Shape (Inside)
+      // arcToPoint to create inward semi-circle
+      path.arcToPoint(
+        Offset(0, centerY - tabRadius),
+        radius: Radius.circular(tabRadius),
+        clockwise: true, // Clockwise from (0, +12) to (0, -12) creates an INWARD arc
       );
-      path.lineTo(0, radius);
       
-      // Top-left corner
-      path.quadraticBezierTo(0, 0, radius, 0);
+      path.lineTo(0, 0); // Back to top-left start
     }
 
     path.close();
 
-    // 1. Draw "3D" border (bottom thickness)
-    // We shift the path down and draw it with border color
-    canvas.drawPath(path.shift(Offset(0, borderHeight)), Paint()..color = borderColor);
-
-    // 2. Draw Shadow (optional, but good for depth)
-    canvas.drawShadow(path.shift(Offset(0, 2)), Colors.black.withOpacity(0.1), 4.0, true);
-
-    // 3. Draw Main Shape
+    // 1. Draw Main Shape (Fill)
     canvas.drawPath(path, paint);
+
+    // 2. Draw Border Stroke (Boundary)
+    // Draw on top to ensure distinct edge
+    canvas.drawPath(path, Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+    );
+
   }
 
   @override
