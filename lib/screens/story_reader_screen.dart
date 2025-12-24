@@ -71,6 +71,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   Future<void> _fetchContextualAnalysis() async {
     setState(() {
       _isLoadingAnalysis = true;
+      _paragraphAnalysisData = {}; // Clear existing data
     });
 
     String contentToProcess = _loadedContent ?? 
@@ -82,23 +83,43 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
     try {
       final backend = BackendService();
-      final result = await backend.processFullArticle(contentToProcess, lang: 'de');
       
-      if (result != null && result['paragraphs'] != null) {
-        final List<dynamic> paragraphs = result['paragraphs'];
-        Map<int, Map<String, dynamic>> analysisMap = {};
-        for (int i = 0; i < paragraphs.length; i++) {
-          analysisMap[i] = {
-            'german_analysis': paragraphs[i]['german_analysis'] ?? [],
-            'translated_text': paragraphs[i]['translation'] ?? '',
-          };
-        }
+      // Use streaming for progressive loading
+      await for (var event in backend.processFullArticleStream(contentToProcess, lang: 'de')) {
+        if (!mounted) break;
         
-        if (mounted) {
+        final type = event['type'] as String?;
+        
+        if (type == 'metadata') {
+          // Initial metadata received
+          final totalParagraphs = event['total_paragraphs'] as int?;
+          print('Starting to process $totalParagraphs paragraphs');
+        } else if (type == 'paragraph') {
+          // Paragraph processed - add to UI immediately
+          final index = event['index'] as int;
           setState(() {
-            _paragraphAnalysisData = analysisMap;
-            _isLoadingAnalysis = false;
+            _paragraphAnalysisData[index] = {
+              'german_analysis': event['german_analysis'] ?? [],
+              'translated_text': event['translation'] ?? '',
+            };
           });
+          print('Received paragraph $index');
+        } else if (type == 'complete') {
+          // All paragraphs processed
+          if (mounted) {
+            setState(() {
+              _isLoadingAnalysis = false;
+            });
+          }
+          print('Processing complete');
+        } else if (type == 'error') {
+          // Error occurred
+          print('Stream error: ${event['error']}');
+          if (mounted) {
+            setState(() {
+              _isLoadingAnalysis = false;
+            });
+          }
         }
       }
     } catch (e) {

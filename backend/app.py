@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 import spacy
 import logging
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -352,7 +353,103 @@ def process_full_text():
         logger.error(f"Batch process error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/process_full_stream', methods=['POST'])
+def process_full_stream():
+    """
+    Process a full article by splitting it into paragraphs.
+    Streams results as Server-Sent Events for real-time feedback.
+    """
+    def generate():
+        try:
+            data = request.get_json()
+            full_text = data.get('text', '').strip()
+            lang = data.get('lang', 'auto').lower()
+            
+            if not full_text:
+                yield f"data: {json.dumps({'error': 'Missing text parameter'})}\n\n"
+                return
+
+            # Split into paragraphs
+            import re
+            paragraphs = re.split(r'\n\s*\n', full_text)
+            paragraphs = [p.strip() for p in paragraphs if p.strip()]
+
+            logger.info(f"Streaming processing for {len(paragraphs)} paragraphs")
+
+            # Send initial metadata
+            yield f"data: {json.dumps({'type': 'metadata', 'total_paragraphs': len(paragraphs)})}\n\n"
+            
+            # Process each paragraph and stream result
+            for index, p in enumerate(paragraphs):
+                try:
+                    # 1. Detect language
+                    source_lang = lang
+                    if lang == 'auto':
+                        try:
+                            from langdetect import detect
+                            source_lang = detect(p)
+                        except:
+                            source_lang = 'en'
+                    
+                    # Normalize
+                    if source_lang.startswith('de'):
+                        s_lang, t_lang = 'de', 'en'
+                    else:
+                        s_lang, t_lang = 'en', 'de'
+
+                    # 2. Get translator
+                    cache_key = (p, s_lang, t_lang)
+                    if cache_key in translation_cache:
+                        logger.info(f"Translation Cache HIT for paragraph {index}")
+                        translated_text = translation_cache[cache_key]
+                    else:
+                        translator = get_translator(s_lang, t_lang)
+                        translated_text = ""
+                        if translator:
+                            try:
+                                res = translator(p)
+                                translated_text = res[0]['translation_text']
+                                translation_cache[cache_key] = translated_text
+                            except Exception as e:
+                                logger.error(f"Translation failed for paragraph {index}: {e}")
+                                translated_text = "[Translation Error]"
+                    
+                    # 3. Analyze
+                    analysis = analyze_german_text(p if s_lang == 'de' else translated_text)
+
+                    # Stream this paragraph's result
+                    result = {
+                        'type': 'paragraph',
+                        'index': index,
+                        'original': p,
+                        'translation': translated_text,
+                        'german_analysis': analysis,
+                        'source_lang': s_lang
+                    }
+                    
+                    yield f"data: {json.dumps(result)}\n\n"
+                    logger.info(f"Streamed paragraph {index + 1}/{len(paragraphs)}")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing paragraph {index}: {str(e)}")
+                    error_result = {
+                        'type': 'error',
+                        'index': index,
+                        'error': str(e)
+                    }
+                    yield f"data: {json.dumps(error_result)}\n\n"
+
+            # Send completion event
+            yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Stream error: {str(e)}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
+
 @app.route('/import_url', methods=['POST'])
+
 def import_url():
     """
     Import content from a web URL.

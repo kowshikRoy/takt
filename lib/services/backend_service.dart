@@ -128,5 +128,51 @@ class BackendService {
       return {'error': 'Network error: Could not connect to backend. Please ensure the backend is running.'};
     }
   }
+
+  Stream<Map<String, dynamic>> processFullArticleStream(String fullText, {String? lang}) async* {
+    try {
+      final request = http.Request('POST', Uri.parse('$baseUrl/process_full_stream'));
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode({
+        'text': fullText,
+        if (lang != null) 'lang': lang,
+      });
+
+      final response = await request.send();
+      
+      if (response.statusCode != 200) {
+        yield {'type': 'error', 'error': 'Server error: ${response.statusCode}'};
+        return;
+      }
+
+      String buffer = '';
+      
+      await for (var chunk in response.stream.transform(utf8.decoder)) {
+        buffer += chunk;
+        
+        // Process complete SSE messages (ending with \n\n)
+        while (buffer.contains('\n\n')) {
+          final endIndex = buffer.indexOf('\n\n');
+          final message = buffer.substring(0, endIndex);
+          buffer = buffer.substring(endIndex + 2);
+          
+          // Parse SSE format: "data: {...}"
+          if (message.startsWith('data: ')) {
+            final jsonStr = message.substring(6); // Remove "data: " prefix
+            try {
+              final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+              yield data;
+            } catch (e) {
+              print('Error parsing SSE message: $e');
+              print('Message: $jsonStr');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Stream error: $e');
+      yield {'type': 'error', 'error': 'Connection error: $e'};
+    }
+  }
 }
 
