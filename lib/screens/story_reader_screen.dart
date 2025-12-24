@@ -84,8 +84,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     try {
       final backend = BackendService();
       
-      // Use streaming for progressive loading
-      await for (var event in backend.processFullArticleStream(contentToProcess, lang: 'de')) {
+      // Use streaming for progressive loading with auto language detection
+      await for (var event in backend.processFullArticleStream(contentToProcess, lang: 'auto')) {
         if (!mounted) break;
         
         final type = event['type'] as String?;
@@ -106,7 +106,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               'german_analysis': event['german_analysis'] ?? [],
               'german_text': sourceLang == 'en' ? translation : original,  // German text to display
               'original_text': original,  // Original text (for reference)
-              'english_translation': sourceLang == 'de' ? translation : '',  // English translation if source was German
+              'english_translation': sourceLang == 'en' ? original : translation,  // Original English if source was English, translated English if source was German
               'source_lang': sourceLang,
             };
           });
