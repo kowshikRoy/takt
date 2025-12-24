@@ -27,8 +27,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'DeutschApp',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(themeProvider.fontFamily),
-      darkTheme: AppTheme.darkTheme(themeProvider.fontFamily),
+      theme: AppTheme.lightTheme(themeProvider.fontFamily, themeProvider.colorTheme),
+      darkTheme: AppTheme.darkTheme(themeProvider.fontFamily, themeProvider.colorTheme),
       themeMode: themeProvider.themeMode,
       home: const WelcomeScreen(),
     );

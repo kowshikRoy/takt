@@ -31,6 +31,15 @@ class SettingsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _showThemeDialog(context, themeProvider),
           ),
+
+          // Color Theme Selector
+          ListTile(
+            title: const Text('Color Palette'),
+            subtitle: Text(_getColorThemeName(themeProvider.colorTheme)),
+            leading: Icon(Icons.color_lens_rounded, color: colorScheme.onSurfaceVariant),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _showColorThemeDialog(context, themeProvider),
+          ),
           
           const Divider(indent: 16, endIndent: 16),
           
@@ -77,6 +86,16 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  String _getColorThemeName(AppColorTheme theme) {
+    switch (theme) {
+      case AppColorTheme.classic: return 'Classic Red';
+      case AppColorTheme.retroTeal: return 'Retro Teal';
+      case AppColorTheme.retroBlue: return 'Retro Blue';
+      case AppColorTheme.retroGold: return 'Retro Gold';
+      case AppColorTheme.retroRust: return 'Retro Rust';
+    }
+  }
+
   void _showThemeDialog(BuildContext context, ThemeProvider provider) {
     showDialog(
       context: context,
@@ -116,6 +135,62 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _showColorThemeDialog(BuildContext context, ThemeProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Palette'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: AppColorTheme.values.map((theme) {
+              return RadioListTile<AppColorTheme>(
+                title: Row(
+                  children: [
+                    Container(
+                      width: 16, 
+                      height: 16, 
+                      decoration: BoxDecoration(
+                        color: _getThemeColorPreview(theme),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(_getColorThemeName(theme)),
+                  ],
+                ),
+                value: theme,
+                groupValue: provider.colorTheme,
+                onChanged: (val) {
+                  if (val != null) {
+                    provider.setColorTheme(val);
+                    Navigator.pop(context);
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Color _getThemeColorPreview(AppColorTheme theme) {
+    switch (theme) {
+      case AppColorTheme.classic: return const Color(0xFFEA2A33);
+      case AppColorTheme.retroTeal: return const Color(0xFF2BBAA5);
+      case AppColorTheme.retroBlue: return const Color(0xFF005F73);
+      case AppColorTheme.retroGold: return const Color(0xFFEE9B00);
+      case AppColorTheme.retroRust: return const Color(0xFFBB3E03);
+    }
   }
 
   void _showFontDialog(BuildContext context, ThemeProvider provider) {
