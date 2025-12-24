@@ -1,0 +1,11 @@
+flask>=3.0.0
+flask-cors>=4.0.0
+spacy>=3.7.0
+gunicorn>=21.2.0
+transformers==4.35.2
+torch>=2.0.0 --index-url https://download.pytorch.org/whl/cpu
+sentencepiece>=0.1.99
+sacremoses>=0.0.53
+pure_protobuf
+numpy<2.0.0
+langdetect
