@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,8 @@ import '../theme/theme_provider.dart';
 import '../services/dictionary_service.dart';
 import '../services/vocabulary_service.dart';
 import '../services/lesson_service.dart';
+import '../services/backend_service.dart';
+import '../services/tts_service.dart';
 
 import '../models/article_model.dart';
 
@@ -23,9 +26,12 @@ class StoryReaderScreen extends StatefulWidget {
 class _StoryReaderScreenState extends State<StoryReaderScreen> {
   final DictionaryService _dictionaryService = DictionaryService();
   final VocabularyService _vocabularyService = VocabularyService();
+  final TtsService _ttsService = TtsService();
   Map<String, String> _wordGenders = {};
   bool _isLoadingGenders = true;
   String? _loadedContent;
+  TtsProgress? _currentTtsProgress;
+  StreamSubscription? _ttsSubscription;
 
   @override
   void initState() {
@@ -43,6 +49,19 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     }
 
     _loadWordGenders();
+    _ttsSubscription = _ttsService.progressStream.listen((progress) {
+      if (mounted) {
+        setState(() {
+          _currentTtsProgress = progress;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ttsSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadWordGenders() async {
@@ -157,12 +176,42 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             ),
             // Title
 
-            // Settings Button
+            // TTS Play Button
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.play_circle_fill_rounded, 
+                      size: 28, color: Theme.of(context).colorScheme.primary),
+                  onPressed: () {
+                    List<String> textChunks = [];
+                    if (widget.customContent != null) {
+                        textChunks.add(widget.customContent!);
+                    } else {
+                        // Hardcoded static text chunks matching the story
+                        textChunks.addAll([
+                          'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.',
+                          'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.',
+                          'Hannah ging näher heran. Es war ein kleiner, goldener Schmetterling aus Metall.',
+                          '"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?',
+                          'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.'
+                        ]);
+                    }
+                    _ttsService.speak(textChunks.join(' '));
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.stop_circle_rounded, 
+                      size: 28, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                  onPressed: () => _ttsService.stop(),
+                ),
+              ],
+            ),
              Container(
               width: 40, height: 40,
               decoration: const BoxDecoration(shape: BoxShape.circle),
               child: IconButton(
-                icon: Icon(Icons.brightness_6_rounded, // Changed icon to represent theme toggle better
+                icon: Icon(Icons.brightness_6_rounded, 
                     size: 24, color: Theme.of(context).colorScheme.onSurface),
                 onPressed: () {
                   Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
@@ -286,16 +335,47 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   }
 
   Widget _buildInteractiveParagraph(BuildContext context, String text) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 4, right: 8),
+              child: InkWell(
+                onTap: () => _ttsService.speak(text),
+                child: Icon(Icons.volume_up_rounded, size: 18, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
+              ),
+            ),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: 18,
+                    height: 1.5,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  children: _buildParagraphSpans(context, text),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  List<InlineSpan> _buildParagraphSpans(BuildContext context, String text) {
     // Basic tokenization by space to separate words
-    // We also want to handle punctuation attached to words without breaking the lookup
     List<String> rawTokens = text.split(' ');
     List<InlineSpan> spans = [];
+    int currentCharacterOffset = 0;
 
     for (int i = 0; i < rawTokens.length; i++) {
         String token = rawTokens[i];
         
         // Simple regex to separate punctuation from the word
-        // Matches: (prefix punctuation?)(word)(suffix punctuation?)
         final match = RegExp(r'^([^\wäöüÄÖÜß]*)([\wäöüÄÖÜß]+)([^\wäöüÄÖÜß]*)$').firstMatch(token);
 
         if (match != null) {
@@ -310,7 +390,17 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             Color wordColor = Theme.of(context).colorScheme.onSurface;
             FontWeight wordWeight = FontWeight.normal;
             
-            // Gender coloring logic
+            // Highlight logic
+            bool isHighlighted = false;
+            if (_currentTtsProgress != null && _currentTtsProgress!.text == text) {
+                // Check if current word falls within the spoken range
+                int wordStart = currentCharacterOffset + prefix.length;
+                int wordEnd = wordStart + word.length;
+                if (wordStart >= _currentTtsProgress!.start && wordEnd <= _currentTtsProgress!.end) {
+                    isHighlighted = true;
+                }
+            }
+
             if (!_isLoadingGenders) {
                 // Try exact match first, then lowercase
                 String? gender = _wordGenders[word] ?? _wordGenders[word.toLowerCase()];
@@ -330,14 +420,17 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               TextSpan(
                 text: word,
                 style: TextStyle(
-                  color: wordColor,
+                  color: isHighlighted ? Colors.white : wordColor,
                   fontWeight: wordWeight,
+                  backgroundColor: isHighlighted 
+                    ? Theme.of(context).colorScheme.primary 
+                    : (wordWeight == FontWeight.bold ? wordColor.withValues(alpha: 0.1) : null),
                 //   decoration: TextDecoration.underline,
                 //   decorationStyle: TextDecorationStyle.dotted,
                 //   decorationColor: Colors.grey,
                 ),
-                recognizer: TapGestureRecognizer()..onTapUp = (details) {
-                    _handleWordTap(word, details.globalPosition);
+                recognizer: TapGestureRecognizer()..onTapDown = (details) {
+                    _handleWordTap(word, text, details.globalPosition);
                 },
               )
             );
@@ -350,324 +443,369 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             spans.add(TextSpan(text: token));
         }
 
+        currentCharacterOffset += token.length;
+
         // Add space back unless it's the last word
         if (i < rawTokens.length - 1) {
             spans.add(const TextSpan(text: ' '));
+            currentCharacterOffset += 1; // for the space
         }
     }
-
-    return RichText(
-      text: TextSpan(
-        style: TextStyle(
-          fontSize: 17, // text-xl
-          height: 1.5, // leading-9
-          color: Theme.of(context).colorScheme.onSurface,
-          // fontFamily: GoogleFonts.outfit().fontFamily, // Removed to match app theme (Spline Sans)
-        ),
-        children: spans,
-      ),
-    );
+    return spans;
   }
 
-  void _handleWordTap(String word, Offset tapPosition) async {
+  final BackendService _backendService = BackendService();
+
+  void _handleWordTap(String word, String contextText, Offset tapPosition) async {
       print("DEBUG: Tapped word: '$word' at $tapPosition");
-      // Show loading or immediate feedback?
-      // For now, let's just query
-      final details = await _dictionaryService.lookupWord(word);
+      
+      // 1. Initial local lookup (fast) - fetch all possible POS versions
+      var allPotentialDetails = await _dictionaryService.lookupWordAllPOS(word);
       
       if (!mounted) return;
 
-      if (details != null) {
-          _showContextualPopup(context, word, details, tapPosition);
-      } else {
-        // Optional: Show "Word not found" toast or similar if needed.
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('No definition found for "$word"'), duration: const Duration(milliseconds: 500)),
-        );
-      }
+      Future<Map<String, dynamic>?> backendFuture = _backendService.processText(contextText, lang: 'de');
+
+      // Even if not in dict, we show popup (maybe vocab or just for backend translation)
+      _showContextualPopup(context, word, contextText, allPotentialDetails, tapPosition, backendFuture);
   }
 
-  void _showContextualPopup(BuildContext context, String word, Map<String, dynamic> details, Offset tapPosition) {
+  void _showContextualPopup(BuildContext context, String word, String contextText, List<Map<String, dynamic>> allPotentialDetails, Offset tapPosition, Future<Map<String, dynamic>?> backendFuture) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withOpacity(0.1), // Subtle dimming
+      barrierColor: Colors.black.withValues(alpha: 0.1),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (context, animation, secondaryAnimation) {
          return StatefulBuilder(
            builder: (context, setPopupState) {
               return Stack(
                 children: [
-                   FutureBuilder<bool>(
-                      future: _vocabularyService.isWordSaved(word),
-                      builder: (context, snapshot) {
-                        final isSaved = snapshot.data ?? false;
-                        
-                        // Calculate position
-                        final screenHeight = MediaQuery.of(context).size.height;
-                        final screenWidth = MediaQuery.of(context).size.width;
-                        final isTopHalf = tapPosition.dy < screenHeight / 2;
-                        
-                        // Add some margin from edges
-                        const horizontalMargin = 16.0;
-                        const cardWidth = 300.0; // Fixed width for popup usually better or clamp
-                        
-                        // Clamp horizontal position to keep on screen
-                        // Simple approach: Center horizontally or use tap X but clamp
-                        // Let's Center horizontally for better mobile UX on small screens, OR
-                        // try to align with tap but clamp.
-                        // "Contextual" usually implies near the tap.
-                        
-                        // Let's try centering heavily but constrained, or clamp x centered on tap.
-                        double left = tapPosition.dx - (screenWidth - 2 * horizontalMargin) / 2;
-                         // Actually, standard "tooltip" style usually centers on screen or clamps. 
-                         // Let's just use a Card that is horizontally centered with margins, 
-                         // but vertically positioned near tap.
-                         
-                         double top;
-                         double? bottom;
-                         
-                         if (isTopHalf) {
-                             top = tapPosition.dy + 20; // Show below
-                             bottom = null;
-                         } else {
-                             bottom = screenHeight - tapPosition.dy + 20; // Show above
-                             top = 0; // ignored if using bottom
-                         }
-                         
-                         // Calculate max available height
-                         double availableHeight;
-                         if (isTopHalf) {
-                           availableHeight = screenHeight - top! - 32; // Bottom margin padding
-                         } else {
-                           availableHeight = screenHeight - bottom! - 32; // Top margin padding (approx)
-                              // Actually if bottom is set, top of box is at (screenHeight - bottom - height).
-                              // Max height is (screenHeight - bottom - safeAreaTop).
-                              // Let's just say max 50% of screen or available space.
-                              availableHeight = tapPosition.dy - 60; // Space above tap
-                         }
-                         
-                        return Stack(
-                          children: [
-                            Positioned(
-                              top: isTopHalf ? tapPosition.dy : null, // Start AT tap for arrow
-                              bottom: !isTopHalf ? (screenHeight - tapPosition.dy) : null,
-                              left: horizontalMargin,
-                              right: horizontalMargin,
-                              child: Material(
-                                color: Colors.transparent,
-                                child: CustomPaint(
-                                  painter: TooltipShapePainter(
-                                    color: Theme.of(context).cardColor,
-                                    borderColor: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-                                    isTop: isTopHalf,
-                                    arrowX: tapPosition.dx - horizontalMargin,
-                                  ),
-                                  child: Container(
-                                    constraints: BoxConstraints(
-                                      maxWidth: cardWidth,
-                                      maxHeight: availableHeight > 400 ? 400 : availableHeight,
-                                    ),
-                                    // Add extra padding for the arrow area
-                                    padding: EdgeInsets.only(
-                                        left: 20, 
-                                        right: 20, 
-                                        top: isTopHalf ? 20 + 10.0 : 20, // Arrow is top
-                                        bottom: !isTopHalf ? 20 + 10.0 : 20 // Arrow is bottom
-                                    ),
-                                    child: SingleChildScrollView(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                           Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                  Row(
-                                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                                    children: [
-                                                      Text(
-                                                        details['word'] ?? word,
-                                                        style: TextStyle(
-                                                          fontSize: 18, // Compact Title
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Theme.of(context).colorScheme.onSurface,
-                                                          height: 1.2,
-                                                        ),
+                   FutureBuilder<Map<String, dynamic>?>(
+                     future: backendFuture,
+                     builder: (context, backendSnapshot) {
+                       final backendData = backendSnapshot.data;
+                       // Extract specific word analysis if available
+                       Map<String, dynamic>? specificAnalysis;
+                       String? translatedSentence;
+                       
+                       if (backendData != null) {
+                          translatedSentence = backendData['translated_text'];
+                          List<dynamic> analysis = backendData['german_analysis'] ?? [];
+                          // Find our word
+                          try {
+                             var match = analysis.firstWhere(
+                               (w) => w['word'].toString().toLowerCase() == word.toLowerCase(),
+                               orElse: () => null
+                             );
+                             if (match != null) specificAnalysis = match;
+                          } catch (_) {}
+                       }
+                       
+                       // RELEVANT DEFINITION LOGIC:
+                       // If we have backend analysis, try to find the dictionary entry that matches that POS
+                       Map<String, dynamic> displayDetails;
+                       if (specificAnalysis != null) {
+                          String backendPos = specificAnalysis['pos'].toString().toLowerCase();
+                          try {
+                             displayDetails = allPotentialDetails.firstWhere(
+                               (d) => d['pos'].toString().toLowerCase() == backendPos,
+                               orElse: () => allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []}
+                             );
+                          } catch (_) {
+                             displayDetails = allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []};
+                          }
+                          // Override POS display with specific tag if available
+                          displayDetails['pos'] = specificAnalysis['pos_detailed'] ?? specificAnalysis['pos'];
+                       } else {
+                          displayDetails = allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []};
+                       }
+
+
+                       return FutureBuilder<bool>(
+                          future: _vocabularyService.isWordSaved(word),
+                          builder: (context, snapshot) {
+                            final isSaved = snapshot.data ?? false;
+                            
+                            // Calculate position (simple clamp logic from before)
+                            final screenHeight = MediaQuery.of(context).size.height;
+                            final screenWidth = MediaQuery.of(context).size.width;
+                            final isTopHalf = tapPosition.dy < screenHeight / 2;
+                            const horizontalMargin = 16.0;
+                            const cardWidth = 300.0;
+                            
+                            double top;
+                            double? bottom;
+                            if (isTopHalf) {
+                                top = tapPosition.dy + 20; 
+                                bottom = null;
+                            } else {
+                                bottom = screenHeight - tapPosition.dy + 20;
+                                top = 0; 
+                            }
+                            
+                            double availableHeight = isTopHalf ? screenHeight - top - 32 : tapPosition.dy - 60;
+                            
+                            return Stack(
+                              children: [
+                                Positioned(
+                                  top: isTopHalf ? tapPosition.dy : null,
+                                  bottom: !isTopHalf ? (screenHeight - tapPosition.dy) : null,
+                                  left: horizontalMargin,
+                                  right: horizontalMargin,
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: CustomPaint(
+                                      painter: TooltipShapePainter(
+                                        color: Theme.of(context).cardColor,
+                                        borderColor: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                                        isTop: isTopHalf,
+                                        arrowX: tapPosition.dx - horizontalMargin,
+                                      ),
+                                      child: Container(
+                                        constraints: BoxConstraints(
+                                          maxWidth: cardWidth,
+                                          maxHeight: availableHeight > 500 ? 500 : availableHeight, // Increased height for translation
+                                        ),
+                                        padding: EdgeInsets.only(
+                                            left: 20, 
+                                            right: 20, 
+                                            top: isTopHalf ? 30.0 : 20, 
+                                            bottom: !isTopHalf ? 30.0 : 20
+                                        ),
+                                        child: SingleChildScrollView(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                               // 1. Translation Section (New)
+                                               if (translatedSentence != null)
+                                                 Container(
+                                                   margin: const EdgeInsets.only(bottom: 12),
+                                                   padding: const EdgeInsets.all(8),
+                                                   decoration: BoxDecoration(
+                                                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1))
+                                                   ),
+                                                   child: Column(
+                                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                                     children: [
+                                                       Row(
+                                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                         children: [
+                                                           Text("Context Translation", style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+                                                           Row(
+                                                              children: [
+                                                                // German Sentence Audio
+                                                                InkWell(
+                                                                  onTap: () => _ttsService.speak(contextText, lang: "de-DE"),
+                                                                  child: Padding(
+                                                                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                                                    child: Icon(Icons.translate_rounded, size: 14, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)),
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(width: 8),
+                                                                // English Sentence Audio
+                                                                InkWell(
+                                                                  onTap: () => _ttsService.speak(translatedSentence!, lang: "en-US"),
+                                                                  child: Icon(Icons.volume_up_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+                                                                ),
+                                                              ],
+                                                           ),
+                                                         ],
+                                                       ),
+                                                        const SizedBox(height: 2),
+                                                       Text(
+                                                         translatedSentence,
+                                                         style: TextStyle(
+                                                           fontSize: 13,
+                                                           fontStyle: FontStyle.italic,
+                                                           color: Theme.of(context).colorScheme.onSurface,
+                                                         ),
+                                                       ),
+                                                     ],
+                                                   ),
+                                                 )
+                                               else if (backendSnapshot.connectionState == ConnectionState.waiting)
+                                                   Padding(
+                                                     padding: const EdgeInsets.only(bottom: 12.0),
+                                                     child: LinearProgressIndicator(minHeight: 2, backgroundColor: Colors.transparent, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                                                   ),
+
+                                               // 2. Word Details
+                                               Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                      Row(
+                                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                                        children: [
+                                                          Text(
+                                                            displayDetails['word'] ?? word,
+                                                            style: TextStyle(
+                                                              fontSize: 18, 
+                                                              fontWeight: FontWeight.bold,
+                                                              color: Theme.of(context).colorScheme.onSurface,
+                                                              height: 1.2,
+                                                            ),
+                                                          ),
+                                                          if (displayDetails['pos'] != null)
+                                                           Container(
+                                                            margin: const EdgeInsets.only(left: 8),
+                                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                            decoration: BoxDecoration(
+                                                              color: (specificAnalysis != null) 
+                                                                ? Colors.blueAccent.withValues(alpha: 0.15)
+                                                                : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                                              borderRadius: BorderRadius.circular(4),
+                                                              border: (specificAnalysis != null)
+                                                                ? Border.all(color: Colors.blueAccent.withValues(alpha: 0.3))
+                                                                : null,
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                if (specificAnalysis != null) ...[
+                                                                  const Icon(Icons.auto_awesome, size: 10, color: Colors.blueAccent),
+                                                                  const SizedBox(width: 4),
+                                                                ],
+                                                                Text(
+                                                                  displayDetails['pos'].toString().toUpperCase(),
+                                                                  style: TextStyle(
+                                                                    fontSize: 10,
+                                                                    fontWeight: FontWeight.bold,
+                                                                    color: (specificAnalysis != null) 
+                                                                      ? Colors.blueAccent 
+                                                                      : Theme.of(context).colorScheme.primary,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                      if (details['pos'] != null)
-                                                       Container(
-                                                        margin: const EdgeInsets.only(left: 8),
-                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                        decoration: BoxDecoration(
-                                                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                                          borderRadius: BorderRadius.circular(4),
-                                                        ),
-                                                        child: Text(
-                                                          details['pos'],
-                                                          style: TextStyle(
-                                                            fontSize: 11,
-                                                            fontWeight: FontWeight.bold,
-                                                            color: Theme.of(context).colorScheme.primary,
+                                                      // Base form
+                                                       if (displayDetails['base_form'] != null || specificAnalysis?['lemma'] != null)
+                                                        Padding(
+                                                          padding: const EdgeInsets.only(top: 2.0),
+                                                          child: Text(
+                                                            'Lemma: ${specificAnalysis?['lemma'] ?? displayDetails['base_form']}',
+                                                            style: TextStyle(
+                                                              fontSize: 13,
+                                                              fontStyle: FontStyle.italic,
+                                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                            ),
                                                           ),
                                                         ),
-                                                      ),
-                                                      if (details['gender'] != null && details['gender'].toString().isNotEmpty)
-                                                        Builder(
-                                                          builder: (context) {
-                                                            final gender = details['gender'].toString().toLowerCase();
-                                                            Color badgeColor;
-                                                            if (gender.contains('masc')) {
-                                                              badgeColor = Colors.blue;
-                                                            } else if (gender.contains('fem')) {
-                                                              badgeColor = Colors.red;
-                                                            } else if (gender.contains('neut')) {
-                                                              badgeColor = Colors.green;
-                                                            } else {
-                                                              badgeColor = Colors.grey;
-                                                            }
-
-                                                            return Container(
-                                                              margin: const EdgeInsets.only(left: 6),
-                                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                              decoration: BoxDecoration(
-                                                                color: badgeColor.withOpacity(0.1),
-                                                                borderRadius: BorderRadius.circular(4),
-                                                              ),
-                                                              child: Text(
-                                                                details['gender'],
-                                                                style: TextStyle(
-                                                                  fontSize: 11,
-                                                                  fontWeight: FontWeight.bold,
-                                                                  color: badgeColor,
-                                                                ),
-                                                              ),
-                                                            );
-                                                          }
-                                                        ),
-                                                    ],
-                                                  ),
-                                                  if (details['base_form'] != null)
-                                                    Padding(
-                                                      padding: const EdgeInsets.only(top: 2.0),
-                                                      child: Text(
-                                                        'Base form: ${details['base_form']}',
-                                                        style: TextStyle(
-                                                          fontSize: 13,
-                                                          fontStyle: FontStyle.italic,
-                                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                        ),
-                                                      ),
-                                                    ),
-                                              ],
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(),
-                                             onPressed: () {
-                                               // TTS placeholder
-                                             },
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Definitions',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                          letterSpacing: 0.5, 
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      if (details['definitions'] != null)
-                                         ...((details['definitions'] as List).map((def) => Padding(
-                                           padding: const EdgeInsets.only(bottom: 6.0),
-                                           child: Text(
-                                             '• $def',
-                                             style: TextStyle(
-                                               fontSize: 14,
-                                               height: 1.3,
-                                               color: Theme.of(context).colorScheme.onSurface,
-                                             ),
-                                           ),
-                                         )).toList())
-                                      else
-                                          const Text('No definition available'),
-
-                                      const SizedBox(height: 20),
-                                      
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 44, // Compact Button
-                                        child: ElevatedButton(
-                                          onPressed: () async {
-                                              if (isSaved) {
-                                                await _vocabularyService.removeWord(word);
-                                              } else {
-                                                await _vocabularyService.saveWord(word);
-                                              }
-                                              setPopupState(() {}); // Refresh local popup state
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: isSaved ? Theme.of(context).cardColor : Theme.of(context).colorScheme.primary,
-                                            elevation: 0,
-                                            side: isSaved ? BorderSide(color: Theme.of(context).dividerColor) : null,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                isSaved ? Icons.check_circle_rounded : Icons.playlist_add_rounded,
-                                                color: isSaved ? Theme.of(context).colorScheme.primary : Colors.white,
-                                                size: 18,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                isSaved ? 'Saved to Vocabulary' : 'Add to Vocabulary',
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isSaved ? Theme.of(context).colorScheme.primary : Colors.white,
+                                                  ],
                                                 ),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                                  onPressed: () {
+                                                    _ttsService.speak(displayDetails['word'] ?? word);
+                                                  },
                                               ),
                                             ],
                                           ),
-                                        ),
+                                          const SizedBox(height: 8),
+                                          // Removed redundant Contextual Analysis text block as it's now in the badge/dictionary entry
+                                          // Defs
+                                          Text(
+                                            'Definitions',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          if (displayDetails['definitions'] != null && (displayDetails['definitions'] as List).isNotEmpty)
+                                             ...((displayDetails['definitions'] as List).map((def) => Padding(
+                                               padding: const EdgeInsets.only(bottom: 6.0),
+                                               child: Text(
+                                                 '• $def',
+                                                 style: TextStyle(
+                                                   fontSize: 14,
+                                                   height: 1.3,
+                                                   color: Theme.of(context).colorScheme.onSurface,
+                                                 ),
+                                               ),
+                                             )).toList())
+                                          else
+                                              const Text('No definition available'),
+  
+                                          const SizedBox(height: 20),
+                                          
+                                          SizedBox(
+                                            width: double.infinity,
+                                            height: 44, 
+                                            child: ElevatedButton(
+                                              onPressed: () async {
+                                                  if (isSaved) {
+                                                    await _vocabularyService.removeWord(word);
+                                                  } else {
+                                                    await _vocabularyService.saveWord(word);
+                                                  }
+                                                  setPopupState(() {}); 
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: isSaved ? Theme.of(context).cardColor : Theme.of(context).colorScheme.primary,
+                                                elevation: 0,
+                                                side: isSaved ? BorderSide(color: Theme.of(context).dividerColor) : null,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    isSaved ? Icons.check_circle_rounded : Icons.playlist_add_rounded,
+                                                    color: isSaved ? Theme.of(context).colorScheme.primary : Colors.white,
+                                                    size: 18,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    isSaved ? 'Saved' : 'Save Word',
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: isSaved ? Theme.of(context).colorScheme.primary : Colors.white,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4), 
+                                        ],
                                       ),
-                                      const SizedBox(height: 4), 
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
                           ],
                         );
                       }
-                  )
-                ]
-              );
-           }
-         );
-      },
-      transitionBuilder: (context, anim1, anim2, child) {
-        return FadeTransition(
-          opacity: anim1,
-          child: child, // Simple fade, could add ScaleTransition from tap point
-        );
-      },
+                  );
+                 }
+               ),
+              ],
+            );
+         }
+       );
+    },
+    transitionBuilder: (context, anim1, anim2, child) {
+        return FadeTransition(opacity: anim1, child: child);
+    },
     );
   }
 
