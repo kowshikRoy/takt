@@ -457,11 +457,11 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                       children: _buildParagraphSpans(context, text, index),
                     ),
                   ),
-                  if (isTranslationVisible && translation != null)
+                  if (isTranslationVisible && englishTranslation != null && englishTranslation.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Text(
-                        translation,
+                        englishTranslation,
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           fontStyle: FontStyle.italic,
