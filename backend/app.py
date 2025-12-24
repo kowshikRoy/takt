@@ -75,6 +75,19 @@ def get_translator(source_lang, target_lang):
         logger.error(f"Failed to load translation model for {key}: {str(e)}")
         return None
 
+# Preload both translation models at startup
+logger.info("Preloading translation models...")
+try:
+    # Preload de-en translator
+    get_translator('de', 'en')
+    logger.info("✓ German-to-English translator preloaded")
+    
+    # Preload en-de translator
+    get_translator('en', 'de')
+    logger.info("✓ English-to-German translator preloaded")
+except Exception as e:
+    logger.error(f"Error preloading translation models: {e}")
+
 def analyze_german_text(text):
     """
     Helper to run spaCy analysis on German text and return simplified results.
