@@ -732,7 +732,57 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                              top: isTopHalf ? 30.0 : 20, 
                                              bottom: !isTopHalf ? 30.0 : 20
                                          ),
-                                         child: SingleChildScrollView(
+                                         child: Column(
+                                           mainAxisSize: MainAxisSize.min,
+                                           children: [
+                                             Padding(
+                                               padding: const EdgeInsets.only(bottom: 4.0),
+                                               child: Row(
+                                                 mainAxisAlignment: MainAxisAlignment.end,
+                                                 children: [
+                                                   Material(
+                                                     color: Colors.transparent,
+                                                     child: InkWell(
+                                                       borderRadius: BorderRadius.circular(20),
+                                                       onTap: () async {
+                                                         if (isSaved) {
+                                                           await _vocabularyService.removeWord(word);
+                                                         } else {
+                                                           await _vocabularyService.saveWord(word);
+                                                         }
+                                                         setPopupState(() {});
+                                                       },
+                                                       child: Container(
+                                                         padding: const EdgeInsets.all(8),
+                                                         child: Icon(
+                                                           isSaved ? Icons.bookmark : Icons.bookmark_border,
+                                                           color: isSaved ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+                                                           size: 22,
+                                                         ),
+                                                       ),
+                                                     ),
+                                                   ),
+                                                   const SizedBox(width: 4),
+                                                   Material(
+                                                     color: Colors.transparent,
+                                                     child: InkWell(
+                                                       borderRadius: BorderRadius.circular(20),
+                                                       onTap: () => Navigator.of(context).pop(),
+                                                       child: Container(
+                                                         padding: const EdgeInsets.all(8),
+                                                         child: Icon(
+                                                           Icons.close_rounded,
+                                                           color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                           size: 22,
+                                                         ),
+                                                       ),
+                                                     ),
+                                                   ),
+                                                 ],
+                                               ),
+                                             ),
+                                             Flexible(
+                                               child: SingleChildScrollView(
                                            child: Column(
                                              mainAxisSize: MainAxisSize.min,
                                              crossAxisAlignment: CrossAxisAlignment.start,
@@ -857,64 +907,17 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                               )).toList())
                                            else
                                                const Text('No definition available'),
-   
-                                         ],
-                                       ),
-                                     ),
-                                   ),
-                                 ),
-                                 Positioned(
-                                    top: 16,
-                                    right: 16,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Bookmark icon
-                                        Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(20),
-                                            onTap: () async {
-                                              if (isSaved) {
-                                                await _vocabularyService.removeWord(word);
-                                              } else {
-                                                await _vocabularyService.saveWord(word);
-                                              }
-                                              setPopupState(() {});
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              child: Icon(
-                                                isSaved ? Icons.bookmark : Icons.bookmark_border,
-                                                color: isSaved ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
-                                                size: 22,
-                                              ),
-                                            ),
+                                            ],
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        // Close icon
-                                        Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(20),
-                                            onTap: () {
-                                              Navigator.of(context).pop();
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              child: Icon(
-                                                Icons.close_rounded,
-                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                size: 20,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                               ),
+                                             ),
+                                           ],
+                                         ),
+                                      ),
                                     ),
                                   ),
-                               ),
+                                ),
+
                              ],
                            );
                          },
