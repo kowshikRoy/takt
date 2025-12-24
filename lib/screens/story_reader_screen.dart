@@ -636,86 +636,92 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
                                                // 2. Word Details
                                                Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                      Row(
-                                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                                        children: [
-                                                          Text(
-                                                            displayDetails['word'] ?? word,
-                                                            style: TextStyle(
-                                                              fontSize: 18, 
-                                                              fontWeight: FontWeight.bold,
-                                                              color: Theme.of(context).colorScheme.onSurface,
-                                                              height: 1.2,
-                                                            ),
-                                                          ),
-                                                          if (displayDetails['pos'] != null)
-                                                           Container(
-                                                            margin: const EdgeInsets.only(left: 8),
-                                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                            decoration: BoxDecoration(
-                                                              color: (specificAnalysis != null) 
-                                                                ? Colors.blueAccent.withValues(alpha: 0.15)
-                                                                : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                                              borderRadius: BorderRadius.circular(4),
-                                                              border: (specificAnalysis != null)
-                                                                ? Border.all(color: Colors.blueAccent.withValues(alpha: 0.3))
-                                                                : null,
-                                                            ),
-                                                            child: Row(
-                                                              mainAxisSize: MainAxisSize.min,
-                                                              children: [
-                                                                if (specificAnalysis != null) ...[
-                                                                  const Icon(Icons.auto_awesome, size: 10, color: Colors.blueAccent),
-                                                                  const SizedBox(width: 4),
-                                                                ],
-                                                                Text(
-                                                                  displayDetails['pos'].toString().toUpperCase(),
-                                                                  style: TextStyle(
-                                                                    fontSize: 10,
-                                                                    fontWeight: FontWeight.bold,
-                                                                    color: (specificAnalysis != null) 
-                                                                      ? Colors.blueAccent 
-                                                                      : Theme.of(context).colorScheme.primary,
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      // Base form
-                                                       if (displayDetails['base_form'] != null || specificAnalysis?['lemma'] != null)
-                                                        Padding(
-                                                          padding: const EdgeInsets.only(top: 2.0),
-                                                          child: Text(
-                                                            'Lemma: ${specificAnalysis?['lemma'] ?? displayDetails['base_form']}',
-                                                            style: TextStyle(
-                                                              fontSize: 13,
-                                                              fontStyle: FontStyle.italic,
-                                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                  ],
-                                                ),
-                                              ),
-                                              IconButton(
-                                                icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(),
-                                                  onPressed: () {
-                                                    _ttsService.speak(displayDetails['word'] ?? word);
-                                                  },
-                                              ),
-                                            ],
-                                          ),
+                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                                 children: [
+                                                   Expanded(
+                                                     child: Column(
+                                                       crossAxisAlignment: CrossAxisAlignment.start,
+                                                       children: [
+                                                         Row(
+                                                           crossAxisAlignment: CrossAxisAlignment.center,
+                                                           children: [
+                                                             Text(
+                                                               displayDetails['word'] ?? word,
+                                                               style: TextStyle(
+                                                                 fontSize: 18, 
+                                                                 fontWeight: FontWeight.bold,
+                                                                 color: Theme.of(context).colorScheme.onSurface,
+                                                                 height: 1.2,
+                                                               ),
+                                                             ),
+                                                             if (displayDetails['gender'] != null)
+                                                               Container(
+                                                                 margin: const EdgeInsets.only(left: 6),
+                                                                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                                                                 decoration: BoxDecoration(
+                                                                   color: _getGenderColor(displayDetails['gender']).withValues(alpha: 0.1),
+                                                                   borderRadius: BorderRadius.circular(4),
+                                                                 ),
+                                                                 child: Text(
+                                                                   displayDetails['gender'].toString().toUpperCase(),
+                                                                   style: TextStyle(
+                                                                     fontSize: 10,
+                                                                     fontWeight: FontWeight.bold,
+                                                                     color: _getGenderColor(displayDetails['gender']),
+                                                                   ),
+                                                                 ),
+                                                               ),
+                                                             if (displayDetails['pos'] != null)
+                                                               Container(
+                                                                 margin: const EdgeInsets.only(left: 8),
+                                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                                 decoration: BoxDecoration(
+                                                                   color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                                                   borderRadius: BorderRadius.circular(4),
+                                                                 ),
+                                                                 child: Row(
+                                                                   mainAxisSize: MainAxisSize.min,
+                                                                   children: [
+                                                                     Text(
+                                                                       displayDetails['pos'].toString().toUpperCase(),
+                                                                       style: TextStyle(
+                                                                         fontSize: 10,
+                                                                         fontWeight: FontWeight.bold,
+                                                                         color: Theme.of(context).colorScheme.primary,
+                                                                       ),
+                                                                     ),
+                                                                   ],
+                                                                 ),
+                                                               ),
+                                                           ],
+                                                         ),
+                                                         // Lemma
+                                                         if (displayDetails['base_form'] != null || specificAnalysis?['lemma'] != null)
+                                                           Padding(
+                                                             padding: const EdgeInsets.only(top: 2.0),
+                                                             child: Text(
+                                                               'Lemma: ${specificAnalysis?['lemma'] ?? displayDetails['base_form']}',
+                                                               style: TextStyle(
+                                                                 fontSize: 13,
+                                                                 fontStyle: FontStyle.italic,
+                                                                 color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                               ),
+                                                             ),
+                                                           ),
+                                                       ],
+                                                     ),
+                                                   ),
+                                                   IconButton(
+                                                     icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
+                                                     padding: EdgeInsets.zero,
+                                                     constraints: const BoxConstraints(),
+                                                     onPressed: () {
+                                                       _ttsService.speak(displayDetails['word'] ?? word);
+                                                     },
+                                                   ),
+                                                 ],
+                                               ),
                                           const SizedBox(height: 8),
                                           // Removed redundant Contextual Analysis text block as it's now in the badge/dictionary entry
                                           // Defs
@@ -809,10 +815,19 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title, Color dotColor) {
+  Color _getGenderColor(dynamic gender) {
+    if (gender == null) return Colors.grey;
+    String g = gender.toString().toLowerCase();
+    if (g == 'm' || g == 'masc') return AppTheme.genderMasc;
+    if (g == 'f' || g == 'fem') return AppTheme.genderFem;
+    if (g == 'n' || g == 'neu') return AppTheme.genderNeu;
+    return Colors.grey;
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title, Color color) {
     return Row(
       children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
+        Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 8),
         Text(
           title,
