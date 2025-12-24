@@ -200,6 +200,29 @@ class DictionaryService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> lookupWordAllPOS(String word) async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> results = await db.query(
+        'words',
+        where: 'word = ? COLLATE NOCASE',
+        whereArgs: [word.trim()],
+      );
+
+      List<Map<String, dynamic>> details = [];
+      for (var row in results) {
+        var detail = await getWordDetails(row['id'] as int);
+        if (detail != null) {
+          details.add(detail);
+        }
+      }
+      return details;
+    } catch (e) {
+      print("Lookup all POS error: $e");
+      return [];
+    }
+  }
+
   Future<Map<String, String>> getGendersForWords(List<String> words) async {
       final db = await database;
       if (words.isEmpty) return {};
