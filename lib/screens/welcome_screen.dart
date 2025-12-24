@@ -21,7 +21,7 @@ class WelcomeScreen extends StatelessWidget {
                     width: 48,
                     height: 48,
                     alignment: Alignment.center,
-                    child: const Icon(Icons.language, color: AppTheme.primary, size: 30),
+                    child: Icon(Icons.language, color: Theme.of(context).colorScheme.primary, size: 30),
                   ),
                   Expanded(
                     child: Text(
@@ -67,21 +67,36 @@ class WelcomeScreen extends StatelessWidget {
                                     height: 1.5,
                                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                   ),
-                              children: const [
+                              children: [
                                 TextSpan(text: 'Learn with our unique color-coded method for genders: '),
                                 TextSpan(
                                   text: 'Masculine',
-                                  style: TextStyle(color: AppTheme.genderMasc, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: Theme.of(context).brightness == Brightness.dark 
+                                      ? AppTheme.genderMascDark 
+                                      : AppTheme.genderMasc, 
+                                    fontWeight: FontWeight.w600
+                                  ),
                                 ),
                                 TextSpan(text: ', '),
                                 TextSpan(
                                   text: 'Feminine',
-                                  style: TextStyle(color: AppTheme.genderFem, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: Theme.of(context).brightness == Brightness.dark 
+                                      ? AppTheme.genderFemDark 
+                                      : AppTheme.genderFem, 
+                                    fontWeight: FontWeight.w600
+                                  ),
                                 ),
                                 TextSpan(text: ', and '),
                                 TextSpan(
                                   text: 'Neutral',
-                                  style: TextStyle(color: AppTheme.genderNeu, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: Theme.of(context).brightness == Brightness.dark 
+                                      ? AppTheme.genderNeuDark 
+                                      : AppTheme.genderNeu, 
+                                    fontWeight: FontWeight.w600
+                                  ),
                                 ),
                                 TextSpan(text: '.'),
                               ],
@@ -108,11 +123,20 @@ class WelcomeScreen extends StatelessWidget {
                            Column(
                              mainAxisAlignment: MainAxisAlignment.center,
                              children: [
-                               _buildGenderCard(context, 'Der', AppTheme.genderMasc, 80),
+                               _buildGenderCard(context, 'Der', 
+                                 Theme.of(context).brightness == Brightness.dark ? AppTheme.genderMascDark : AppTheme.genderMasc, 
+                                 80
+                               ),
                                const SizedBox(height: 12),
-                               _buildGenderCard(context, 'Die', AppTheme.genderFem, 96),
+                               _buildGenderCard(context, 'Die', 
+                                 Theme.of(context).brightness == Brightness.dark ? AppTheme.genderFemDark : AppTheme.genderFem, 
+                                 96
+                               ),
                                const SizedBox(height: 12),
-                               _buildGenderCard(context, 'Das', AppTheme.genderNeu, 64),
+                               _buildGenderCard(context, 'Das', 
+                                 Theme.of(context).brightness == Brightness.dark ? AppTheme.genderNeuDark : AppTheme.genderNeu, 
+                                 64
+                               ),
                              ],
                            ),
                         ],
@@ -147,21 +171,21 @@ class WelcomeScreen extends StatelessWidget {
                         children: [
                           _buildCarouselItem(
                             context,
-                            AppTheme.genderMasc,
+                            Theme.of(context).brightness == Brightness.dark ? AppTheme.genderMascDark : AppTheme.genderMasc,
                             'Master Der, Die, Das',
                             'Visualize genders with colors immediately.',
                           ),
                           const SizedBox(width: 16),
                           _buildCarouselItem(
                             context,
-                            AppTheme.genderFem,
+                            Theme.of(context).brightness == Brightness.dark ? AppTheme.genderFemDark : AppTheme.genderFem,
                             'Conquer Cases',
                             'Learn nominative to genitive naturally.',
                           ),
                           const SizedBox(width: 16),
                           _buildCarouselItem(
                             context,
-                            AppTheme.genderNeu,
+                            Theme.of(context).brightness == Brightness.dark ? AppTheme.genderNeuDark : AppTheme.genderNeu,
                             'Compound Words',
                             'Break down complex vocabulary.',
                           ),
@@ -193,8 +217,8 @@ class WelcomeScreen extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        shadowColor: AppTheme.primary.withValues(alpha: 0.2),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                         elevation: 8,
                       ),
                       child: Row(

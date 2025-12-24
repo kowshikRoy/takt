@@ -17,6 +17,26 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setString('theme_mode', mode.toString());
   }
 
+
+
+  void toggleTheme() {
+    if (_themeMode == ThemeMode.dark) {
+      setThemeMode(ThemeMode.light);
+    } else {
+      setThemeMode(ThemeMode.dark);
+    }
+  }
+
+  String _fontFamily = 'Spline Sans';
+  String get fontFamily => _fontFamily;
+
+  void setFontFamily(String font) async {
+    _fontFamily = font;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('font_family', font);
+  }
+
   Future<void> _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final String? themeStr = prefs.getString('theme_mode');
@@ -28,15 +48,12 @@ class ThemeProvider extends ChangeNotifier {
       } else {
         _themeMode = ThemeMode.system;
       }
-      notifyListeners();
     }
-  }
-
-  void toggleTheme() {
-    if (_themeMode == ThemeMode.dark) {
-      setThemeMode(ThemeMode.light);
-    } else {
-      setThemeMode(ThemeMode.dark);
+    
+    final String? fontStr = prefs.getString('font_family');
+    if (fontStr != null) {
+      _fontFamily = fontStr;
     }
+    notifyListeners();
   }
 }

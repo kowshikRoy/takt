@@ -4,9 +4,16 @@ import spacy
 import logging
 import json
 
+import logging
+import warnings
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Suppress specific Torch/Transformers warning
+warnings.filterwarnings("ignore", message=".*torch.utils._pytree._register_pytree_node is deprecated.*")
+
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Flutter app
@@ -467,7 +474,10 @@ def process_full_stream():
             logger.error(f"Stream error: {str(e)}")
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
 
-    return Response(stream_with_context(generate()), mimetype='text/event-stream')
+    response = Response(stream_with_context(generate()), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'
+    return response
 
 @app.route('/import_url', methods=['POST'])
 

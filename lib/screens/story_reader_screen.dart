@@ -131,7 +131,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
       }
     } catch (e) {
       print('Error fetching contextual analysis: $e');
-      if (mounted) {
+    } finally {
+      if (mounted && _isLoadingAnalysis) {
         setState(() {
           _isLoadingAnalysis = false;
         });
@@ -213,7 +214,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   Widget _buildStickyHeader(BuildContext context) {
     return SliverAppBar(
       pinned: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95), // Surface color
+      surfaceTintColor: Colors.transparent, // M3 specific: avoid tint if using manual background
       elevation: 0,
        automaticallyImplyLeading: false,
       title: Padding(
@@ -224,7 +226,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             // Back Button
             Container(
               width: 40, height: 40,
-              decoration: const BoxDecoration(shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHigh, // More expressive
+                shape: BoxShape.circle,
+              ),
               child: IconButton(
                 icon: Icon(Icons.arrow_back_ios_new_rounded,
                     size: 20, color: Theme.of(context).colorScheme.onSurface),
@@ -236,11 +241,11 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             Row(
               children: [
                 if (_isLoadingAnalysis)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 12.0),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12.0),
                     child: SizedBox(
                       width: 14, height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                 if (!_isLoadingAnalysis && _paragraphAnalysisData.isNotEmpty)
@@ -270,13 +275,16 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.stop_circle_rounded, 
-                      size: 28, color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5)),
+                      size: 28, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
                   onPressed: () => _ttsService.stop(),
                 ),
                 const SizedBox(width: 8),
                 Container(
                   width: 40, height: 40,
-                  decoration: const BoxDecoration(shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    shape: BoxShape.circle,
+                  ),
                   child: IconButton(
                     icon: Icon(Icons.brightness_6_rounded, 
                         size: 24, color: Theme.of(context).colorScheme.onSurface),
@@ -325,28 +333,25 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         children: [
           Text(
             widget.article?.level ?? 'KAPITEL 3',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
-              letterSpacing: 1.5,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+               color: Theme.of(context).colorScheme.primary,
+               letterSpacing: 1.5,
+               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             widget.article?.title ?? 'Der verlorene Schlüssel',
-            style: TextStyle(
-              fontSize: 24, // text-3xl
-              fontWeight: FontWeight.w800, // extrabold
+            style: Theme.of(context).textTheme.displaySmall?.copyWith( // Using display style for Title
+              fontWeight: FontWeight.w800,
               height: 1.1,
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            widget.article != null ? '' : 'The Lost Key', // Hide subtitle for custom articles for now
-            style: TextStyle(
-              fontSize: 12,
+            widget.article != null ? '' : 'The Lost Key', 
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontStyle: FontStyle.italic,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -436,7 +441,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                     size: 16,
                     color: englishTranslation != null && englishTranslation.isNotEmpty
                         ? (isTranslationVisible ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withValues(alpha: 0.4))
-                        : Colors.transparent,
+                        : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.1), // Placeholder if missing
                   ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -452,9 +457,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 children: [
                   RichText(
                     text: TextSpan(
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontSize: 18,
-                        height: 1.5,
+                        height: 1.6, // More breathing room
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                       children: _buildParagraphSpans(context, text, index),
@@ -513,8 +518,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
             Color wordColor = Theme.of(context).colorScheme.onSurface;
             FontWeight wordWeight = FontWeight.normal;
-            TextDecoration wordDecoration = TextDecoration.none;
-            Color? decorationColor;
+            // Removed underline decoration logic
+            // TextDecoration wordDecoration = TextDecoration.none;
+            // Color? decorationColor;
             
             // CONTEXTUAL HIGHLIGHT (POS/GENDER)
             String? contextGender;
@@ -565,11 +571,17 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 }
 
                 if (finalGender != null) {
-                    wordWeight = FontWeight.normal;
-                    wordDecoration = TextDecoration.underline;
-                    if (finalGender == 'm') decorationColor = AppTheme.genderMasc;
-                    else if (finalGender == 'f') decorationColor = AppTheme.genderFem;
-                    else if (finalGender == 'n') decorationColor = AppTheme.genderNeu;
+                    wordWeight = FontWeight.w500;
+                    
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+                    if (finalGender == 'm') {
+                      wordColor = isDark ? AppTheme.genderMascDark : AppTheme.genderMasc;
+                    } else if (finalGender == 'f') {
+                      wordColor = isDark ? AppTheme.genderFemDark : AppTheme.genderFem;
+                    } else if (finalGender == 'n') {
+                      wordColor = isDark ? AppTheme.genderNeuDark : AppTheme.genderNeu;
+                    }
                 }
             }
 
@@ -579,10 +591,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 style: TextStyle(
                   color: isHighlighted ? Colors.white : wordColor,
                   fontWeight: wordWeight,
-                  decoration: wordDecoration,
-                  decorationColor: decorationColor,
-                  decorationStyle: TextDecorationStyle.dashed,
-                  decorationThickness: 1.5,
+                  // decoration: wordDecoration, -> removed
+                  // decorationColor: decorationColor, -> removed
+                  // decorationStyle: TextDecorationStyle.dashed, -> removed
+                  // decorationThickness: 1.5, -> removed
                   backgroundColor: isHighlighted 
                     ? Theme.of(context).colorScheme.primary 
                     : null,
@@ -645,8 +657,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             builder: (context, setPopupState) {
                 return Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    color: Theme.of(context).colorScheme.surfaceContainer, // Surface Container for Sheets
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)), // Expressive corner
                   ),
                   padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 30),
                   child: Column(
@@ -826,6 +838,43 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                        ],
                                      ),
                                      const SizedBox(height: 16),
+
+                                     if (translatedSentence != null && translatedSentence.isNotEmpty)
+                                       Padding(
+                                         padding: const EdgeInsets.only(bottom: 16.0),
+                                         child: Container(
+                                           padding: const EdgeInsets.all(12),
+                                           width: double.infinity,
+                                           decoration: BoxDecoration(
+                                             color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                             borderRadius: BorderRadius.circular(12),
+                                           ),
+                                           child: Column(
+                                             crossAxisAlignment: CrossAxisAlignment.start,
+                                             children: [
+                                               Text(
+                                                 'Translation', 
+                                                 style: TextStyle(
+                                                   fontSize: 11, 
+                                                   fontWeight: FontWeight.bold, 
+                                                   color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                                   letterSpacing: 0.5,
+                                                 )
+                                               ),
+                                               const SizedBox(height: 4),
+                                               Text(
+                                                 translatedSentence,
+                                                 style: TextStyle(
+                                                   fontSize: 14,
+                                                   fontStyle: FontStyle.italic,
+                                                   color: Theme.of(context).colorScheme.onSurface,
+                                                   height: 1.4,
+                                                 ),
+                                               ),
+                                             ],
+                                           ),
+                                         ),
+                                       ),
                                      
                                      if (displayDetails['definitions'] != null && (displayDetails['definitions'] as List).isNotEmpty)
                                         ...( (displayDetails['definitions'] as List).toSet().toList().map((def) => Padding(

@@ -529,13 +529,13 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Expanded(flex: 1, child: Text(caseName, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSubLight))),
+          Expanded(flex: 1, child: Text(caseName, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurfaceVariant))),
           
           Expanded(
             flex: 2 ,
             child: RichText(
               text: TextSpan(
-                style: TextStyle(fontSize: 14, color: AppTheme.textMainLight),
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
                 children: [
                   TextSpan(text: '$sArt ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.genderMasc)),
                   TextSpan(text: sNoun.substring(0, sNoun.length - (suffix != null && caseName == 'Gen' ? 1 : 0))),

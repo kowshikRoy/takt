@@ -130,6 +130,7 @@ class BackendService {
   }
 
   Stream<Map<String, dynamic>> processFullArticleStream(String fullText, {String? lang}) async* {
+    final client = http.Client();
     try {
       final request = http.Request('POST', Uri.parse('$baseUrl/process_full_stream'));
       request.headers['Content-Type'] = 'application/json';
@@ -138,7 +139,7 @@ class BackendService {
         if (lang != null) 'lang': lang,
       });
 
-      final response = await request.send();
+      final response = await client.send(request);
       
       if (response.statusCode != 200) {
         yield {'type': 'error', 'error': 'Server error: ${response.statusCode}'};
@@ -148,23 +149,22 @@ class BackendService {
       String buffer = '';
       
       await for (var chunk in response.stream.transform(utf8.decoder)) {
+        print('DEBUG: Received chunk of ${chunk.length} characters');
         buffer += chunk;
         
-        // Process complete SSE messages (ending with \n\n)
         while (buffer.contains('\n\n')) {
           final endIndex = buffer.indexOf('\n\n');
           final message = buffer.substring(0, endIndex);
           buffer = buffer.substring(endIndex + 2);
           
-          // Parse SSE format: "data: {...}"
           if (message.startsWith('data: ')) {
-            final jsonStr = message.substring(6); // Remove "data: " prefix
+            final jsonStr = message.substring(6);
             try {
               final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+              print('DEBUG: Parsed message type: ${data['type']}');
               yield data;
             } catch (e) {
               print('Error parsing SSE message: $e');
-              print('Message: $jsonStr');
             }
           }
         }
@@ -172,6 +172,8 @@ class BackendService {
     } catch (e) {
       print('Stream error: $e');
       yield {'type': 'error', 'error': 'Connection error: $e'};
+    } finally {
+      client.close();
     }
   }
 }

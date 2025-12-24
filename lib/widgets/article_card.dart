@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/article_model.dart';
-import '../theme/app_theme.dart';
+
 
 class ArticleCard extends StatelessWidget {
   final Article article;
@@ -17,39 +17,34 @@ class ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.hardEdge,
+    return Card(
+      elevation: 0, // Flat card style, or low elevation if desired. Using 0 to match 'outlined' feel or just relying on color.
+      // Actually standard M3 card has some elevation or outline. Let's stick to theme default which we set to 0 with outline in AppTheme.
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image
-            Container(
+            SizedBox(
               height: 160,
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                image: DecorationImage(
-                  image: article.imageUrl.startsWith('http')
-                      ? NetworkImage(article.imageUrl) as ImageProvider
-                      : AssetImage(article.imageUrl),
-                  fit: BoxFit.cover,
-                ),
-              ),
               child: Stack(
+                fit: StackFit.expand,
                 children: [
+                   Container(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    child: Image(
+                      image: article.imageUrl.startsWith('http')
+                          ? NetworkImage(article.imageUrl) as ImageProvider
+                          : AssetImage(article.imageUrl),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(child: Icon(Icons.broken_image_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant));
+                      },
+                    ),
+                  ),
                   // Gradient overlay for text readability if needed, or just plain image as per design
                   if (onDelete != null)
                     Positioned(
@@ -63,7 +58,7 @@ class ArticleCard extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.6),
+                              color: Colors.black.withValues(alpha: 0.6),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -80,55 +75,43 @@ class ArticleCard extends StatelessWidget {
             ),
             
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    article.title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      height: 1.2,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    article.description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      height: 1.4,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                   Row(
                     children: [
-                      Row(
-                        children: [
-                          _buildLevelBadge(article.level),
-                          const SizedBox(width: 8),
-                          Text(
-                            DateFormat('d MMMM yyyy').format(article.date),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                      _buildLevelBadge(context, article.level),
+                      const SizedBox(width: 8),
+                      Text(
+                        DateFormat('d MMM yyyy').format(article.date),
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
+                      const Spacer(),
                       Icon(
                         article.isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: article.isLiked ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        color: article.isLiked ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                         size: 20,
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    article.title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    article.description,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                       color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -139,11 +122,11 @@ class ArticleCard extends StatelessWidget {
     );
   }
 
-  Widget _buildLevelBadge(String level) {
+  Widget _buildLevelBadge(BuildContext context, String level) {
     Color bg;
     Color text;
 
-    // Simple logic for badge colors
+    // Adapting to use M3 colors loosely or stick to the semantic colors
     switch (level) {
       case 'A1':
       case 'A2':
@@ -161,21 +144,20 @@ class ArticleCard extends StatelessWidget {
         text = const Color(0xFF991B1B); // red-800
         break;
       default:
-        bg = Colors.grey[200]!;
-        text = Colors.grey[800]!;
+        bg = Theme.of(context).colorScheme.surfaceContainerHigh;
+        text = Theme.of(context).colorScheme.onSurface;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8), // slightly more rounded
       ),
       child: Text(
         level,
-        style: TextStyle(
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: text,
-          fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
       ),

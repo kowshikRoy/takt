@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/article_model.dart';
-import '../theme/app_theme.dart';
+
 
 class CompactArticleCard extends StatelessWidget {
   final Article article;
@@ -28,7 +28,7 @@ class CompactArticleCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
              BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -61,7 +61,7 @@ class CompactArticleCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -87,7 +87,7 @@ class CompactArticleCard extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
+                            color: Colors.black.withValues(alpha: 0.6),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
