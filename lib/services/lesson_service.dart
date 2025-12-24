@@ -87,4 +87,18 @@ class LessonService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('$_customContentKeyPrefix$articleId');
   }
+
+  Future<void> deleteImportedArticle(String articleId) async {
+    // Remove from list
+    _importedArticles.removeWhere((article) => article.id == articleId);
+    
+    // Save updated list
+    await _saveImportedArticles();
+    
+    // Delete custom content
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_customContentKeyPrefix$articleId');
+    
+    notifyListeners();
+  }
 }

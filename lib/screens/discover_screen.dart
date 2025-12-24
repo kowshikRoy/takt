@@ -127,6 +127,23 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               // New Stories Section
               SectionHeader(title: 'New Stories'),
               // _buildFilters() removed
+              // Imported Articles
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: lessonService.importedArticles.length,
+                itemBuilder: (context, index) {
+                  final article = lessonService.importedArticles[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: ArticleCard(
+                      article: article,
+                      onTap: () => _openReader(article),
+                      onDelete: () => _confirmDelete(context, article, lessonService),
+                    ),
+                  );
+                },
+              ),
               ListView.separated(
                 padding: const EdgeInsets.all(20),
                 shrinkWrap: true, // Needed inside SingleChildScrollView
@@ -156,6 +173,42 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       MaterialPageRoute(
         builder: (context) => StoryReaderScreen(article: article),
       ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, Article article, LessonService lessonService) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Lesson'),
+          content: Text('Are you sure you want to delete "${article.title}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await lessonService.deleteImportedArticle(article.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Deleted "${article.title}"'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -6,11 +6,13 @@ import '../theme/app_theme.dart';
 class ArticleCard extends StatelessWidget {
   final Article article;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;  // Optional delete callback
 
   const ArticleCard({
     super.key,
     required this.article,
     required this.onTap,
+    this.onDelete,  // Optional
   });
 
   @override
@@ -46,7 +48,31 @@ class ArticleCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                   // Gradient overlay for text readability if needed, or just plain image as per design
+                  // Gradient overlay for text readability if needed, or just plain image as per design
+                  if (onDelete != null)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: onDelete,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
