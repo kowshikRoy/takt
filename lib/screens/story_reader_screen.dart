@@ -513,6 +513,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
             Color wordColor = Theme.of(context).colorScheme.onSurface;
             FontWeight wordWeight = FontWeight.normal;
+            TextDecoration wordDecoration = TextDecoration.none;
+            Color? decorationColor;
             
             // CONTEXTUAL HIGHLIGHT (POS/GENDER)
             String? contextGender;
@@ -563,10 +565,11 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 }
 
                 if (finalGender != null) {
-                    wordWeight = FontWeight.normal; 
-                    if (finalGender == 'm') wordColor = AppTheme.genderMasc;
-                    else if (finalGender == 'f') wordColor = AppTheme.genderFem;
-                    else if (finalGender == 'n') wordColor = AppTheme.genderNeu;
+                    wordWeight = FontWeight.normal;
+                    wordDecoration = TextDecoration.underline;
+                    if (finalGender == 'm') decorationColor = AppTheme.genderMasc;
+                    else if (finalGender == 'f') decorationColor = AppTheme.genderFem;
+                    else if (finalGender == 'n') decorationColor = AppTheme.genderNeu;
                 }
             }
 
@@ -576,6 +579,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 style: TextStyle(
                   color: isHighlighted ? Colors.white : wordColor,
                   fontWeight: wordWeight,
+                  decoration: wordDecoration,
+                  decorationColor: decorationColor,
+                  decorationStyle: TextDecorationStyle.dashed,
+                  decorationThickness: 1.5,
                   backgroundColor: isHighlighted 
                     ? Theme.of(context).colorScheme.primary 
                     : null,
