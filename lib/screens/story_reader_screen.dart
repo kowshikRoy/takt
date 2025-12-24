@@ -858,54 +858,62 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                            else
                                                const Text('No definition available'),
    
-                                           const SizedBox(height: 20),
-                                           
-                                           SizedBox(
-                                             width: double.infinity,
-                                             height: 44, 
-                                             child: ElevatedButton(
-                                               onPressed: () async {
-                                                   if (isSaved) {
-                                                     await _vocabularyService.removeWord(word);
-                                                   } else {
-                                                     await _vocabularyService.saveWord(word);
-                                                   }
-                                                   setPopupState(() {}); 
-                                               },
-                                               style: ElevatedButton.styleFrom(
-                                                 backgroundColor: isSaved ? Theme.of(context).cardColor : Theme.of(context).colorScheme.primary,
-                                                 elevation: 0,
-                                                 side: isSaved ? BorderSide(color: Theme.of(context).dividerColor) : null,
-                                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                               ),
-                                               child: Row(
-                                                 mainAxisAlignment: MainAxisAlignment.center,
-                                                 children: [
-                                                   Icon(
-                                                     isSaved ? Icons.check_circle_rounded : Icons.playlist_add_rounded,
-                                                     color: isSaved ? Theme.of(context).colorScheme.primary : Colors.white,
-                                                     size: 18,
-                                                   ),
-                                                   const SizedBox(width: 8),
-                                                   Text(
-                                                     isSaved ? 'Saved' : 'Save Word',
-                                                     style: TextStyle(
-                                                       fontSize: 15,
-                                                       fontWeight: FontWeight.bold,
-                                                       color: isSaved ? Theme.of(context).colorScheme.primary : Colors.white,
-                                                     ),
-                                                   ),
-                                                 ],
-                                               ),
-                                             ),
-                                           ),
-                                           const SizedBox(height: 4), 
                                          ],
                                        ),
                                      ),
                                    ),
                                  ),
-                                 ),
+                                 Positioned(
+                                    top: 16,
+                                    right: 16,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Bookmark icon
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(20),
+                                            onTap: () async {
+                                              if (isSaved) {
+                                                await _vocabularyService.removeWord(word);
+                                              } else {
+                                                await _vocabularyService.saveWord(word);
+                                              }
+                                              setPopupState(() {});
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              child: Icon(
+                                                isSaved ? Icons.bookmark : Icons.bookmark_border,
+                                                color: isSaved ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+                                                size: 22,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Close icon
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(20),
+                                            onTap: () {
+                                              Navigator.of(context).pop();
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              child: Icon(
+                                                Icons.close_rounded,
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                ),
                              ],
                            );
