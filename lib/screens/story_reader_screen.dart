@@ -97,10 +97,17 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         } else if (type == 'paragraph') {
           // Paragraph processed - add to UI immediately
           final index = event['index'] as int;
+          final original = event['original'] as String;
+          final translation = event['translation'] as String? ?? '';
+          final sourceLang = event['source_lang'] as String? ?? 'de';
+          
           setState(() {
             _paragraphAnalysisData[index] = {
               'german_analysis': event['german_analysis'] ?? [],
-              'translated_text': event['translation'] ?? '',
+              'german_text': sourceLang == 'en' ? translation : original,  // German text to display
+              'original_text': original,  // Original text (for reference)
+              'english_translation': sourceLang == 'de' ? translation : '',  // English translation if source was German
+              'source_lang': sourceLang,
             };
           });
           print('Received paragraph $index');
@@ -356,9 +363,12 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: List.generate(paragraphs.length, (index) {
+          // Use German text from analysis if available, otherwise use original
+          final germanText = _paragraphAnalysisData[index]?['german_text'] as String? ?? paragraphs[index];
+          
           return Padding(
             padding: const EdgeInsets.only(bottom: 24.0),
-            child: _buildInteractiveParagraph(context, paragraphs[index], index),
+            child: _buildInteractiveParagraph(context, germanText, index),
           );
         }),
       );
@@ -391,7 +401,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   }
 
   Widget _buildInteractiveParagraph(BuildContext context, String text, int index) {
-    final translation = _paragraphAnalysisData[index]?['translated_text'] as String?;
+    final englishTranslation = _paragraphAnalysisData[index]?['english_translation'] as String?;
     final isTranslationVisible = _visibleParagraphTranslations.contains(index);
 
     return Column(
@@ -410,7 +420,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 const SizedBox(height: 8),
                 // Translation toggle button
                 IconButton(
-                  onPressed: translation != null ? () {
+                  onPressed: englishTranslation != null && englishTranslation.isNotEmpty ? () {
                     setState(() {
                       if (_visibleParagraphTranslations.contains(index)) {
                         _visibleParagraphTranslations.remove(index);
