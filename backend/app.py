@@ -40,8 +40,10 @@ POS_MAPPING = {
 }
 
 # Load Translation Models
-# Global cache for pipelines
+# Global cache for pipelines and results
 translators = {}
+analysis_cache = {}    # text -> results
+translation_cache = {} # (text, src, tgt) -> result 
 
 def get_translator(source_lang, target_lang):
     """
@@ -76,6 +78,13 @@ def analyze_german_text(text):
     """
     Helper to run spaCy analysis on German text and return simplified results.
     """
+    if not text:
+        return []
+        
+    if text in analysis_cache:
+        logger.info(f"Analysis Cache HIT for: {text[:20]}...")
+        return analysis_cache[text]
+
     if nlp is None:
         return []
         
@@ -90,13 +99,25 @@ def analyze_german_text(text):
         pos_detailed = token.pos_
         pos_simplified = POS_MAPPING.get(pos_detailed, 'other')
         
+        # Extract gender if available in morphological features
+        gender = token.morph.get("Gender")
+        gender_val = gender[0].lower() if gender else None
+        # Normalize to 'm', 'f', 'n' for consistency with frontend
+        if gender_val == 'masc': gender_val = 'm'
+        elif gender_val == 'fem': gender_val = 'f'
+        elif gender_val == 'neut': gender_val = 'n'
+        
         results.append({
             'word': token.text,
             'lemma': token.lemma_,
             'pos': pos_simplified,
             'pos_detailed': pos_detailed,
-            'tag': token.tag_
+            'tag': token.tag_,
+            'gender': gender_val
         })
+    
+    # Save to cache
+    analysis_cache[text] = results
     return results
 
 @app.route('/health', methods=['GET'])
@@ -105,7 +126,11 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'model_loaded': nlp is not None,
-        'translators_loaded': list(translators.keys())
+        'translators_loaded': list(translators.keys()),
+        'cache_stats': {
+            'analysis': len(analysis_cache),
+            'translation': len(translation_cache)
+        }
     })
 
 
@@ -146,12 +171,20 @@ def analyze_word():
         token = matches[0]['token']
         pos_simplified = POS_MAPPING.get(token.pos_, 'other')
         
+        # Extract gender if available
+        gender = token.morph.get("Gender")
+        gender_val = gender[0].lower() if gender else None
+        if gender_val == 'masc': gender_val = 'm'
+        elif gender_val == 'fem': gender_val = 'f'
+        elif gender_val == 'neut': gender_val = 'n'
+        
         return jsonify({
             'word': token.text,
             'lemma': token.lemma_,
             'pos': pos_simplified,
             'pos_detailed': token.pos_,
             'tag': token.tag_,
+            'gender': gender_val,
             'dep': token.dep_,
             'confidence': 1.0,
             'found': True,
@@ -204,12 +237,18 @@ def process_text():
             target_lang = 'de'
             
         # 2. Translate
-        translator = get_translator(source_lang, target_lang)
-        if not translator:
-            return jsonify({'error': 'Translation model failed to load'}), 500
-            
-        trans_result = translator(text)
-        translated_text = trans_result[0]['translation_text']
+        cache_key = (text, source_lang, target_lang)
+        if cache_key in translation_cache:
+            logger.info("Translation Cache HIT in /process")
+            translated_text = translation_cache[cache_key]
+        else:
+            translator = get_translator(source_lang, target_lang)
+            if not translator:
+                return jsonify({'error': 'Translation model failed to load'}), 500
+                
+            trans_result = translator(text)
+            translated_text = trans_result[0]['translation_text']
+            translation_cache[cache_key] = translated_text
         
         # 3. Analyze German Text
         # If source was DE, analyze source. If target is DE, analyze target.
@@ -279,29 +318,29 @@ def process_full_text():
                 s_lang, t_lang = 'en', 'de'
 
             # 2. Get translator
-            translator = get_translator(s_lang, t_lang)
-            translated_text = ""
-            if translator:
-                # Handle potential length limit by chunking if paragraph is HUGE
-                # For now assume paragraph < 512 tokens
-                try:
-                    res = translator(p)
-                    translated_text = res[0]['translation_text']
-                except Exception as e:
-                    logger.error(f"Translation failed for paragraph: {e}")
-                    translated_text = "[Translation Error]"
+            cache_key = (p, s_lang, t_lang)
+            if cache_key in translation_cache:
+                logger.info(f"Translation Cache HIT for paragraph")
+                translated_text = translation_cache[cache_key]
+            else:
+                translator = get_translator(s_lang, t_lang)
+                translated_text = ""
+                if translator:
+                    try:
+                        res = translator(p)
+                        translated_text = res[0]['translation_text']
+                        translation_cache[cache_key] = translated_text
+                    except Exception as e:
+                        logger.error(f"Translation failed for paragraph: {e}")
+                        translated_text = "[Translation Error]"
             
             # 3. Analyze
-            analysis = []
-            if s_lang == 'de':
-                analysis = analyze_german_text(p)
-            else:
-                analysis = analyze_german_text(translated_text)
+            analysis = analyze_german_text(p if s_lang == 'de' else translated_text)
 
             results.append({
                 'original': p,
                 'translation': translated_text,
-                'analysis': analysis,
+                'german_analysis': analysis,
                 'source_lang': s_lang
             })
 
