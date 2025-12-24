@@ -432,7 +432,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   icon: Icon(
                     isTranslationVisible ? Icons.translate_rounded : Icons.g_translate_rounded,
                     size: 16,
-                    color: translation != null 
+                    color: englishTranslation != null && englishTranslation.isNotEmpty
                         ? (isTranslationVisible ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withValues(alpha: 0.4))
                         : Colors.transparent,
                   ),
