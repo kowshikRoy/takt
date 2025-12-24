@@ -68,6 +68,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
       final description = result['description'] as String;
       final wasTranslated = result['was_translated'] as bool? ?? false;
       final originalLanguage = result['original_language'] as String? ?? 'unknown';
+      final coverImageUrl = result['cover_image_url'] as String?;
 
       final newArticle = Article(
         id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
@@ -75,7 +76,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
         description: description,
         level: 'Imported',
         date: DateTime.now(),
-        imageUrl: 'assets/images/story_soccer.png',
+        imageUrl: coverImageUrl ?? 'assets/images/story_soccer.png',  // Use extracted image or fallback
       );
 
       final lessonService = Provider.of<LessonService>(context, listen: false);

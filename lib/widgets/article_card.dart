@@ -42,7 +42,9 @@ class ArticleCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.grey[200],
                 image: DecorationImage(
-                  image: AssetImage(article.imageUrl), // In real app, NetworkImage
+                  image: article.imageUrl.startsWith('http')
+                      ? NetworkImage(article.imageUrl) as ImageProvider
+                      : AssetImage(article.imageUrl),
                   fit: BoxFit.cover,
                 ),
               ),

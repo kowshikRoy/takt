@@ -491,7 +491,7 @@ def import_url():
     try:
         from bs4 import BeautifulSoup
         import requests
-        from urllib.parse import urlparse
+        from urllib.parse import urlparse, urljoin
         
         data = request.get_json()
         url = data.get('url', '').strip()
@@ -520,6 +520,24 @@ def import_url():
         for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
             script.decompose()
         
+        # Extract cover image
+        cover_image_url = None
+        
+        # 1. Try Open Graph image
+        og_image = soup.find('meta', property='og:image')
+        if og_image and og_image.get('content'):
+            cover_image_url = og_image['content']
+            logger.info(f"Found OG image: {cover_image_url}")
+        
+        # 2. Try Twitter Card image
+        if not cover_image_url:
+            twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+            if twitter_image and twitter_image.get('content'):
+                cover_image_url = twitter_image['content']
+                logger.info(f"Found Twitter image: {cover_image_url}")
+        
+        # 3. Try first image in article/main content (will check after finding main_content)
+        
         # Try to extract title
         title = None
         if soup.title:
@@ -546,6 +564,31 @@ def import_url():
         
         if not main_content:
             return jsonify({'error': 'Could not extract content from page'}), 400
+        
+        # 3. Try first image in article/body (if not found via meta tags)
+        if not cover_image_url:
+            # First try to find image in article tag (more specific)
+            article_tag = soup.find('article')
+            search_area = article_tag if article_tag else main_content
+            
+            first_img = search_area.find('img')
+            if first_img and first_img.get('src'):
+                img_src = first_img['src']
+                logger.info(f"Found img src: {img_src}")
+                # Handle relative URLs
+                if img_src.startswith('//'):
+                    img_src = 'https:' + img_src
+                elif img_src.startswith('/'):
+                    img_src = urljoin(url, img_src)
+                elif not img_src.startswith('http'):
+                    img_src = urljoin(url, img_src)
+                cover_image_url = img_src
+                logger.info(f"Found article image: {cover_image_url}")
+            else:
+                logger.info(f"No img tag found in search area")
+        
+        if not cover_image_url:
+            logger.info("No cover image found")
         
         # Extract text
         # Get all paragraphs
@@ -610,7 +653,8 @@ def import_url():
             'description': description,
             'url': url,
             'original_language': detected_lang,
-            'was_translated': False  # No longer translating in import
+            'was_translated': False,  # No longer translating in import
+            'cover_image_url': cover_image_url  # Cover image URL or None
         })
         
     except requests.exceptions.Timeout:

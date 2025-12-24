@@ -46,7 +46,9 @@ class CompactArticleCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
                     image: DecorationImage(
-                      image: AssetImage(article.imageUrl),
+                      image: article.imageUrl.startsWith('http')
+                          ? NetworkImage(article.imageUrl) as ImageProvider
+                          : AssetImage(article.imageUrl),
                       fit: BoxFit.cover,
                     ),
                   ),
