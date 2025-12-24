@@ -410,32 +410,40 @@ def process_full_stream():
                     else:
                         s_lang, t_lang = 'en', 'de'
 
-                    # 2. Get translator
+                    # 2. Translate if needed
                     cache_key = (p, s_lang, t_lang)
-                    if cache_key in translation_cache:
-                        logger.info(f"Translation Cache HIT for paragraph {index}")
-                        translated_text = translation_cache[cache_key]
-                    else:
-                        translator = get_translator(s_lang, t_lang)
-                        translated_text = ""
-                        if translator:
-                            try:
-                                res = translator(p)
-                                translated_text = res[0]['translation_text']
-                                translation_cache[cache_key] = translated_text
-                            except Exception as e:
-                                logger.error(f"Translation failed for paragraph {index}: {e}")
-                                translated_text = "[Translation Error]"
+                    translated_text = ""
+                    german_text = p  # Default to original if already German
                     
-                    # 3. Analyze
-                    analysis = analyze_german_text(p if s_lang == 'de' else translated_text)
+                    if s_lang == 'en':
+                        # English content - translate to German
+                        if cache_key in translation_cache:
+                            logger.info(f"Translation Cache HIT for paragraph {index}")
+                            translated_text = translation_cache[cache_key]
+                        else:
+                            translator = get_translator(s_lang, t_lang)
+                            if translator:
+                                try:
+                                    res = translator(p)
+                                    translated_text = res[0]['translation_text']
+                                    translation_cache[cache_key] = translated_text
+                                except Exception as e:
+                                    logger.error(f"Translation failed for paragraph {index}: {e}")
+                                    translated_text = "[Translation Error]"
+                        german_text = translated_text  # Use German translation for analysis
+                    else:
+                        # Already German - no translation needed
+                        translated_text = ""  # Empty since we don't need EN translation for display
+                    
+                    # 3. Analyze the German text
+                    analysis = analyze_german_text(german_text)
 
                     # Stream this paragraph's result
                     result = {
                         'type': 'paragraph',
                         'index': index,
                         'original': p,
-                        'translation': translated_text,
+                        'translation': translated_text,  # German translation if source was English, empty if already German
                         'german_analysis': analysis,
                         'source_lang': s_lang
                     }
