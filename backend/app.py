@@ -587,6 +587,28 @@ def import_url():
             else:
                 logger.info(f"No img tag found in search area")
         
+        # 4. Try favicon as last resort
+        if not cover_image_url:
+            # Look for favicon in link tags
+            favicon_link = soup.find('link', rel=lambda x: x and 'icon' in x.lower() if x else False)
+            if favicon_link and favicon_link.get('href'):
+                favicon_href = favicon_link['href']
+                # Handle relative URLs
+                if favicon_href.startswith('//'):
+                    favicon_href = 'https:' + favicon_href
+                elif favicon_href.startswith('/'):
+                    favicon_href = urljoin(url, favicon_href)
+                elif not favicon_href.startswith('http'):
+                    favicon_href = urljoin(url, favicon_href)
+                cover_image_url = favicon_href
+                logger.info(f"Found favicon: {cover_image_url}")
+            else:
+                # Try default favicon location
+                parsed_url = urlparse(url)
+                default_favicon = f"{parsed_url.scheme}://{parsed_url.netloc}/favicon.ico"
+                cover_image_url = default_favicon
+                logger.info(f"Using default favicon: {cover_image_url}")
+        
         if not cover_image_url:
             logger.info("No cover image found")
         
