@@ -28,9 +28,9 @@ class GenderPracticeScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
                           value: 0.6,
-                          backgroundColor: Theme.of(context).dividerColor.withOpacity(0.3),
+                          backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.3),
                           color: Theme.of(context).colorScheme.primary,
-                          minHeight: 8,
+                          minHeight: 12,
                         ),
                       ),
                     ),

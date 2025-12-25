@@ -12,6 +12,7 @@ import '../services/backend_service.dart';
 import '../services/tts_service.dart';
 
 import '../models/article_model.dart';
+import 'package:share_plus/share_plus.dart';
 
 class StoryReaderScreen extends StatefulWidget {
   final Article? article;
@@ -447,6 +448,19 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   constraints: const BoxConstraints(),
                   visualDensity: VisualDensity.compact,
                 ),
+                const SizedBox(height: 8),
+                // AI Explain Button
+                IconButton(
+                  onPressed: () => _handleExplainTap(context, text),
+                  icon: Icon(
+                    Icons.share_rounded,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                ),
                 ],
               ),
             ),
@@ -625,6 +639,26 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   }
 
   final BackendService _backendService = BackendService();
+
+  void _handleExplainTap(BuildContext context, String text) {
+    const String systemInstruction = """
+Current Role: Expert German Language Tutor & Linguist.
+
+Task: Analyze the German text provided below for a language learner (Level B1-B2).
+
+Please provide a structured response with the following sections:
+1. 📖 **Translation**: A natural, idiomatic English translation.
+2. 🔍 **Grammar Breakdown**: Analyze the sentence structure, verb tenses, and cases (Nominative, Accusative, Dative, Genitive). Explain *why* specific cases are used.
+3. 🧠 **Vocabulary**: Highlight key words, compound nouns (split them), and separable verbs. Include the gender (der/die/das) for all nouns.
+4. 💡 **Nuances**: Mention any cultural context, tone (formal/informal), or interesting idioms used.
+
+Keep the explanation clear, encouraging, and easy to read.
+""";
+    
+    final String prompt = "$systemInstruction\n\n🇩🇪 TEXT TO ANALYZE:\n$text";
+    
+    Share.share(prompt, subject: 'German Text Analysis');
+  }
 
   void _handleWordTap(String word, String contextText, Offset tapPosition, int paragraphIndex) async {
       print("DEBUG: Tapped word: '$word' in paragraph $paragraphIndex at $tapPosition");

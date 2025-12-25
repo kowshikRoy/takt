@@ -226,48 +226,13 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Container(
-              height: 16,
-              decoration: BoxDecoration(
-                color: Theme.of(context).dividerColor.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(999),
-                boxShadow: const [
-                  BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.06), blurRadius: 4, offset: Offset(0, 2), spreadRadius: 0)
-                ],
-              ),
-              child: Stack(
-                children: [
-                  FractionallySizedBox(
-                    widthFactor: (_score % 10) / 10 + 0.1, // Fake progress
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.genderNeu,
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: const [
-                           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 4, offset: Offset(0, 2))
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          Container(
-                             decoration: BoxDecoration(
-                               gradient: LinearGradient(
-                                 begin: Alignment.topCenter,
-                                 end: Alignment.bottomCenter,
-                                 colors: [Colors.white.withValues(alpha: 0.2), Colors.transparent]
-                               ),
-                               borderRadius: BorderRadius.circular(999),
-                             ),
-                          ),
-                          Positioned(
-                             top: 4, right: 8, left: 12,
-                             child: Container(height: 4, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(999),)),
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: (_score % 10) / 10 + 0.1, // Keep existing logic map
+                backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+                color: Theme.of(context).colorScheme.primary,
+                minHeight: 12,
               ),
             ),
           ),
