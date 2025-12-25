@@ -399,6 +399,48 @@ def process_full_stream():
             # Send initial metadata
             yield f"data: {json.dumps({'type': 'metadata', 'total_paragraphs': len(paragraphs)})}\n\n"
             
+            # Helper to split text into chunks
+            def split_into_chunks(text, max_words=200):
+                if not text:
+                    return []
+                
+                # Simple check first
+                if len(text.split()) <= max_words:
+                    return [text]
+
+                # Use spaCy for sentence splitting if available (even if model is German, punctuation is similar)
+                sentences = []
+                if nlp:
+                    try:
+                        doc = nlp(text)
+                        sentences = [sent.text.strip() for sent in doc.sents]
+                    except:
+                        # Fallback if text is too long for spacy too or other error
+                        import re
+                        sentences = re.split(r'(?<=[.!?])\s+', text)
+                else:
+                    import re
+                    sentences = re.split(r'(?<=[.!?])\s+', text)
+                
+                chunks = []
+                current_chunk = []
+                current_count = 0
+                
+                for sent in sentences:
+                    w_count = len(sent.split())
+                    if current_count + w_count > max_words and current_chunk:
+                        chunks.append(' '.join(current_chunk))
+                        current_chunk = []
+                        current_count = 0
+                    
+                    current_chunk.append(sent)
+                    current_count += w_count
+                    
+                if current_chunk:
+                    chunks.append(' '.join(current_chunk))
+                
+                return chunks
+
             # Process each paragraph and stream result
             for index, p in enumerate(paragraphs):
                 try:
@@ -417,41 +459,53 @@ def process_full_stream():
                     else:
                         s_lang, t_lang = 'en', 'de'
 
-                    # 2. Translate if needed
-                    cache_key = (p, s_lang, t_lang)
-                    translated_text = ""
-                    german_text = p  # Default to original if already German
+                    # Split paragraph if too long
+                    chunks = split_into_chunks(p, max_words=200)
                     
-                    if s_lang == 'en':
-                        # English content - translate to German
-                        if cache_key in translation_cache:
-                            logger.info(f"Translation Cache HIT for paragraph {index}")
-                            translated_text = translation_cache[cache_key]
+                    final_translated_text_parts = []
+                    final_analysis = []
+                    
+                    for chunk in chunks:
+                        # 2. Translate if needed
+                        cache_key = (chunk, s_lang, t_lang)
+                        translated_chunk = ""
+                        german_chunk = chunk
+                        
+                        if s_lang == 'en':
+                            # English content - translate to German
+                            if cache_key in translation_cache:
+                                translated_chunk = translation_cache[cache_key]
+                            else:
+                                translator = get_translator(s_lang, t_lang)
+                                if translator:
+                                    try:
+                                        res = translator(chunk)
+                                        translated_chunk = res[0]['translation_text']
+                                        translation_cache[cache_key] = translated_chunk
+                                    except Exception as e:
+                                        logger.error(f"Translation failed for chunk in para {index}: {e}")
+                                        translated_chunk = chunk # Fallback
+                            
+                            german_chunk = translated_chunk
+                            final_translated_text_parts.append(translated_chunk)
                         else:
-                            translator = get_translator(s_lang, t_lang)
-                            if translator:
-                                try:
-                                    res = translator(p)
-                                    translated_text = res[0]['translation_text']
-                                    translation_cache[cache_key] = translated_text
-                                except Exception as e:
-                                    logger.error(f"Translation failed for paragraph {index}: {e}")
-                                    translated_text = "[Translation Error]"
-                        german_text = translated_text  # Use German translation for analysis
-                    else:
-                        # Already German - no translation needed
-                        translated_text = ""  # Empty since we don't need EN translation for display
-                    
-                    # 3. Analyze the German text
-                    analysis = analyze_german_text(german_text)
+                            # Already German
+                            pass
+                        
+                        # 3. Analyze the German chunk
+                        chunk_analysis = analyze_german_text(german_chunk)
+                        final_analysis.extend(chunk_analysis)
 
+                    # Reassemble
+                    translated_text = ' '.join(final_translated_text_parts) if s_lang == 'en' else ""
+                    
                     # Stream this paragraph's result
                     result = {
                         'type': 'paragraph',
                         'index': index,
                         'original': p,
-                        'translation': translated_text,  # German translation if source was English, empty if already German
-                        'german_analysis': analysis,
+                        'translation': translated_text,
+                        'german_analysis': final_analysis,
                         'source_lang': s_lang
                     }
                     
