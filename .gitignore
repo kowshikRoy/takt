@@ -47,3 +47,9 @@ app.*.map.json
 # Large data files
 # *.db - Now using Git LFS for database files in assets/
 *.jsonl
+
+# Screenshots and generated root assets
+/*.png
+backend/web_build/
+backend/cache/
+backend/assets/

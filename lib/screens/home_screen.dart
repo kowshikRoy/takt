@@ -5,6 +5,9 @@ import 'practice/gender_practice_screen.dart';
 import 'practice/compound_practice_screen.dart';
 import 'practice/sentence_practice_screen.dart';
 import 'practice/vocabulary_practice_screen.dart';
+import '../widgets/auth_sync_dialog.dart';
+import '../services/auth_service.dart';
+import 'package:provider/provider.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -81,7 +84,7 @@ class HomeScreen extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen()));
                 },
                 child: Container(
                   width: 40,
@@ -117,25 +120,42 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainer,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 20),
-                const SizedBox(width: 4),
-                Text(
-                  '12 Days',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: const Color(0xFFEA580C), // orange-600
-                  ),
+          Row(
+            children: [
+              Consumer<AuthService>(
+                builder: (context, auth, _) {
+                  return IconButton(
+                    icon: Icon(
+                      auth.isAuthenticated ? Icons.cloud_done_rounded : Icons.cloud_queue_rounded,
+                      color: auth.isAuthenticated ? Colors.green : Theme.of(context).colorScheme.primary,
+                    ),
+                    tooltip: 'Cloud Sync & Account',
+                    onPressed: () => AuthSyncDialog.show(context),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                 ),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 20),
+                    const SizedBox(width: 4),
+                    Text(
+                      '12 Days',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFFEA580C), // orange-600
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           )
         ],
       ),
@@ -330,72 +350,99 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildPracticeGrid(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GenderPracticeScreen())),
-                child: _buildPracticeCard(
-                  context,
-                  title: 'Der Die Das',
-                  subtitle: 'Gender Trainer',
-                  icon: Icons.swipe_rounded, 
-                  // bg-gradient-to-br from-blue-50 to-pink-50
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
-                    Theme.of(context).brightness == Brightness.light ? const Color(0xFFEFF6FF) : const Color(0xFF1E3A8A).withValues(alpha: 0.3),
-                    Theme.of(context).brightness == Brightness.light ? const Color(0xFFFDF2F8) : const Color(0xFF831843).withValues(alpha: 0.3),
-                  ]),
-                  borderColor: const Color(0xFFDBEAFE), // border-blue-100
-                  iconColor: const Color(0xFF3B82F6), // blue-500
-                  child: Row(
-                    children: const [
-                      CircleAvatar(radius: 3, backgroundColor: AppTheme.genderMasc),
-                      SizedBox(width: 4),
-                      CircleAvatar(radius: 3, backgroundColor: AppTheme.genderFem),
-                      SizedBox(width: 4),
-                      CircleAvatar(radius: 3, backgroundColor: AppTheme.genderNeu),
+    final bool isWide = MediaQuery.of(context).size.width > 600;
+
+    return isWide
+        ? Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: _buildPracticeCard(context, title: 'Der Die Das', subtitle: 'Gender Trainer', icon: Icons.swipe_rounded, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Theme.of(context).brightness == Brightness.light ? const Color(0xFFEFF6FF) : const Color(0xFF1E3A8A).withValues(alpha: 0.3), Theme.of(context).brightness == Brightness.light ? const Color(0xFFFDF2F8) : const Color(0xFF831843).withValues(alpha: 0.3)]), borderColor: const Color(0xFFDBEAFE), iconColor: const Color(0xFF3B82F6), child: Row(children: const [CircleAvatar(radius: 3, backgroundColor: AppTheme.genderMasc), SizedBox(width: 4), CircleAvatar(radius: 3, backgroundColor: AppTheme.genderFem), SizedBox(width: 4), CircleAvatar(radius: 3, backgroundColor: AppTheme.genderNeu)]))),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildPracticeCard(context, title: 'Case Color', subtitle: 'Sentence Builder', icon: Icons.palette_rounded, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Theme.of(context).brightness == Brightness.light ? const Color(0xFFFFF7ED) : const Color(0xFF7C2D12).withValues(alpha: 0.3), Theme.of(context).brightness == Brightness.light ? const Color(0xFFFEFCE8) : const Color(0xFF713F12).withValues(alpha: 0.3)]), borderColor: const Color(0xFFFFEDD5), iconColor: const Color(0xFFF97316), child: SizedBox(height: 16, width: 48, child: Stack(children: [Positioned(left: 0, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFFFACC15), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1)))), Positioned(left: 12, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFF60A5FA), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1)))), Positioned(left: 24, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFFF87171), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1))))])))),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: _buildCompoundPracticeCard(context)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildSrsPracticeCard(context)),
+                ],
+              ),
+            ],
+          )
+        : Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: _buildPracticeCard(context, title: 'Der Die Das', subtitle: 'Gender Trainer', icon: Icons.swipe_rounded, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Theme.of(context).brightness == Brightness.light ? const Color(0xFFEFF6FF) : const Color(0xFF1E3A8A).withValues(alpha: 0.3), Theme.of(context).brightness == Brightness.light ? const Color(0xFFFDF2F8) : const Color(0xFF831843).withValues(alpha: 0.3)]), borderColor: const Color(0xFFDBEAFE), iconColor: const Color(0xFF3B82F6), child: Row(children: const [CircleAvatar(radius: 3, backgroundColor: AppTheme.genderMasc), SizedBox(width: 4), CircleAvatar(radius: 3, backgroundColor: AppTheme.genderFem), SizedBox(width: 4), CircleAvatar(radius: 3, backgroundColor: AppTheme.genderNeu)]))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildPracticeCard(context, title: 'Case Color', subtitle: 'Sentence Builder', icon: Icons.palette_rounded, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Theme.of(context).brightness == Brightness.light ? const Color(0xFFFFF7ED) : const Color(0xFF7C2D12).withValues(alpha: 0.3), Theme.of(context).brightness == Brightness.light ? const Color(0xFFFEFCE8) : const Color(0xFF713F12).withValues(alpha: 0.3)]), borderColor: const Color(0xFFFFEDD5), iconColor: const Color(0xFFF97316), child: SizedBox(height: 16, width: 48, child: Stack(children: [Positioned(left: 0, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFFFACC15), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1)))), Positioned(left: 12, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFF60A5FA), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1)))), Positioned(left: 24, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFFF87171), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1))))])))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildCompoundPracticeCard(context),
+              const SizedBox(height: 12),
+              _buildSrsPracticeCard(context),
+            ],
+          );
+  }
+
+  Widget _buildSrsPracticeCard(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.purple.shade100),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [
+            Theme.of(context).brightness == Brightness.light ? const Color(0xFFF3E8FF) : const Color(0xFF581C87).withValues(alpha: 0.3),
+            Theme.of(context).brightness == Brightness.light ? const Color(0xFFFCE7F3) : const Color(0xFF831843).withValues(alpha: 0.3),
+          ]),
+        ),
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen())),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.purple.shade100),
+                  ),
+                  child: const Icon(Icons.style_rounded, color: Colors.purple, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SRS Flashcard Practice',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Review due words with SuperMemo-2',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
-              ),
+                const Icon(Icons.chevron_right_rounded, color: Colors.purple, size: 28),
+              ],
             ),
-            const SizedBox(width: 12), // gap-3 is 12px
-            Expanded(
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SentencePracticeScreen())),
-                child: _buildPracticeCard(
-                  context,
-                  title: 'Case Color',
-                  subtitle: 'Sentence Builder',
-                  icon: Icons.palette_rounded,
-                  // bg-gradient-to-br from-orange-50 to-yellow-50
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
-                    Theme.of(context).brightness == Brightness.light ? const Color(0xFFFFF7ED) : const Color(0xFF7C2D12).withValues(alpha: 0.3),
-                    Theme.of(context).brightness == Brightness.light ? const Color(0xFFFEFCE8) : const Color(0xFF713F12).withValues(alpha: 0.3),
-                  ]),
-                   borderColor: const Color(0xFFFFEDD5), // border-orange-100
-                  iconColor: const Color(0xFFF97316), // orange-500
-                  child: SizedBox(
-                    height: 16,
-                    width: 48,
-                    child: Stack(
-                      children: [
-                        Positioned(left: 0, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFFFACC15), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1)))),
-                        Positioned(left: 12, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFF60A5FA), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1)))),
-                        Positioned(left: 24, child: Container(width: 16, height: 16, decoration: BoxDecoration(color: const Color(0xFFF87171), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.white, width: 1)))),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: 12),
-        _buildCompoundPracticeCard(context),
-      ],
+      ),
     );
   }
 

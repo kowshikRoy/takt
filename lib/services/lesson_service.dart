@@ -1,18 +1,45 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../models/article_model.dart';
+import '../models/processed_video.dart';
+import '../models/processing_status.dart';
+import '../models/subtitle_cue.dart';
+import 'backend_service.dart';
+import 'ondevice_ai_service.dart';
 
 class LessonService extends ChangeNotifier {
   static const String _importedArticlesKey = 'imported_articles';
   static const String _customContentKeyPrefix = 'custom_content_';
+  static const String _processedVideosKey = 'processed_videos';
+
+  final BackendService _backendService = BackendService();
+  final Map<String, Timer> _pollingTimers = {};
 
   List<Article> _importedArticles = [];
+  List<ProcessedVideo> _processedVideos = [];
 
   List<Article> get importedArticles => _importedArticles;
+  List<ProcessedVideo> get processedVideos => _processedVideos;
 
   LessonService() {
     _loadImportedArticles();
+    _loadProcessedVideos();
+    clearAllAnalysisCache();
+  }
+
+  Future<void> clearAllAnalysisCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      for (final key in keys) {
+        if (key.startsWith(_analysisCachePrefix)) {
+          await prefs.remove(key);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadImportedArticles() async {
@@ -32,34 +59,398 @@ class LessonService extends ChangeNotifier {
         );
       }).toList();
     } else {
-        // Mock data if empty
-         _importedArticles = [
-            Article(
-                id: 'imp1',
-                title: 'My Favorite Recipe',
-                description: '',
-                level: 'Custom',
-                date: DateTime.now(),
-                imageUrl: 'assets/images/story_hair.png',
-            ),
-         ];
+      _importedArticles = [
+        Article(
+          id: 'imp1',
+          title: 'My Favorite Recipe',
+          description: '',
+          level: 'Custom',
+          date: DateTime.now(),
+          imageUrl: 'assets/images/story_hair.png',
+        ),
+      ];
     }
     notifyListeners();
+  }
+
+  Future<void> _loadProcessedVideos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? videosJson = prefs.getString(_processedVideosKey);
+
+    if (videosJson != null) {
+      final List<dynamic> decodedList = jsonDecode(videosJson);
+      _processedVideos = decodedList.map((item) => ProcessedVideo.fromJson(item)).toList();
+    }
+
+    // Resume polling for any video in active/processing state
+    for (final video in _processedVideos) {
+      if (video.status != ProcessingStatus.completed &&
+          video.status != ProcessingStatus.failed &&
+          video.taskId != null) {
+        _startPollingForTask(video.taskId!, video.url);
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> submitMediaProcessingTaskInBackground(String originalUrl) async {
+    final tempId = 'task_${DateTime.now().millisecondsSinceEpoch}';
+    final newVideo = ProcessedVideo(
+      id: tempId,
+      taskId: tempId,
+      url: originalUrl,
+      status: ProcessingStatus.downloading,
+      stageMessage: 'Submitting media task...',
+      subtitles: [],
+    );
+
+    _processedVideos.insert(0, newVideo);
+    notifyListeners();
+    await _saveProcessedVideos();
+
+    try {
+      final submitResponse = await _backendService.submitMediaUrl(originalUrl);
+      final index = _processedVideos.indexWhere((v) => v.id == tempId);
+
+      if (submitResponse != null && submitResponse.containsKey('task_id')) {
+        final realTaskId = submitResponse['task_id'] as String;
+        if (index != -1) {
+          _processedVideos[index] = ProcessedVideo(
+            id: realTaskId,
+            taskId: realTaskId,
+            url: originalUrl,
+            status: ProcessingStatus.downloading,
+            stageMessage: 'Transcribing speech & subtitles...',
+            subtitles: [],
+          );
+          notifyListeners();
+          await _saveProcessedVideos();
+          _startPollingForTask(realTaskId, originalUrl);
+        }
+      } else {
+        if (index != -1) {
+          _processedVideos[index] = ProcessedVideo(
+            id: tempId,
+            taskId: tempId,
+            url: originalUrl,
+            status: ProcessingStatus.failed,
+            stageMessage: 'Backend server timed out or unreachable',
+            errorMessage: submitResponse?['error'] ?? 'Connection timed out',
+            subtitles: [],
+          );
+          notifyListeners();
+          await _saveProcessedVideos();
+        }
+      }
+    } catch (e) {
+      final index = _processedVideos.indexWhere((v) => v.id == tempId);
+      if (index != -1) {
+        _processedVideos[index] = ProcessedVideo(
+          id: tempId,
+          taskId: tempId,
+          url: originalUrl,
+          status: ProcessingStatus.failed,
+          stageMessage: 'Connection timed out',
+          errorMessage: e.toString(),
+          subtitles: [],
+        );
+        notifyListeners();
+        await _saveProcessedVideos();
+      }
+    }
+  }
+
+  Future<void> addMediaProcessingTask(String taskId, String originalUrl) async {
+    final newVideo = ProcessedVideo(
+      id: taskId,
+      taskId: taskId,
+      url: originalUrl,
+      status: ProcessingStatus.downloading,
+      stageMessage: 'Downloading media stream...',
+      subtitles: [],
+    );
+
+    _processedVideos.insert(0, newVideo);
+    notifyListeners();
+    await _saveProcessedVideos();
+
+    _startPollingForTask(taskId, originalUrl);
+  }
+
+  Future<void> retryProcessingTask(String oldTaskId, String originalUrl) async {
+    // Submit media task again via BackendService
+    final submitRes = await _backendService.submitMediaUrl(originalUrl);
+    final newTaskId = submitRes?['task_id'] as String?;
+    
+    final index = _processedVideos.indexWhere((v) => v.taskId == oldTaskId || v.id == oldTaskId);
+    if (index != -1 && newTaskId != null) {
+      _processedVideos[index] = ProcessedVideo(
+        id: newTaskId,
+        taskId: newTaskId,
+        url: originalUrl,
+        status: ProcessingStatus.downloading,
+        stageMessage: 'Retrying task...',
+        subtitles: [],
+      );
+      notifyListeners();
+      _startPollingForTask(newTaskId, originalUrl);
+    }
+  }
+
+  Future<bool> refreshVideoUrl(String id, String originalUrl) async {
+    final freshUrl = await _backendService.getFreshVideoUrl(originalUrl);
+    if (freshUrl != null && freshUrl.isNotEmpty) {
+      final index = _processedVideos.indexWhere((v) => v.id == id || v.taskId == id);
+      if (index != -1) {
+        final old = _processedVideos[index];
+        _processedVideos[index] = ProcessedVideo(
+          id: old.id,
+          taskId: old.taskId,
+          url: old.url,
+          status: old.status,
+          stageMessage: old.stageMessage,
+          errorMessage: null,
+          subtitles: old.subtitles,
+          videoUrl: freshUrl,
+          mediaType: old.mediaType,
+          thumbnail: old.thumbnail,
+          title: old.title,
+        );
+        notifyListeners();
+        await _saveProcessedVideos();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _startPollingForTask(String taskId, String originalUrl) {
+    if (_pollingTimers.containsKey(taskId)) return;
+
+    final timer = Timer.periodic(const Duration(seconds: 3), (t) async {
+      final statusResponse = await _backendService.checkMediaStatus(taskId);
+      if (statusResponse == null) return;
+
+      final statusStr = (statusResponse['status'] as String?)?.toLowerCase();
+      final stageMsg = statusResponse['stage_message'] as String?;
+      final errorMsg = statusResponse['error'] as String?;
+      final statusCode = statusResponse['statusCode'] as int?;
+
+      // Auto-recover if server restarted or task 404'd
+      if (statusStr == 'not_found' || statusCode == 404) {
+        t.cancel();
+        _pollingTimers.remove(taskId);
+        print("Server task $taskId returned 404. Automatically resubmitting URL: $originalUrl");
+        retryProcessingTask(taskId, originalUrl);
+        return;
+      }
+
+      final index = _processedVideos.indexWhere((v) => v.taskId == taskId || v.id == taskId);
+
+      if (statusStr == 'processing' || statusStr == 'downloading' || statusStr == 'transcribing' || statusStr == 'pending') {
+        if (index != -1 && stageMsg != null && _processedVideos[index].stageMessage != stageMsg) {
+          _processedVideos[index] = ProcessedVideo(
+            id: taskId,
+            taskId: taskId,
+            url: originalUrl,
+            status: ProcessingStatus.transcribing,
+            stageMessage: stageMsg,
+            subtitles: _processedVideos[index].subtitles,
+            videoUrl: _processedVideos[index].videoUrl,
+            mediaType: _processedVideos[index].mediaType,
+            thumbnail: _processedVideos[index].thumbnail,
+            title: _processedVideos[index].title,
+          );
+          notifyListeners();
+          await _saveProcessedVideos();
+        }
+      } else if (statusStr == 'completed') {
+        t.cancel();
+        _pollingTimers.remove(taskId);
+
+        final resultData = (statusResponse['result'] as Map<String, dynamic>?) ?? statusResponse;
+        final mediaTypeStr = resultData['media_type'] as String? ?? 'video';
+        final videoUrl = resultData['video_url'] as String?;
+        final thumbnail = resultData['thumbnail'] as String?;
+        final title = resultData['title'] as String?;
+        final subtitlesRaw = resultData['subtitles'] as List<dynamic>? ?? [];
+
+        List<SubtitleCue> subtitles = subtitlesRaw.map((cue) {
+          return SubtitleCue(
+            start: (cue['start'] as num).toDouble(),
+            end: (cue['end'] as num).toDouble(),
+            original: (cue['original'] as String?) ?? '',
+            translated: (cue['translated'] as String?) ?? '',
+          );
+        }).toList();
+
+        // Translate missing cues locally via On-Device ML Kit
+        final onDeviceAI = OnDeviceAIService();
+        subtitles = await onDeviceAI.translateSubtitlesOnDevice(subtitles);
+
+        if (index != -1) {
+          _processedVideos[index] = ProcessedVideo(
+            id: taskId,
+            taskId: taskId,
+            url: originalUrl,
+            status: ProcessingStatus.completed,
+            stageMessage: stageMsg ?? 'Ready 🎬',
+            subtitles: subtitles,
+            videoUrl: videoUrl,
+            mediaType: mediaTypeStr,
+            thumbnail: thumbnail,
+            title: title,
+          );
+          notifyListeners();
+          await _saveProcessedVideos();
+        }
+      } else if (statusStr == 'failed') {
+        t.cancel();
+        _pollingTimers.remove(taskId);
+
+        if (index != -1) {
+          _processedVideos[index] = ProcessedVideo(
+            id: taskId,
+            taskId: taskId,
+            url: originalUrl,
+            status: ProcessingStatus.failed,
+            stageMessage: stageMsg ?? 'Processing failed',
+            errorMessage: errorMsg,
+            subtitles: [],
+          );
+          notifyListeners();
+          await _saveProcessedVideos();
+        }
+      } else {
+        // Intermediate stages (downloading, transcribing, translating, finalizing)
+        ProcessingStatus newStatus = ProcessingStatus.processing;
+        if (statusStr == 'downloading') {
+          newStatus = ProcessingStatus.downloading;
+        } else if (statusStr == 'transcribing') {
+          newStatus = ProcessingStatus.transcribing;
+        } else if (statusStr == 'translating') {
+          newStatus = ProcessingStatus.translating;
+        } else if (statusStr == 'finalizing') {
+          newStatus = ProcessingStatus.finalizing;
+        }
+
+        if (index != -1) {
+          final current = _processedVideos[index];
+          if (current.status != newStatus || current.stageMessage != stageMsg) {
+            _processedVideos[index] = ProcessedVideo(
+              id: current.id,
+              taskId: current.taskId,
+              url: current.url,
+              status: newStatus,
+              stageMessage: stageMsg,
+              errorMessage: current.errorMessage,
+              subtitles: current.subtitles,
+              videoUrl: current.videoUrl,
+              mediaType: current.mediaType,
+            );
+            notifyListeners();
+            await _saveProcessedVideos();
+          }
+        }
+      }
+    });
+
+    _pollingTimers[taskId] = timer;
+  }
+
+  Future<void> _saveProcessedVideos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedList = jsonEncode(_processedVideos.map((v) => v.toJson()).toList());
+    await prefs.setString(_processedVideosKey, encodedList);
+  }
+
+  Future<void> deleteProcessedVideo(String id) async {
+    _processedVideos.removeWhere((v) => v.id == id || v.taskId == id);
+    _pollingTimers[id]?.cancel();
+    _pollingTimers.remove(id);
+    notifyListeners();
+    await _saveProcessedVideos();
+  }
+
+  Future<void> importWebArticleInBackground(String url) async {
+    Map<String, dynamic>? result;
+    try {
+      result = await _backendService.importFromUrl(url);
+    } catch (_) {}
+
+    String title = '';
+    String content = '';
+    String description = '';
+
+    if (result != null && !result.containsKey('error')) {
+      title = (result['title'] as String?) ?? '';
+      content = (result['content'] as String?) ?? '';
+      description = (result['description'] as String?) ?? '';
+    }
+
+    // Direct local HTML scraper fallback if backend call fails or times out
+    if (content.trim().isEmpty) {
+      try {
+        final res = await http.get(Uri.parse(url), headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
+        }).timeout(const Duration(seconds: 10));
+
+        if (res.statusCode == 200) {
+          final html = utf8.decode(res.bodyBytes);
+          final titleMatch = RegExp(r'<title>(.*?)</title>', caseSensitive: false).firstMatch(html);
+          if (titleMatch != null) {
+            title = titleMatch.group(1)?.replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+          }
+
+          final pMatches = RegExp(r'<p[^>]*>(.*?)</p>', caseSensitive: false, dotAll: true).allMatches(html);
+          final pTexts = pMatches.map((m) {
+            return m.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '').replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+          }).where((t) => t.length > 25).toList();
+
+          content = pTexts.join('\n\n');
+        }
+      } catch (e) {
+        print("Local fallback web scraper error: $e");
+      }
+    }
+
+    if (title.isEmpty) {
+      try {
+        title = Uri.parse(url).host;
+      } catch (_) {
+        title = 'Imported Article';
+      }
+    }
+
+    if (content.trim().isEmpty) {
+      content = 'Could not extract article content automatically. URL: $url';
+    }
+
+    final newArticle = Article(
+      id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+      title: title,
+      description: description,
+      level: 'Imported',
+      date: DateTime.now(),
+      imageUrl: 'assets/images/story_soccer.png',
+    );
+
+    await addImportedArticle(newArticle, content);
   }
 
   Future<void> addImportedArticle(Article article, String content) async {
     _importedArticles.insert(0, article);
     notifyListeners();
     await _saveImportedArticles();
-    await _saveCustomContent(article.id, content);
+    await saveCustomContent(article.id, content);
   }
 
   Future<void> deleteArticle(String id) async {
-      _importedArticles.removeWhere((a) => a.id == id);
-      notifyListeners();
-      await _saveImportedArticles();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('$_customContentKeyPrefix$id');
+    _importedArticles.removeWhere((a) => a.id == id);
+    notifyListeners();
+    await _saveImportedArticles();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_customContentKeyPrefix$id');
   }
 
   Future<void> _saveImportedArticles() async {
@@ -78,7 +469,7 @@ class LessonService extends ChangeNotifier {
     await prefs.setString(_importedArticlesKey, encodedList);
   }
 
-  Future<void> _saveCustomContent(String articleId, String content) async {
+  Future<void> saveCustomContent(String articleId, String content) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_customContentKeyPrefix$articleId', content);
   }
@@ -88,17 +479,51 @@ class LessonService extends ChangeNotifier {
     return prefs.getString('$_customContentKeyPrefix$articleId');
   }
 
+  static const String _analysisCachePrefix = 'analysis_cache_';
+
+  Future<void> saveCachedAnalysis(String storyId, Map<int, Map<String, dynamic>> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    final Map<String, dynamic> serializable = {};
+    data.forEach((key, val) {
+      serializable[key.toString()] = val;
+    });
+    await prefs.setString('$_analysisCachePrefix$storyId', jsonEncode(serializable));
+  }
+
+  Future<Map<int, Map<String, dynamic>>?> getCachedAnalysis(String storyId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? jsonStr = prefs.getString('$_analysisCachePrefix$storyId');
+    if (jsonStr == null || jsonStr.isEmpty) return null;
+    try {
+      final Map<String, dynamic> decoded = jsonDecode(jsonStr);
+      final Map<int, Map<String, dynamic>> result = {};
+      decoded.forEach((key, val) {
+        int? intKey = int.tryParse(key);
+        if (intKey != null && val is Map) {
+          result[intKey] = Map<String, dynamic>.from(val);
+        }
+      });
+      return result.isNotEmpty ? result : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> deleteImportedArticle(String articleId) async {
-    // Remove from list
     _importedArticles.removeWhere((article) => article.id == articleId);
-    
-    // Save updated list
     await _saveImportedArticles();
-    
-    // Delete custom content
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('$_customContentKeyPrefix$articleId');
-    
+    await prefs.remove('$_analysisCachePrefix$articleId');
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    for (final timer in _pollingTimers.values) {
+      timer.cancel();
+    }
+    _pollingTimers.clear();
+    super.dispose();
   }
 }

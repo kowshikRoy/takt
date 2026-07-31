@@ -26,10 +26,12 @@ def inspect_word(word):
     for w in words:
         word_id = w['id']
         print(f"\n[ID: {word_id}] Word: {w['word']}")
+        freq = w['freq_rank'] if 'freq_rank' in w.keys() else 'N/A'
         print(f"  Pos: {w['pos']}")
         print(f"  Gender: {w['gender']}")
         print(f"  IPA: {w['ipa']}")
         print(f"  Base Form: {w['base_form']}")
+        print(f"  Frequency Rank: #{freq}" if freq != 'N/A' and freq is not None else "  Frequency Rank: N/A")
 
         # 2. Get Definitions
         c.execute("SELECT definition FROM definitions WHERE word_id = ?", (word_id,))

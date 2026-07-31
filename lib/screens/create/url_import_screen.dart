@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/article_model.dart';
-import '../story_reader_screen.dart';
-import '../../services/lesson_service.dart';
+import '../../models/processed_video.dart';
+import '../../models/processing_status.dart';
+import '../../models/subtitle_cue.dart';
 import '../../services/backend_service.dart';
+import '../../services/lesson_service.dart';
+import '../video_screen.dart';
 
 class UrlImportScreen extends StatefulWidget {
   const UrlImportScreen({super.key});
@@ -17,6 +21,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
   final BackendService _backendService = BackendService();
   bool _isLoading = false;
   String? _errorMessage;
+  String _statusMessage = 'Processing URL...';
 
   bool _isValidUrl(String url) {
     try {
@@ -27,9 +32,23 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
     }
   }
 
+  bool _isMediaUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('youtube.com') ||
+        lower.contains('youtu.be') ||
+        lower.contains('facebook.com') ||
+        lower.contains('fb.watch') ||
+        lower.contains('tiktok.com') ||
+        lower.contains('instagram.com') ||
+        lower.endsWith('.mp4') ||
+        lower.endsWith('.mp3') ||
+        lower.endsWith('.m4a') ||
+        lower.endsWith('.webm');
+  }
+
   void _importFromUrl() async {
     final url = _urlController.text.trim();
-    
+
     if (url.isEmpty) {
       setState(() {
         _errorMessage = 'Please enter a URL';
@@ -47,66 +66,49 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _statusMessage = 'Connecting to backend...';
     });
 
-    try {
-      final result = await _backendService.importFromUrl(url);
+    if (_isMediaUrl(url)) {
+      _processMediaUrl(url);
+    } else {
+      _processWebArticleUrl(url);
+    }
+  }
 
-      if (!mounted) return;
+  void _processMediaUrl(String url) async {
+    final lessonService = Provider.of<LessonService>(context, listen: false);
+    
+    // Launch non-blocking background media submission
+    unawaited(lessonService.submitMediaProcessingTaskInBackground(url));
 
-      if (result == null || result.containsKey('error')) {
-        setState(() {
-          _errorMessage = result?['error'] ?? 'Failed to import content';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // Successfully imported
-      final title = result['title'] as String;
-      final content = result['content'] as String;
-      final description = result['description'] as String;
-      final wasTranslated = result['was_translated'] as bool? ?? false;
-      final originalLanguage = result['original_language'] as String? ?? 'unknown';
-      final coverImageUrl = result['cover_image_url'] as String?;
-
-      final newArticle = Article(
-        id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-        title: title,
-        description: description,
-        level: 'Imported',
-        date: DateTime.now(),
-        imageUrl: coverImageUrl ?? 'assets/images/story_soccer.png',  // Use extracted image or fallback
+    if (mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Media submitted! Transcribing & processing in the background...'),
+          backgroundColor: Colors.blueAccent,
+          duration: Duration(seconds: 4),
+        ),
       );
+    }
+  }
 
-      final lessonService = Provider.of<LessonService>(context, listen: false);
-      await lessonService.addImportedArticle(newArticle, content);
+  void _processWebArticleUrl(String url) async {
+    final lessonService = Provider.of<LessonService>(context, listen: false);
+    
+    // Launch non-blocking background import task
+    unawaited(lessonService.importWebArticleInBackground(url));
 
-      if (mounted) {
-        // Navigate to Discover screen immediately (not Story Reader)
-        // Processing will happen when user opens the article
-        Navigator.of(context).popUntil((route) => route.isFirst);
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              originalLanguage == 'en' 
-                ? 'Article imported! Will be translated when you open it.'
-                : 'Article imported successfully!'
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'An error occurred: $e';
-          _isLoading = false;
-        });
-      }
+    if (mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Article submitted! Importing content in the background...'),
+          backgroundColor: Colors.blueAccent,
+          duration: Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -116,7 +118,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Import from URL',
+          'Import Media or Article',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
@@ -129,15 +131,16 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Text(
-              'Enter the URL of any article, blog post, or story. English content will be automatically translated to German.',
+              'Enter any Video, Audio, or Article URL (YouTube, Facebook Reels, TikTok, MP4/MP3, or Web Articles).',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
@@ -145,7 +148,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
             TextField(
               controller: _urlController,
               decoration: InputDecoration(
-                hintText: 'https://example.com/article',
+                hintText: 'https://youtube.com/watch?... or https://example.com',
                 prefixIcon: const Icon(Icons.link),
                 border: const OutlineInputBorder(),
                 errorText: _errorMessage,
@@ -161,8 +164,20 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
               },
             ),
             const SizedBox(height: 16),
-            if (_isLoading)
+            if (_isLoading) ...[
               const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  _statusMessage,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -186,7 +201,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                         ),
                       )
                     : const Text(
-                        'Import',
+                        'Import & Transcribe',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -213,7 +228,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Tips',
+                        'Supported Media & Links',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
@@ -223,10 +238,11 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '• Works best with article-style pages\n'
-                    '• English content will be auto-translated to German\n'
-                    '• Try German news sites like Deutsche Welle\n'
-                    '• Some websites may block content extraction',
+                    '• YouTube Videos & Shorts\n'
+                    '• Facebook Videos & Reels\n'
+                    '• TikTok & Instagram Reels\n'
+                    '• Direct MP4 / MP3 links\n'
+                    '• German & English Web Articles',
                     style: TextStyle(
                       fontSize: 14,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -239,8 +255,9 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   void dispose() {

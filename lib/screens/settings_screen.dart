@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/theme_provider.dart';
 import '../theme/app_theme.dart';
+import '../services/dictionary_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -51,6 +51,11 @@ class SettingsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _showFontDialog(context, themeProvider),
           ),
+
+          const Divider(indent: 16, endIndent: 16),
+
+          _buildSectionHeader(context, 'Dictionary & Offline Data'),
+          const _DictionaryDatabaseTile(),
 
           const SizedBox(height: 32),
           _buildSectionHeader(context, 'About'),
@@ -261,3 +266,263 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
+
+class _DictionaryDatabaseTile extends StatefulWidget {
+  const _DictionaryDatabaseTile();
+
+  @override
+  State<_DictionaryDatabaseTile> createState() => _DictionaryDatabaseTileState();
+}
+
+class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
+  final DictionaryService _dictService = DictionaryService();
+  String _version = "v3.0";
+  String _size = "Loading...";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMetadata();
+  }
+
+  Future<void> _loadMetadata() async {
+    final s = await _dictService.getDatabaseSizeFormatted();
+    if (mounted) {
+      setState(() {
+        _size = s;
+      });
+    }
+
+    final v = await _dictService.getDatabaseVersion();
+    if (mounted) {
+      setState(() {
+        _version = v;
+      });
+    }
+
+    await _dictService.checkForDatabaseUpdate();
+  }
+
+  Future<void> _handleUpdateOrRedownload() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Starting dictionary database download...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      await _dictService.redownloadDatabase();
+      await _loadMetadata();
+
+      if (mounted) {
+        final err = _dictService.downloadErrorNotifier.value;
+        if (err != null && err.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(err),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Dictionary database updated successfully! 🎉'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update failed: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: _dictService.isDownloadingNotifier,
+      builder: (context, isDownloading, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: _dictService.hasUpdateNotifier,
+          builder: (context, hasUpdate, _) {
+            return ValueListenableBuilder<bool>(
+              valueListenable: _dictService.isCheckingNotifier,
+              builder: (context, isChecking, _) {
+                return ValueListenableBuilder<String?>(
+                  valueListenable: _dictService.latestVersionNotifier,
+                  builder: (context, latestTag, _) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: hasUpdate ? colorScheme.primary.withValues(alpha: 0.3) : colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primaryContainer,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.storage_rounded, color: colorScheme.primary, size: 22),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            'Offline Dictionary',
+                                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        if (hasUpdate) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: colorScheme.primary,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: const Text(
+                                              'UPDATE AVAILABLE',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      isChecking
+                                          ? 'Checking for update...'
+                                          : hasUpdate && latestTag != null
+                                              ? 'Installed: $_version • Latest: $latestTag'
+                                              : 'Installed Version: $_version',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.folder_zip_rounded, size: 16, color: colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Size: $_size',
+                                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isDownloading || isChecking)
+                                const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                                )
+                              else if (hasUpdate)
+                                FilledButton.icon(
+                                  onPressed: _handleUpdateOrRedownload,
+                                  style: FilledButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  icon: const Icon(Icons.system_update_rounded, size: 16),
+                                  label: const Text('Update Now'),
+                                )
+                              else
+                                OutlinedButton.icon(
+                                  onPressed: _handleUpdateOrRedownload,
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  icon: const Icon(Icons.download_rounded, size: 16),
+                                  label: const Text('Re-download'),
+                                ),
+                            ],
+                          ),
+                          if (isDownloading) ...[
+                            const SizedBox(height: 12),
+                            ValueListenableBuilder<double>(
+                              valueListenable: _dictService.downloadProgressNotifier,
+                              builder: (context, progress, _) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: progress > 0 ? progress : null,
+                                        minHeight: 6,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      progress > 0
+                                          ? 'Downloading database update... ${(progress * 100).toStringAsFixed(0)}%'
+                                          : 'Connecting to GitHub...',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.primary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+

@@ -41,17 +41,24 @@ class CompactArticleCard extends StatelessWidget {
             // Image with Badge
             Stack(
               children: [
-                Container(
+                SizedBox(
                   height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    image: DecorationImage(
-                      image: article.imageUrl.startsWith('http')
-                          ? NetworkImage(article.imageUrl) as ImageProvider
-                          : AssetImage(article.imageUrl),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                  width: double.infinity,
+                  child: article.imageUrl.startsWith('http')
+                      ? Image.network(
+                          article.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
+                          },
+                        )
+                      : Image.asset(
+                          article.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
+                          },
+                        ),
                 ),
                 // Level badge (hide for imported articles)
                 if (article.level != 'Imported')

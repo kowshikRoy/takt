@@ -59,9 +59,10 @@ class _TextInputScreenState extends State<TextInputScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
           children: [
             TextField(
               controller: _titleController,
@@ -101,7 +102,8 @@ class _TextInputScreenState extends State<TextInputScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 

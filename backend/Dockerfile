@@ -1,19 +1,17 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install dependencies
+# Install ffmpeg for yt-dlp and faster-whisper
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Download spaCy German model
 RUN python -m spacy download de_core_news_sm
 
-# Copy application
-COPY app.py .
+COPY . .
 
-# Expose port
-EXPOSE 5000
+RUN mkdir -p cache && chmod 777 cache
 
-# Run with gunicorn
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app:app
+# Dynamically bind to $PORT for GCP Cloud Run
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]

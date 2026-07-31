@@ -1,96 +1,68 @@
-# Takt Backend Service
+# OmniScribe Media Processing Backend
 
-Context-aware Part-of-Speech detection, Bi-directional Translation, and Analysis service for the Takt German learning app.
+FastAPI service for German YouTube & Media audio extraction, Whisper transcription, dual subtitle generation, and dictionary lookups.
 
-## Features
+Hosted on **Google Cloud Run** in 🇪🇺 **Amsterdam, Europe (`europe-west4`)**:
+`https://omniscribe-184475424927.europe-west4.run.app`
 
-- 🧠 **Unified Analysis**: Single endpoint `/process` to translate and analyze text in one go.
-- 🌍 **Bi-directional Translation**: 
-  - German → English
-  - English → German
-- 🎯 **Smart POS Tagging**: Automatically provides POS tags for the German text (whether input or output).
-- 🚀 **Performance**: Lazy loading of Translation models (~300MB each) to save resources.
-- 🔄 **Auto-Detection**: Automatically detects input language if not specified.
+---
 
-## Quick Start
+## 🌟 Architecture Overview
 
-### 1. Setup
+- 🎥 **Media Processing (`/submit-media`)**: Downloads YouTube / Web media audio via `yt-dlp` and `ffmpeg`, transcribes German speech with `faster-whisper`, and generates synchronized bilingual subtitles.
+- ⏱️ **Task Status (`/status/{task_id}`)**: Asynchronous status polling endpoint for long-running media processing tasks.
+- 📖 **Dictionary Lookup (`/word-info/{word}`)**: Fallback word lookup and definition provider.
+- 🎨 **Gradio Demo Interface (`/demo`)**: Web UI for testing media transcription and translation endpoints interactively.
 
-```bash
-cd backend
-./setup.sh
-```
+---
 
-### 2. Run Server
+## 🚀 Deployment to Google Cloud Run
+
+### **1. Local Build & Run with Docker**
 
 ```bash
-source venv/bin/activate
-# Default port is 5001 (to avoid AirPlay conflict on macOS)
-python app.py
+# Build Docker image
+docker build -t omniscribe .
+
+# Run container locally
+docker run -p 8080:8080 -e PORT=8080 omniscribe
 ```
 
-### 3. Usage
+### **2. Deploying to GCP Cloud Run (Europe - `europe-west4`)**
 
-#### Unified Processing (Recommended)
-Translate and analyze text in one step.
-
-**German Input (De -> En + Analysis):**
 ```bash
-curl -X POST http://localhost:5001/process \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Das ist ein Beispiel"}'
+gcloud run deploy omniscribe \
+  --project=book-search-472921 \
+  --region=europe-west4 \
+  --source=. \
+  --allow-unauthenticated \
+  --memory=2Gi \
+  --cpu=2 \
+  --timeout=300s
 ```
 
-**English Input (En -> De + Analysis):**
-```bash
-curl -X POST http://localhost:5001/process \
-  -H "Content-Type: application/json" \
-  -d '{"text": "This is an example"}'
-```
+---
 
-Response format:
-```json
-{
-  "source_lang": "en",
-  "target_lang": "de",
-  "original_text": "This is an example",
-  "translated_text": "Dies ist ein Beispiel",
-  "german_analysis": [
-    {
-      "word": "Dies",
-      "pos": "pron",
-      "lemma": "dieser"
-    },
-    ...
-  ]
-}
-```
+## 📡 API Endpoints
 
-## API Endpoints
+### `POST /submit-media`
+Submits a YouTube video URL or media link for asynchronous audio transcription and translation.
+- **Request Body**: `{"url": "https://www.youtube.com/watch?v=..."}`
+- **Response**: `{"task_id": "12345", "status": "processing"}`
 
-### `POST /process`
-Main endpoint.
-- `text`: Input text
-- `lang`: (Optional) 'en', 'de', or 'auto' (default)
+### `GET /status/{task_id}`
+Checks the processing status of a submitted media task.
+- **Response**: `{"status": "completed", "result": {...}}`
 
 ### `GET /health`
-Returns system status.
+Returns service status and health.
 
-### `POST /analyze` (Legacy)
-POS analysis only.
+---
 
-### `POST /translate` (Legacy)
-Simple translation only.
+## 📦 Tech Stack & Dependencies
+- **Python**: 3.12-slim
+- **FastAPI / Uvicorn**: High-performance async web framework
+- **yt-dlp & ffmpeg**: Media & audio extraction
+- **faster-whisper**: High-speed Whisper speech recognition
+- **Gradio**: Interactive web UI at `/demo`
 
-## Deployment
-
-### Docker
-
-```bash
-docker build -t takt-backend .
-docker run -p 5000:5000 -e PORT=5000 takt-backend
-```
-
-## Requirements
-- Python 3.10+
-- ~1GB RAM recommended (if using both translation directions)

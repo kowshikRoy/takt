@@ -112,7 +112,8 @@ def create_lite_database():
         source_c.execute("SELECT * FROM words WHERE id = ?", (word_id,))
         row = source_c.fetchone()
         if row:
-            target_c.execute("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?)", row)
+            placeholders = ','.join(['?'] * len(row))
+            target_c.execute(f"INSERT INTO words VALUES ({placeholders})", row)
     
     # Copy definitions
     for word_id in all_word_ids:
@@ -169,6 +170,7 @@ def create_lite_database():
     # VACUUM to reduce size
     print("\\nOptimizing database size...")
     conn = sqlite3.connect(TARGET_DB)
+    conn.execute("PRAGMA user_version = 16")
     conn.execute("VACUUM")
     conn.close()
     

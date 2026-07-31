@@ -28,6 +28,8 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  video_player: ^2.9.2
+  iconsax: ^0.0.8
   flutter:
     sdk: flutter
 
@@ -48,6 +50,7 @@ dependencies:
   http: ^1.6.0
   flutter_tts: ^4.2.2
   share_plus: ^12.0.1
+  google_mlkit_translation: ^0.13.0
 
 dev_dependencies:
   flutter_test:
@@ -76,9 +79,7 @@ flutter:
     - assets/images/cat.png
     - assets/images/sofa.png
     - assets/images/bicycle.png
-    - assets/images/bicycle.png
     - assets/images/butterfly.png
-    - assets/german_dictionary_v16.db
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

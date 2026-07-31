@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 class TtsProgress {
@@ -24,10 +25,13 @@ class TtsService {
   }
 
   Future<void> _initTts() async {
-    await _flutterTts.setLanguage("de-DE");
-    await _flutterTts.setSpeechRate(0.5); // Slightly slower for learners
-    await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
+    if (kIsWeb) return;
+    try {
+      await _flutterTts.setLanguage("de-DE");
+      await _flutterTts.setSpeechRate(0.5); // Slightly slower for learners
+      await _flutterTts.setVolume(1.0);
+      await _flutterTts.setPitch(1.0);
+    } catch (_) {}
 
     _flutterTts.setProgressHandler((text, start, end, word) {
       _progressController.add(TtsProgress(text, start, end, word));

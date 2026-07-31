@@ -35,15 +35,21 @@ class ArticleCard extends StatelessWidget {
                 children: [
                    Container(
                     color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    child: Image(
-                      image: article.imageUrl.startsWith('http')
-                          ? NetworkImage(article.imageUrl) as ImageProvider
-                          : AssetImage(article.imageUrl),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(child: Icon(Icons.broken_image_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant));
-                      },
-                    ),
+                    child: article.imageUrl.startsWith('http')
+                        ? Image.network(
+                            article.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
+                            },
+                          )
+                        : Image.asset(
+                            article.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
+                            },
+                          ),
                   ),
                   // Gradient overlay for text readability if needed, or just plain image as per design
                   if (onDelete != null)

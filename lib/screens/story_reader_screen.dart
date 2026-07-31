@@ -8,11 +8,17 @@ import '../theme/theme_provider.dart';
 import '../services/dictionary_service.dart';
 import '../services/vocabulary_service.dart';
 import '../services/lesson_service.dart';
-import '../services/backend_service.dart';
 import '../services/tts_service.dart';
+import '../services/ondevice_ai_service.dart';
 
 import '../models/article_model.dart';
-import 'package:share_plus/share_plus.dart';
+import '../widgets/glance_word_sheet.dart';
+
+class _TappedWordData {
+  final String word;
+  final int paragraphIndex;
+  _TappedWordData(this.word, this.paragraphIndex);
+}
 
 class StoryReaderScreen extends StatefulWidget {
   final Article? article;
@@ -28,184 +34,572 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   final DictionaryService _dictionaryService = DictionaryService();
   final VocabularyService _vocabularyService = VocabularyService();
   final TtsService _ttsService = TtsService();
-  Map<String, String> _wordGenders = {};
-  Map<int, Map<String, dynamic>> _paragraphAnalysisData = {}; // index -> {analysis, translation}
-  bool _isLoadingGenders = true;
+  final OnDeviceAIService _onDeviceAI = OnDeviceAIService();
+  final ScrollController _scrollController = ScrollController();
+
+  final Map<String, String> _wordGenders = {};
+  Map<int, Map<String, dynamic>> _paragraphAnalysisData = {};
   bool _isLoadingAnalysis = false;
   String? _loadedContent;
   TtsProgress? _currentTtsProgress;
   StreamSubscription? _ttsSubscription;
   final Set<int> _visibleParagraphTranslations = {};
 
+  static final RegExp _wordTokenRegex = RegExp(r'^([^\wäöüÄÖÜß]*)([\wäöüÄÖÜß]+)([^\wäöüÄÖÜß]*)$');
+
+  // Reader Settings State
+  final ValueNotifier<double> _scrollProgressNotifier = ValueNotifier<double>(0.0);
+  double _fontSize = 18.0;
+  double _speechRate = 0.5; // 0.5 is flutter_tts default (~1.0x)
+  String _fontFamily = 'Sans'; // 'Serif', 'Sans', 'Mono'
+  double _lineHeight = 1.6; // 1.4, 1.6, 1.9
+  bool _isSepiaMode = false;
+  bool _showGenderHighlighting = true;
+  bool _autoScrollWithTts = true;
+  bool _isPlayingTts = false;
+  final ValueNotifier<_TappedWordData?> _tappedWordNotifier = ValueNotifier<_TappedWordData?>(null);
+  int? _currentlySpokenParagraphIndex;
+
+  final Map<int, GlobalKey> _paragraphKeys = {};
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_updateScrollProgress);
     _loadContent();
+  }
+
+  void _updateScrollProgress() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    if (maxScroll <= 0) {
+      _scrollProgressNotifier.value = 0.0;
+      return;
+    }
+    final currentScroll = _scrollController.position.pixels;
+    final progress = (currentScroll / maxScroll).clamp(0.0, 1.0);
+    if ((progress - _scrollProgressNotifier.value).abs() > 0.01) {
+      _scrollProgressNotifier.value = progress;
+    }
   }
 
   Future<void> _loadContent() async {
     if (widget.customContent != null) {
       _loadedContent = widget.customContent;
-    } else if (widget.article != null && widget.article!.id.startsWith('custom_')) {
+    } else if (widget.article != null) {
       final lessonService = Provider.of<LessonService>(context, listen: false);
-      _loadedContent = await lessonService.getCustomContent(widget.article!.id);
-      if (mounted) setState(() {});
+      final customData = await lessonService.getCustomContent(widget.article!.id);
+      if (customData != null && customData.isNotEmpty) {
+        _loadedContent = customData;
+      }
     }
+
+    if (mounted) setState(() {});
 
     _loadWordGenders();
     _fetchContextualAnalysis();
+
     _ttsSubscription = _ttsService.progressStream.listen((progress) {
       if (mounted) {
         setState(() {
           _currentTtsProgress = progress;
+          _isPlayingTts = progress != null;
         });
+
+        if (_autoScrollWithTts && progress != null) {
+          _handleTtsAutoScroll(progress);
+        }
       }
     });
   }
 
+  void _handleTtsAutoScroll(TtsProgress progress) {
+    List<String> paragraphs = _getParagraphList();
+    for (int i = 0; i < paragraphs.length; i++) {
+      if (paragraphs[i].contains(progress.word) || progress.text.contains(paragraphs[i])) {
+        if (_currentlySpokenParagraphIndex != i) {
+          _currentlySpokenParagraphIndex = i;
+          _scrollToParagraph(i);
+        }
+        break;
+      }
+    }
+  }
+
+  void _scrollToParagraph(int index) {
+    final key = _paragraphKeys[index];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        alignment: 0.3,
+      );
+    }
+  }
+
   @override
   void dispose() {
+    _scrollController.removeListener(_updateScrollProgress);
+    _scrollController.dispose();
     _ttsSubscription?.cancel();
     super.dispose();
+  }
+
+  List<String> _getParagraphList() {
+    if (_loadedContent != null && _loadedContent!.isNotEmpty) {
+      return _loadedContent!.split(RegExp(r'\n\s*\n')).where((p) => p.trim().isNotEmpty).toList();
+    }
+    return [
+      'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.',
+      'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.',
+      'Hannah ging näher heran. Es war ein kleiner, goldener Schmetterling aus Metall.',
+      '"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?',
+      'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.'
+    ];
   }
 
   Future<void> _fetchContextualAnalysis() async {
     setState(() {
       _isLoadingAnalysis = true;
-      _paragraphAnalysisData = {}; // Clear existing data
+      _paragraphAnalysisData = {};
     });
 
-    String contentToProcess = _loadedContent ?? 
-      'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.\n\n'
-      'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.\n\n'
-      'Hannah ging näher heran. Es war ein kleiner, goldener Schmetterling aus Metall.\n\n'
-      '"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?\n\n'
-      'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.';
+    final storyId = widget.article?.id ?? 'default_story';
+    final lessonService = Provider.of<LessonService>(context, listen: false);
+
+    // 1. Check persistent disk cache first (0ms instantaneous load)
+    final cached = await lessonService.getCachedAnalysis(storyId);
+    if (cached != null && cached.isNotEmpty && mounted) {
+      setState(() {
+        _paragraphAnalysisData = cached;
+        _visibleParagraphTranslations.addAll(cached.keys);
+        _isLoadingAnalysis = false;
+      });
+      _loadWordGenders();
+      return;
+    }
+
+    List<String> paragraphs = _getParagraphList();
 
     try {
-      final backend = BackendService();
-      
-      // Use streaming for progressive loading with auto language detection
-      await for (var event in backend.processFullArticleStream(contentToProcess, lang: 'auto')) {
+      for (int i = 0; i < paragraphs.length; i++) {
         if (!mounted) break;
-        
-        final type = event['type'] as String?;
-        
-        if (type == 'metadata') {
-          // Initial metadata received
-          final totalParagraphs = event['total_paragraphs'] as int?;
-          print('Starting to process $totalParagraphs paragraphs');
-        } else if (type == 'paragraph') {
-          // Paragraph processed - add to UI immediately
-          final index = event['index'] as int;
-          final original = event['original'] as String;
-          final translation = event['translation'] as String? ?? '';
-          final sourceLang = event['source_lang'] as String? ?? 'de';
-          
-          setState(() {
-            _paragraphAnalysisData[index] = {
-              'german_analysis': event['german_analysis'] ?? [],
-              'german_text': sourceLang == 'en' ? translation : original,  // German text to display
-              'original_text': original,  // Original text (for reference)
-              'english_translation': sourceLang == 'en' ? original : translation,  // Original English if source was English, translated English if source was German
-              'source_lang': sourceLang,
-            };
-          });
-          print('Received paragraph $index');
-        } else if (type == 'complete') {
-          // All paragraphs processed
-          if (mounted) {
-            setState(() {
-              _isLoadingAnalysis = false;
-            });
-          }
-          print('Processing complete');
-        } else if (type == 'error') {
-          // Error occurred
-          print('Stream error: ${event['error']}');
-          if (mounted) {
-            setState(() {
-              _isLoadingAnalysis = false;
-            });
-          }
-        }
+        final para = paragraphs[i].trim();
+        final localResult = await _onDeviceAI.analyzeSentenceLocally(para);
+
+        setState(() {
+          _paragraphAnalysisData[i] = {
+            'german_analysis': localResult.tokens.map((t) => {
+              'word': t.word,
+              'lemma': t.lemma,
+              'pos': t.partOfSpeech,
+              'translation': t.translation,
+              'note': t.grammarNote,
+            }).toList(),
+            'german_text': para,
+            'original_text': para,
+            'english_translation': localResult.translatedSentence,
+            'source_lang': 'de',
+            'is_on_device': true,
+          };
+          _visibleParagraphTranslations.add(i);
+        });
       }
-    } catch (e) {
-      print('Error fetching contextual analysis: $e');
+
+      await lessonService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
     } finally {
-      if (mounted && _isLoadingAnalysis) {
+      if (mounted) {
         setState(() {
           _isLoadingAnalysis = false;
         });
+        _loadWordGenders(); // Query DB for any newly parsed lemmas
       }
     }
   }
 
   Future<void> _loadWordGenders() async {
-      // Collect all words from static content (and custom if needed)
-      // For MVP, we'll just extract from the hardcoded strings we know are there or simple split
-      // Ideally this should be dynamic based on the article content
-      
-      List<String> textChunks = [];
-      if (_loadedContent != null) {
-          textChunks.add(_loadedContent!);
-      } else {
-          // Add the static content pieces
-          textChunks.add('Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.');
-          textChunks.add('Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.');
-          textChunks.add('Hannah ging näher heran. Es war ein kleiner, goldener Schmetterling aus Metall.');
-          textChunks.add('"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?');
-          textChunks.add('Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.');
-      }
+    List<String> textChunks = _getParagraphList();
+    Set<String> queryWords = {};
 
-      Set<String> allWords = {};
-      for (var chunk in textChunks) {
-          // Split by non-word chars roughly
-          chunk.split(RegExp(r'[^\wäöüÄÖÜß]+')).forEach((w) {
-              if (w.isNotEmpty) allWords.add(w);
-          });
-      }
+    for (var chunk in textChunks) {
+      chunk.split(RegExp(r'[^\wäöüÄÖÜß]+')).forEach((w) {
+        if (w.isNotEmpty) {
+          queryWords.add(w);
+          queryWords.add(w.toLowerCase());
 
-      final genders = await _dictionaryService.getGendersForWords(allWords.toList());
-      
-      if (mounted) {
-          setState(() {
-              _wordGenders = genders;
-              _isLoadingGenders = false;
-          });
+          // Common singularization candidates for SQLite DB lookup
+          if (w.endsWith('en') && w.length > 3) {
+            queryWords.add(w.substring(0, w.length - 2));
+            queryWords.add('${w.substring(0, w.length - 2)}e');
+          } else if (w.endsWith('n') && w.length > 3) {
+            queryWords.add(w.substring(0, w.length - 1));
+          } else if (w.endsWith('e') && w.length > 3) {
+            queryWords.add(w.substring(0, w.length - 1));
+          }
+        }
+      });
+    }
+
+    // Add words and lemmas parsed from token analysis
+    for (var pData in _paragraphAnalysisData.values) {
+      final tokens = (pData['german_analysis'] as List<dynamic>?) ?? [];
+      for (var t in tokens) {
+        if (t['word'] != null && t['word'].toString().isNotEmpty) {
+          queryWords.add(t['word'].toString());
+          queryWords.add(t['word'].toString().toLowerCase());
+        }
+        if (t['lemma'] != null && t['lemma'].toString().isNotEmpty) {
+          queryWords.add(t['lemma'].toString());
+          queryWords.add(t['lemma'].toString().toLowerCase());
+        }
       }
+    }
+
+    final genders = await _dictionaryService.getGendersForWords(queryWords.toList());
+
+    if (mounted && genders.isNotEmpty) {
+      setState(() {
+        _wordGenders.addAll(genders);
+      });
+    }
+  }
+
+  /// Determines gender for a German noun using DB lookup + morphological suffix fallback
+  String? _getNounGender(String word, String? contextGender, String? lemma) {
+    if (contextGender != null && contextGender.isNotEmpty) {
+      final cg = contextGender.toLowerCase().trim();
+      if (cg == 'm' || cg == 'masc' || cg == 'masculine' || cg == 'der' ||
+          cg == 'f' || cg == 'fem' || cg == 'feminine' || cg == 'die' ||
+          cg == 'n' || cg == 'neu' || cg == 'neuter' || cg == 'das') {
+        return cg;
+      }
+    }
+
+    final lower = word.toLowerCase();
+    if (_wordGenders.containsKey(word)) return _wordGenders[word];
+    if (_wordGenders.containsKey(lower)) return _wordGenders[lower];
+    if (lemma != null && _wordGenders.containsKey(lemma.toLowerCase())) {
+      return _wordGenders[lemma.toLowerCase()];
+    }
+
+    // High-precision German Noun Suffix Fallbacks (e.g. -ung -> die/f)
+    if (lower.endsWith('ung') || lower.endsWith('heit') || lower.endsWith('keit') ||
+        lower.endsWith('schaft') || lower.endsWith('ion') || lower.endsWith('tät') ||
+        lower.endsWith('ik') || lower.endsWith('ur') || lower.endsWith('lage')) {
+      return 'f'; // die (Feminine / Red)
+    }
+    if (lower.endsWith('ismus') || lower.endsWith('ling') || lower.endsWith('ant') || lower.endsWith('or')) {
+      return 'm'; // der (Masculine / Blue)
+    }
+    if (lower.endsWith('ment') || lower.endsWith('tum') || lower.endsWith('lein') ||
+        lower.endsWith('chen') || lower.endsWith('um')) {
+      return 'n'; // das (Neuter / Green)
+    }
+
+    return null;
+  }
+
+  void _togglePlayAllTts() {
+    if (_isPlayingTts) {
+      _ttsService.stop();
+      setState(() => _isPlayingTts = false);
+    } else {
+      List<String> paragraphs = _getParagraphList();
+      _ttsService.setSpeechRate(_speechRate);
+      _ttsService.speak(paragraphs.join(' '));
+      setState(() => _isPlayingTts = true);
+    }
+  }
+
+  void _changeSpeed(double rate) {
+    setState(() {
+      _speechRate = rate;
+    });
+    _ttsService.setSpeechRate(rate);
   }
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    Color scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
+    if (_isSepiaMode) {
+      scaffoldBg = isDark ? const Color(0xFF262220) : const Color(0xFFF6F0E6);
+    }
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Content
-          CustomScrollView(
-            slivers: [
-              _buildStickyHeader(context),
-              if (_isLoadingAnalysis)
-                SliverToBoxAdapter(
-                  child: LinearProgressIndicator(
-                    minHeight: 2,
-                    backgroundColor: Colors.transparent,
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+      backgroundColor: scaffoldBg,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isDesktop = constraints.maxWidth > 850;
+
+          if (isDesktop) {
+            return CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                _buildStickyHeader(context),
+                SliverPadding(
+                  padding: const EdgeInsets.all(28),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1200),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Left Story Column (Flex 65)
+                            Expanded(
+                              flex: 65,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildTitleSection(context),
+                                  const SizedBox(height: 16),
+                                  if (_showGenderHighlighting) _buildGenderLegend(context),
+                                  const SizedBox(height: 20),
+                                  _buildStoryContent(context),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 32),
+
+                            // Right Sidebar Column (Flex 35)
+                            Expanded(
+                              flex: 35,
+                              child: _buildDesktopReaderSidebar(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              SliverToBoxAdapter(child: _buildProgressBar(context)),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 20, 96), // pb-32 approx
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _buildTitleSection(context),
-                    const SizedBox(height: 24),
-                    _buildStoryContent(context),
-                  ]),
+              ],
+            );
+          }
+
+          // Mobile / Mobile Web Single-Column Layout
+          return Stack(
+            children: [
+              CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  _buildStickyHeader(context),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 160 + bottomInset),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 780),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildTitleSection(context),
+                                const SizedBox(height: 16),
+                                if (_showGenderHighlighting) _buildGenderLegend(context),
+                                const SizedBox(height: 20),
+                                _buildStoryContent(context),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Floating Bottom Reader Toolbar (Mobile)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: bottomInset + 12,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: _buildFloatingReaderToolbar(context),
+                  ),
                 ),
               ),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDesktopReaderSidebar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Reader Preferences Card
+          Card(
+            elevation: 0,
+            color: _isSepiaMode
+                ? (isDark ? const Color(0xFF322C28) : const Color(0xFFEBE0D0))
+                : Theme.of(context).cardColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(18.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.tune_rounded, size: 20, color: colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Reader Typography',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Font Family Selector
+                  const Text('Font Family', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      {'id': 'Sans', 'label': 'Sans'},
+                      {'id': 'Serif', 'label': 'Serif'},
+                      {'id': 'Mono', 'label': 'Mono'},
+                    ].map((f) {
+                      final isSelected = _fontFamily == f['id'];
+                      return ChoiceChip(
+                        label: Text(f['label']!, style: const TextStyle(fontSize: 11)),
+                        selected: isSelected,
+                        visualDensity: VisualDensity.compact,
+                        onSelected: (_) {
+                          setState(() => _fontFamily = f['id']!);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Line Spacing Selector
+                  const Text('Line Spacing', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      {'val': 1.4, 'label': '1.4x'},
+                      {'val': 1.6, 'label': '1.6x'},
+                      {'val': 1.9, 'label': '1.9x'},
+                    ].map((h) {
+                      final isSelected = (_lineHeight - (h['val'] as double)).abs() < 0.05;
+                      return ChoiceChip(
+                        label: Text(h['label'] as String, style: const TextStyle(fontSize: 11)),
+                        selected: isSelected,
+                        visualDensity: VisualDensity.compact,
+                        onSelected: (_) {
+                          setState(() => _lineHeight = h['val'] as double);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Font Size Slider
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Font Size', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text('${_fontSize.round()} px', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  Slider(
+                    value: _fontSize,
+                    min: 14.0,
+                    max: 26.0,
+                    divisions: 6,
+                    onChanged: (val) => setState(() => _fontSize = val),
+                  ),
+                  
+                  // Sepia & Highlighting Switches
+                  SwitchListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Sepia Warm Mode', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    value: _isSepiaMode,
+                    onChanged: (val) => setState(() => _isSepiaMode = val),
+                  ),
+                  SwitchListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Gender Highlighting', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    value: _showGenderHighlighting,
+                    onChanged: (val) => setState(() => _showGenderHighlighting = val),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Audio Player & Controls Card
+          Card(
+            elevation: 0,
+            color: colorScheme.surfaceContainerHigh,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(18.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.headset_rounded, size: 20, color: colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Audio Narration',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  Row(
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _togglePlayAllTts,
+                        icon: Icon(_isPlayingTts ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                        label: Text(_isPlayingTts ? 'Pause' : 'Play Full Story'),
+                      ),
+                      const Spacer(),
+                      Wrap(
+                        spacing: 4,
+                        children: [0.75, 1.0, 1.25].map((speed) {
+                          final ttsRate = 0.5 * speed;
+                          final isSelected = (_speechRate - ttsRate).abs() < 0.05;
+                          return ChoiceChip(
+                            label: Text('${speed}x', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                            selected: isSelected,
+                            visualDensity: VisualDensity.compact,
+                            onSelected: (_) => _changeSpeed(ttsRate),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -215,71 +609,76 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   Widget _buildStickyHeader(BuildContext context) {
     return SliverAppBar(
       pinned: true,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95), // Surface color
-      surfaceTintColor: Colors.transparent, // M3 specific: avoid tint if using manual background
+      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
-       automaticallyImplyLeading: false,
+      automaticallyImplyLeading: false,
       title: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Back Button
+            // Back Button (40x40)
             Container(
               width: 40, height: 40,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHigh, // More expressive
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
                 shape: BoxShape.circle,
               ),
               child: IconButton(
+                padding: EdgeInsets.zero,
                 icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    size: 20, color: Theme.of(context).colorScheme.onSurface),
-                onPressed: () => Navigator.pop(context),
+                    size: 18, color: Theme.of(context).colorScheme.onSurface),
+                onPressed: () {
+                  _ttsService.stop();
+                  Navigator.pop(context);
+                },
               ),
             ),
-            
-            // Right Side Controls
-            Row(
-              children: [
-                if (_isLoadingAnalysis)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12.0),
-                    child: SizedBox(
-                      width: 14, height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onSurfaceVariant),
+
+            // Center Scroll % Badge
+            ValueListenableBuilder<double>(
+              valueListenable: _scrollProgressNotifier,
+              builder: (context, progress, _) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    '${(progress * 100).round()}% read',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
                   ),
-                if (!_isLoadingAnalysis && _paragraphAnalysisData.isNotEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 12.0),
-                    child: Icon(Icons.check_circle_outline_rounded, size: 16, color: Colors.green),
+                );
+              },
+            ),
+
+            // Right Action Controls (Uniform 40x40 Size & Padding)
+            Row(
+              children: [
+                // Analysis Status Indicator
+                Container(
+                  width: 40, height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    shape: BoxShape.circle,
                   ),
-                IconButton(
-                  icon: Icon(Icons.play_circle_fill_rounded, 
-                      size: 28, color: Theme.of(context).colorScheme.primary),
-                  onPressed: () {
-                    // Collect all text from paragraphs
-                    List<String> textChunks = [];
-                    if (_loadedContent != null) {
-                      textChunks = _loadedContent!.split(RegExp(r'\n\s*\n'));
-                    } else {
-                      textChunks = [
-                        'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.',
-                        'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.',
-                        'Hannah ging näher heran. Es war ein kleiner, goldener Schmetterling aus Metall.',
-                        '"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?',
-                        'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.'
-                      ];
-                    }
-                    _ttsService.speak(textChunks.join(' '));
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.stop_circle_rounded, 
-                      size: 28, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
-                  onPressed: () => _ttsService.stop(),
+                  child: _isLoadingAnalysis
+                      ? SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
+                        )
+                      : Icon(Icons.check_circle_rounded, size: 20, color: Colors.green.shade600),
                 ),
                 const SizedBox(width: 8),
+
+                // Reader Preferences Sheet Trigger (40x40)
                 Container(
                   width: 40, height: 40,
                   decoration: BoxDecoration(
@@ -287,8 +686,24 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: Icon(Icons.brightness_6_rounded, 
-                        size: 24, color: Theme.of(context).colorScheme.onSurface),
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.tune_rounded, size: 20, color: Theme.of(context).colorScheme.onSurface),
+                    onPressed: () => _showDisplaySettingsSheet(context),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Dark / Light Theme Switch (40x40)
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.brightness_6_rounded,
+                        size: 20, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () {
                       Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
                     },
@@ -302,193 +717,317 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     );
   }
 
-  Widget _buildProgressBar(BuildContext context) {
+  Widget _buildGenderLegend(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      height: 4,
-      width: double.infinity,
-      color: Theme.of(context).dividerColor.withValues(alpha: 0.3), // bg-gray-200 equivalentish
-      child: FractionallySizedBox(
-        alignment: Alignment.centerLeft,
-        widthFactor: 0.32,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            borderRadius: const BorderRadius.horizontal(right: Radius.circular(999)),
-          ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildLegendChip(context, 'der (M)', isDark ? AppTheme.genderMascDark : AppTheme.genderMasc),
+          _buildLegendChip(context, 'die (F)', isDark ? AppTheme.genderFemDark : AppTheme.genderFem),
+          _buildLegendChip(context, 'das (N)', isDark ? AppTheme.genderNeuDark : AppTheme.genderNeu),
+        ],
       ),
     );
   }
 
+  Widget _buildLegendChip(BuildContext context, String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTitleSection(BuildContext context) {
+    final rawTitle = widget.article?.title ?? 'Der verlorene Schlüssel';
+    String mainHeadline = rawTitle;
+    String? sourceTag;
+
+    // Clean up domain suffixes like "- sgi-ch.org" into a clean source tag
+    if (rawTitle.contains(' - ')) {
+      final parts = rawTitle.split(' - ');
+      if (parts.last.contains('.')) {
+        sourceTag = parts.last;
+        mainHeadline = parts.sublist(0, parts.length - 1).join(' - ');
+      }
+    }
+
     return Container(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         border: Border(
-            bottom: BorderSide(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                width: 2)),
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            width: 2,
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.article?.level ?? 'KAPITEL 3',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-               color: Theme.of(context).colorScheme.primary,
-               letterSpacing: 1.5,
-               fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Text(
+                widget.article?.level ?? 'KAPITEL 3',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (sourceTag != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    sourceTag,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 8),
           Text(
-            widget.article?.title ?? 'Der verlorene Schlüssel',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith( // Using display style for Title
+            mainHeadline,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w800,
-              height: 1.1,
+              height: 1.25,
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            widget.article != null ? '' : 'The Lost Key', 
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontStyle: FontStyle.italic,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          if (widget.article == null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'The Lost Key',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontStyle: FontStyle.italic,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildStoryContent(BuildContext context) {
-    if (_loadedContent != null) {
-      // Split loaded content into paragraphs assuming \n\n
-      List<String> paragraphs = _loadedContent!.split(RegExp(r'\n\s*\n'));
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: List.generate(paragraphs.length, (index) {
-          // Use German text from analysis if available, otherwise use original
-          final germanText = _paragraphAnalysisData[index]?['german_text'] as String? ?? paragraphs[index];
-          
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 24.0),
-            child: _buildInteractiveParagraph(context, germanText, index),
-          );
-        }),
-      );
-    }
-    
-    // Static content case
-    List<String> staticParagraphs = [
-      'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.',
-      'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.',
-      'Hannah ging näher heran. Es war ein kleiner, goldener Schmetterling aus Metall.',
-      '"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?',
-      'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.'
-    ];
+    List<String> paragraphs = _getParagraphList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle(context, 'Im alten Haus', Theme.of(context).colorScheme.primary),
-        const SizedBox(height: 12),
-        ...List.generate(staticParagraphs.length, (index) {
-           return Column(
-             children: [
-               _buildInteractiveParagraph(context, staticParagraphs[index], index),
-               const SizedBox(height: 24),
-             ],
-           );
-        }),
-      ],
+      children: List.generate(paragraphs.length, (index) {
+        _paragraphKeys.putIfAbsent(index, () => GlobalKey());
+
+        final germanText = _paragraphAnalysisData[index]?['german_text'] as String? ?? paragraphs[index];
+
+        return Padding(
+          key: _paragraphKeys[index],
+          padding: const EdgeInsets.only(bottom: 24.0),
+          child: _buildInteractiveParagraph(context, germanText, index),
+        );
+      }),
     );
+  }
+
+  TextStyle _getReaderTextStyle(BuildContext context) {
+    final baseColor = _isSepiaMode
+        ? const Color(0xFF322720)
+        : Theme.of(context).colorScheme.onSurface;
+
+    if (_fontFamily == 'Serif') {
+      return GoogleFonts.lora(fontSize: _fontSize, height: _lineHeight, color: baseColor);
+    } else if (_fontFamily == 'Mono') {
+      return GoogleFonts.robotoMono(fontSize: _fontSize, height: _lineHeight, color: baseColor);
+    } else {
+      return GoogleFonts.splineSans(fontSize: _fontSize, height: _lineHeight, color: baseColor);
+    }
   }
 
   Widget _buildInteractiveParagraph(BuildContext context, String text, int index) {
     final englishTranslation = _paragraphAnalysisData[index]?['english_translation'] as String?;
     final isTranslationVisible = _visibleParagraphTranslations.contains(index);
+    final isSpoken = _currentlySpokenParagraphIndex == index && _isPlayingTts;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 4.0),
-              child: Column(
-                children: [
-                // Speaker icon
-                InkWell(
-                  onTap: () => _ttsService.speak(text),
-                  child: Icon(Icons.volume_up_rounded, size: 18, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
-                ),
-                const SizedBox(height: 8),
-                // Translation toggle button
-                IconButton(
-                  onPressed: englishTranslation != null && englishTranslation.isNotEmpty ? () {
-                    setState(() {
-                      if (_visibleParagraphTranslations.contains(index)) {
-                        _visibleParagraphTranslations.remove(index);
-                      } else {
-                        _visibleParagraphTranslations.add(index);
-                      }
-                    });
-                  } : null,
-                  icon: Icon(
-                    isTranslationVisible ? Icons.translate_rounded : Icons.g_translate_rounded,
-                    size: 16,
-                    color: englishTranslation != null && englishTranslation.isNotEmpty
-                        ? (isTranslationVisible ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withValues(alpha: 0.4))
-                        : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.1), // Placeholder if missing
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: isSpoken ? const EdgeInsets.all(10) : EdgeInsets.zero,
+      decoration: BoxDecoration(
+        color: isSpoken
+            ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        border: isSpoken
+            ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6), width: 1.5)
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Styled Left Action Column
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(height: 8),
-                // AI Explain Button
-                IconButton(
-                  onPressed: () => _handleExplainTap(context, text),
-                  icon: Icon(
-                    Icons.share_rounded,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.tertiary,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontSize: 18,
-                        height: 1.6, // More breathing room
-                        color: Theme.of(context).colorScheme.onSurface,
+                  child: Column(
+                    children: [
+                      // Audio Speak Paragraph
+                      IconButton(
+                        icon: Icon(
+                          Icons.volume_up_rounded,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        tooltip: 'Listen to paragraph',
+                        onPressed: () {
+                          _ttsService.setSpeechRate(_speechRate);
+                          _ttsService.speak(text);
+                        },
                       ),
-                      children: _buildParagraphSpans(context, text, index),
-                    ),
+                      const SizedBox(height: 4),
+
+                      // Inline Translation Toggle
+                      IconButton(
+                        icon: _isLoadingAnalysis && (englishTranslation == null || englishTranslation.isEmpty)
+                            ? SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
+                              )
+                            : Icon(
+                                isTranslationVisible ? Icons.translate_rounded : Icons.g_translate_rounded,
+                                size: 20,
+                                color: isTranslationVisible
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                              ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        tooltip: 'Toggle paragraph translation',
+                        onPressed: () {
+                          setState(() {
+                            if (_visibleParagraphTranslations.contains(index)) {
+                              _visibleParagraphTranslations.remove(index);
+                            } else {
+                              _visibleParagraphTranslations.add(index);
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 4),
+
+                      // In-App AI Grammar Explainer Sheet Trigger
+                      IconButton(
+                        icon: Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.tertiary,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        tooltip: 'AI Grammar Breakdown',
+                        onPressed: () => _showAiGrammarExplainer(context, text, index),
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Delete Paragraph Trigger
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        tooltip: 'Delete paragraph',
+                        onPressed: () => _deleteParagraph(index),
+                      ),
+                    ],
                   ),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Paragraph Body & Translation
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ValueListenableBuilder<_TappedWordData?>(
+                      valueListenable: _tappedWordNotifier,
+                      builder: (context, tappedData, _) {
+                        return RichText(
+                          text: TextSpan(
+                            style: _getReaderTextStyle(context),
+                            children: _buildParagraphSpans(context, text, index),
+                          ),
+                        );
+                      },
+                    ),
                   if (isTranslationVisible && englishTranslation != null && englishTranslation.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
+                    Container(
+                      margin: const EdgeInsets.only(top: 10.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border(
+                          left: BorderSide(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                            width: 3.5,
+                          ),
+                        ),
+                      ),
                       child: Text(
                         englishTranslation,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
+                        style: GoogleFonts.splineSans(
+                          fontSize: (_fontSize - 3).clamp(12.0, 20.0),
                           fontStyle: FontStyle.italic,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                          height: 1.4,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.45,
                         ),
                       ),
                     ),
@@ -498,468 +1037,781 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           ],
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   List<InlineSpan> _buildParagraphSpans(BuildContext context, String text, int paragraphIndex) {
-    // Basic tokenization by space to separate words
     List<String> rawTokens = text.split(' ');
     List<InlineSpan> spans = [];
     int currentCharacterOffset = 0;
-    
+
     final paragraphData = _paragraphAnalysisData[paragraphIndex];
     final paragraphTokens = (paragraphData?['german_analysis'] as List<dynamic>?) ?? [];
     int tokenSearchIndex = 0;
-    
-    if (paragraphTokens.isEmpty && !_isLoadingAnalysis) {
-        print("DEBUG: No analysis found for paragraph $paragraphIndex");
-    }
 
     for (int i = 0; i < rawTokens.length; i++) {
-        String token = rawTokens[i];
-        
-        // Simple regex to separate punctuation from the word
-        final match = RegExp(r'^([^\wäöüÄÖÜß]*)([\wäöüÄÖÜß]+)([^\wäöüÄÖÜß]*)$').firstMatch(token);
+      String token = rawTokens[i];
+      final match = _wordTokenRegex.firstMatch(token);
 
-        if (match != null) {
-            String prefix = match.group(1) ?? '';
-            String word = match.group(2) ?? '';
-            String suffix = match.group(3) ?? '';
+      if (match != null) {
+        String prefix = match.group(1) ?? '';
+        String word = match.group(2) ?? '';
+        String suffix = match.group(3) ?? '';
 
-            if (prefix.isNotEmpty) {
-                spans.add(TextSpan(text: prefix));
-            }
-
-            Color wordColor = Theme.of(context).colorScheme.onSurface;
-            FontWeight wordWeight = FontWeight.normal;
-            // Removed underline decoration logic
-            // TextDecoration wordDecoration = TextDecoration.none;
-            // Color? decorationColor;
-            
-            // CONTEXTUAL HIGHLIGHT (POS/GENDER)
-            String? contextGender;
-            String? contextPos;
-
-            // Simple alignment heuristic: find the next matching word in analysis
-            while (tokenSearchIndex < paragraphTokens.length) {
-                final aToken = paragraphTokens[tokenSearchIndex];
-                if (aToken['word'].toString().toLowerCase() == word.toLowerCase()) {
-                    contextGender = aToken['gender'];
-                    contextPos = aToken['pos'];
-                    tokenSearchIndex++; // Move search forward
-                    break;
-                } else {
-                    // Lookahead a bit or just break if distant?
-                    // For now, if current analysis token doesn't match word, 
-                    // it might be a token we skipped (puncts/spaces) or a mismatch.
-                    // Let's just move one step to try and catch up if it's a skip.
-                    tokenSearchIndex++;
-                    if (tokenSearchIndex >= paragraphTokens.length) break;
-                    // re-check
-                    if (paragraphTokens[tokenSearchIndex]['word'].toString().toLowerCase() == word.toLowerCase()) {
-                        contextGender = paragraphTokens[tokenSearchIndex]['gender'];
-                        contextPos = paragraphTokens[tokenSearchIndex]['pos'];
-                        tokenSearchIndex++;
-                        break;
-                    }
-                }
-            }
-
-            // Word-level TTS highlighting
-            bool isHighlighted = false;
-            if (_currentTtsProgress != null && _currentTtsProgress!.text == text) {
-                int wordStart = currentCharacterOffset + prefix.length;
-                int wordEnd = wordStart + word.length;
-                if (wordStart >= _currentTtsProgress!.start && wordEnd <= _currentTtsProgress!.end) {
-                    isHighlighted = true;
-                }
-            }
-
-            // Coloring based on context
-            if (contextPos == 'noun') {
-                String? finalGender = contextGender;
-                
-                // Fallback: If context knows it's a noun but no gender, check DB
-                if (finalGender == null) {
-                    finalGender = _wordGenders[word] ?? _wordGenders[word.toLowerCase()];
-                }
-
-                if (finalGender != null) {
-                    wordWeight = FontWeight.w500;
-                    
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-                    if (finalGender == 'm') {
-                      wordColor = isDark ? AppTheme.genderMascDark : AppTheme.genderMasc;
-                    } else if (finalGender == 'f') {
-                      wordColor = isDark ? AppTheme.genderFemDark : AppTheme.genderFem;
-                    } else if (finalGender == 'n') {
-                      wordColor = isDark ? AppTheme.genderNeuDark : AppTheme.genderNeu;
-                    }
-                }
-            }
-
-            spans.add(
-              TextSpan(
-                text: word,
-                style: TextStyle(
-                  color: isHighlighted ? Colors.white : wordColor,
-                  fontWeight: wordWeight,
-                  // decoration: wordDecoration, -> removed
-                  // decorationColor: decorationColor, -> removed
-                  // decorationStyle: TextDecorationStyle.dashed, -> removed
-                  // decorationThickness: 1.5, -> removed
-                  backgroundColor: isHighlighted 
-                    ? Theme.of(context).colorScheme.primary 
-                    : null,
-                ),
-                recognizer: TapGestureRecognizer()..onTapDown = (details) {
-                    _handleWordTap(word, text, details.globalPosition, paragraphIndex);
-                },
-              )
-            );
-
-            if (suffix.isNotEmpty) {
-                spans.add(TextSpan(text: suffix));
-            }
-        } else {
-            // Fallback for complex tokens or just whitespace/symbols
-            spans.add(TextSpan(text: token));
+        if (prefix.isNotEmpty) {
+          spans.add(TextSpan(text: prefix));
         }
 
-        currentCharacterOffset += token.length;
+        Color wordColor = Theme.of(context).colorScheme.onSurface;
+        FontWeight wordWeight = FontWeight.normal;
 
-        // Add space back unless it's the last word
-        if (i < rawTokens.length - 1) {
-            spans.add(const TextSpan(text: ' '));
-            currentCharacterOffset += 1; // for the space
+        String? contextGender;
+        String? contextPos;
+        String? lemma;
+
+        // Contextual word alignment
+        while (tokenSearchIndex < paragraphTokens.length) {
+          final aToken = paragraphTokens[tokenSearchIndex];
+          if (aToken['word'].toString().toLowerCase() == word.toLowerCase()) {
+            contextGender = aToken['gender'];
+            contextPos = aToken['pos'];
+            lemma = aToken['lemma'];
+            tokenSearchIndex++;
+            break;
+          } else {
+            tokenSearchIndex++;
+            if (tokenSearchIndex >= paragraphTokens.length) break;
+            if (paragraphTokens[tokenSearchIndex]['word'].toString().toLowerCase() == word.toLowerCase()) {
+              contextGender = paragraphTokens[tokenSearchIndex]['gender'];
+              contextPos = paragraphTokens[tokenSearchIndex]['pos'];
+              lemma = paragraphTokens[tokenSearchIndex]['lemma'];
+              tokenSearchIndex++;
+              break;
+            }
+          }
         }
+
+        // TTS word highlighting (Supports both single paragraph and full story playback)
+        bool isHighlighted = false;
+        if (_currentTtsProgress != null) {
+          int wordStart = currentCharacterOffset + prefix.length;
+          int wordEnd = wordStart + word.length;
+
+          if (_currentTtsProgress!.text == text) {
+            // Paragraph-level TTS
+            if (wordStart >= _currentTtsProgress!.start && wordEnd <= _currentTtsProgress!.end) {
+              isHighlighted = true;
+            }
+          } else if (_currentTtsProgress!.text.contains(text)) {
+            // Full story TTS
+            int paraOffsetInFullText = _currentTtsProgress!.text.indexOf(text);
+            if (paraOffsetInFullText != -1) {
+              int relStart = _currentTtsProgress!.start - paraOffsetInFullText;
+              int relEnd = _currentTtsProgress!.end - paraOffsetInFullText;
+
+              if (relStart >= 0 && wordStart >= relStart - 1 && wordEnd <= relEnd + 2) {
+                isHighlighted = true;
+              } else if (relStart >= 0 &&
+                  word.toLowerCase() == _currentTtsProgress!.word.toLowerCase() &&
+                  wordStart >= relStart - 8 &&
+                  wordStart <= relEnd + 8) {
+                isHighlighted = true;
+              }
+            }
+          }
+        }
+
+        // German Noun Gender Coloring (der / die / das)
+        final isCapitalizedNoun = word.isNotEmpty && word[0] == word[0].toUpperCase();
+        final isNounInDb = _wordGenders.containsKey(word) || _wordGenders.containsKey(word.toLowerCase());
+        if (_showGenderHighlighting && (contextPos?.toLowerCase() == 'noun' || isCapitalizedNoun || isNounInDb)) {
+          final gender = _getNounGender(word, contextGender, lemma);
+
+          if (gender != null && gender.isNotEmpty) {
+            wordWeight = FontWeight.w600;
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final g = gender.toLowerCase().trim();
+
+            if (g == 'm' || g == 'masc' || g == 'masculine' || g == 'der') {
+              wordColor = isDark ? AppTheme.genderMascDark : AppTheme.genderMasc;
+            } else if (g == 'f' || g == 'fem' || g == 'feminine' || g == 'die') {
+              wordColor = isDark ? AppTheme.genderFemDark : AppTheme.genderFem;
+            } else if (g == 'n' || g == 'neu' || g == 'neuter' || g == 'das') {
+              wordColor = isDark ? AppTheme.genderNeuDark : AppTheme.genderNeu;
+            }
+          }
+        }
+
+        final tappedData = _tappedWordNotifier.value;
+        final isTappedWord = tappedData != null &&
+            tappedData.paragraphIndex == paragraphIndex &&
+            word.toLowerCase() == tappedData.word.toLowerCase();
+
+        Color? backgroundColor;
+        Color? textColor = isHighlighted ? Theme.of(context).colorScheme.onPrimary : wordColor;
+
+        if (isTappedWord) {
+          backgroundColor = Theme.of(context).colorScheme.primaryContainer;
+          textColor = Theme.of(context).colorScheme.onPrimaryContainer;
+        } else if (isHighlighted) {
+          backgroundColor = Theme.of(context).colorScheme.primary;
+        }
+
+        spans.add(
+          TextSpan(
+            text: word,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: isTappedWord ? FontWeight.bold : wordWeight,
+              backgroundColor: backgroundColor,
+            ),
+            recognizer: TapGestureRecognizer()
+              ..onTapDown = (details) {
+                _handleWordTap(word, text, details.globalPosition, paragraphIndex);
+              },
+          ),
+        );
+
+        if (suffix.isNotEmpty) {
+          spans.add(TextSpan(text: suffix));
+        }
+      } else {
+        spans.add(TextSpan(text: token));
+      }
+
+      currentCharacterOffset += token.length;
+
+      if (i < rawTokens.length - 1) {
+        spans.add(const TextSpan(text: ' '));
+        currentCharacterOffset += 1;
+      }
     }
     return spans;
   }
 
-  final BackendService _backendService = BackendService();
+  void _handleWordTap(String word, String contextText, Offset tapPosition, int paragraphIndex) {
+    final cleanWord = word.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
+    if (cleanWord.isEmpty) return;
 
-  void _handleExplainTap(BuildContext context, String text) {
-    const String systemInstruction = """
-Current Role: Expert German Language Tutor & Linguist.
+    _tappedWordNotifier.value = _TappedWordData(cleanWord, paragraphIndex);
 
-Task: Analyze the German text provided below for a language learner (Level B1-B2).
-
-Please provide a structured response with the following sections:
-1. 📖 **Translation**: A natural, idiomatic English translation.
-2. 🔍 **Grammar Breakdown**: Analyze the sentence structure, verb tenses, and cases (Nominative, Accusative, Dative, Genitive). Explain *why* specific cases are used.
-3. 🧠 **Vocabulary**: Highlight key words, compound nouns (split them), and separable verbs. Include the gender (der/die/das) for all nouns.
-4. 💡 **Nuances**: Mention any cultural context, tone (formal/informal), or interesting idioms used.
-
-Keep the explanation clear, encouraging, and easy to read.
-""";
-    
-    final String prompt = "$systemInstruction\n\n🇩🇪 TEXT TO ANALYZE:\n$text";
-    
-    Share.share(prompt, subject: 'German Text Analysis');
-  }
-
-  void _handleWordTap(String word, String contextText, Offset tapPosition, int paragraphIndex) async {
-      print("DEBUG: Tapped word: '$word' in paragraph $paragraphIndex at $tapPosition");
-      
-      // 1. Initial local lookup (fast) - fetch all possible POS versions
-      var allPotentialDetails = await _dictionaryService.lookupWordAllPOS(word);
-      
-      if (!mounted) return;
-
-      // 2. Check if we have cached analysis for this paragraph
-      Future<Map<String, dynamic>?> backendFuture;
-      if (_paragraphAnalysisData.containsKey(paragraphIndex)) {
-        print("DEBUG: Using client-cached data for word lookup");
-        backendFuture = Future.value(_paragraphAnalysisData[paragraphIndex]);
-      } else {
-        backendFuture = _backendService.processText(contextText, lang: 'de');
+    // Extract in-memory token analysis for instant 0ms pre-populated sheet rendering
+    List<Map<String, dynamic>>? instantDetails;
+    final paragraphData = _paragraphAnalysisData[paragraphIndex];
+    if (paragraphData != null) {
+      final tokens = (paragraphData['german_analysis'] as List<dynamic>?) ?? [];
+      for (var t in tokens) {
+        final tokenWord = t['word']?.toString() ?? '';
+        final tokenLemma = t['lemma']?.toString() ?? '';
+        if (tokenWord.toLowerCase() == cleanWord.toLowerCase() ||
+            tokenLemma.toLowerCase() == cleanWord.toLowerCase()) {
+          final gender = _getNounGender(cleanWord, t['gender']?.toString(), tokenLemma);
+          instantDetails = [
+            {
+              'word': tokenWord.isNotEmpty ? tokenWord : cleanWord,
+              'base_form': tokenLemma.isNotEmpty ? tokenLemma : cleanWord,
+              'pos': t['pos'] ?? 'noun',
+              'gender': gender,
+              'definitions': <String>[],
+              'contextNote': t['note'] ?? '',
+            }
+          ];
+          break;
+        }
       }
+    }
 
-      // Even if not in dict, we show popup (maybe vocab or just for backend translation)
-      _showContextualPopup(context, word, contextText, allPotentialDetails, tapPosition, backendFuture);
+    GlanceWordSheet.show(
+      context,
+      word: cleanWord,
+      detailsList: instantDetails,
+      contextSentence: contextText,
+      sourceTitle: widget.article?.title ?? 'Story',
+    ).whenComplete(() {
+      _tappedWordNotifier.value = null;
+    });
   }
 
-  void _showContextualPopup(BuildContext context, String word, String contextText, List<Map<String, dynamic>> allPotentialDetails, Offset tapPosition, Future<Map<String, dynamic>?> backendFuture) {
+  void _deleteParagraph(int index) async {
+    List<String> paragraphs = _getParagraphList();
+    if (index < 0 || index >= paragraphs.length) return;
+
+    final deletedText = paragraphs[index];
+    final deletedAnalysis = _paragraphAnalysisData[index];
+
+    // Remove paragraph
+    paragraphs.removeAt(index);
+
+    // Re-index persistent analysis map
+    Map<int, Map<String, dynamic>> updatedAnalysis = {};
+    for (int i = 0; i < paragraphs.length; i++) {
+      int oldIndex = i >= index ? i + 1 : i;
+      if (_paragraphAnalysisData.containsKey(oldIndex)) {
+        updatedAnalysis[i] = _paragraphAnalysisData[oldIndex]!;
+      }
+    }
+
+    _loadedContent = paragraphs.join('\n\n');
+    _paragraphAnalysisData = updatedAnalysis;
+
+    // Save changes to persistent storage
+    final storyId = widget.article?.id ?? 'default_story';
+    final lessonService = Provider.of<LessonService>(context, listen: false);
+    if (widget.article != null) {
+      await lessonService.saveCustomContent(widget.article!.id, _loadedContent!);
+    }
+    await lessonService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
+
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Paragraph deleted'),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'UNDO',
+            onPressed: () async {
+              paragraphs.insert(index, deletedText);
+              _loadedContent = paragraphs.join('\n\n');
+
+              Map<int, Map<String, dynamic>> restoredAnalysis = {};
+              for (int i = 0; i < paragraphs.length; i++) {
+                if (i == index && deletedAnalysis != null) {
+                  restoredAnalysis[i] = deletedAnalysis;
+                } else {
+                  int srcIndex = i > index ? i - 1 : i;
+                  if (_paragraphAnalysisData.containsKey(srcIndex)) {
+                    restoredAnalysis[i] = _paragraphAnalysisData[srcIndex]!;
+                  }
+                }
+              }
+              _paragraphAnalysisData = restoredAnalysis;
+
+              if (widget.article != null) {
+                await lessonService.saveCustomContent(widget.article!.id, _loadedContent!);
+              }
+              await lessonService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
+
+              if (mounted) setState(() {});
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  // --- IN-APP AI GRAMMAR & SENTENCE EXPLAINER SHEET ---
+  void _showAiGrammarExplainer(BuildContext context, String text, int paragraphIndex) async {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-          return StatefulBuilder(
-            builder: (context, setPopupState) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainer, // Surface Container for Sheets
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)), // Expressive corner
-                  ),
-                  padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 30),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                       FutureBuilder<Map<String, dynamic>?>(
-                         future: backendFuture,
-                         builder: (context, backendSnapshot) {
-                           final backendData = backendSnapshot.data;
-                           // Extract specific word analysis if available
-                           Map<String, dynamic>? specificAnalysis;
-                           String? translatedSentence;
-                           
-                           if (backendData != null) {
-                              translatedSentence = backendData['translated_text'];
-                              List<dynamic> analysis = backendData['german_analysis'] ?? [];
-                              // Find our word
-                              try {
-                                 var match = analysis.firstWhere(
-                                   (w) => w['word'].toString().toLowerCase() == word.toLowerCase(),
-                                   orElse: () => null
-                                 );
-                                 if (match != null) specificAnalysis = match;
-                              } catch (_) {}
-                           }
-                           
-                           // RELEVANT DEFINITION LOGIC:
-                           Map<String, dynamic> displayDetails;
-                           if (specificAnalysis != null) {
-                              String backendPos = specificAnalysis['pos'].toString().toLowerCase();
-                              try {
-                                 displayDetails = allPotentialDetails.firstWhere(
-                                   (d) => d['pos'].toString().toLowerCase() == backendPos,
-                                   orElse: () => allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []}
-                                 );
-                              } catch (_) {
-                                 displayDetails = allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []};
-                              }
-                              displayDetails['pos'] = specificAnalysis['pos_detailed'] ?? specificAnalysis['pos'];
-                              if (specificAnalysis['gender'] != null) {
-                                displayDetails['gender'] = specificAnalysis['gender'];
-                              }
-                            } else {
-                              displayDetails = allPotentialDetails.isNotEmpty ? allPotentialDetails.first : {'word': word, 'definitions': []};
-                           }
+        return FutureBuilder<SentenceAnalysisResult>(
+          future: _onDeviceAI.analyzeSentenceLocally(text),
+          builder: (context, snapshot) {
+            final isLoading = snapshot.connectionState == ConnectionState.waiting;
+            final result = snapshot.data;
 
-                           return FutureBuilder<bool>(
-                              future: _vocabularyService.isWordSaved(word),
-                              builder: (context, snapshot) {
-                                final isSaved = snapshot.data ?? false;
-                                
-                                return Column(
-                                  mainAxisSize: MainAxisSize.min,
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.tertiaryContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.onTertiaryContainer, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'AI Sentence & Grammar Breakdown',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Paragraph ${paragraphIndex + 1}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+
+                  if (isLoading)
+                    const Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text('Analyzing German grammar & sentence structure...'),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (result != null)
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.all(20),
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('🇩🇪 ', style: TextStyle(fontSize: 18)),
+                                Expanded(
+                                  child: Text(
+                                    result.originalSentence,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.4,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.volume_up_rounded),
+                                  onPressed: () => _ttsService.speak(result.originalSentence),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('🇬🇧 ', style: TextStyle(fontSize: 18)),
+                                Expanded(
+                                  child: Text(
+                                    result.translatedSentence,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontStyle: FontStyle.italic,
+                                      height: 1.4,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          Row(
+                            children: [
+                              Text(
+                                'Structure: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                              Chip(
+                                label: Text(result.overallStructure),
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          Text(
+                            'Word & Part-of-Speech Analysis',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          ...result.tokens.where((token) {
+                            final w = token.word.toLowerCase().trim();
+                            final lemma = token.lemma.toLowerCase().trim();
+                            const obviousWords = {
+                              'der', 'die', 'das', 'dem', 'den', 'des',
+                              'ein', 'eine', 'einen', 'einem', 'einer', 'eines',
+                              'kein', 'keine', 'keinen', 'keinem', 'keiner', 'keines',
+                            };
+                            return !obviousWords.contains(w) && !obviousWords.contains(lemma);
+                          }).map((token) {
+                            return Card(
+                              elevation: 0,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              color: Theme.of(context).colorScheme.surfaceContainerLow,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: ListTile(
+                                dense: true,
+                                title: Row(
+                                  children: [
+                                    Text(
+                                      token.word,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.primaryContainer,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        token.partOfSpeech,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-
-                                     
-                                     // Word Details
-                                     Row(
-                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                       crossAxisAlignment: CrossAxisAlignment.start,
-                                       children: [
-                                         Expanded(
-                                           child: Column(
-                                             crossAxisAlignment: CrossAxisAlignment.start,
-                                             children: [
-                                               Row(
-                                                 crossAxisAlignment: CrossAxisAlignment.center,
-                                                 children: [
-                                                   Flexible(
-                                                     child: Text(
-                                                       displayDetails['word'] ?? word,
-                                                       style: TextStyle(
-                                                         fontSize: 18, 
-                                                         fontWeight: FontWeight.normal,
-                                                         color: Theme.of(context).colorScheme.onSurface,
-                                                         height: 1.2,
-                                                       ),
-                                                       softWrap: true,
-                                                     ),
-                                                   ),
-                                                   if (displayDetails['gender'] != null && (displayDetails['pos']?.toString().toLowerCase().contains('noun') ?? false))
-                                                     Container(
-                                                       margin: const EdgeInsets.only(left: 8),
-                                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                       decoration: BoxDecoration(
-                                                         color: _getGenderColor(displayDetails['gender']).withValues(alpha: 0.1),
-                                                         borderRadius: BorderRadius.circular(4),
-                                                       ),
-                                                       child: Text(
-                                                         displayDetails['gender'].toString().toUpperCase(),
-                                                         style: TextStyle(
-                                                           fontSize: 12,
-                                                           fontWeight: FontWeight.bold,
-                                                           color: _getGenderColor(displayDetails['gender']),
-                                                         ),
-                                                       ),
-                                                     ),
-                                                   if (displayDetails['pos'] != null)
-                                                     Container(
-                                                       margin: const EdgeInsets.only(left: 8),
-                                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                       decoration: BoxDecoration(
-                                                         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                                         borderRadius: BorderRadius.circular(4),
-                                                       ),
-                                                       child: Row(
-                                                         mainAxisSize: MainAxisSize.min,
-                                                         children: [
-                                                             Text(
-                                                               displayDetails['pos'].toString().toLowerCase(),
-                                                               style: TextStyle(
-                                                                 fontSize: 12,
-                                                                 fontWeight: FontWeight.bold,
-                                                                 color: Theme.of(context).colorScheme.primary,
-                                                               ),
-                                                             ),
-                                                         ],
-                                                       ),
-                                                     ),
-                                                 ],
-                                               ),
-                                               // Lemma
-                                               if ((displayDetails['base_form'] != null || specificAnalysis?['lemma'] != null) && 
-                                                   (specificAnalysis?['lemma'] ?? displayDetails['base_form']).toString().toLowerCase() != (displayDetails['word'] ?? word).toString().toLowerCase())
-                                                 Padding(
-                                                   padding: const EdgeInsets.only(top: 4.0),
-                                                   child: Text(
-                                                     'Lemma: ${specificAnalysis?['lemma'] ?? displayDetails['base_form']}',
-                                                     style: TextStyle(
-                                                       fontSize: 14,
-                                                       fontStyle: FontStyle.italic,
-                                                       color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                     ),
-                                                   ),
-                                                 ),
-                                             ],
-                                           ),
-                                         ),
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(),
-                                                onPressed: () {
-                                                  _ttsService.speak(displayDetails['word'] ?? word);
-                                                },
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  borderRadius: BorderRadius.circular(20),
-                                                  onTap: () async {
-                                                    if (isSaved) {
-                                                      await _vocabularyService.removeWord(word);
-                                                    } else {
-                                                      await _vocabularyService.saveWord(word);
-                                                    }
-                                                    setPopupState(() {});
-                                                  },
-                                                  child: Container(
-                                                    padding: const EdgeInsets.all(4),
-                                                    child: Icon(
-                                                      isSaved ? Icons.bookmark : Icons.bookmark_border,
-                                                      color: isSaved ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
-                                                      size: 24,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                            ),
-
-                                       ],
-                                     ),
-                                     const SizedBox(height: 16),
-
-                                     if (translatedSentence != null && translatedSentence.isNotEmpty)
-                                       Padding(
-                                         padding: const EdgeInsets.only(bottom: 16.0),
-                                         child: Container(
-                                           padding: const EdgeInsets.all(12),
-                                           width: double.infinity,
-                                           decoration: BoxDecoration(
-                                             color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                                             borderRadius: BorderRadius.circular(12),
-                                           ),
-                                           child: Column(
-                                             crossAxisAlignment: CrossAxisAlignment.start,
-                                             children: [
-                                               Text(
-                                                 'Translation', 
-                                                 style: TextStyle(
-                                                   fontSize: 11, 
-                                                   fontWeight: FontWeight.bold, 
-                                                   color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                                                   letterSpacing: 0.5,
-                                                 )
-                                               ),
-                                               const SizedBox(height: 4),
-                                               Text(
-                                                 translatedSentence,
-                                                 style: TextStyle(
-                                                   fontSize: 14,
-                                                   fontStyle: FontStyle.italic,
-                                                   color: Theme.of(context).colorScheme.onSurface,
-                                                   height: 1.4,
-                                                 ),
-                                               ),
-                                             ],
-                                           ),
-                                         ),
-                                       ),
-                                     
-                                     if (displayDetails['definitions'] != null && (displayDetails['definitions'] as List).isNotEmpty)
-                                        ...( (displayDetails['definitions'] as List).toSet().toList().map((def) => Padding(
-                                          padding: const EdgeInsets.only(bottom: 8.0),
-                                          child: Text(
-                                            '• $def',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              height: 1.4,
-                                              color: Theme.of(context).colorScheme.onSurface,
-                                            ),
-                                          ),
-                                        )).toList())
-                                     else
-                                         const Text('No definition available'),
+                                    const SizedBox(height: 4),
+                                    Text('Meaning: ${token.translation}'),
+                                    if (token.grammarNote.isNotEmpty)
+                                      Text(
+                                        token.grammarNote,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
                                   ],
-                                );
-                             },
-                          );
-                       },
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.bookmark_border_rounded, size: 20),
+                                  onPressed: () async {
+                                    await _vocabularyService.saveWord(token.word);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Saved "${token.word}" to Vocabulary!'),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
                     ),
-                  ],
-                ));
-            },
-          );
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }
-  Color _getGenderColor(dynamic gender) {
-    if (gender == null) return Colors.grey;
-    String g = gender.toString().toLowerCase();
-    if (g == 'm' || g == 'masc') return AppTheme.genderMasc;
-    if (g == 'f' || g == 'fem') return AppTheme.genderFem;
-    if (g == 'n' || g == 'neu') return AppTheme.genderNeu;
-    return Colors.grey;
+
+  // --- DISPLAY & TYPOGRAPHY SETTINGS SHEET ---
+  void _showDisplaySettingsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Reader Preferences & Layout',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Font Family Selector
+                  const Text('Font Family', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      {'id': 'Sans', 'label': 'Sans (Modern)'},
+                      {'id': 'Serif', 'label': 'Serif (Book)'},
+                      {'id': 'Mono', 'label': 'Mono (Focus)'},
+                    ].map((f) {
+                      final isSelected = _fontFamily == f['id'];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(f['label']!),
+                          selected: isSelected,
+                          onSelected: (_) {
+                            setState(() => _fontFamily = f['id']!);
+                            setSheetState(() {});
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Line Spacing Selector
+                  const Text('Line Spacing', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      {'val': 1.4, 'label': 'Compact (1.4x)'},
+                      {'val': 1.6, 'label': 'Normal (1.6x)'},
+                      {'val': 1.9, 'label': 'Relaxed (1.9x)'},
+                    ].map((h) {
+                      final isSelected = (_lineHeight - (h['val'] as double)).abs() < 0.05;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(h['label'] as String),
+                          selected: isSelected,
+                          onSelected: (_) {
+                            setState(() => _lineHeight = h['val'] as double);
+                            setSheetState(() {});
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Font Size Slider
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Font Size', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text('${_fontSize.round()} px', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      const Text('A', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      Expanded(
+                        child: Slider(
+                          value: _fontSize,
+                          min: 14.0,
+                          max: 26.0,
+                          divisions: 6,
+                          onChanged: (val) {
+                            setState(() => _fontSize = val);
+                            setSheetState(() {});
+                          },
+                        ),
+                      ),
+                      const Text('A', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Sepia Paper Theme Switch
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Sepia Warm Paper Mode', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Warm reading tone for lower eye fatigue'),
+                    value: _isSepiaMode,
+                    onChanged: (val) {
+                      setState(() => _isSepiaMode = val);
+                      setSheetState(() {});
+                    },
+                  ),
+
+                  // Noun Gender Highlighting Switch
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Noun Gender Highlighting', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Color der/die/das nouns for easier learning'),
+                    value: _showGenderHighlighting,
+                    onChanged: (val) {
+                      setState(() => _showGenderHighlighting = val);
+                      setSheetState(() {});
+                    },
+                  ),
+
+                  // Auto Scroll Switch
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Auto-Scroll with Speech', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Scroll text automatically as audio plays'),
+                    value: _autoScrollWithTts,
+                    onChanged: (val) {
+                      setState(() => _autoScrollWithTts = val);
+                      setSheetState(() {});
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title, Color color) {
-    return Row(
-      children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
+  void _toggleAllParagraphTranslations() {
+    List<String> paragraphs = _getParagraphList();
+    setState(() {
+      if (_visibleParagraphTranslations.length == paragraphs.length) {
+        _visibleParagraphTranslations.clear();
+      } else {
+        _visibleParagraphTranslations.addAll(List.generate(paragraphs.length, (i) => i));
+      }
+    });
+  }
+
+  // --- FLOATING GLASSMORPHIC READER TOOLBAR ---
+  Widget _buildFloatingReaderToolbar(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
+        ],
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
-      ],
+      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Play / Pause Full Story Audio
+              Row(
+                children: [
+                  IconButton.filled(
+                    icon: Icon(
+                      _isPlayingTts ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      size: 24,
+                    ),
+                    onPressed: _togglePlayAllTts,
+                  ),
+                  if (_isPlayingTts)
+                    IconButton(
+                      icon: const Icon(Icons.stop_rounded, size: 22),
+                      onPressed: () {
+                        _ttsService.stop();
+                        setState(() => _isPlayingTts = false);
+                      },
+                    ),
+                ],
+              ),
+
+              // Speech Speed Selector Pills
+              Row(
+                children: [0.75, 1.0, 1.25].map((speed) {
+                  final ttsRate = 0.5 * speed;
+                  final isSelected = (_speechRate - ttsRate).abs() < 0.05;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 4.0),
+                    child: ChoiceChip(
+                      label: Text('${speed}x', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      selected: isSelected,
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) => _changeSpeed(ttsRate),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              // Toggle All Paragraph Translations Button
+              IconButton(
+                icon: Icon(
+                  _visibleParagraphTranslations.length == _getParagraphList().length
+                      ? Icons.translate_rounded
+                      : Icons.g_translate_rounded,
+                  size: 22,
+                  color: _visibleParagraphTranslations.length == _getParagraphList().length
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                tooltip: _visibleParagraphTranslations.length == _getParagraphList().length
+                    ? 'Hide all translations'
+                    : 'Show all translations',
+                onPressed: _toggleAllParagraphTranslations,
+              ),
+            ],
+          ),
     );
   }
 }
