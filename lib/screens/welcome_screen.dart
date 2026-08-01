@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../widgets/auth_sync_dialog.dart';
 import 'main_scaffold.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -233,7 +233,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                    const SizedBox(height: 12),
                    TextButton(
-                     onPressed: () {},
+                     onPressed: () => AuthSyncDialog.show(context),
                      child: Text(
                        'I already have an account',
                        style: TextStyle(

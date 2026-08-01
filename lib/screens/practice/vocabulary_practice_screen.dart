@@ -4,6 +4,7 @@ import '../../models/saved_word.dart';
 import '../../services/vocabulary_service.dart';
 import '../../services/tts_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/glance_word_sheet.dart';
 
 class VocabularyPracticeScreen extends StatefulWidget {
   const VocabularyPracticeScreen({super.key});
@@ -88,22 +89,111 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   }
 
   Widget _buildHeaderStats() {
+    final totalWords = (_counts['learning'] ?? 0) + (_counts['mastered'] ?? 0) + (_counts['reviewLater'] ?? 0);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _buildStatItem("Due Today", "${_counts['dueToday'] ?? 0}", Colors.orange.shade800),
-          _buildStatItem("Learning", "${_counts['learning'] ?? 0}", Colors.amber.shade800),
-          _buildStatItem("Mastered", "${_counts['mastered'] ?? 0}", Colors.green.shade700),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem("Due Today", "${_counts['dueToday'] ?? 0}", Colors.orange.shade800),
+              _buildStatItem("Learning", "${_counts['learning'] ?? 0}", Colors.amber.shade800),
+              _buildStatItem("Mastered", "${_counts['mastered'] ?? 0}", Colors.green.shade700),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _showSavedWordsDialog(context),
+              icon: const Icon(Icons.menu_book_rounded, size: 18),
+              label: Text("📖 Browse My Vocabulary List ($totalWords Words)"),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  void _showSavedWordsDialog(BuildContext context) async {
+    final allWords = await _vocabService.getSavedWords();
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(ctx).size.height * 0.8,
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'My Vocabulary (${allWords.length} Words)',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: allWords.isEmpty
+                    ? const Center(child: Text('No saved vocabulary yet!'))
+                    : ListView.builder(
+                        itemCount: allWords.length,
+                        itemBuilder: (ctx, index) {
+                          final w = allWords[index];
+                          final color = _getGenderColor(w.gender);
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: color.withValues(alpha: 0.2),
+                              child: Text(
+                                w.word.isNotEmpty ? w.word[0].toUpperCase() : 'W',
+                                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            title: Text(w.word, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(
+                              '${w.category.name.toUpperCase()} • Interval: ${w.interval}d • Ease: ${w.easeFactor.toStringAsFixed(1)}x',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              GlanceWordSheet.show(context, word: w.word);
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

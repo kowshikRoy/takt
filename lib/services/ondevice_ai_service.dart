@@ -378,4 +378,29 @@ class OnDeviceAIService {
     }
     return joined;
   }
+
+  Future<bool> isAvailable() async {
+    return true;
+  }
+
+  Future<String> summarizeTranscript(List<SubtitleCue> cues) async {
+    if (cues.isEmpty) return "No transcript content to summarize.";
+
+    final keyCues = cues.where((c) => c.original.length > 20).take(5).toList();
+    if (keyCues.isEmpty) {
+      final sampleText = cues.take(3).map((c) => c.original).join(" ");
+      final trans = await translateText(sampleText);
+      return "Summary:\n- $trans";
+    }
+
+    final buffer = StringBuffer();
+    buffer.writeln("Key Takeaways from Video:");
+    for (int i = 0; i < keyCues.length; i++) {
+      final trans = keyCues[i].translated.isNotEmpty
+          ? keyCues[i].translated
+          : await translateText(keyCues[i].original);
+      buffer.writeln("• $trans");
+    }
+    return buffer.toString();
+  }
 }

@@ -7,14 +7,12 @@ import 'dart:async';
 import 'package:takt/models/processed_video.dart';
 import 'package:takt/models/processing_status.dart';
 import 'package:takt/models/subtitle_cue.dart';
-import 'package:takt/services/on_device_ai_service.dart';
-// no hive
+import 'package:takt/services/ondevice_ai_service.dart';
 import 'package:takt/models/saved_word.dart';
-import 'package:takt/services/dictionary_service.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 import 'package:takt/services/lesson_service.dart';
 import 'package:takt/config.dart';
+import 'package:takt/widgets/glance_word_sheet.dart';
 
 class VideoScreen extends StatefulWidget {
   final ProcessedVideo? processedVideo;
@@ -38,6 +36,7 @@ class _VideoScreenState extends State<VideoScreen>
   List<GlobalKey> _subtitleKeys = [];
   late AnimationController _animationController;
   bool _isFullscreen = false;
+  bool _isPlayerMinimized = false;
   double _playbackSpeed = 1.0;
   bool _hideTranslations = false;
   final List<SavedWord> _inMemorySavedWords = [];
@@ -97,7 +96,6 @@ class _VideoScreenState extends State<VideoScreen>
           _animationController.forward();
         }
       }).catchError((error) {
-        print('VideoPlayer initialization error: $error');
         if (mounted) {
           setState(() {
             _errorMessage = 'Media stream expired or invalid format. Tap Refresh Stream to reload.';
@@ -148,8 +146,6 @@ class _VideoScreenState extends State<VideoScreen>
   void _onVideoPlayerUpdate() {
     if (!mounted) return;
     if (_videoPlayerController != null && _videoPlayerController!.value.hasError) {
-      final err = _videoPlayerController!.value.errorDescription;
-      print('Video player runtime error: $err');
       if (_errorMessage == null) {
         setState(() {
           _errorMessage = 'Media stream error or link expired.';
@@ -162,7 +158,6 @@ class _VideoScreenState extends State<VideoScreen>
       return;
     }
 
-    // Update the UI when the video finishes
     if (_videoPlayerController!.value.position >=
         _videoPlayerController!.value.duration) {
       setState(() {});
@@ -197,7 +192,7 @@ class _VideoScreenState extends State<VideoScreen>
   }
 
   void _scrollToCurrentSubtitle() {
-    if (_currentSubtitleIndex == -1) return;
+    if (_currentSubtitleIndex == -1 || _currentSubtitleIndex >= _subtitleKeys.length) return;
 
     final context = _subtitleKeys[_currentSubtitleIndex].currentContext;
     if (context != null) {
@@ -218,9 +213,7 @@ class _VideoScreenState extends State<VideoScreen>
 
     try {
       final response = await http.post(
-        Uri.parse(
-          '${Config.backendUrl}/submit-media',
-        ),
+        Uri.parse('${Config.backendUrl}/submit-media'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'url': _urlController.text}),
       );
@@ -229,7 +222,10 @@ class _VideoScreenState extends State<VideoScreen>
         final data = jsonDecode(response.body);
         final taskId = data['task_id'];
 
-        final processedVideo = ProcessedVideo(id: taskId ?? "task_1", status: ProcessingStatus.processing, subtitles: [],
+        final processedVideo = ProcessedVideo(
+          id: taskId ?? "task_1",
+          status: ProcessingStatus.processing,
+          subtitles: [],
           url: _urlController.text,
           taskId: taskId,
           mediaType: 'video',
@@ -281,7 +277,7 @@ class _VideoScreenState extends State<VideoScreen>
                   top: 0,
                   left: 0,
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 28),
                     onPressed: () {
                       Navigator.pop(context);
                     },
@@ -296,46 +292,200 @@ class _VideoScreenState extends State<VideoScreen>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
-      body: Column(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: _isPlayerMinimized ? _buildMiniPlayer(context) : _buildVideoPlayer(context),
+            ),
+            if (widget.processedVideo == null) _buildUrlInput(context),
+            if (_errorMessage != null) _buildErrorMessage(context),
+            Expanded(
+              child: _subtitles.isEmpty
+                  ? _buildNoSubtitlesMessage(context)
+                  : _buildTranscriptList(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 12.0, left: 12.0, right: 12.0),
+      alignment: Alignment.topLeft,
+      child: AnimatedOpacity(
+        opacity: _showControls ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 250),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 22),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.unfold_less_rounded, color: Colors.white, size: 22),
+                tooltip: 'Minimize to Article Mode',
+                onPressed: () {
+                  setState(() {
+                    _isPlayerMinimized = true;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniPlayer(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isPlaying = _videoPlayerController?.value.isPlaying ?? false;
+    final currentPos = _videoPlayerController?.value.position ?? Duration.zero;
+    final totalDuration = _videoPlayerController?.value.duration ?? Duration.zero;
+    final progress = totalDuration.inMilliseconds > 0
+        ? (currentPos.inMilliseconds / totalDuration.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
+
+    String currentLine = 'Media Article Mode';
+    if (_currentSubtitleIndex != -1 && _currentSubtitleIndex < _subtitles.length) {
+      currentLine = _subtitles[_currentSubtitleIndex].original;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _buildVideoPlayer(),
-          if (widget.processedVideo == null) _buildUrlInput(),
-          if (_errorMessage != null) _buildErrorMessage(),
-          Expanded(
-            child: _subtitles.isEmpty
-                ? _buildNoSubtitlesMessage()
-                : _buildTranscriptList(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: colorScheme.primary,
+                      size: 22,
+                    ),
+                    onPressed: () async {
+                      if (_videoPlayerController == null) return;
+                      if (isPlaying) {
+                        await _videoPlayerController!.pause();
+                      } else {
+                        await _videoPlayerController!.play();
+                      }
+                      setState(() {});
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        currentLine,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            '${_formatDuration(currentPos)} / ${_formatDuration(totalDuration)}',
+                            style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Article Mode',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.unfold_more_rounded, color: colorScheme.primary, size: 22),
+                  tooltip: 'Expand Media Player',
+                  onPressed: () {
+                    setState(() {
+                      _isPlayerMinimized = false;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: colorScheme.surfaceContainerHigh,
+            color: colorScheme.primary,
+            minHeight: 2.5,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildVideoHeader() {
-    return Container(
-      padding: const EdgeInsets.only(top: 12.0, left: 12.0),
-      alignment: Alignment.topLeft,
-      child: AnimatedOpacity(
-        opacity: _showControls ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 250),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.5),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: const Icon(Iconsax.arrow_left, color: Colors.white, size: 24),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoPlayer() {
+  Widget _buildVideoPlayer(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     double playerHeight;
@@ -346,12 +496,14 @@ class _VideoScreenState extends State<VideoScreen>
       isPortraitVideo = videoAspectRatio < 1.0;
 
       if (isPortraitVideo) {
-        playerHeight = screenHeight * 0.55;
+        playerHeight = screenHeight * 0.45;
       } else {
         playerHeight = screenWidth * 9 / 16;
+        if (playerHeight > 340) playerHeight = 340;
       }
     } else {
       playerHeight = screenWidth * 9 / 16;
+      if (playerHeight > 340) playerHeight = 340;
     }
 
     return Container(
@@ -390,7 +542,7 @@ class _VideoScreenState extends State<VideoScreen>
                             : const Icon(Icons.refresh_rounded, size: 18),
                         label: Text(_isLoading ? 'Refreshing Link...' : 'Refresh Stream Link'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -437,7 +589,6 @@ class _VideoScreenState extends State<VideoScreen>
                     child: Stack(
                       fit: StackFit.expand,
                       children: <Widget>[
-                        // Ambient Blurred Backdrop for side bars on portrait videos
                         if (_videoPlayerController!.value.size.width > 0 && _videoPlayerController!.value.size.height > 0)
                           FittedBox(
                             fit: BoxFit.cover,
@@ -450,7 +601,6 @@ class _VideoScreenState extends State<VideoScreen>
                               ),
                             ),
                           ),
-                        // Main Video / Audio Player
                         Builder(
                           builder: (context) {
                             final hasVideoTrack = (_videoPlayerController?.value.size.width ?? 0) > 0 &&
@@ -466,9 +616,12 @@ class _VideoScreenState extends State<VideoScreen>
                               );
                             } else {
                               return Container(
-                                decoration: const BoxDecoration(
+                                decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+                                    colors: [
+                                      Theme.of(context).colorScheme.primaryContainer,
+                                      Theme.of(context).colorScheme.surfaceContainerHigh,
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
@@ -479,20 +632,20 @@ class _VideoScreenState extends State<VideoScreen>
                                     Container(
                                       padding: const EdgeInsets.all(20),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.1),
+                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.graphic_eq_rounded,
                                         size: 48,
-                                        color: Color(0xFF2BBAA5),
+                                        color: Theme.of(context).colorScheme.primary,
                                       ),
                                     ),
                                     const SizedBox(height: 12),
-                                    const Text(
+                                    Text(
                                       'Audio Media Stream',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: Theme.of(context).colorScheme.onSurface,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
@@ -506,7 +659,8 @@ class _VideoScreenState extends State<VideoScreen>
                         Positioned(
                           top: 0,
                           left: 0,
-                          child: _buildVideoHeader(),
+                          right: 0,
+                          child: _buildVideoHeader(context),
                         ),
                         Positioned(
                           bottom: 12,
@@ -530,10 +684,12 @@ class _VideoScreenState extends State<VideoScreen>
   }
 
   Widget _buildVideoControls() {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
+        color: Colors.black.withValues(alpha: 0.75),
         borderRadius: BorderRadius.circular(24.0),
       ),
       child: Row(
@@ -541,10 +697,10 @@ class _VideoScreenState extends State<VideoScreen>
           IconButton(
             icon: Icon(
               _videoPlayerController!.value.isPlaying
-                  ? Iconsax.pause
-                  : Iconsax.play,
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
               color: Colors.white,
-              size: 22,
+              size: 24,
             ),
             onPressed: () async {
               if (_videoPlayerController == null) return;
@@ -576,8 +732,8 @@ class _VideoScreenState extends State<VideoScreen>
               _videoPlayerController!,
               allowScrubbing: true,
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              colors: const VideoProgressColors(
-                playedColor: Color(0xFF6C5CE7),
+              colors: VideoProgressColors(
+                playedColor: primaryColor,
                 bufferedColor: Colors.white24,
                 backgroundColor: Colors.white10,
               ),
@@ -589,7 +745,9 @@ class _VideoScreenState extends State<VideoScreen>
           ),
           const SizedBox(width: 4),
           PopupMenuButton<double>(
-            icon: const Icon(Iconsax.setting_2, color: Colors.white, size: 20),
+            initialValue: _playbackSpeed,
+            tooltip: '${_playbackSpeed}x Playback Speed',
+            icon: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
             onSelected: (speed) {
               setState(() {
                 _playbackSpeed = speed;
@@ -606,9 +764,9 @@ class _VideoScreenState extends State<VideoScreen>
           ),
           IconButton(
             icon: Icon(
-              _isFullscreen ? Iconsax.minus : Iconsax.maximize_3,
+              _isFullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
               color: Colors.white,
-              size: 20,
+              size: 22,
             ),
             onPressed: _toggleFullscreen,
           ),
@@ -617,20 +775,22 @@ class _VideoScreenState extends State<VideoScreen>
     );
   }
 
-  Widget _buildUrlInput() {
+  Widget _buildUrlInput(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
           TextField(
             controller: _urlController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Media URL',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.link),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              prefixIcon: Icon(Icons.link_rounded, color: colorScheme.primary),
             ),
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 14.0),
           ElevatedButton.icon(
             onPressed: _isLoading ? null : _processMedia,
             icon: _isLoading
@@ -642,11 +802,14 @@ class _VideoScreenState extends State<VideoScreen>
                       color: Colors.white,
                     ),
                   )
-                : const Icon(Icons.smart_display),
+                : const Icon(Icons.smart_display_rounded),
             label: const Text('Process Media'),
             style: ElevatedButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              textStyle: const TextStyle(fontSize: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -654,37 +817,43 @@ class _VideoScreenState extends State<VideoScreen>
     );
   }
 
-  Widget _buildErrorMessage() {
+  Widget _buildErrorMessage(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Text(
         _errorMessage!,
-        style: const TextStyle(color: Colors.red),
+        style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w600),
         textAlign: TextAlign.center,
       ),
     );
   }
 
-  Widget _buildNoSubtitlesMessage() {
-    return const Center(child: Text('No subtitles available.'));
+  Widget _buildNoSubtitlesMessage(BuildContext context) {
+    return Center(
+      child: Text(
+        'No transcript cues available.',
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+    );
   }
 
   void _showSavedVocabularySheet() {
-    final words = _inMemorySavedWords.reversed.toList();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           final words = _inMemorySavedWords.reversed.toList();
+          final colorScheme = Theme.of(context).colorScheme;
+
           return Container(
             height: MediaQuery.of(context).size.height * 0.65,
             padding: const EdgeInsets.all(20.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -692,20 +861,21 @@ class _VideoScreenState extends State<VideoScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      children: const [
-                        Icon(Iconsax.bookmark, color: Color(0xFF6C5CE7)),
-                        SizedBox(width: 8),
+                      children: [
+                        Icon(Icons.bookmark_rounded, color: colorScheme.primary),
+                        const SizedBox(width: 8),
                         Text(
                           'Saved Vocabulary',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
                           ),
                         ),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: Icon(Icons.close_rounded, color: colorScheme.onSurfaceVariant),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -713,26 +883,26 @@ class _VideoScreenState extends State<VideoScreen>
                 const SizedBox(height: 12),
                 Expanded(
                   child: words.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
                             'No saved German words yet.\nTap any German word in the transcript to bookmark it!',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                            style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
                           ),
                         )
                       : ListView.separated(
                           itemCount: words.length,
-                          separatorBuilder: (context, index) => const Divider(),
+                          separatorBuilder: (context, index) => Divider(color: colorScheme.outlineVariant),
                           itemBuilder: (context, index) {
                             final item = words[index];
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
                               title: Text(
                                 item.germanWord,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 17,
-                                  color: Color(0xFF6C5CE7),
+                                  color: colorScheme.primary,
                                 ),
                               ),
                               subtitle: Column(
@@ -740,17 +910,17 @@ class _VideoScreenState extends State<VideoScreen>
                                 children: [
                                   Text(
                                     item.translation,
-                                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                                    style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
                                   ),
                                   if (item.contextSentence != null && item.contextSentence!.isNotEmpty)
                                     Text(
                                       'Context: "${item.contextSentence}"',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
+                                      style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
                                     ),
                                 ],
                               ),
                               trailing: IconButton(
-                                icon: const Icon(Iconsax.trash, color: Colors.redAccent, size: 20),
+                                icon: Icon(Icons.delete_outline_rounded, color: colorScheme.error, size: 20),
                                 onPressed: () {
                                   _inMemorySavedWords.remove(item);
                                   setModalState(() {});
@@ -768,167 +938,16 @@ class _VideoScreenState extends State<VideoScreen>
     );
   }
 
-  void _showWordInfoDialog(String rawWord, [String contextSentence = ""]) async {
+  void _showWordInfoDialog(String rawWord, [String contextSentence = ""]) {
     final cleanedWord = rawWord.replaceAll(RegExp(r'[^\wäöüßÄÖÜ]'), '');
     if (cleanedWord.isEmpty) return;
 
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-      isScrollControlled: true,
+    GlanceWordSheet.show(
+      context,
+      word: cleanedWord,
+      contextSentence: contextSentence,
+      sourceTitle: 'Media Transcript',
     );
-
-    try {
-      String translation = "German Vocabulary Word";
-      Map<String, dynamic>? wordData;
-
-      // Primary: Fast local SQLite lookup with base_form resolution
-      final localDetails = await DictionaryService().lookupWord(cleanedWord);
-      if (localDetails != null && localDetails['definitions'] != null && (localDetails['definitions'] as List).isNotEmpty) {
-        wordData = localDetails;
-        translation = (localDetails['definitions'] as List).first.toString();
-      } else {
-        // Fallback: Backend /word-info/
-        try {
-          final response = await http.get(
-            Uri.parse('${Config.backendUrl}/word-info/$cleanedWord'),
-          );
-          if (response.statusCode == 200) {
-            wordData = jsonDecode(response.body);
-            if (wordData != null && wordData['definitions'] != null && wordData['definitions'].isNotEmpty) {
-              translation = wordData['definitions'][0]['definition'] ?? translation;
-            }
-          }
-        } catch (_) {}
-      }
-
-      if (mounted) {
-        Navigator.pop(context); // Dismiss loading
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.white,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          builder: (context) => StatefulBuilder(
-            builder: (context, setModalState) {
-              final words = _inMemorySavedWords.reversed.toList();
-              final bool isSaved = _inMemorySavedWords.any((w) => w.germanWord.toLowerCase() == cleanedWord.toLowerCase());
-
-              return Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          cleanedWord,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E293B),
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Iconsax.bookmark,
-                            color: isSaved ? const Color(0xFF6C5CE7) : Colors.grey,
-                          ),
-                          onPressed: () {
-                            if (isSaved) {
-                              final existing = _inMemorySavedWords.firstWhere(
-                                (w) => w.germanWord.toLowerCase() == cleanedWord.toLowerCase(),
-                              );
-                              _inMemorySavedWords.remove(existing);
-                            } else {
-                              _inMemorySavedWords.add(SavedWord(
-                                id: cleanedWord.toLowerCase().trim(),
-                                word: cleanedWord,
-                                primaryDefinition: translation,
-                                contextSentence: contextSentence,
-                                createdAt: DateTime.now(),
-                              ));
-                            }
-                            setModalState(() {});
-                          },
-                        ),
-                      ],
-                    ),
-                    if (wordData != null && wordData['base_form'] != null && wordData['base_form'].toString().toLowerCase() != cleanedWord.toLowerCase())
-                      Text('Base form: ${wordData['base_form']}', style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic, fontSize: 14)),
-                    const SizedBox(height: 12),
-                    if (wordData != null && wordData['definitions'] != null && (wordData['definitions'] as List).isNotEmpty)
-                      ...(wordData['definitions'] as List).take(3).map((def) {
-                        String defText = def is Map ? (def['definition'] ?? '') : def.toString();
-                        String posText = def is Map ? (def['part_of_speech'] ?? '') : (wordData?['pos'] ?? '');
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (posText.isNotEmpty)
-                                Text(
-                                  '($posText)',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF6C5CE7)),
-                                ),
-                              Text('• $defText', style: const TextStyle(fontSize: 15)),
-                            ],
-                          ),
-                        );
-                      }),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final aiService = OnDeviceAIService();
-                              final exp = await aiService.explainWord(cleanedWord, contextSentence);
-                              if (mounted) {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('✨ Gemini Nano Analysis'),
-                                    content: Text(exp),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('Close'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Iconsax.cpu, size: 16, color: Color(0xFF6C5CE7)),
-                            label: const Text('✨ Ask Gemini Nano'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF6C5CE7),
-                              side: const BorderSide(color: Color(0xFF6C5CE7)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching word info: $e')),
-        );
-      }
-    }
   }
 
   Widget _buildTappableLine(String text, TextStyle style) {
@@ -961,31 +980,34 @@ class _VideoScreenState extends State<VideoScreen>
 
     final aiService = OnDeviceAIService();
     final summary = await aiService.summarizeTranscript(_subtitles);
+    final colorScheme = Theme.of(context).colorScheme;
 
     if (mounted) {
       Navigator.pop(context);
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (context) => Padding(
+        backgroundColor: Colors.transparent,
+        builder: (context) => Container(
           padding: const EdgeInsets.all(20.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: const [
-                  Icon(Iconsax.cpu, color: Color(0xFF6C5CE7)),
-                  SizedBox(width: 8),
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: colorScheme.primary),
+                  const SizedBox(width: 8),
                   Text(
-                    'Gemini Nano On-Device AI',
+                    'AI Smart Transcript Summary',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -993,7 +1015,7 @@ class _VideoScreenState extends State<VideoScreen>
               const SizedBox(height: 12),
               Text(
                 summary,
-                style: const TextStyle(fontSize: 15, height: 1.4),
+                style: TextStyle(fontSize: 15, height: 1.5, color: colorScheme.onSurface),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -1001,8 +1023,9 @@ class _VideoScreenState extends State<VideoScreen>
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C5CE7),
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: const Text('Close'),
                 ),
@@ -1014,29 +1037,51 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
-  Widget _buildTranscriptList() {
+  Widget _buildTranscriptList(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+            color: Theme.of(context).cardColor,
+            border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Transcript",
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+              Row(
+                children: [
+                  Text(
+                    "Transcript & Article",
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_subtitles.length} cues',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               Row(
                 children: [
                   IconButton(
                     icon: Icon(
-                      _hideTranslations ? Iconsax.eye_slash : Iconsax.eye,
+                      _hideTranslations ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                       size: 20,
-                      color: _hideTranslations ? const Color(0xFF6C5CE7) : Colors.grey[600],
+                      color: _hideTranslations ? colorScheme.primary : colorScheme.onSurfaceVariant,
                     ),
                     tooltip: _hideTranslations ? "Show Translations" : "Hide Translations (Active Recall)",
                     onPressed: () {
@@ -1046,13 +1091,13 @@ class _VideoScreenState extends State<VideoScreen>
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Iconsax.bookmark, size: 20, color: Color(0xFF6C5CE7)),
+                    icon: Icon(Icons.bookmark_border_rounded, size: 20, color: colorScheme.primary),
                     tooltip: "Saved Vocabulary",
                     onPressed: _showSavedVocabularySheet,
                   ),
                   IconButton(
-                    icon: const Icon(Iconsax.cpu, size: 20, color: Color(0xFF6C5CE7)),
-                    tooltip: "Gemini Nano AI Summary",
+                    icon: Icon(Icons.auto_awesome_rounded, size: 20, color: colorScheme.primary),
+                    tooltip: "AI Summary",
                     onPressed: _showOnDeviceSummaryDialog,
                   ),
                 ],
@@ -1063,51 +1108,74 @@ class _VideoScreenState extends State<VideoScreen>
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             itemCount: _subtitles.length,
             itemBuilder: (context, index) {
               final cue = _subtitles[index];
               final bool isCurrent = _currentSubtitleIndex == index;
               return GestureDetector(
                 onTap: () => _seekToSubtitle(cue.start),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  key: _subtitleKeys[index],
-                  margin: const EdgeInsets.only(bottom: 10.0),
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: isCurrent ? const Color(0xFFF1F5F9) : Colors.white,
-                    borderRadius: BorderRadius.circular(16.0),
-                    border: isCurrent
-                        ? const Border(
-                            left: BorderSide(color: Color(0xFF6C5CE7), width: 4.0),
-                          )
-                        : Border.all(color: Colors.grey.shade200, width: 0.8),
-                    boxShadow: isCurrent
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFF6C5CE7).withOpacity(0.12),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            )
-                          ]
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            )
-                          ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16.0),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    key: _subtitleKeys[index],
+                    margin: const EdgeInsets.only(bottom: 12.0),
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? colorScheme.primaryContainer.withValues(alpha: 0.4)
+                          : Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(16.0),
+                      border: Border.all(
+                        color: isCurrent
+                            ? colorScheme.primary
+                            : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        width: isCurrent ? 1.5 : 0.8,
+                      ),
+                      boxShadow: isCurrent
+                          ? [
+                              BoxShadow(
+                                color: colorScheme.primary.withValues(alpha: 0.12),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              )
+                            ],
+                    ),
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (isCurrent)
+                            Container(
+                              width: 4,
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  bottomLeft: Radius.circular(16),
+                                ),
+                              ),
+                            ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                       _buildTappableLine(
                         cue.original,
                         TextStyle(
                           fontSize: isCurrent ? 17 : 16,
+                          height: 1.5,
                           fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: isCurrent ? const Color(0xFF1E1B4B) : const Color(0xFF0F172A),
+                          color: isCurrent ? colorScheme.primary : colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 6.0),
@@ -1116,7 +1184,7 @@ class _VideoScreenState extends State<VideoScreen>
                               "••••••••••••••••••••",
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade400,
+                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                                 letterSpacing: 2,
                               ),
                             )
@@ -1124,13 +1192,20 @@ class _VideoScreenState extends State<VideoScreen>
                               cue.translated,
                               TextStyle(
                                 fontSize: 14,
+                                height: 1.4,
                                 fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
                                 color: isCurrent
-                                    ? const Color(0xFF6C5CE7)
-                                    : Colors.grey.shade600,
+                                    ? colorScheme.primary.withValues(alpha: 0.8)
+                                    : colorScheme.onSurfaceVariant,
                               ),
                             ),
-                    ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               );

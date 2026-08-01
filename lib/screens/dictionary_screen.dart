@@ -7,7 +7,8 @@ import '../services/tts_service.dart';
 import '../models/saved_word.dart';
 
 class DictionaryScreen extends StatefulWidget {
-  const DictionaryScreen({super.key});
+  final String? initialSearchQuery;
+  const DictionaryScreen({super.key, this.initialSearchQuery});
 
   @override
   State<DictionaryScreen> createState() => _DictionaryScreenState();
@@ -21,6 +22,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
   List<Map<String, dynamic>> _searchResults = [];
   List<Map<String, dynamic>> _masterDiscoverWords = [];
+  List<Map<String, dynamic>> _recentWords = [];
   Map<String, dynamic>? _selectedWord;
   
   bool _isSearching = false;
@@ -30,6 +32,15 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Set<String> _savedWordIds = {};
 
   List<Map<String, dynamic>> get _filteredDiscoverWords {
+    if (_selectedPosFilter == 'saved') {
+      return _masterDiscoverWords
+          .where((w) {
+            final wordStr = (w['word']?.toString() ?? '').toLowerCase().trim();
+            final idStr = (w['id']?.toString() ?? '').toLowerCase().trim();
+            return _savedWordIds.contains(wordStr) || _savedWordIds.contains(idStr);
+          })
+          .toList();
+    }
     if (_selectedPosFilter == 'all') {
       return _masterDiscoverWords;
     }
@@ -43,6 +54,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     super.initState();
     _loadDiscoverWords();
     _loadSavedWordStatus();
+    if (widget.initialSearchQuery != null && widget.initialSearchQuery!.isNotEmpty) {
+      _searchController.text = widget.initialSearchQuery!;
+      _onSearchChanged(widget.initialSearchQuery!);
+    }
   }
 
   @override
@@ -94,7 +109,6 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     final results = await _dictionaryService.search(cleanQuery);
     
     if (mounted) {
-      // Filter by POS if selected
       final filtered = _selectedPosFilter == 'all'
           ? results
           : results.where((r) => r['pos'] == _selectedPosFilter).toList();
@@ -110,7 +124,16 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       setState(() {
         _selectedWord = fullWord;
         _isSearching = false;
-        _searchController.text = fullWord['word'] ?? '';
+        _searchResults.clear();
+        _searchController.clear();
+
+        // Track in Recently Viewed Stack
+        final wordId = fullWord['id'] ?? fullWord['word'];
+        _recentWords.removeWhere((w) => (w['id'] ?? w['word']) == wordId);
+        _recentWords.insert(0, fullWord);
+        if (_recentWords.length > 10) {
+          _recentWords.removeLast();
+        }
       });
     }
   }
@@ -158,171 +181,208 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isDesktop = screenWidth > 800;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSearchBar(context),
-                        const SizedBox(height: 12),
-                        _buildFilterPills(context),
-                        const SizedBox(height: 20),
-
-                        if (_selectedWord != null) ...[
-                          _buildMainCard(context, _selectedWord!),
-                          const SizedBox(height: 20),
-                          _buildTabs(context),
-                          const SizedBox(height: 16),
-                          _buildTabContent(context, _selectedWord!),
-                        ] else ...[
-                          _buildDiscoverSection(context),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  // Instant Search Results Overlay Dropdown
-                  if (_isSearching && _searchResults.isNotEmpty)
-                    Positioned(
-                      top: 60,
-                      left: 16,
-                      right: 16,
-                      child: Container(
-                        constraints: const BoxConstraints(maxHeight: 320),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: colorScheme.outlineVariant),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            itemCount: _searchResults.length,
-                            separatorBuilder: (_, __) => Divider(
-                              height: 1,
-                              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            ),
-                            itemBuilder: (context, index) {
-                              final item = _searchResults[index];
-                              final word = item['word'] ?? '';
-                              final pos = item['pos'] ?? '';
-                              final gender = item['gender']?.toString();
-                              final freq = item['freq_rank'];
-
-                              Color dotColor = colorScheme.primary;
-                              if (gender == 'm' || gender == 'masculine') dotColor = AppTheme.genderMasc;
-                              if (gender == 'f' || gender == 'feminine') dotColor = AppTheme.genderFem;
-                              if (gender == 'n' || gender == 'neuter') dotColor = AppTheme.genderNeu;
-
-                              return ListTile(
-                                leading: Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: dotColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                title: Row(
-                                  children: [
-                                    Text(
-                                      word,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.onSurface,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    if (pos.isNotEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: colorScheme.surfaceContainerHigh,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          pos.toUpperCase(),
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                trailing: freq != null
-                                    ? Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: colorScheme.primaryContainer,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          '#$freq',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: colorScheme.primary,
-                                          ),
-                                        ),
-                                      )
-                                    : null,
-                                onTap: () => _onResultSelected(item),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        child: isDesktop
+            ? _buildDesktopMasterDetailLayout(context)
+            : _buildMobileLayout(context),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildDesktopMasterDetailLayout(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        // Left Master Pane (Search, Filters & Word Feed)
+        SizedBox(
+          width: 380,
+          child: Column(
+            children: [
+              _buildHeader(context, showBackButton: false),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Column(
+                  children: [
+                    _buildSearchBar(context),
+                    const SizedBox(height: 10),
+                    _buildFilterPills(context),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _isSearching && _searchController.text.isNotEmpty && _searchResults.isNotEmpty
+                      ? _buildSearchResultsList(context)
+                      : _buildDiscoverSection(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        VerticalDivider(
+          width: 1,
+          thickness: 1,
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+
+        // Right Detail Pane
+        Expanded(
+          child: _selectedWord != null
+              ? SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 800),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRecentWordsBar(context),
+                          const SizedBox(height: 16),
+                          _buildMainCard(context, _selectedWord!),
+                          const SizedBox(height: 24),
+                          _buildTabs(context),
+                          const SizedBox(height: 16),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            child: _buildTabContent(context, _selectedWord!),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.menu_book_rounded,
+                        size: 64,
+                        color: colorScheme.primary.withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Select a Word to View Details',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Choose from the top frequency words or search any German term.',
+                        style: TextStyle(color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        _buildHeader(context, showBackButton: _selectedWord != null),
+        Expanded(
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_selectedWord == null) ...[
+                      _buildSearchBar(context),
+                      const SizedBox(height: 12),
+                      _buildFilterPills(context),
+                      const SizedBox(height: 20),
+                      _buildDiscoverSection(context),
+                    ] else ...[
+                      _buildRecentWordsBar(context),
+                      const SizedBox(height: 14),
+                      _buildMainCard(context, _selectedWord!),
+                      const SizedBox(height: 20),
+                      _buildTabs(context),
+                      const SizedBox(height: 16),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: _buildTabContent(context, _selectedWord!),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Instant Search Overlay on Mobile
+              if (_isSearching && _searchResults.isNotEmpty && _selectedWord == null)
+                Positioned(
+                  top: 60,
+                  left: 16,
+                  right: 16,
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: _buildSearchResultsList(context),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, {bool showBackButton = false}) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.4))),
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              }
-            },
-          ),
-          const SizedBox(width: 8),
+          if (showBackButton) ...[
+            IconButton(
+              icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
+              onPressed: () {
+                setState(() {
+                  _selectedWord = null;
+                });
+              },
+            ),
+            const SizedBox(width: 4),
+          ] else if (Navigator.canPop(context)) ...[
+            IconButton(
+              icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
+              onPressed: () => Navigator.pop(context),
+            ),
+            const SizedBox(width: 4),
+          ],
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -335,7 +395,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 ),
               ),
               Text(
-                'Offline Database v16.0 • 50,000+ Words',
+                '50,000+ Words • Frequency Indexed',
                 style: TextStyle(
                   fontSize: 11,
                   color: colorScheme.onSurfaceVariant,
@@ -351,6 +411,185 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSearchResultsList(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemCount: _searchResults.length,
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        itemBuilder: (context, index) {
+          final item = _searchResults[index];
+          final word = item['word'] ?? '';
+          final pos = item['pos'] ?? '';
+          final gender = item['gender']?.toString();
+          final freq = item['freq_rank'];
+
+          Color dotColor = colorScheme.primary;
+          if (gender == 'm' || gender == 'masculine') dotColor = AppTheme.genderMasc;
+          if (gender == 'f' || gender == 'feminine') dotColor = AppTheme.genderFem;
+          if (gender == 'n' || gender == 'neuter') dotColor = AppTheme.genderNeu;
+
+          final isSelected = _selectedWord?['id'] == item['id'];
+
+          return ListTile(
+            selected: isSelected,
+            selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.4),
+            leading: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            title: Row(
+              children: [
+                Text(
+                  word,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (pos.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      pos.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            trailing: freq != null
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '#$freq',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  )
+                : null,
+            onTap: () => _onResultSelected(item),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRecentWordsBar(BuildContext context) {
+    if (_recentWords.isEmpty) return const SizedBox.shrink();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.history_rounded, size: 14, color: colorScheme.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(
+              'Recently Viewed',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 36,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _recentWords.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final item = _recentWords[index];
+              final word = item['word']?.toString() ?? '';
+              final gender = item['gender']?.toString();
+              final isSelected = _selectedWord?['id'] == item['id'];
+
+              Color dotColor = colorScheme.primary;
+              if (gender == 'm' || gender == 'masculine') dotColor = AppTheme.genderMasc;
+              if (gender == 'f' || gender == 'feminine') dotColor = AppTheme.genderFem;
+              if (gender == 'n' || gender == 'neuter') dotColor = AppTheme.genderNeu;
+
+              return InkWell(
+                onTap: () => _onResultSelected(item),
+                borderRadius: BorderRadius.circular(18),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? colorScheme.primaryContainer
+                        : Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isSelected
+                          ? colorScheme.primary
+                          : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: dotColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        word,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -381,6 +620,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     _searchController.clear();
                     setState(() {
                       _isSearching = false;
+                      _searchResults.clear();
                       _selectedWord = null;
                     });
                   },
@@ -403,6 +643,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Widget _buildFilterPills(BuildContext context) {
     final filters = [
       {'id': 'all', 'label': 'All Words'},
+      {'id': 'saved', 'label': '⭐️ My Deck (${_savedWordIds.length})'},
       {'id': 'noun', 'label': 'Nouns'},
       {'id': 'verb', 'label': 'Verbs'},
       {'id': 'adj', 'label': 'Adjectives'},
@@ -410,39 +651,143 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
     final colorScheme = Theme.of(context).colorScheme;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: filters.map((f) {
-          final isSelected = _selectedPosFilter == f['id'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(
-                f['label']!,
-                style: TextStyle(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              ...filters.map((f) {
+                final isSelected = _selectedPosFilter == f['id'];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(
+                      f['label']!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: colorScheme.primary,
+                    backgroundColor: colorScheme.surfaceContainerHigh,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedPosFilter = f['id']!;
+                        });
+                        if (_searchController.text.isNotEmpty) {
+                          _onSearchChanged(_searchController.text);
+                        }
+                      }
+                    },
+                  ),
+                );
+              }),
+              ActionChip(
+                avatar: const Icon(Icons.menu_book_rounded, size: 14),
+                label: Text('Browse Deck (${_savedWordIds.length})'),
+                backgroundColor: colorScheme.secondaryContainer,
+                labelStyle: TextStyle(
                   fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSecondaryContainer,
+                ),
+                onPressed: () => _showMyDeckDialog(context),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showMyDeckDialog(BuildContext context) async {
+    final allWords = await _vocabService.getSavedWords();
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(ctx).size.height * 0.8,
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'My Saved Vocabulary (${allWords.length} Words)',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
                 ),
               ),
-              selected: isSelected,
-              selectedColor: colorScheme.primary,
-              backgroundColor: colorScheme.surfaceContainerHigh,
-              onSelected: (selected) {
-                if (selected) {
-                  setState(() {
-                    _selectedPosFilter = f['id']!;
-                  });
-                  if (_searchController.text.isNotEmpty) {
-                    _onSearchChanged(_searchController.text);
-                  }
-                }
-              },
-            ),
-          );
-        }).toList(),
-      ),
+              const Divider(height: 1),
+              Expanded(
+                child: allWords.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No words saved yet.\nTap the bookmark icon on any word to add it to your deck!',
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: allWords.length,
+                        itemBuilder: (ctx, index) {
+                          final w = allWords[index];
+                          Color color = Colors.blue;
+                          if (w.gender == 'masculine' || w.gender == 'm') color = AppTheme.genderMasc;
+                          if (w.gender == 'feminine' || w.gender == 'f') color = AppTheme.genderFem;
+                          if (w.gender == 'neuter' || w.gender == 'n') color = AppTheme.genderNeu;
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: color.withValues(alpha: 0.2),
+                              child: Text(
+                                w.word.isNotEmpty ? w.word[0].toUpperCase() : 'W',
+                                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            title: Text(w.word, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(
+                              '${w.category.name.toUpperCase()} • Interval: ${w.interval}d • Ease: ${w.easeFactor.toStringAsFixed(1)}x',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () async {
+                              Navigator.pop(ctx);
+                              final fullWord = await _dictionaryService.lookupWord(w.word);
+                              if (mounted && fullWord != null) {
+                                _onResultSelected(fullWord);
+                              } else {
+                                _searchController.text = w.word;
+                                _onSearchChanged(w.word);
+                              }
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -492,9 +837,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 2.3,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 280,
+            childAspectRatio: 1.8,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
           ),
@@ -556,6 +901,18 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                               color: colorScheme.primary,
                             ),
                           ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () => _ttsService.speak(word),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: Icon(
+                              Icons.volume_up_rounded,
+                              size: 15,
+                              color: colorScheme.primary.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 3),
@@ -576,6 +933,15 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         ),
       ],
     );
+  }
+
+  String _getCefrLevel(int? freqRank) {
+    if (freqRank == null || freqRank <= 0) return 'B1';
+    if (freqRank <= 500) return 'A1';
+    if (freqRank <= 1500) return 'A2';
+    if (freqRank <= 3500) return 'B1';
+    if (freqRank <= 6000) return 'B2';
+    return 'C1';
   }
 
   Widget _buildMainCard(BuildContext context, Map<String, dynamic> wordData) {
@@ -655,7 +1021,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                         ),
                       ),
                     ),
-                    if (freq != null)
+                    if (freq != null) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -677,6 +1043,23 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_getCefrLevel(freq)} • CEFR',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 
@@ -684,19 +1067,27 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (article.isNotEmpty) ...[
-                      Text(
-                        article,
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: genderColor,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: genderColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: genderColor.withValues(alpha: 0.4)),
+                        ),
+                        child: Text(
+                          article.toUpperCase(),
+                          style: TextStyle(
+                            color: genderColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            letterSpacing: 1.2,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                     ],
                     Flexible(
                       child: Text(
@@ -796,11 +1187,13 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
   Widget _buildTabs(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final tabs = ['Forms / Declension', 'Examples', 'Related Words'];
+    final tabs = ['Forms & Declension', 'Examples', 'Related Words'];
 
     return Container(
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
+        color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: tabs.asMap().entries.map((entry) {
@@ -808,21 +1201,33 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           final title = entry.value;
           final isActive = _selectedTabIndex == index;
 
-          return GestureDetector(
-            onTap: () => setState(() => _selectedTabIndex = index),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                border: isActive
-                    ? Border(bottom: BorderSide(color: colorScheme.primary, width: 2.5))
-                    : null,
-              ),
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                  color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTabIndex = index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isActive ? Theme.of(context).cardColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: isActive
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                    color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -912,17 +1317,46 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Widget _buildExamplesTab(BuildContext context, Map<String, dynamic> wordData) {
     final colorScheme = Theme.of(context).colorScheme;
     final wordStr = wordData['word']?.toString() ?? '';
+    final pos = wordData['pos']?.toString().toLowerCase() ?? 'noun';
+    final article = wordData['article']?.toString() ?? '';
 
-    final sampleExamples = [
-      {
-        'de': 'Das ist eine wichtige $wordStr für unsere Arbeit.',
-        'en': 'That is an important $wordStr for our work.',
-      },
-      {
-        'de': 'Wir müssen die $wordStr genau verstehen.',
-        'en': 'We need to understand the $wordStr precisely.',
-      },
-    ];
+    List<Map<String, String>> sampleExamples;
+    if (pos == 'verb') {
+      sampleExamples = [
+        {
+          'de': 'Er versucht oft zu $wordStr, wenn er Zeit hat.',
+          'en': 'He often tries to $wordStr when he has time.',
+        },
+        {
+          'de': 'Wir müssen im Unterricht mehr $wordStr.',
+          'en': 'We have to $wordStr more in class.',
+        },
+      ];
+    } else if (pos == 'adj' || pos == 'adjective') {
+      sampleExamples = [
+        {
+          'de': 'Dieses Ergebnis ist wirklich sehr $wordStr.',
+          'en': 'This result is really very $wordStr.',
+        },
+        {
+          'de': 'Sie hat eine so $wordStr Idee vorgeschlagen.',
+          'en': 'She proposed such an $wordStr idea.',
+        },
+      ];
+    } else {
+      final art = article.isNotEmpty ? article : 'Der';
+      final acc = art.toLowerCase() == 'der' ? 'den' : art.toLowerCase();
+      sampleExamples = [
+        {
+          'de': 'Ich sehe $acc $wordStr dort drüben im Garten.',
+          'en': 'I see the $wordStr over there in the garden.',
+        },
+        {
+          'de': '$art $wordStr spielt eine wichtige Rolle in der deutschen Sprache.',
+          'en': 'The $wordStr plays an important role in the German language.',
+        },
+      ];
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -935,18 +1369,37 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: sampleExamples.map((ex) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  ex['de']!,
-                  style: TextStyle(fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ex['de']!,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        ex['en']!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  ex['en']!,
-                  style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                IconButton(
+                  onPressed: () => _ttsService.speak(ex['de']!, lang: 'de-DE'),
+                  icon: const Icon(Icons.volume_up_rounded, size: 20),
+                  tooltip: 'Listen to example',
                 ),
               ],
             ),
@@ -989,9 +1442,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           return ActionChip(
             label: Text('$relWord ($relType)'),
             backgroundColor: chipColor,
-            onPressed: () {
-              _searchController.text = relWord;
-              _onSearchChanged(relWord);
+            onPressed: () async {
+              final fullWord = await _dictionaryService.lookupWord(relWord);
+              if (mounted && fullWord != null) {
+                _onResultSelected(fullWord);
+              } else {
+                _searchController.text = relWord;
+                _onSearchChanged(relWord);
+              }
             },
           );
         }).toList(),

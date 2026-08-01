@@ -52,7 +52,6 @@ class SyncService extends ChangeNotifier {
 
       // 2. Merge remote vocabulary into local VocabularyService
       final vocabService = VocabularyService();
-      final localWords = await vocabService.getAllSavedWords();
       
       if (remoteData.containsKey('vocabulary') && remoteData['vocabulary'] is List) {
         final List remoteVocab = remoteData['vocabulary'];

@@ -891,6 +891,55 @@ class DictionaryService {
     return [];
   }
 
+  /// Fetches German nouns sorted/filtered by offline dictionary frequency rank.
+  /// Allows filtering by rank range (e.g. minRank: 1, maxRank: 500) and random sampling
+  /// so quiz decks remain fresh and varied across sessions.
+  Future<List<Map<String, dynamic>>> getRankedNouns({
+    int minRank = 1,
+    int maxRank = 5000,
+    int limit = 15,
+    bool randomize = true,
+  }) async {
+    if (kIsWeb) {
+      return getHighFrequencyWords(pos: 'noun', limit: limit);
+    }
+    final db = await database;
+    if (db == null) return getHighFrequencyWords(pos: 'noun', limit: limit);
+
+    try {
+      if (_supportsFreqRank) {
+        final orderBy = randomize ? 'RANDOM()' : 'w.freq_rank ASC';
+        final List<Map<String, dynamic>> rows = await db.rawQuery('''
+          SELECT w.id, w.word, w.gender, w.ipa, w.freq_rank, d.definition
+          FROM words w
+          JOIN definitions d ON w.id = d.word_id
+          WHERE (LOWER(w.pos) = 'noun' OR w.pos LIKE 'noun%' OR w.pos = 'n' OR w.pos = 'n.' OR (w.gender IS NOT NULL AND w.gender != ''))
+            AND w.gender IS NOT NULL
+            AND w.gender IN ('m', 'f', 'n', 'masculine', 'feminine', 'neuter', 'der', 'die', 'das', 'r', 'e', 's')
+            AND w.freq_rank IS NOT NULL
+            AND w.freq_rank >= ?
+            AND w.freq_rank <= ?
+            AND LENGTH(w.word) >= 3
+            AND w.word NOT IN ('Ich','Du','Es','Sie','Wir','Ihr','Ja','Nein','Aber','Wenn','Hier','Ach','Als','Oder','Dass','Weil','Wie')
+            AND d.definition IS NOT NULL
+            AND d.definition NOT LIKE 'inflection of%'
+            AND d.definition NOT LIKE 'plural of%'
+            AND d.definition NOT LIKE 'the pronoun%'
+            AND d.definition NOT LIKE 'the % letter%'
+          GROUP BY w.word
+          ORDER BY $orderBy
+          LIMIT ?
+        ''', [minRank, maxRank, limit]);
+
+        if (rows.isNotEmpty) return rows;
+      }
+    } catch (e) {
+      print("Error fetching ranked nouns: $e");
+    }
+
+    return getHighFrequencyNouns(limit: limit);
+  }
+
   /// Fetches essential high-frequency German nouns for practice (ordered by frequency rank)
   Future<List<Map<String, dynamic>>> getHighFrequencyNouns({int limit = 15}) async {
     if (kIsWeb) {
@@ -900,22 +949,8 @@ class DictionaryService {
     if (db == null) return getHighFrequencyWords(pos: 'noun', limit: limit);
 
     try {
-      if (_supportsFreqRank) {
-        final List<Map<String, dynamic>> rows = await db.rawQuery('''
-          SELECT w.id, w.word, w.gender, w.ipa, d.definition, w.freq_rank
-          FROM words w
-          JOIN definitions d ON w.id = d.word_id
-          WHERE w.pos = 'noun'
-            AND w.gender IS NOT NULL
-            AND w.freq_rank IS NOT NULL
-            AND d.definition IS NOT NULL
-          GROUP BY w.id
-          ORDER BY w.freq_rank ASC
-          LIMIT ?
-        ''', [limit]);
-
-        if (rows.isNotEmpty) return rows;
-      }
+      final ranked = await getRankedNouns(minRank: 1, maxRank: 1500, limit: limit, randomize: true);
+      if (ranked.isNotEmpty) return ranked;
     } catch (_) {}
 
     const commonWords = [

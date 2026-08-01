@@ -18,8 +18,6 @@ from faster_whisper import WhisperModel
 from deep_translator import GoogleTranslator
 
 from magika import Magika
-import spacy
-from wiktionaryparser import WiktionaryParser
 import re
 import requests
 import urllib.request
@@ -55,13 +53,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-try:
-    nlp = spacy.load("de_core_news_sm")
-except Exception:
-    import spacy.cli
-    spacy.cli.download("de_core_news_sm")
-    nlp = spacy.load("de_core_news_sm")
-wiktionary_parser = WiktionaryParser()
 class TaskStatus(str, Enum):
     PENDING = "PENDING"
     PROCESSING = "PROCESSING"
@@ -533,31 +524,32 @@ def dictionary_frequency(
     cursor = conn.cursor()
 
     try:
-        pos_filter = ""
-        params = []
-        
-        max_rank = 500 + (learned_count * 50)
-        params.append(max_rank)
+        has_pos = False
+        try:
+            cols = [info[1] for info in cursor.execute("PRAGMA table_info(words)").fetchall()]
+            if "pos" in cols:
+                has_pos = True
+        except Exception:
+            pass
 
-        if pos != "all" and pos:
-            pos_filter = "AND w.pos = ?"
-            params.append(pos)
+        pos_filter = ""
+        max_rank = 500 + (learned_count * 50)
+        params = [max_rank]
+
+        if pos != "all" and pos and has_pos:
+            pos_filter = "AND w.pos LIKE ?"
+            params.append(f"%{pos}%")
 
         params.append(limit)
 
         order_clause = "RANDOM()" if random else "w.freq_rank ASC"
+        pos_column = "w.pos" if has_pos else "'' as pos"
 
         rows = cursor.execute(f"""
-            SELECT w.id, w.word, w.pos, w.gender, w.ipa, d.definition, w.freq_rank
-            FROM (
-                SELECT id, word, pos, gender, ipa, freq_rank
-                FROM words
-                WHERE freq_rank IS NOT NULL AND freq_rank <= ? {pos_filter}
-                GROUP BY word, pos
-                HAVING id = MIN(id)
-            ) w
+            SELECT w.id, w.word, {pos_column}, w.gender, w.ipa, d.definition, w.freq_rank
+            FROM words w
             JOIN definitions d ON w.id = d.word_id
-            WHERE d.definition IS NOT NULL
+            WHERE w.freq_rank IS NOT NULL AND w.freq_rank <= ? {pos_filter} AND d.definition IS NOT NULL
             GROUP BY w.id
             ORDER BY {order_clause}
             LIMIT ?

@@ -4,6 +4,4 @@ fastapi
 uvicorn
 deep-translator>=1.11.4
 magika
-spacy
-wiktionaryparser
 gradio

@@ -318,7 +318,14 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           TextButton.icon(
-                            onPressed: () {},
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Thank you for reporting! Our team will review this exercise.'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
                             icon: Icon(Icons.flag_outlined,
                                 color: Theme.of(context).colorScheme.onSurfaceVariant),
                             label: Text('Report',

@@ -55,16 +55,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   final List<Article> _continueLearningArticles = [
     Article(
       id: 'cl1',
-      title: 'Die Berliner Mauer',
-      description: '',
+      title: 'Wüsten der Welt: Die Sahara',
+      description: 'Extremtemperaturen und faszinierende Dünenlandschaften.',
       level: 'B1',
       date: DateTime.now(),
       imageUrl: 'assets/images/story_desert.png',
     ),
     Article(
       id: 'cl2',
-      title: 'Kaffee im Büro',
-      description: '',
+      title: 'Straßenfußball in Kairo',
+      description: 'Sockenball ist ein beliebtes Straßenspiel in Ägypten.',
       level: 'A2',
       date: DateTime.now(),
       imageUrl: 'assets/images/story_soccer.png', 
@@ -350,7 +350,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           const SizedBox(height: 16),
 
           // Continue Learning Section
-          SectionHeader(title: 'Continue Learning', onViewAll: () {}),
+          SectionHeader(title: 'Continue Learning'),
           SizedBox(
             height: 150,
             child: ListView.builder(
@@ -386,7 +386,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
           // Imported Section
           if (lessonService.importedArticles.isNotEmpty) ...[
-            SectionHeader(title: 'Imported', onViewAll: () {}),
+            SectionHeader(title: 'Imported'),
             SizedBox(
               height: 150,
               child: ListView.builder(

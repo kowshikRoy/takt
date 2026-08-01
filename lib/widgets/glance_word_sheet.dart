@@ -5,7 +5,7 @@ import '../services/vocabulary_service.dart';
 import '../services/dictionary_service.dart';
 import '../services/tts_service.dart';
 import '../theme/app_theme.dart';
-
+import '../screens/dictionary_screen.dart';
 import 'package:flutter/services.dart';
 
 class GlanceWordSheet extends StatefulWidget {
@@ -30,6 +30,28 @@ class GlanceWordSheet extends StatefulWidget {
     String? sourceTitle,
   }) {
     HapticFeedback.selectionClick();
+    final bool isDesktop = MediaQuery.of(context).size.width > 700;
+    if (isDesktop) {
+      return showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 540, maxHeight: 680),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: GlanceWordSheet(
+                word: word,
+                detailsList: detailsList,
+                contextSentence: contextSentence,
+                sourceTitle: sourceTitle,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -61,7 +83,9 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
   List<Map<String, dynamic>> _detailsList = [];
   SavedWord? _savedWord;
   bool _isLoading = true;
-  int _selectedSenseIndex = 0;
+  final int _selectedSenseIndex = 0;
+  String? _pluralForm;
+  String _cefrBadge = 'B1';
 
   @override
   void initState() {
@@ -134,9 +158,26 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     }
 
     final saved = await _vocabService.getSavedWordByWord(word);
+    String? foundPlural;
+    String cefr = 'B1';
+    if (_detailsList.isNotEmpty) {
+      final first = _detailsList.first;
+      final freqRank = first['freq_rank'] != null ? int.tryParse(first['freq_rank'].toString()) : null;
+      if (freqRank != null) {
+        if (freqRank <= 500) cefr = 'A1';
+        else if (freqRank <= 1500) cefr = 'A2';
+        else if (freqRank <= 3500) cefr = 'B1';
+        else if (freqRank <= 6000) cefr = 'B2';
+        else cefr = 'C1';
+      }
+      final wId = int.tryParse(first['id']?.toString() ?? '0') ?? 0;
+      foundPlural = await dictService.getPluralForm(wId, word);
+    }
     if (mounted) {
       setState(() {
         _savedWord = saved;
+        _pluralForm = foundPlural;
+        _cefrBadge = cefr;
         _isLoading = false;
       });
     }
@@ -238,7 +279,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -270,36 +311,76 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                           ),
                         ),
                       ),
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
-                        if (article.isNotEmpty) ...[
-                          Text(
-                            article,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: genderColor,
+                        if (article.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: genderColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: genderColor.withValues(alpha: 0.4)),
+                            ),
+                            child: Text(
+                              article.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: genderColor,
+                                letterSpacing: 1.0,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                        ],
-                        Flexible(
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                           child: Text(
-                            word,
+                            '$_cefrBadge • CEFR',
                             style: TextStyle(
-                              fontSize: 26,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onSurface,
+                              color: Theme.of(context).colorScheme.onSecondaryContainer,
                             ),
                           ),
                         ),
+                        if (_pluralForm != null && _pluralForm!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9844A).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFFF9844A).withValues(alpha: 0.4)),
+                            ),
+                            child: Text(
+                              'Pl: $_pluralForm',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFD97706),
+                              ),
+                            ),
+                          ),
                       ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      word,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                     if (ipa != null && ipa.isNotEmpty)
                       Text(
                         ipa,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -368,7 +449,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.4)),
+                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.4)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,6 +528,26 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DictionaryScreen(initialSearchQuery: widget.word),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.menu_book_rounded, size: 18),
+                label: const Text('View Forms, Declensions & Examples →'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
           ],
         ],
       ).animate().fade(duration: 200.ms).slideY(begin: 0.1, end: 0),
@@ -468,10 +569,10 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.15) : Theme.of(context).colorScheme.surface,
+          color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : Theme.of(context).dividerColor.withOpacity(0.5),
+            color: isSelected ? color : Theme.of(context).dividerColor.withValues(alpha: 0.5),
             width: isSelected ? 2 : 1,
           ),
         ),

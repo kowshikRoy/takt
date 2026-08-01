@@ -1,9 +1,17 @@
-# Miscellaneous
+# Miscellaneous & OS
 *.class
 *.log
 *.pyc
+*.pyo
+*.pyd
 *.swp
+*~
+*.tmp
+*.bak
 .DS_Store
+._*
+.Spotlight-V100
+.Trashes
 .atom/
 .build/
 .buildlog/
@@ -11,45 +19,72 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+.gemini/
 
-# IntelliJ related
+# IDE & Editor files
 *.iml
 *.ipr
 *.iws
 .idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+.vscode/
+.cursor/
+*.sublime-project
+*.sublime-workspace
 
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
+**/build/
 /coverage/
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
+# Native platform build artifacts & dependencies
 /android/app/debug
 /android/app/profile
 /android/app/release
+android/.gradle/
+android/local.properties
+android/app/build/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+macos/Pods/
+macos/Flutter/ephemeral/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
 
-# Large data files
-# *.db - Now using Git LFS for database files in assets/
-*.jsonl
+# Symbolication & Obfuscation
+app.*.symbols
+app.*.map.json
 
-# Screenshots and generated root assets
-/*.png
+# Python / Backend / Virtualenvs
+**/__pycache__/
+**/.pytest_cache/
+**/.coverage
+**/htmlcov/
+**/*.egg-info/
+venv/
+.venv/
+env/
+.env
+.env.*
+backend/venv/
 backend/web_build/
 backend/cache/
 backend/assets/
+
+# Large data files & temporary databases
+# *.db - Now using Git LFS for database files in assets/
+*.db-shm
+*.db-wal
+*.jsonl
+temp_*.jsonl
+
+# Screenshots and generated root assets
+/*.png

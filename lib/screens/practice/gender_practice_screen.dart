@@ -5,6 +5,7 @@ import '../../services/dictionary_service.dart';
 import '../../services/vocabulary_service.dart';
 import '../../services/tts_service.dart';
 import '../../models/saved_word.dart';
+import 'gender_rules_guide_screen.dart';
 
 class GenderRuleMatch {
   final String title;
@@ -35,7 +36,7 @@ class GermanGenderRules {
     if (genderCode == 'm' && lower.endsWith('e') && !lower.startsWith('ge')) {
       return GenderRuleMatch(
         title: 'Exception: Noun in -e is Masculine (Der)',
-        conciseHint: '⚠️ Exception: -$word is Masculine (Der), not Feminine',
+        conciseHint: '⚠️ Exception: -$cleanWord is Masculine (Der), not Feminine',
         explanation: 'While ~90% of nouns ending in "-e" are Feminine, "$cleanWord" is a rare Masculine exception!',
         example: 'der Käse, der Name, der Gedanke, der Junge, der Kunde',
         isException: true,
@@ -47,7 +48,7 @@ class GermanGenderRules {
     if (genderCode == 'n' && lower.endsWith('e') && !lower.startsWith('ge')) {
       return GenderRuleMatch(
         title: 'Exception: Noun in -e is Neuter (Das)',
-        conciseHint: '⚠️ Exception: -$word is Neuter (Das), not Feminine',
+        conciseHint: '⚠️ Exception: -$cleanWord is Neuter (Das), not Feminine',
         explanation: 'While ~90% of nouns ending in "-e" are Feminine, "$cleanWord" is a Neuter exception!',
         example: 'das Auge, das Ende, das Erbe',
         isException: true,
@@ -59,7 +60,7 @@ class GermanGenderRules {
     if (genderCode == 'n' && lower.endsWith('er') && cleanWord.length > 3) {
       return GenderRuleMatch(
         title: 'Exception: Noun in -er is Neuter (Das)',
-        conciseHint: '⚠️ Exception: -$word is Neuter (Das), not Masculine',
+        conciseHint: '⚠️ Exception: -$cleanWord is Neuter (Das), not Masculine',
         explanation: 'While ~70% of nouns ending in "-er" are Masculine, "$cleanWord" is a Neuter tool/object exception!',
         example: 'das Fenster, das Wasser, das Zimmer, das Messer, das Papier',
         isException: true,
@@ -71,7 +72,7 @@ class GermanGenderRules {
     if (genderCode == 'f' && lower.endsWith('er') && cleanWord.length > 3) {
       return GenderRuleMatch(
         title: 'Exception: Noun in -er is Feminine (Die)',
-        conciseHint: '⚠️ Exception: -$word is Feminine (Die), not Masculine',
+        conciseHint: '⚠️ Exception: -$cleanWord is Feminine (Die), not Masculine',
         explanation: 'While ~70% of nouns ending in "-er" are Masculine, "$cleanWord" is a Feminine family/nature exception!',
         example: 'die Mutter, die Butter, die Tochter, die Schulter',
         isException: true,
@@ -83,7 +84,7 @@ class GermanGenderRules {
     if (genderCode == 'n' && (lower.endsWith('ent') || lower.endsWith('ant'))) {
       return GenderRuleMatch(
         title: 'Exception: Noun in -ent is Neuter (Das)',
-        conciseHint: '⚠️ Exception: -$word is Neuter (Das), not Masculine',
+        conciseHint: '⚠️ Exception: -$cleanWord is Neuter (Das), not Masculine',
         explanation: 'While ~90% of "-ent" nouns are Masculine people/agents, "$cleanWord" is a Neuter exception!',
         example: 'das Talent, das Patent, das Element',
         isException: true,
@@ -179,7 +180,7 @@ class GermanGenderRules {
           title: 'Suffix -ur is Feminine (Die)',
           conciseHint: '💡 Suffix -ur is Feminine (Die)',
           explanation: 'Nouns ending in "-ur" are feminine.',
-          example: 'die Natur, die Kultur, die Struktur, die Kultur',
+          example: 'die Natur, die Kultur, die Struktur',
         );
       }
       if (lower.endsWith('ie')) {
@@ -327,12 +328,23 @@ class GermanGenderRules {
   }
 }
 
+enum GenderQuizDeckMode {
+  adaptiveSrs, // Priority on Due Words + offline ranked nouns matching user level
+  levelA1,     // Rank 1..500
+  levelA2,     // Rank 501..1500
+  levelB1,     // Rank 1501..5000
+  mySavedDeck, // Saved user vocabulary
+}
+
 class NounQuestion {
   final String word;
   final String genderCode; // 'm', 'f', 'n'
   final String? ipa;
   final String translation;
   final String? plural;
+  final int? freqRank;
+  final bool isDueForSrs;
+  final int srsInterval;
 
   NounQuestion({
     required this.word,
@@ -340,6 +352,9 @@ class NounQuestion {
     this.ipa,
     required this.translation,
     this.plural,
+    this.freqRank,
+    this.isDueForSrs = false,
+    this.srsInterval = 0,
   });
 
   String get article {
@@ -353,6 +368,21 @@ class NounQuestion {
       default:
         return 'der';
     }
+  }
+
+  static String normalizeGender(String? raw) {
+    if (raw == null) return 'm';
+    final g = raw.trim().toLowerCase();
+    if (g == 'm' || g == 'der' || g.startsWith('masc') || g.startsWith('mask') || g == 'm.' || g == 'r') {
+      return 'm';
+    }
+    if (g == 'f' || g == 'die' || g.startsWith('fem') || g == 'f.' || g == 'e') {
+      return 'f';
+    }
+    if (g == 'n' || g == 'das' || g.startsWith('neu') || g == 'n.' || g == 's') {
+      return 'n';
+    }
+    return 'm';
   }
 }
 
@@ -368,6 +398,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
   final VocabularyService _vocabularyService = VocabularyService();
   final TtsService _ttsService = TtsService();
 
+  GenderQuizDeckMode _selectedDeckMode = GenderQuizDeckMode.adaptiveSrs;
   List<NounQuestion> _questions = [];
   bool _isLoading = true;
   int _currentIndex = 0;
@@ -377,6 +408,10 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
   String? _selectedGender; // 'm', 'f', 'n'
   bool _isAnswered = false;
   bool _isFinished = false;
+
+  int _originalDeckSize = 0;
+  final Set<String> _firstAttemptCorrectWords = {};
+  final Set<String> _firstAttemptFailedWords = {};
 
   @override
   void initState() {
@@ -395,139 +430,93 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
       _selectedGender = null;
       _isAnswered = false;
       _isFinished = false;
+      _firstAttemptCorrectWords.clear();
+      _firstAttemptFailedWords.clear();
     });
 
     List<NounQuestion> loaded = [];
 
-    // 1. Due Spaced Repetition Nouns
-    try {
-      final dueWords = await _vocabularyService.getDueWords();
-      if (dueWords.isNotEmpty) {
-        final dueStrings = dueWords.map((w) => w.germanWord).toList();
-        final genderMap = await _dictionaryService.getGendersForWords(dueStrings);
-        for (var dw in dueWords) {
-          final gRaw = genderMap[dw.germanWord]?.toLowerCase();
-          if (gRaw != null) {
-            String code = 'm';
-            if (gRaw.startsWith('f') || gRaw == 'die') code = 'f';
-            if (gRaw.startsWith('n') || gRaw == 'das') code = 'n';
+    if (_selectedDeckMode == GenderQuizDeckMode.adaptiveSrs) {
+      // 1. Due Spaced Repetition Nouns
+      try {
+        final dueWords = await _vocabularyService.getDueWords();
+        if (dueWords.isNotEmpty) {
+          final dueStrings = dueWords.map((w) => w.germanWord).toList();
+          final genderMap = await _dictionaryService.getGendersForWords(dueStrings);
+          for (var dw in dueWords) {
+            final gRaw = dw.gender ?? genderMap[dw.germanWord];
+            final code = NounQuestion.normalizeGender(gRaw);
             loaded.add(NounQuestion(
               word: dw.germanWord,
               genderCode: code,
               translation: dw.primaryDefinition,
-            ));
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint("Error fetching due SRS words: $e");
-    }
-
-    // 2. High-Frequency Essential German Nouns (A1/A2/B1 Common Nouns)
-    if (loaded.length < 10) {
-      try {
-        final highFreqNouns = await _dictionaryService.getHighFrequencyNouns(limit: 15);
-        for (var row in highFreqNouns) {
-          final word = row['word'] as String?;
-          final gRaw = (row['gender'] as String?)?.toLowerCase();
-          final def = row['definition'] as String? ?? 'German noun';
-          final ipa = row['ipa'] as String?;
-
-          if (word != null &&
-              gRaw != null &&
-              !_dictionaryService.isGrammaticalJargon(def) &&
-              !loaded.any((q) => q.word.toLowerCase() == word.toLowerCase())) {
-            String code = 'm';
-            if (gRaw.startsWith('f') || gRaw == 'die') code = 'f';
-            if (gRaw.startsWith('n') || gRaw == 'das') code = 'n';
-            final wordId = row['id'] as int?;
-            String? pluralForm;
-            if (wordId != null) {
-              pluralForm = await _dictionaryService.getPluralForm(wordId, word);
-            }
-            loaded.add(NounQuestion(
-              word: word,
-              genderCode: code,
-              ipa: ipa,
-              translation: def,
-              plural: pluralForm,
+              isDueForSrs: true,
+              srsInterval: dw.interval,
             ));
           }
         }
       } catch (e) {
-        debugPrint("Error fetching high-frequency nouns: $e");
+        debugPrint("Error fetching due SRS words: $e");
       }
-    }
 
-    // 3. Saved User Words
-    if (loaded.length < 10) {
-      try {
-        final savedWords = await _vocabularyService.getSavedWords();
-        final savedWordStrings = savedWords.map((w) => w.germanWord).toList();
-        if (savedWordStrings.isNotEmpty) {
-          final genderMap = await _dictionaryService.getGendersForWords(savedWordStrings);
-          for (var sw in savedWords) {
-            if (!loaded.any((q) => q.word.toLowerCase() == sw.germanWord.toLowerCase())) {
-              final gRaw = genderMap[sw.germanWord]?.toLowerCase();
-              if (gRaw != null) {
-                String code = 'm';
-                if (gRaw.startsWith('f') || gRaw == 'die') code = 'f';
-                if (gRaw.startsWith('n') || gRaw == 'das') code = 'n';
-                loaded.add(NounQuestion(
-                  word: sw.germanWord,
-                  genderCode: code,
-                  translation: sw.translation,
-                ));
+      // 2. Fill remainder with ranked offline dictionary nouns
+      if (loaded.length < 10) {
+        try {
+          int needed = 10 - loaded.length;
+          final rankedNouns = await _dictionaryService.getRankedNouns(
+            minRank: 1,
+            maxRank: 1500,
+            limit: needed * 2,
+            randomize: true,
+          );
+          for (var row in rankedNouns) {
+            final word = row['word'] as String?;
+            final gRaw = row['gender'] as String?;
+            final def = row['definition'] as String? ?? 'German noun';
+            final ipa = row['ipa'] as String?;
+            final rank = row['freq_rank'] as int?;
+
+            if (word != null &&
+                gRaw != null &&
+                !_dictionaryService.isGrammaticalJargon(def) &&
+                !loaded.any((q) => q.word.toLowerCase() == word.toLowerCase())) {
+              final code = NounQuestion.normalizeGender(gRaw);
+              final wordId = row['id'] as int?;
+              String? pluralForm;
+              if (wordId != null) {
+                pluralForm = await _dictionaryService.getPluralForm(wordId, word);
               }
+              loaded.add(NounQuestion(
+                word: word,
+                genderCode: code,
+                ipa: ipa,
+                translation: def,
+                plural: pluralForm,
+                freqRank: rank,
+              ));
+              if (loaded.length >= 10) break;
             }
           }
+        } catch (e) {
+          debugPrint("Error fetching adaptive ranked nouns: $e");
         }
-      } catch (e) {
-        debugPrint("Error fetching saved words for gender quiz: $e");
       }
+    } else if (_selectedDeckMode == GenderQuizDeckMode.levelA1) {
+      loaded = await _loadRankedDeck(minRank: 1, maxRank: 500, limit: 10);
+    } else if (_selectedDeckMode == GenderQuizDeckMode.levelA2) {
+      loaded = await _loadRankedDeck(minRank: 501, maxRank: 1500, limit: 10);
+    } else if (_selectedDeckMode == GenderQuizDeckMode.levelB1) {
+      loaded = await _loadRankedDeck(minRank: 1501, maxRank: 5000, limit: 10);
+    } else if (_selectedDeckMode == GenderQuizDeckMode.mySavedDeck) {
+      loaded = await _loadSavedDeck(limit: 10);
     }
 
-    // 4. Random Clean Dictionary Nouns if still under 10
-    if (loaded.length < 10) {
-      try {
-        final randomNouns = await _dictionaryService.getRandomNouns(limit: 20);
-        for (var row in randomNouns) {
-          final word = row['word'] as String?;
-          final gRaw = (row['gender'] as String?)?.toLowerCase();
-          final def = row['definition'] as String? ?? 'German noun';
-          final ipa = row['ipa'] as String?;
-
-          if (word != null &&
-              word.isNotEmpty &&
-              word[0] == word[0].toUpperCase() &&
-              gRaw != null &&
-              !_dictionaryService.isGrammaticalJargon(def) &&
-              !loaded.any((q) => q.word.toLowerCase() == word.toLowerCase())) {
-            String code = 'm';
-            if (gRaw.startsWith('f') || gRaw == 'die') code = 'f';
-            if (gRaw.startsWith('n') || gRaw == 'das') code = 'n';
-            final wordId = row['id'] as int?;
-            String? pluralForm;
-            if (wordId != null) {
-              pluralForm = await _dictionaryService.getPluralForm(wordId, word);
-            }
-            loaded.add(NounQuestion(
-              word: word,
-              genderCode: code,
-              ipa: ipa,
-              translation: def,
-              plural: pluralForm,
-            ));
-          }
-        }
-      } catch (e) {
-        debugPrint("Error fetching random nouns: $e");
-      }
+    // Fallback if loaded deck is empty
+    if (loaded.isEmpty) {
+      loaded = await _loadRankedDeck(minRank: 1, maxRank: 1500, limit: 10);
     }
 
-    if (loaded.length > 10) {
-      loaded = loaded.sublist(0, 10);
-    }
+    _originalDeckSize = loaded.length;
 
     if (mounted) {
       setState(() {
@@ -537,6 +526,77 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
     }
   }
 
+  Future<List<NounQuestion>> _loadRankedDeck({required int minRank, required int maxRank, required int limit}) async {
+    List<NounQuestion> list = [];
+    try {
+      final rows = await _dictionaryService.getRankedNouns(
+        minRank: minRank,
+        maxRank: maxRank,
+        limit: limit * 2,
+        randomize: true,
+      );
+      for (var row in rows) {
+        final word = row['word'] as String?;
+        final gRaw = row['gender'] as String?;
+        final def = row['definition'] as String? ?? 'German noun';
+        final ipa = row['ipa'] as String?;
+        final rank = row['freq_rank'] as int?;
+
+        if (word != null &&
+            gRaw != null &&
+            !_dictionaryService.isGrammaticalJargon(def) &&
+            !list.any((q) => q.word.toLowerCase() == word.toLowerCase())) {
+          final code = NounQuestion.normalizeGender(gRaw);
+          final wordId = row['id'] as int?;
+          String? pluralForm;
+          if (wordId != null) {
+            pluralForm = await _dictionaryService.getPluralForm(wordId, word);
+          }
+          list.add(NounQuestion(
+            word: word,
+            genderCode: code,
+            ipa: ipa,
+            translation: def,
+            plural: pluralForm,
+            freqRank: rank,
+          ));
+          if (list.length >= limit) break;
+        }
+      }
+    } catch (e) {
+      debugPrint("Error loading ranked deck [$minRank-$maxRank]: $e");
+    }
+    return list;
+  }
+
+  Future<List<NounQuestion>> _loadSavedDeck({required int limit}) async {
+    List<NounQuestion> list = [];
+    try {
+      final savedWords = await _vocabularyService.getSavedWords();
+      if (savedWords.isNotEmpty) {
+        final savedStrings = savedWords.map((w) => w.germanWord).toList();
+        final genderMap = await _dictionaryService.getGendersForWords(savedStrings);
+        for (var sw in savedWords) {
+          final gRaw = sw.gender ?? genderMap[sw.germanWord];
+          if (gRaw != null && !list.any((q) => q.word.toLowerCase() == sw.germanWord.toLowerCase())) {
+            final code = NounQuestion.normalizeGender(gRaw);
+            list.add(NounQuestion(
+              word: sw.germanWord,
+              genderCode: code,
+              translation: sw.primaryDefinition,
+              isDueForSrs: sw.isDue,
+              srsInterval: sw.interval,
+            ));
+            if (list.length >= limit) break;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error loading saved deck: $e");
+    }
+    return list;
+  }
+
   void _handleSelectGender(String code) {
     if (_isAnswered || _currentIndex >= _questions.length) return;
 
@@ -544,31 +604,69 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
     final bool isCorrect = (code == current.genderCode);
     final rule = GermanGenderRules.getRule(current.word, current.genderCode);
 
+    final bool isFirstAttempt = !_firstAttemptCorrectWords.contains(current.word) &&
+        !_firstAttemptFailedWords.contains(current.word);
+
     setState(() {
       _selectedGender = code;
       _isAnswered = true;
       if (isCorrect) {
-        _score++;
+        if (isFirstAttempt) {
+          _score++;
+          _firstAttemptCorrectWords.add(current.word);
+        }
         _streak++;
         if (_streak > _bestStreak) _bestStreak = _streak;
       } else {
+        if (isFirstAttempt) {
+          _firstAttemptFailedWords.add(current.word);
+        }
         _streak = 0;
+
+        // Active Learning: Re-queue missed question at end of session deck
+        _questions.add(NounQuestion(
+          word: current.word,
+          genderCode: current.genderCode,
+          ipa: current.ipa,
+          translation: current.translation,
+          plural: current.plural,
+          freqRank: current.freqRank,
+          isDueForSrs: current.isDueForSrs,
+          srsInterval: current.srsInterval,
+        ));
       }
     });
 
     // Record SM-2 Spaced Repetition Review
     _recordSrsReview(current, isCorrect);
 
-    // Speak German article + noun
-    _ttsService.speak('${current.article} ${current.word}', lang: 'de-DE');
+    // Speak German article + noun + plural (e.g. "das Haus, die Häuser")
+    _ttsService.speak(_getSpokenText(current), lang: 'de-DE');
 
-    // Auto-advance if correct and no rule tip to read, or longer delay if rule is present
+    // Auto-advance if correct
     if (isCorrect) {
-      final int delayMs = rule != null ? 2200 : 1000;
+      final int delayMs = rule != null ? 2000 : 1000;
       Future.delayed(Duration(milliseconds: delayMs), () {
         if (mounted && _isAnswered) _nextQuestion();
       });
     }
+  }
+
+  String _getSpokenText(NounQuestion question) {
+    final article = question.article.trim();
+    final word = question.word.trim();
+    final plural = question.plural?.trim();
+
+    if (plural == null || plural.isEmpty) {
+      return '$article $word';
+    }
+
+    String cleanPlural = plural;
+    if (!cleanPlural.toLowerCase().startsWith('die ')) {
+      cleanPlural = 'die $cleanPlural';
+    }
+
+    return '$article $word, $cleanPlural';
   }
 
   Future<void> _recordSrsReview(NounQuestion question, bool isCorrect) async {
@@ -611,6 +709,135 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
     }
   }
 
+  void _showModeSelectionSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).dividerColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Select Vocabulary Deck',
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Choose noun level or SRS deck for practice',
+                style: Theme.of(ctx).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              _buildModeOption(
+                ctx,
+                mode: GenderQuizDeckMode.adaptiveSrs,
+                title: '⚡ Adaptive SRS Deck',
+                subtitle: 'Due SRS words + frequency-ranked dictionary nouns',
+                icon: Icons.auto_awesome_rounded,
+                color: Colors.amber,
+              ),
+              _buildModeOption(
+                ctx,
+                mode: GenderQuizDeckMode.levelA1,
+                title: '🟢 Beginner (A1) - Top 500',
+                subtitle: 'Essential everyday German nouns (Haus, Tag, Frau)',
+                icon: Icons.filter_1_rounded,
+                color: Colors.green,
+              ),
+              _buildModeOption(
+                ctx,
+                mode: GenderQuizDeckMode.levelA2,
+                title: '🔵 Core (A2) - Top 1500',
+                subtitle: 'Core practical vocabulary (Wohnung, Schlüssel)',
+                icon: Icons.filter_2_rounded,
+                color: Colors.blue,
+              ),
+              _buildModeOption(
+                ctx,
+                mode: GenderQuizDeckMode.levelB1,
+                title: '🟣 Intermediate (B1/B2) - Top 5000',
+                subtitle: 'Advanced topics & abstract concepts',
+                icon: Icons.filter_3_rounded,
+                color: Colors.purple,
+              ),
+              _buildModeOption(
+                ctx,
+                mode: GenderQuizDeckMode.mySavedDeck,
+                title: '🏆 My Saved Vocabulary',
+                subtitle: 'Practice words you have saved while reading',
+                icon: Icons.bookmark_rounded,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildModeOption(
+    BuildContext ctx, {
+    required GenderQuizDeckMode mode,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    final bool isSelected = _selectedDeckMode == mode;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? color.withValues(alpha: 0.12) : Theme.of(ctx).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSelected ? color : Theme.of(ctx).dividerColor.withValues(alpha: 0.5),
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: ListTile(
+        onTap: () {
+          Navigator.pop(ctx);
+          if (_selectedDeckMode != mode) {
+            setState(() {
+              _selectedDeckMode = mode;
+            });
+            _loadQuestions();
+          }
+        },
+        leading: CircleAvatar(
+          backgroundColor: color.withValues(alpha: 0.2),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Theme.of(ctx).colorScheme.onSurface),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+        ),
+        trailing: isSelected ? Icon(Icons.check_circle_rounded, color: color) : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -629,23 +856,30 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.help_outline_rounded, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          Text(
-            'No Nouns Available',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          const Text('Could not load German nouns for practice.'),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loadQuestions,
-            child: const Text('Try Again'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.help_outline_rounded, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              'No Nouns Available',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Could not find nouns for the selected deck mode.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _showModeSelectionSheet,
+              icon: const Icon(Icons.swap_horiz_rounded),
+              label: const Text('Change Deck Mode'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -654,6 +888,12 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
     final current = _questions[_currentIndex];
     final progress = (_currentIndex + 1) / _questions.length;
     final rule = _isAnswered ? GermanGenderRules.getRule(current.word, current.genderCode) : null;
+
+    String modeLabel = 'Adaptive SRS';
+    if (_selectedDeckMode == GenderQuizDeckMode.levelA1) modeLabel = 'A1 (Top 500)';
+    if (_selectedDeckMode == GenderQuizDeckMode.levelA2) modeLabel = 'A2 (Top 1500)';
+    if (_selectedDeckMode == GenderQuizDeckMode.levelB1) modeLabel = 'B1 (Top 5000)';
+    if (_selectedDeckMode == GenderQuizDeckMode.mySavedDeck) modeLabel = 'Saved Deck';
 
     return Column(
       children: [
@@ -666,6 +906,41 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.of(context).pop(),
               ),
+              InkWell(
+                onTap: _showModeSelectionSheet,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        modeLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Theme.of(context).colorScheme.primary),
+                    ],
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.menu_book_rounded),
+                tooltip: 'Suffix & Rule Guide',
+                color: Theme.of(context).colorScheme.primary,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const GenderRulesGuideScreen()),
+                ),
+              ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -675,15 +950,16 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                       value: progress,
                       backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.3),
                       color: Theme.of(context).colorScheme.primary,
-                      minHeight: 10,
+                      minHeight: 8,
                     ),
                   ),
                 ),
               ),
               Text(
-                '${_currentIndex + 1} / ${_questions.length}',
+                '${_currentIndex + 1}/${_questions.length}',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
+                  fontSize: 12,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -709,12 +985,13 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           ),
         ),
 
-        // Main Noun Card
+        // Main Noun Card (Centered with constant height hint slot to eliminate empty gap and keep position fixed)
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
             child: Center(
               child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -723,7 +1000,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                       effects: const [FadeEffect(duration: Duration(milliseconds: 300)), ScaleEffect(begin: Offset(0.95, 0.95))],
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(32),
@@ -749,22 +1026,63 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // TTS Audio Playback Pill
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: IconButton(
-                                iconSize: 28,
-                                icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary),
-                                onPressed: () => _ttsService.speak(
-                                  _isAnswered ? '${current.article} ${current.word}' : current.word,
-                                  lang: 'de-DE',
+                            // Card Header Badge Row (Rank / SRS Badge & TTS Button)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (current.isDueForSrs)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Icon(Icons.hourglass_bottom_rounded, size: 13, color: Colors.amber),
+                                        SizedBox(width: 4),
+                                        Text('Due SRS Review', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber)),
+                                      ],
+                                    ),
+                                  )
+                                else if (current.freqRank != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      'Rank #${current.freqRank}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: IconButton(
+                                    iconSize: 24,
+                                    icon: Icon(Icons.volume_up_rounded, color: Theme.of(context).colorScheme.primary),
+                                    onPressed: () => _ttsService.speak(
+                                      _getSpokenText(current),
+                                      lang: 'de-DE',
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
 
                             // Word and Article Title
                             Row(
@@ -772,17 +1090,17 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                               children: [
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 250),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                                   decoration: BoxDecoration(
                                     color: _isAnswered
                                         ? _getGenderColor(current.genderCode).withValues(alpha: 0.15)
                                         : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Text(
                                     _isAnswered ? current.article : '?',
                                     style: TextStyle(
-                                      fontSize: 28,
+                                      fontSize: 32,
                                       fontWeight: FontWeight.w800,
                                       color: _isAnswered
                                           ? _getGenderColor(current.genderCode)
@@ -790,14 +1108,14 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 12),
                                 Flexible(
                                   child: FittedBox(
                                     fit: BoxFit.scaleDown,
                                     child: Text(
                                       current.word,
                                       style: TextStyle(
-                                        fontSize: 28,
+                                        fontSize: 32,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 0.3,
                                         color: Theme.of(context).colorScheme.onSurface,
@@ -873,18 +1191,88 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                       ),
                     ),
 
-                    // Concise Tappable Rule & Exception Pill (Positioned OUTSIDE main box)
+                    // Rule & Exception Pill Slot (Constant height before and after answer)
                     AnimatedCrossFade(
                       duration: const Duration(milliseconds: 250),
                       crossFadeState: (rule != null && _isAnswered)
                           ? CrossFadeState.showSecond
                           : CrossFadeState.showFirst,
-                      firstChild: const SizedBox.shrink(),
+                      firstChild: Padding(
+                        padding: const EdgeInsets.only(top: 14.0),
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => GenderRulesGuideScreen(
+                                targetWord: current.word,
+                              ),
+                            ),
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.lightbulb_outline_rounded,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Suffix & Gender Rule Hint',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Tap to explore German gender rules & suffixes →',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(context).colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 20,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                       secondChild: rule != null
                           ? Padding(
                               padding: const EdgeInsets.only(top: 14.0),
                               child: InkWell(
-                                onTap: () => _showGenderRuleModalSheet(context, rule, current),
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => GenderRulesGuideScreen(
+                                      targetRuleTitle: rule.title,
+                                      targetWord: current.word,
+                                    ),
+                                  ),
+                                ),
                                 borderRadius: BorderRadius.circular(20),
                                 child: Container(
                                   width: double.infinity,
@@ -962,7 +1350,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           ),
         ),
 
-        // Footer / Fixed-Height Action Zone
+        // Action Buttons Zone
         SafeArea(
           top: false,
           child: Padding(
@@ -984,13 +1372,12 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                     _isAnswered
                         ? (_selectedGender == current.genderCode
                             ? 'CORRECT! 🥳'
-                            : 'INCORRECT 😞')
+                            : 'INCORRECT 😞 (Added to end of session)')
                         : 'SELECT THE ARTICLE',
                   ),
                 ),
                 const SizedBox(height: 12),
                 
-                // Fixed-height container: switches seamlessly between Der/Die/Das buttons and Next Word button
                 SizedBox(
                   height: 60,
                   child: AnimatedSwitcher(
@@ -1131,10 +1518,11 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
   }
 
   Widget _buildCompletionSummary() {
-    final double percentage = _questions.isEmpty ? 0 : (_score / _questions.length) * 100;
+    final int totalCount = _originalDeckSize > 0 ? _originalDeckSize : _questions.length;
+    final double percentage = totalCount > 0 ? (_score / totalCount) * 100 : 0;
 
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1155,14 +1543,14 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'You scored $_score out of ${_questions.length} (${percentage.toStringAsFixed(0)}%)',
+              'First Attempt Accuracy: $_score / $totalCount (${percentage.toStringAsFixed(0)}%)',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
             const SizedBox(height: 24),
 
-            // Stat Cards Row
+            // Stat Chips
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1186,7 +1574,17 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
             SizedBox(
               width: double.infinity,
               height: 52,
-              child: OutlinedButton(
+              child: OutlinedButton.icon(
+                onPressed: _showModeSelectionSheet,
+                icon: const Icon(Icons.tune_rounded),
+                label: const Text('Change Deck Level'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Back to Home'),
               ),
@@ -1252,7 +1650,6 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Top drag handle
                 Center(
                   child: Container(
                     width: 48,
@@ -1265,7 +1662,6 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Header Badge
                 Row(
                   children: [
                     Container(
@@ -1314,7 +1710,6 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                 const Divider(),
                 const SizedBox(height: 16),
 
-                // Rule Explanation Section
                 Text(
                   'Grammar Rule Breakdown',
                   style: TextStyle(
@@ -1343,7 +1738,6 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Standard Examples Section
                 Text(
                   'Common Nouns Following This Rule',
                   style: TextStyle(
@@ -1371,7 +1765,6 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                   ),
                 ),
 
-                // Exception Section (The Odd 10%)
                 if (rule.isException || rule.commonExceptions.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   Row(
