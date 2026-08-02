@@ -6,7 +6,7 @@ import '../../models/processed_video.dart';
 import '../../models/processing_status.dart';
 import '../../models/subtitle_cue.dart';
 import '../../services/backend_service.dart';
-import '../../services/lesson_service.dart';
+import '../../services/media_library_service.dart';
 import '../video_screen.dart';
 
 class UrlImportScreen extends StatefulWidget {
@@ -77,10 +77,10 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
   }
 
   void _processMediaUrl(String url) async {
-    final lessonService = Provider.of<LessonService>(context, listen: false);
+    final mediaLibraryService = Provider.of<MediaLibraryService>(context, listen: false);
     
     // Launch non-blocking background media submission
-    unawaited(lessonService.submitMediaProcessingTaskInBackground(url));
+    unawaited(mediaLibraryService.submitMediaProcessingTaskInBackground(url));
 
     if (mounted) {
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -95,10 +95,10 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
   }
 
   void _processWebArticleUrl(String url) async {
-    final lessonService = Provider.of<LessonService>(context, listen: false);
+    final mediaLibraryService = Provider.of<MediaLibraryService>(context, listen: false);
     
     // Launch non-blocking background import task
-    unawaited(lessonService.importWebArticleInBackground(url));
+    unawaited(mediaLibraryService.importWebArticleInBackground(url));
 
     if (mounted) {
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -128,6 +128,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+          tooltip: 'Close',
           onPressed: () => Navigator.pop(context),
         ),
       ),

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -10,7 +11,7 @@ import 'package:takt/models/subtitle_cue.dart';
 import 'package:takt/services/ondevice_ai_service.dart';
 import 'package:takt/models/saved_word.dart';
 import 'package:provider/provider.dart';
-import 'package:takt/services/lesson_service.dart';
+import 'package:takt/services/media_library_service.dart';
 import 'package:takt/config.dart';
 import 'package:takt/widgets/glance_word_sheet.dart';
 
@@ -84,24 +85,29 @@ class _VideoScreenState extends State<VideoScreen>
     _subtitles = video.subtitles;
     _subtitleKeys = List.generate(_subtitles.length, (_) => GlobalKey());
     if (_directVideoUrl != null && _directVideoUrl!.isNotEmpty) {
-      _videoPlayerController =
-          VideoPlayerController.networkUrl(Uri.parse(_directVideoUrl!));
-      
-      _videoPlayerController!.initialize().then((_) {
-        if (mounted) {
-          setState(() {
-            _errorMessage = null;
+      _videoPlayerController = VideoPlayerController.networkUrl(
+        Uri.parse(_directVideoUrl!),
+      );
+
+      _videoPlayerController!
+          .initialize()
+          .then((_) {
+            if (mounted) {
+              setState(() {
+                _errorMessage = null;
+              });
+              _videoPlayerController?.play();
+              _animationController.forward();
+            }
+          })
+          .catchError((error) {
+            if (mounted) {
+              setState(() {
+                _errorMessage =
+                    'Media stream expired or invalid format. Tap Refresh Stream to reload.';
+              });
+            }
           });
-          _videoPlayerController?.play();
-          _animationController.forward();
-        }
-      }).catchError((error) {
-        if (mounted) {
-          setState(() {
-            _errorMessage = 'Media stream expired or invalid format. Tap Refresh Stream to reload.';
-          });
-        }
-      });
       _videoPlayerController?.addListener(_onVideoPlayerUpdate);
     }
   }
@@ -145,7 +151,8 @@ class _VideoScreenState extends State<VideoScreen>
 
   void _onVideoPlayerUpdate() {
     if (!mounted) return;
-    if (_videoPlayerController != null && _videoPlayerController!.value.hasError) {
+    if (_videoPlayerController != null &&
+        _videoPlayerController!.value.hasError) {
       if (_errorMessage == null) {
         setState(() {
           _errorMessage = 'Media stream error or link expired.';
@@ -192,7 +199,9 @@ class _VideoScreenState extends State<VideoScreen>
   }
 
   void _scrollToCurrentSubtitle() {
-    if (_currentSubtitleIndex == -1 || _currentSubtitleIndex >= _subtitleKeys.length) return;
+    if (_currentSubtitleIndex == -1 ||
+        _currentSubtitleIndex >= _subtitleKeys.length)
+      return;
 
     final context = _subtitleKeys[_currentSubtitleIndex].currentContext;
     if (context != null) {
@@ -277,7 +286,12 @@ class _VideoScreenState extends State<VideoScreen>
                   top: 0,
                   left: 0,
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 28),
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                    tooltip: 'Back',
                     onPressed: () {
                       Navigator.pop(context);
                     },
@@ -293,24 +307,74 @@ class _VideoScreenState extends State<VideoScreen>
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
+      body: SafeArea(child: _buildFoldAwareBody(context)),
+    );
+  }
+
+  /// Detects a vertical fold hinge (book-style foldable, unfolded) via
+  /// [MediaQueryData.displayFeatures] and lays the video out to its left
+  /// and the subtitle transcript to its right, so neither pane straddles
+  /// the hinge itself. Falls back to the normal stacked layout otherwise.
+  /// See design doc §7 "Foldable-specific".
+  Widget _buildFoldAwareBody(BuildContext context) {
+    final videoColumn = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: _isPlayerMinimized
+          ? _buildMiniPlayer(context)
+          : _buildVideoPlayer(context),
+    );
+
+    final transcriptContent = _subtitles.isEmpty
+        ? _buildNoSubtitlesMessage(context)
+        : _buildTranscriptList(context);
+
+    final mediaQuery = MediaQuery.of(context);
+    DisplayFeature? hinge;
+    for (final feature in mediaQuery.displayFeatures) {
+      if (feature.type == DisplayFeatureType.hinge ||
+          feature.type == DisplayFeatureType.fold) {
+        hinge = feature;
+        break;
+      }
+    }
+
+    final isVerticalHinge =
+        hinge != null && hinge.bounds.height >= hinge.bounds.width;
+
+    if (isVerticalHinge) {
+      final leftWidth = hinge.bounds.left;
+      final rightWidth = mediaQuery.size.width - hinge.bounds.right;
+      if (leftWidth > 200 && rightWidth > 200) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              child: _isPlayerMinimized ? _buildMiniPlayer(context) : _buildVideoPlayer(context),
+            SizedBox(
+              width: leftWidth,
+              child: Column(
+                children: [
+                  videoColumn,
+                  if (widget.processedVideo == null) _buildUrlInput(context),
+                  if (_errorMessage != null) _buildErrorMessage(context),
+                ],
+              ),
             ),
-            if (widget.processedVideo == null) _buildUrlInput(context),
-            if (_errorMessage != null) _buildErrorMessage(context),
-            Expanded(
-              child: _subtitles.isEmpty
-                  ? _buildNoSubtitlesMessage(context)
-                  : _buildTranscriptList(context),
-            ),
+            SizedBox(
+              width: hinge.bounds.width,
+            ), // straddle the hinge with empty space, not content
+            SizedBox(width: rightWidth, child: transcriptContent),
           ],
-        ),
-      ),
+        );
+      }
+    }
+
+    return Column(
+      children: [
+        videoColumn,
+        if (widget.processedVideo == null) _buildUrlInput(context),
+        if (_errorMessage != null) _buildErrorMessage(context),
+        Expanded(child: transcriptContent),
+      ],
     );
   }
 
@@ -330,7 +394,12 @@ class _VideoScreenState extends State<VideoScreen>
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 22),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+                tooltip: 'Back',
                 onPressed: () {
                   Navigator.pop(context);
                 },
@@ -342,7 +411,11 @@ class _VideoScreenState extends State<VideoScreen>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: IconButton(
-                icon: const Icon(Icons.unfold_less_rounded, color: Colors.white, size: 22),
+                icon: const Icon(
+                  Icons.unfold_less_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
                 tooltip: 'Minimize to Article Mode',
                 onPressed: () {
                   setState(() {
@@ -361,20 +434,29 @@ class _VideoScreenState extends State<VideoScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final isPlaying = _videoPlayerController?.value.isPlaying ?? false;
     final currentPos = _videoPlayerController?.value.position ?? Duration.zero;
-    final totalDuration = _videoPlayerController?.value.duration ?? Duration.zero;
+    final totalDuration =
+        _videoPlayerController?.value.duration ?? Duration.zero;
     final progress = totalDuration.inMilliseconds > 0
-        ? (currentPos.inMilliseconds / totalDuration.inMilliseconds).clamp(0.0, 1.0)
+        ? (currentPos.inMilliseconds / totalDuration.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          )
         : 0.0;
 
     String currentLine = 'Media Article Mode';
-    if (_currentSubtitleIndex != -1 && _currentSubtitleIndex < _subtitles.length) {
+    if (_currentSubtitleIndex != -1 &&
+        _currentSubtitleIndex < _subtitles.length) {
       currentLine = _subtitles[_currentSubtitleIndex].original;
     }
 
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -387,11 +469,19 @@ class _VideoScreenState extends State<VideoScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 8.0,
+            ),
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface, size: 20),
+                  icon: Icon(
+                    Icons.arrow_back_rounded,
+                    color: colorScheme.onSurface,
+                    size: 20,
+                  ),
+                  tooltip: 'Back',
                   onPressed: () => Navigator.pop(context),
                 ),
                 Container(
@@ -404,10 +494,13 @@ class _VideoScreenState extends State<VideoScreen>
                   child: IconButton(
                     padding: EdgeInsets.zero,
                     icon: Icon(
-                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                       color: colorScheme.primary,
                       size: 22,
                     ),
+                    tooltip: isPlaying ? 'Pause' : 'Play',
                     onPressed: () async {
                       if (_videoPlayerController == null) return;
                       if (isPlaying) {
@@ -439,11 +532,17 @@ class _VideoScreenState extends State<VideoScreen>
                         children: [
                           Text(
                             '${_formatDuration(currentPos)} / ${_formatDuration(totalDuration)}',
-                            style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: colorScheme.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(6),
@@ -463,7 +562,11 @@ class _VideoScreenState extends State<VideoScreen>
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.unfold_more_rounded, color: colorScheme.primary, size: 22),
+                  icon: Icon(
+                    Icons.unfold_more_rounded,
+                    color: colorScheme.primary,
+                    size: 22,
+                  ),
                   tooltip: 'Expand Media Player',
                   onPressed: () {
                     setState(() {
@@ -518,16 +621,27 @@ class _VideoScreenState extends State<VideoScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: Colors.orangeAccent, size: 44),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: Colors.orangeAccent,
+                      size: 44,
+                    ),
                     const SizedBox(height: 10),
                     const Text(
                       'Media Stream Link Expired',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'YouTube/Media direct streams expire after a few hours.\nRefresh link to stream video again.',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 11,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 14),
@@ -537,14 +651,25 @@ class _VideoScreenState extends State<VideoScreen>
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Icon(Icons.refresh_rounded, size: 18),
-                        label: Text(_isLoading ? 'Refreshing Link...' : 'Refresh Stream Link'),
+                        label: Text(
+                          _isLoading
+                              ? 'Refreshing Link...'
+                              : 'Refresh Stream Link',
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         onPressed: _isLoading
                             ? null
@@ -552,21 +677,36 @@ class _VideoScreenState extends State<VideoScreen>
                                 setState(() {
                                   _isLoading = true;
                                 });
-                                final lessonService = Provider.of<LessonService>(context, listen: false);
-                                final ok = await lessonService.refreshVideoUrl(
-                                  widget.processedVideo!.id,
-                                  widget.processedVideo!.url,
-                                );
+                                final mediaLibraryService =
+                                    Provider.of<MediaLibraryService>(
+                                      context,
+                                      listen: false,
+                                    );
+                                final ok = await mediaLibraryService
+                                    .refreshVideoUrl(
+                                      widget.processedVideo!.id,
+                                      widget.processedVideo!.url,
+                                    );
                                 if (ok && mounted) {
-                                  final index = lessonService.processedVideos.indexWhere((v) => v.id == widget.processedVideo!.id);
+                                  final index = mediaLibraryService
+                                      .processedVideos
+                                      .indexWhere(
+                                        (v) =>
+                                            v.id == widget.processedVideo!.id,
+                                      );
                                   if (index != -1) {
-                                    _directVideoUrl = lessonService.processedVideos[index].videoUrl;
+                                    _directVideoUrl = mediaLibraryService
+                                        .processedVideos[index]
+                                        .videoUrl;
                                     setState(() {
                                       _isLoading = false;
                                       _errorMessage = null;
                                     });
                                     _videoPlayerController?.dispose();
-                                    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(_directVideoUrl!));
+                                    _videoPlayerController =
+                                        VideoPlayerController.networkUrl(
+                                          Uri.parse(_directVideoUrl!),
+                                        );
                                     await _videoPlayerController!.initialize();
                                     _videoPlayerController!.play();
                                     return;
@@ -575,7 +715,8 @@ class _VideoScreenState extends State<VideoScreen>
                                 if (mounted) {
                                   setState(() {
                                     _isLoading = false;
-                                    _errorMessage = 'Could not refresh link. Please check network.';
+                                    _errorMessage =
+                                        'Could not refresh link. Please check network.';
                                   });
                                 }
                               },
@@ -584,101 +725,117 @@ class _VideoScreenState extends State<VideoScreen>
                 ),
               )
             : (_videoPlayerController?.value.isInitialized ?? false)
-                ? GestureDetector(
-                    onTap: _toggleControls,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: <Widget>[
-                        if (_videoPlayerController!.value.size.width > 0 && _videoPlayerController!.value.size.height > 0)
-                          FittedBox(
-                            fit: BoxFit.cover,
-                            child: SizedBox(
-                              width: _videoPlayerController!.value.size.width,
-                              height: _videoPlayerController!.value.size.height,
-                              child: Opacity(
-                                opacity: 0.35,
-                                child: VideoPlayer(_videoPlayerController!),
+            ? GestureDetector(
+                onTap: _toggleControls,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    if (_videoPlayerController!.value.size.width > 0 &&
+                        _videoPlayerController!.value.size.height > 0)
+                      FittedBox(
+                        fit: BoxFit.cover,
+                        child: SizedBox(
+                          width: _videoPlayerController!.value.size.width,
+                          height: _videoPlayerController!.value.size.height,
+                          child: Opacity(
+                            opacity: 0.35,
+                            child: VideoPlayer(_videoPlayerController!),
+                          ),
+                        ),
+                      ),
+                    Builder(
+                      builder: (context) {
+                        final hasVideoTrack =
+                            (_videoPlayerController?.value.size.width ?? 0) >
+                                0 &&
+                            (_videoPlayerController?.value.size.height ?? 0) >
+                                0;
+                        if (hasVideoTrack) {
+                          return Center(
+                            child: AspectRatio(
+                              aspectRatio:
+                                  (_videoPlayerController?.value.aspectRatio ??
+                                          0) >
+                                      0
+                                  ? _videoPlayerController!.value.aspectRatio
+                                  : (16 / 9),
+                              child: VideoPlayer(_videoPlayerController!),
+                            ),
+                          );
+                        } else {
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.primaryContainer,
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHigh,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
                             ),
-                          ),
-                        Builder(
-                          builder: (context) {
-                            final hasVideoTrack = (_videoPlayerController?.value.size.width ?? 0) > 0 &&
-                                                  (_videoPlayerController?.value.size.height ?? 0) > 0;
-                            if (hasVideoTrack) {
-                              return Center(
-                                child: AspectRatio(
-                                  aspectRatio: (_videoPlayerController?.value.aspectRatio ?? 0) > 0 
-                                      ? _videoPlayerController!.value.aspectRatio 
-                                      : (16 / 9),
-                                  child: VideoPlayer(_videoPlayerController!),
-                                ),
-                              );
-                            } else {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Theme.of(context).colorScheme.primaryContainer,
-                                      Theme.of(context).colorScheme.surfaceContainerHigh,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary
+                                        .withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.graphic_eq_rounded,
+                                    size: 48,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                                 ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.graphic_eq_rounded,
-                                        size: 48,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Audio Media Stream',
-                                      style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurface,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Audio Media Stream',
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              );
-                            }
-                          },
-                        ),
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: _buildVideoHeader(context),
-                        ),
-                        Positioned(
-                          bottom: 12,
-                          left: 12,
-                          right: 12,
-                          child: AnimatedOpacity(
-                            opacity: _showControls ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 250),
-                            child: IgnorePointer(
-                              ignoring: !_showControls,
-                              child: _buildVideoControls(),
+                              ],
                             ),
-                          ),
-                        ),
-                      ],
+                          );
+                        }
+                      },
                     ),
-                  )
-                : const Center(child: CircularProgressIndicator()),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildVideoHeader(context),
+                    ),
+                    Positioned(
+                      bottom: 12,
+                      left: 12,
+                      right: 12,
+                      child: AnimatedOpacity(
+                        opacity: _showControls ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 250),
+                        child: IgnorePointer(
+                          ignoring: !_showControls,
+                          child: _buildVideoControls(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -702,6 +859,7 @@ class _VideoScreenState extends State<VideoScreen>
               color: Colors.white,
               size: 24,
             ),
+            tooltip: _videoPlayerController!.value.isPlaying ? 'Pause' : 'Play',
             onPressed: () async {
               if (_videoPlayerController == null) return;
 
@@ -764,10 +922,13 @@ class _VideoScreenState extends State<VideoScreen>
           ),
           IconButton(
             icon: Icon(
-              _isFullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+              _isFullscreen
+                  ? Icons.fullscreen_exit_rounded
+                  : Icons.fullscreen_rounded,
               color: Colors.white,
               size: 22,
             ),
+            tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
             onPressed: _toggleFullscreen,
           ),
         ],
@@ -786,7 +947,9 @@ class _VideoScreenState extends State<VideoScreen>
             controller: _urlController,
             decoration: InputDecoration(
               labelText: 'Media URL',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               prefixIcon: Icon(Icons.link_rounded, color: colorScheme.primary),
             ),
           ),
@@ -808,8 +971,13 @@ class _VideoScreenState extends State<VideoScreen>
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -822,7 +990,10 @@ class _VideoScreenState extends State<VideoScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Text(
         _errorMessage!,
-        style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.error,
+          fontWeight: FontWeight.w600,
+        ),
         textAlign: TextAlign.center,
       ),
     );
@@ -852,7 +1023,9 @@ class _VideoScreenState extends State<VideoScreen>
             padding: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -862,7 +1035,10 @@ class _VideoScreenState extends State<VideoScreen>
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.bookmark_rounded, color: colorScheme.primary),
+                        Icon(
+                          Icons.bookmark_rounded,
+                          color: colorScheme.primary,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Saved Vocabulary',
@@ -875,7 +1051,11 @@ class _VideoScreenState extends State<VideoScreen>
                       ],
                     ),
                     IconButton(
-                      icon: Icon(Icons.close_rounded, color: colorScheme.onSurfaceVariant),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      tooltip: 'Close',
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -887,12 +1067,16 @@ class _VideoScreenState extends State<VideoScreen>
                           child: Text(
                             'No saved German words yet.\nTap any German word in the transcript to bookmark it!',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 14,
+                            ),
                           ),
                         )
                       : ListView.separated(
                           itemCount: words.length,
-                          separatorBuilder: (context, index) => Divider(color: colorScheme.outlineVariant),
+                          separatorBuilder: (context, index) =>
+                              Divider(color: colorScheme.outlineVariant),
                           itemBuilder: (context, index) {
                             final item = words[index];
                             return ListTile(
@@ -910,17 +1094,30 @@ class _VideoScreenState extends State<VideoScreen>
                                 children: [
                                   Text(
                                     item.translation,
-                                    style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
-                                  if (item.contextSentence != null && item.contextSentence!.isNotEmpty)
+                                  if (item.contextSentence != null &&
+                                      item.contextSentence!.isNotEmpty)
                                     Text(
                                       'Context: "${item.contextSentence}"',
-                                      style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontStyle: FontStyle.italic,
+                                      ),
                                     ),
                                 ],
                               ),
                               trailing: IconButton(
-                                icon: Icon(Icons.delete_outline_rounded, color: colorScheme.error, size: 20),
+                                icon: Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: colorScheme.error,
+                                  size: 20,
+                                ),
+                                tooltip: 'Remove word',
                                 onPressed: () {
                                   _inMemorySavedWords.remove(item);
                                   setModalState(() {});
@@ -958,10 +1155,7 @@ class _VideoScreenState extends State<VideoScreen>
           return WidgetSpan(
             child: GestureDetector(
               onTap: () => _showWordInfoDialog(word, text),
-              child: Text(
-                '$word ',
-                style: style,
-              ),
+              child: Text('$word ', style: style),
             ),
           );
         }).toList(),
@@ -973,9 +1167,7 @@ class _VideoScreenState extends State<VideoScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     final aiService = OnDeviceAIService();
@@ -1015,7 +1207,11 @@ class _VideoScreenState extends State<VideoScreen>
               const SizedBox(height: 12),
               Text(
                 summary,
-                style: TextStyle(fontSize: 15, height: 1.5, color: colorScheme.onSurface),
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -1025,7 +1221,9 @@ class _VideoScreenState extends State<VideoScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.primary,
                     foregroundColor: colorScheme.onPrimary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   child: const Text('Close'),
                 ),
@@ -1046,7 +1244,11 @@ class _VideoScreenState extends State<VideoScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
-            border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
+            border: Border(
+              bottom: BorderSide(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1055,11 +1257,18 @@ class _VideoScreenState extends State<VideoScreen>
                 children: [
                   Text(
                     "Transcript & Article",
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(12),
@@ -1079,11 +1288,17 @@ class _VideoScreenState extends State<VideoScreen>
                 children: [
                   IconButton(
                     icon: Icon(
-                      _hideTranslations ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                      _hideTranslations
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
                       size: 20,
-                      color: _hideTranslations ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                      color: _hideTranslations
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
                     ),
-                    tooltip: _hideTranslations ? "Show Translations" : "Hide Translations (Active Recall)",
+                    tooltip: _hideTranslations
+                        ? "Show Translations"
+                        : "Hide Translations (Active Recall)",
                     onPressed: () {
                       setState(() {
                         _hideTranslations = !_hideTranslations;
@@ -1091,12 +1306,20 @@ class _VideoScreenState extends State<VideoScreen>
                     },
                   ),
                   IconButton(
-                    icon: Icon(Icons.bookmark_border_rounded, size: 20, color: colorScheme.primary),
+                    icon: Icon(
+                      Icons.bookmark_border_rounded,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
                     tooltip: "Saved Vocabulary",
                     onPressed: _showSavedVocabularySheet,
                   ),
                   IconButton(
-                    icon: Icon(Icons.auto_awesome_rounded, size: 20, color: colorScheme.primary),
+                    icon: Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
                     tooltip: "AI Summary",
                     onPressed: _showOnDeviceSummaryDialog,
                   ),
@@ -1108,7 +1331,10 @@ class _VideoScreenState extends State<VideoScreen>
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 12.0,
+            ),
             itemCount: _subtitles.length,
             itemBuilder: (context, index) {
               final cue = _subtitles[index];
@@ -1135,17 +1361,19 @@ class _VideoScreenState extends State<VideoScreen>
                       boxShadow: isCurrent
                           ? [
                               BoxShadow(
-                                color: colorScheme.primary.withValues(alpha: 0.12),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.12,
+                                ),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
-                              )
+                              ),
                             ]
                           : [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.02),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
-                              )
+                              ),
                             ],
                     ),
                     child: IntrinsicHeight(
@@ -1169,36 +1397,44 @@ class _VideoScreenState extends State<VideoScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                      _buildTappableLine(
-                        cue.original,
-                        TextStyle(
-                          fontSize: isCurrent ? 17 : 16,
-                          height: 1.5,
-                          fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: isCurrent ? colorScheme.primary : colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 6.0),
-                      _hideTranslations
-                          ? Text(
-                              "••••••••••••••••••••",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                                letterSpacing: 2,
-                              ),
-                            )
-                          : _buildTappableLine(
-                              cue.translated,
-                              TextStyle(
-                                fontSize: 14,
-                                height: 1.4,
-                                fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                                color: isCurrent
-                                    ? colorScheme.primary.withValues(alpha: 0.8)
-                                    : colorScheme.onSurfaceVariant,
-                              ),
-                            ),
+                                  _buildTappableLine(
+                                    cue.original,
+                                    TextStyle(
+                                      fontSize: isCurrent ? 17 : 16,
+                                      height: 1.5,
+                                      fontWeight: isCurrent
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: isCurrent
+                                          ? colorScheme.primary
+                                          : colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6.0),
+                                  _hideTranslations
+                                      ? Text(
+                                          "••••••••••••••••••••",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: colorScheme.onSurfaceVariant
+                                                .withValues(alpha: 0.5),
+                                            letterSpacing: 2,
+                                          ),
+                                        )
+                                      : _buildTappableLine(
+                                          cue.translated,
+                                          TextStyle(
+                                            fontSize: 14,
+                                            height: 1.4,
+                                            fontWeight: isCurrent
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                            color: isCurrent
+                                                ? colorScheme.primary
+                                                      .withValues(alpha: 0.8)
+                                                : colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
                                 ],
                               ),
                             ),

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../config.dart';
+import 'app_logger.dart';
 
 class DictionaryService {
   static final DictionaryService _instance = DictionaryService._internal();
@@ -19,6 +20,8 @@ class DictionaryService {
   final ValueNotifier<bool> hasUpdateNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<bool> isCheckingNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<String?> latestVersionNotifier = ValueNotifier<String?>(null);
+
+  final Map<String, String?> _imageUrlCache = {};
 
   factory DictionaryService() => _instance;
 
@@ -69,14 +72,14 @@ class DictionaryService {
     
     if (await File(path).exists()) {
       try {
-        print("Verifying existing dictionary database at $path...");
+        AppLogger.debug("Verifying existing dictionary database at $path...", tag: 'DictionaryService');
         var db = await openDatabase(path, readOnly: true);
         await db.rawQuery("SELECT count(*) FROM words LIMIT 1;");
         await db.close();
         isValid = true;
-        print("Database verification successful.");
+        AppLogger.debug("Database verification successful.", tag: 'DictionaryService');
       } catch (e) {
-        print("Database verification failed: $e. Will re-download.");
+        AppLogger.error("Database verification failed: $e. Will re-download.", error: e, tag: 'DictionaryService');
         isValid = false;
       }
     }
@@ -122,8 +125,8 @@ class DictionaryService {
 
   Future<void> _downloadDatabaseFile(String path) async {
     final downloadUrl = _latestAssetDownloadUrl ??
-        "https://github.com/kowshikRoy/takt/releases/download/v16.0/german_dictionary_v16_lite.db";
-    print("Downloading dictionary database on-demand from $downloadUrl...");
+        "https://github.com/kowshikRoy/takt/releases/download/v17.0/german_dictionary_v17_lite.db";
+    AppLogger.debug("Downloading dictionary database on-demand from $downloadUrl...", tag: 'DictionaryService');
     
     isDownloadingNotifier.value = true;
     downloadProgressNotifier.value = 0.0;
@@ -168,9 +171,9 @@ class DictionaryService {
 
       await sink.close();
       client.close();
-      print("Database downloaded successfully to $path.");
+      AppLogger.debug("Database downloaded successfully to $path.", tag: 'DictionaryService');
     } catch (e) {
-      print("Error downloading database: $e");
+      AppLogger.error("Error downloading database", error: e, tag: 'DictionaryService');
       downloadErrorNotifier.value = "Failed to download dictionary database: $e";
       rethrow;
     } finally {
@@ -257,10 +260,10 @@ class DictionaryService {
 
         hasUpdateNotifier.value = currentNum > 0 && latestNum > currentNum;
 
-        print("DEBUG Check DB update: status=${response.statusCode}, current=$currentVerStr, latestTag=$tag, asset=$_latestAssetDownloadUrl, hasUpdate=${hasUpdateNotifier.value}");
+        AppLogger.debug("DEBUG Check DB update: status=${response.statusCode}, current=$currentVerStr, latestTag=$tag, asset=$_latestAssetDownloadUrl, hasUpdate=${hasUpdateNotifier.value}", tag: 'DictionaryService');
       }
     } catch (e) {
-      print("Check for DB update error: $e");
+      AppLogger.error("Check for DB update error", error: e, tag: 'DictionaryService');
     } finally {
       isCheckingNotifier.value = false;
     }
@@ -335,7 +338,7 @@ class DictionaryService {
 
           return grouped.values.take(20).toList();
         } catch (e) {
-          print("Local SQLite Search error: $e");
+          AppLogger.error("Local SQLite Search error", error: e, tag: 'DictionaryService');
         }
       }
     }
@@ -350,10 +353,54 @@ class DictionaryService {
         return List<Map<String, dynamic>>.from(data['results'] ?? []);
       }
     } catch (e) {
-      print("OmniScribe dictionary API search error: $e");
+      AppLogger.error("OmniScribe dictionary API search error", error: e, tag: 'DictionaryService');
     }
 
     return [];
+  }
+
+  /// Real example sentences from the `examples` table (sourced from
+  /// Wiktionary/Kaikki at DB-build time). Older cached DBs built before this
+  /// table existed will throw "no such table" here — caught and treated as
+  /// "no examples available" rather than crashing.
+  Future<List<Map<String, String?>>> _getExamplesForWord(
+    Database db,
+    int wordId,
+    String? baseForm,
+  ) async {
+    try {
+      List<Map<String, dynamic>> rows = await db.query(
+        'examples',
+        columns: ['de', 'en'],
+        where: 'word_id = ?',
+        whereArgs: [wordId],
+      );
+
+      if (rows.isEmpty && baseForm != null && baseForm.isNotEmpty) {
+        final baseRows = await db.query(
+          'words',
+          columns: ['id'],
+          where: 'word = ? COLLATE NOCASE',
+          whereArgs: [baseForm],
+          limit: 1,
+        );
+        if (baseRows.isNotEmpty) {
+          rows = await db.query(
+            'examples',
+            columns: ['de', 'en'],
+            where: 'word_id = ?',
+            whereArgs: [baseRows.first['id']],
+          );
+        }
+      }
+
+      return rows
+          .map((e) => {'de': e['de'] as String?, 'en': e['en'] as String?})
+          .where((e) => e['de'] != null && e['de']!.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<Map<String, dynamic>?> getWordDetails(int wordId) async {
@@ -386,6 +433,12 @@ class DictionaryService {
             word['forms'] = [];
           }
 
+          word['examples'] = await _getExamplesForWord(
+            db,
+            wordId,
+            word['base_form'] as String?,
+          );
+
           word['synonyms'] = [];
           word['antonyms'] = [];
           word['related'] = [];
@@ -405,7 +458,7 @@ class DictionaryService {
         return Map<String, dynamic>.from(data);
       }
     } catch (e) {
-      print("OmniScribe getWordDetails API error: $e");
+      AppLogger.error("OmniScribe getWordDetails API error", error: e, tag: 'DictionaryService');
     }
 
     return null;
@@ -464,9 +517,162 @@ class DictionaryService {
 
       return groupedByPosKey.values.toList();
     } catch (e) {
-      print("Lookup fast error: $e");
+      AppLogger.error("Lookup fast error", error: e, tag: 'DictionaryService');
       return [];
     }
+  }
+
+  /// Fetches a representative photo for a word via German Wikipedia's
+  /// page-summary API (free, no API key). Restricted to nouns: the headword
+  /// maps reliably to a single Wikipedia article title for concrete nouns,
+  /// but verbs/adjectives/function words are much more likely to collide
+  /// with an unrelated article (e.g. a surname or place sharing the word),
+  /// which would show a misleading image — better to show none than a
+  /// wrong one, same reasoning as the example-sentence fix.
+  Future<String?> getWordImageUrl(String word, {String? pos}) async {
+    final posLower = pos?.toLowerCase().trim() ?? '';
+    if (posLower != 'noun' && posLower != 'n' && posLower != 'n.') {
+      return null;
+    }
+
+    final cleanWord = word.trim();
+    if (cleanWord.isEmpty) return null;
+
+    if (_imageUrlCache.containsKey(cleanWord)) {
+      return _imageUrlCache[cleanWord];
+    }
+
+    try {
+      final uri = Uri.parse(
+        'https://de.wikipedia.org/api/rest_v1/page/summary/${Uri.encodeComponent(cleanWord)}',
+      );
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              // Wikimedia asks API clients to identify themselves.
+              'User-Agent': 'TaktApp/1.0 (https://github.com/kowshikRoy/takt)',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        // Disambiguation pages ("Bank" = bench/financial institution/etc.)
+        // don't reliably point at one concept, so skip them.
+        if (data is Map && data['type'] == 'disambiguation') {
+          _imageUrlCache[cleanWord] = null;
+          return null;
+        }
+        final thumbnail = data is Map ? data['thumbnail'] : null;
+        var url = thumbnail is Map ? thumbnail['source'] as String? : null;
+
+        // Wikipedia often illustrates species/general-topic articles with a
+        // multi-photo montage (e.g. "Collage_of_Six_Cats...") as the infobox
+        // image, which reads badly on a single-photo learner card. Wikidata's
+        // P18 "image" property is curated to be one canonical photo per
+        // concept, so prefer that when the article image is a montage.
+        if (url != null && _isMontageImage(url)) {
+          final qid = data is Map ? data['wikibase_item'] as String? : null;
+          url = qid != null ? await _fetchWikidataImageUrl(qid) : null;
+        }
+
+        _imageUrlCache[cleanWord] = url;
+        return url;
+      }
+    } catch (e) {
+      AppLogger.error("Wikipedia image lookup error", error: e, tag: 'DictionaryService');
+    }
+
+    _imageUrlCache[cleanWord] = null;
+    return null;
+  }
+
+  /// Resolves a Wikidata entity's P18 ("image") claim to a displayable URL.
+  /// P18 stores a bare Commons filename, which then needs a second hop
+  /// through the Commons imageinfo API to get a real thumbnail URL.
+  Future<String?> _fetchWikidataImageUrl(String qid) async {
+    try {
+      // `origin=*` is required by the MediaWiki Action API to return CORS
+      // headers for anonymous cross-origin requests — without it the call
+      // is blocked outright in the browser (Flutter web).
+      final uri = Uri.parse(
+        'https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=$qid&property=P18&format=json&origin=*',
+      );
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'User-Agent': 'TaktApp/1.0 (https://github.com/kowshikRoy/takt)',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode != 200) return null;
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final claims = data is Map ? data['claims'] : null;
+      final p18 = claims is Map ? claims['P18'] : null;
+      if (p18 is! List || p18.isEmpty) return null;
+
+      final first = p18.first;
+      final mainsnak = first is Map ? first['mainsnak'] : null;
+      final datavalue = mainsnak is Map ? mainsnak['datavalue'] : null;
+      final fileName = datavalue is Map ? datavalue['value'] as String? : null;
+      if (fileName == null || fileName.isEmpty) return null;
+
+      return await _fetchCommonsThumbUrl(fileName);
+    } catch (e) {
+      AppLogger.error("Wikidata P18 image lookup error", error: e, tag: 'DictionaryService');
+      return null;
+    }
+  }
+
+  /// Turns a bare Commons filename into a thumbnail URL on
+  /// upload.wikimedia.org. Note this must NOT use commons.wikimedia.org's
+  /// Special:FilePath redirect: that serves no CORS headers, so while it
+  /// works in a plain <img> tag it fails on Flutter web, which fetches the
+  /// image bytes over HTTP.
+  Future<String?> _fetchCommonsThumbUrl(String fileName) async {
+    try {
+      final uri = Uri.parse(
+        'https://commons.wikimedia.org/w/api.php?action=query'
+        '&titles=${Uri.encodeComponent('File:$fileName')}'
+        '&prop=imageinfo&iiprop=url&iiurlwidth=640&format=json&origin=*',
+      );
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'User-Agent': 'TaktApp/1.0 (https://github.com/kowshikRoy/takt)',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode != 200) return null;
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final query = data is Map ? data['query'] : null;
+      final pages = query is Map ? query['pages'] : null;
+      if (pages is! Map || pages.isEmpty) return null;
+
+      final page = pages.values.first;
+      final imageInfo = page is Map ? page['imageinfo'] : null;
+      if (imageInfo is! List || imageInfo.isEmpty) return null;
+
+      final info = imageInfo.first;
+      return info is Map ? info['thumburl'] as String? : null;
+    } catch (e) {
+      AppLogger.error("Commons thumbnail lookup error", error: e, tag: 'DictionaryService');
+      return null;
+    }
+  }
+
+  bool _isMontageImage(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('collage') ||
+        lower.contains('montage') ||
+        lower.contains('composite');
   }
 
   /// Direct client-side Google Translate NMT Fallback (0 Backend Server Required)
@@ -494,6 +700,7 @@ class DictionaryService {
               'freq_rank': null,
               'definitions': [translatedText],
               'forms': <Map<String, dynamic>>[],
+              'examples': <Map<String, String?>>[],
               'synonyms': <String>[],
               'antonyms': <String>[],
               'related': <String>[],
@@ -503,7 +710,7 @@ class DictionaryService {
         }
       }
     } catch (e) {
-      print("Direct Google Translate NMT fallback error: $e");
+      AppLogger.error("Direct Google Translate NMT fallback error", error: e, tag: 'DictionaryService');
     }
     return null;
   }
@@ -528,7 +735,7 @@ class DictionaryService {
             return await getWordDetails(results.first['id'] as int);
           }
         } catch (e) {
-          print("Lookup error: $e");
+          AppLogger.error("Lookup error", error: e, tag: 'DictionaryService');
         }
       }
     }
@@ -604,7 +811,7 @@ class DictionaryService {
 
       return groupedByPosKey.values.toList();
     } catch (e) {
-      print("Lookup all POS error: $e");
+      AppLogger.error("Lookup all POS error", error: e, tag: 'DictionaryService');
       return [];
     }
   }
@@ -702,7 +909,7 @@ class DictionaryService {
       return genderMap;
 
     } catch (e) {
-      print("Batch gender lookup error: $e");
+      AppLogger.error("Batch gender lookup error", error: e, tag: 'DictionaryService');
       return {};
     }
   }
@@ -821,7 +1028,7 @@ class DictionaryService {
       }
       return nounRows;
     } catch (e) {
-      print("Error fetching random nouns: $e");
+      AppLogger.error("Error fetching random nouns", error: e, tag: 'DictionaryService');
       return [];
     }
   }
@@ -868,7 +1075,7 @@ class DictionaryService {
             if (rows.isNotEmpty) return rows;
           }
         } catch (e) {
-          print("Error fetching discover words: $e");
+          AppLogger.error("Error fetching discover words", error: e, tag: 'DictionaryService');
         }
         return getHighFrequencyNouns(limit: limit);
       }
@@ -885,7 +1092,7 @@ class DictionaryService {
         if (list.isNotEmpty) return list;
       }
     } catch (e) {
-      print("OmniScribe getHighFrequencyWords API error: $e");
+      AppLogger.error("OmniScribe getHighFrequencyWords API error", error: e, tag: 'DictionaryService');
     }
 
     return [];
@@ -934,7 +1141,7 @@ class DictionaryService {
         if (rows.isNotEmpty) return rows;
       }
     } catch (e) {
-      print("Error fetching ranked nouns: $e");
+      AppLogger.error("Error fetching ranked nouns", error: e, tag: 'DictionaryService');
     }
 
     return getHighFrequencyNouns(limit: limit);
@@ -978,7 +1185,7 @@ class DictionaryService {
 
       return rawRows;
     } catch (e) {
-      print("Error fetching high-frequency nouns: $e");
+      AppLogger.error("Error fetching high-frequency nouns", error: e, tag: 'DictionaryService');
       return [];
     }
   }

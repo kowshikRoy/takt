@@ -7,7 +7,7 @@ import '../theme/app_theme.dart';
 import '../theme/theme_provider.dart';
 import '../services/dictionary_service.dart';
 import '../services/vocabulary_service.dart';
-import '../services/lesson_service.dart';
+import '../services/media_library_service.dart';
 import '../services/tts_service.dart';
 import '../services/ondevice_ai_service.dart';
 
@@ -87,8 +87,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     if (widget.customContent != null) {
       _loadedContent = widget.customContent;
     } else if (widget.article != null) {
-      final lessonService = Provider.of<LessonService>(context, listen: false);
-      final customData = await lessonService.getCustomContent(widget.article!.id);
+      final mediaLibraryService = Provider.of<MediaLibraryService>(context, listen: false);
+      final customData = await mediaLibraryService.getCustomContent(widget.article!.id);
       if (customData != null && customData.isNotEmpty) {
         _loadedContent = customData;
       }
@@ -189,10 +189,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     });
 
     final storyId = widget.article?.id ?? 'default_story';
-    final lessonService = Provider.of<LessonService>(context, listen: false);
+    final mediaLibraryService = Provider.of<MediaLibraryService>(context, listen: false);
 
     // 1. Check persistent disk cache first (0ms instantaneous load)
-    final cached = await lessonService.getCachedAnalysis(storyId);
+    final cached = await mediaLibraryService.getCachedAnalysis(storyId);
     if (cached != null && cached.isNotEmpty && mounted) {
       setState(() {
         _paragraphAnalysisData = cached;
@@ -230,7 +230,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         });
       }
 
-      await lessonService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
+      await mediaLibraryService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
     } finally {
       if (mounted) {
         setState(() {
@@ -652,6 +652,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 padding: EdgeInsets.zero,
                 icon: Icon(Icons.arrow_back_ios_new_rounded,
                     size: 18, color: Theme.of(context).colorScheme.onSurface),
+                tooltip: 'Back',
                 onPressed: () {
                   _ttsService.stop();
                   Navigator.pop(context);
@@ -711,6 +712,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   child: IconButton(
                     padding: EdgeInsets.zero,
                     icon: Icon(Icons.tune_rounded, size: 20, color: Theme.of(context).colorScheme.onSurface),
+                    tooltip: 'Display settings',
                     onPressed: () => _showDisplaySettingsSheet(context),
                   ),
                 ),
@@ -727,6 +729,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                     padding: EdgeInsets.zero,
                     icon: Icon(Icons.brightness_6_rounded,
                         size: 20, color: Theme.of(context).colorScheme.onSurface),
+                    tooltip: 'Toggle theme',
                     onPressed: () {
                       Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
                     },
@@ -1280,11 +1283,11 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
     // Save changes to persistent storage
     final storyId = widget.article?.id ?? 'default_story';
-    final lessonService = Provider.of<LessonService>(context, listen: false);
+    final mediaLibraryService = Provider.of<MediaLibraryService>(context, listen: false);
     if (widget.article != null) {
-      await lessonService.saveCustomContent(widget.article!.id, _loadedContent!);
+      await mediaLibraryService.saveCustomContent(widget.article!.id, _loadedContent!);
     }
-    await lessonService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
+    await mediaLibraryService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
 
     if (mounted) {
       setState(() {});
@@ -1313,9 +1316,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               _paragraphAnalysisData = restoredAnalysis;
 
               if (widget.article != null) {
-                await lessonService.saveCustomContent(widget.article!.id, _loadedContent!);
+                await mediaLibraryService.saveCustomContent(widget.article!.id, _loadedContent!);
               }
-              await lessonService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
+              await mediaLibraryService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
 
               if (mounted) setState(() {});
             },
@@ -1389,6 +1392,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.close_rounded),
+                          tooltip: 'Close',
                           onPressed: () => Navigator.pop(context),
                         ),
                       ],
@@ -1437,6 +1441,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.volume_up_rounded),
+                                  tooltip: 'Play pronunciation',
                                   onPressed: () => _ttsService.speak(result.originalSentence),
                                 ),
                               ],
@@ -1559,6 +1564,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                 ),
                                 trailing: IconButton(
                                   icon: const Icon(Icons.bookmark_border_rounded, size: 20),
+                                  tooltip: 'Save word',
                                   onPressed: () async {
                                     await _vocabularyService.saveWord(token.word);
                                     if (context.mounted) {
@@ -1786,11 +1792,13 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                       _isPlayingTts ? Icons.pause_rounded : Icons.play_arrow_rounded,
                       size: 24,
                     ),
+                    tooltip: _isPlayingTts ? 'Pause' : 'Play',
                     onPressed: _togglePlayAllTts,
                   ),
                   if (_isPlayingTts)
                     IconButton(
                       icon: const Icon(Icons.stop_rounded, size: 22),
+                      tooltip: 'Stop',
                       onPressed: () {
                         _ttsService.stop();
                         setState(() => _isPlayingTts = false);

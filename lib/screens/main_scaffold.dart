@@ -5,7 +5,10 @@ import 'profile_screen.dart';
 import 'discover_screen.dart';
 import 'dictionary_screen.dart';
 import '../services/auth_service.dart';
+import '../services/sync_service.dart';
+import '../theme/breakpoints.dart';
 import '../widgets/auth_sync_dialog.dart';
+import '../widgets/celebration_overlay.dart';
 
 class MainScaffold extends StatefulWidget {
   final int initialIndex;
@@ -15,17 +18,33 @@ class MainScaffold extends StatefulWidget {
   State<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends State<MainScaffold>
+    with WidgetsBindingObserver {
   late int _selectedIndex;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    WidgetsBinding.instance.addObserver(this);
   }
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Trigger sync per design doc §6: "app resume" (a no-op if not logged in).
+    if (state == AppLifecycleState.resumed) {
+      SyncService().syncNow();
+    }
+  }
+
+  List<Widget> get _screens => [
+    HomeScreen(onOpenLearnTab: () => _onItemTapped(1)),
     const DiscoverScreen(),
     const DictionaryScreen(),
     const ProfileScreen(),
@@ -39,17 +58,36 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isDesktop = screenWidth > 800;
+    return CelebrationOverlay(child: _buildScaffold(context));
+  }
 
-    final bool useExtendedRail = screenWidth >= 900;
+  Widget _buildScaffold(BuildContext context) {
+    final WindowClass windowClass = WindowClass.of(context);
+    final bool isDesktop = windowClass.isAtLeastMedium;
+    final bool useExtendedRail = windowClass.isAtLeastExpanded;
 
     if (isDesktop) {
       final items = [
-        {'icon': Icons.home_outlined, 'selectedIcon': Icons.home_rounded, 'label': 'Home'},
-        {'icon': Icons.school_outlined, 'selectedIcon': Icons.school_rounded, 'label': 'Learn'},
-        {'icon': Icons.menu_book_outlined, 'selectedIcon': Icons.menu_book_rounded, 'label': 'Dictionary'},
-        {'icon': Icons.person_outline, 'selectedIcon': Icons.person_rounded, 'label': 'Profile'},
+        {
+          'icon': Icons.home_outlined,
+          'selectedIcon': Icons.home_rounded,
+          'label': 'Home',
+        },
+        {
+          'icon': Icons.school_outlined,
+          'selectedIcon': Icons.school_rounded,
+          'label': 'Learn',
+        },
+        {
+          'icon': Icons.menu_book_outlined,
+          'selectedIcon': Icons.menu_book_rounded,
+          'label': 'Dictionary',
+        },
+        {
+          'icon': Icons.person_outline,
+          'selectedIcon': Icons.person_rounded,
+          'label': 'Profile',
+        },
       ];
 
       return Scaffold(
@@ -63,9 +101,14 @@ class _MainScaffoldState extends State<MainScaffold> {
                 children: [
                   // App Header Logo
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24.0,
+                      horizontal: 16.0,
+                    ),
                     child: Row(
-                      mainAxisAlignment: useExtendedRail ? MainAxisAlignment.start : MainAxisAlignment.center,
+                      mainAxisAlignment: useExtendedRail
+                          ? MainAxisAlignment.start
+                          : MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.flag_circle_rounded,
@@ -76,7 +119,8 @@ class _MainScaffoldState extends State<MainScaffold> {
                           const SizedBox(width: 12),
                           Text(
                             'Takt',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
                                   fontWeight: FontWeight.w800,
                                   color: Theme.of(context).colorScheme.primary,
                                   letterSpacing: 1.2,
@@ -97,7 +141,9 @@ class _MainScaffoldState extends State<MainScaffold> {
                       itemBuilder: (context, index) {
                         final isSelected = _selectedIndex == index;
                         final item = items[index];
-                        final icon = isSelected ? (item['selectedIcon'] as IconData) : (item['icon'] as IconData);
+                        final icon = isSelected
+                            ? (item['selectedIcon'] as IconData)
+                            : (item['icon'] as IconData);
                         final label = item['label'] as String;
 
                         return InkWell(
@@ -111,7 +157,9 @@ class _MainScaffoldState extends State<MainScaffold> {
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? Theme.of(context).colorScheme.primaryContainer
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(28),
                             ),
@@ -122,18 +170,28 @@ class _MainScaffoldState extends State<MainScaffold> {
                                         icon,
                                         size: 22,
                                         color: isSelected
-                                            ? Theme.of(context).colorScheme.onPrimaryContainer
-                                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimaryContainer
+                                            : Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
                                       ),
                                       const SizedBox(width: 16),
                                       Text(
                                         label,
                                         style: TextStyle(
                                           fontSize: 15,
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.w500,
                                           color: isSelected
-                                              ? Theme.of(context).colorScheme.onPrimaryContainer
-                                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimaryContainer
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
                                         ),
                                       ),
                                     ],
@@ -145,18 +203,28 @@ class _MainScaffoldState extends State<MainScaffold> {
                                         icon,
                                         size: 24,
                                         color: isSelected
-                                            ? Theme.of(context).colorScheme.onPrimaryContainer
-                                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimaryContainer
+                                            : Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         label,
                                         style: TextStyle(
                                           fontSize: 11,
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.w500,
                                           color: isSelected
-                                              ? Theme.of(context).colorScheme.onPrimaryContainer
-                                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimaryContainer
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
                                         ),
                                       ),
                                     ],
@@ -169,7 +237,11 @@ class _MainScaffoldState extends State<MainScaffold> {
 
                   // Bottom Cloud Sync Button
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 24.0, left: 12.0, right: 12.0),
+                    padding: const EdgeInsets.only(
+                      bottom: 24.0,
+                      left: 12.0,
+                      right: 12.0,
+                    ),
                     child: Consumer<AuthService>(
                       builder: (context, auth, _) {
                         if (useExtendedRail) {
@@ -177,25 +249,39 @@ class _MainScaffoldState extends State<MainScaffold> {
                             width: double.infinity,
                             child: OutlinedButton.icon(
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                                 side: BorderSide(
                                   color: auth.isAuthenticated
                                       ? Colors.green.withValues(alpha: 0.5)
-                                      : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                                      : Theme.of(context).colorScheme.outline
+                                            .withValues(alpha: 0.3),
                                 ),
                               ),
                               icon: Icon(
-                                auth.isAuthenticated ? Icons.cloud_done_rounded : Icons.cloud_queue_rounded,
-                                color: auth.isAuthenticated ? Colors.green : Theme.of(context).colorScheme.primary,
+                                auth.isAuthenticated
+                                    ? Icons.cloud_done_rounded
+                                    : Icons.cloud_queue_rounded,
+                                color: auth.isAuthenticated
+                                    ? Colors.green
+                                    : Theme.of(context).colorScheme.primary,
                                 size: 20,
                               ),
                               label: Text(
-                                auth.isAuthenticated ? 'Cloud Synced' : 'Sync Account',
+                                auth.isAuthenticated
+                                    ? 'Cloud Synced'
+                                    : 'Sync Account',
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
-                                  color: auth.isAuthenticated ? Colors.green : Theme.of(context).colorScheme.onSurface,
+                                  color: auth.isAuthenticated
+                                      ? Colors.green
+                                      : Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                               onPressed: () => AuthSyncDialog.show(context),
@@ -204,8 +290,12 @@ class _MainScaffoldState extends State<MainScaffold> {
                         }
                         return IconButton(
                           icon: Icon(
-                            auth.isAuthenticated ? Icons.cloud_done_rounded : Icons.cloud_queue_rounded,
-                            color: auth.isAuthenticated ? Colors.green : Theme.of(context).colorScheme.primary,
+                            auth.isAuthenticated
+                                ? Icons.cloud_done_rounded
+                                : Icons.cloud_queue_rounded,
+                            color: auth.isAuthenticated
+                                ? Colors.green
+                                : Theme.of(context).colorScheme.primary,
                             size: 26,
                           ),
                           tooltip: 'Cloud Sync & Account',
@@ -220,14 +310,18 @@ class _MainScaffoldState extends State<MainScaffold> {
             VerticalDivider(
               thickness: 1,
               width: 1,
-              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
             Expanded(
               child: SafeArea(
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1100),
+                    constraints: BoxConstraints(
+                      maxWidth: windowClass.isAtLeastLarge ? 1400 : 1100,
+                    ),
                     child: _screens[_selectedIndex],
                   ),
                 ),
@@ -239,9 +333,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: _screens[_selectedIndex],
-      ),
+      body: SafeArea(child: _screens[_selectedIndex]),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -249,7 +341,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, -4),
-            )
+            ),
           ],
         ),
         child: BottomNavigationBar(
@@ -260,25 +352,22 @@ class _MainScaffoldState extends State<MainScaffold> {
           selectedItemColor: Theme.of(context).colorScheme.primary,
           unselectedItemColor: Theme.of(context).unselectedWidgetColor,
           showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
+          ),
           items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.school),
-              label: 'Learn',
-            ),
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Learn'),
             BottomNavigationBarItem(
               icon: Icon(Icons.menu_book_rounded),
               label: 'Dictionary',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
-            ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
       ),

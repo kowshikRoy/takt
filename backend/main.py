@@ -1,8 +1,9 @@
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Query, Header
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Query, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from passlib.context import CryptContext
 import yt_dlp
 import asyncio
 import uuid
@@ -11,6 +12,8 @@ import json
 import os
 import sqlite3
 import base64
+import secrets
+import time
 from enum import Enum
 from datetime import datetime, timedelta
 import hashlib
@@ -409,10 +412,10 @@ async def get_word_info(word: str):
 
 # German Dictionary Database endpoints
 DICT_DB_PATHS = [
-    os.path.join(os.path.dirname(__file__), "assets", "german_dictionary_v16_lite.db"),
-    os.path.join(os.path.dirname(__file__), "german_dictionary_v16_lite.db"),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "german_dictionary_v16_lite.db"),
-    os.path.join(CACHE_DIR, "german_dictionary_v16_lite.db"),
+    os.path.join(os.path.dirname(__file__), "assets", "german_dictionary_v17_lite.db"),
+    os.path.join(os.path.dirname(__file__), "german_dictionary_v17_lite.db"),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "german_dictionary_v17_lite.db"),
+    os.path.join(CACHE_DIR, "german_dictionary_v17_lite.db"),
 ]
 
 def get_dict_db_path():
@@ -496,6 +499,25 @@ def dictionary_word_details(word_id: int):
         except Exception:
             word_data["forms"] = []
 
+        # Real example sentences (sourced from Wiktionary/Kaikki at DB-build
+        # time). Older bundled DBs without this table just return [].
+        try:
+            ex_rows = cursor.execute("SELECT de, en FROM examples WHERE word_id = ?", (word_id,)).fetchall()
+            examples = [{"de": r["de"], "en": r["en"]} for r in ex_rows if r["de"]]
+            if not examples and word_data.get("base_form"):
+                base_row = cursor.execute(
+                    "SELECT id FROM words WHERE word = ? COLLATE NOCASE LIMIT 1",
+                    (word_data["base_form"],),
+                ).fetchone()
+                if base_row:
+                    ex_rows = cursor.execute(
+                        "SELECT de, en FROM examples WHERE word_id = ?", (base_row["id"],)
+                    ).fetchall()
+                    examples = [{"de": r["de"], "en": r["en"]} for r in ex_rows if r["de"]]
+            word_data["examples"] = examples
+        except Exception:
+            word_data["examples"] = []
+
         word_data["synonyms"] = []
         word_data["antonyms"] = []
         word_data["related"] = []
@@ -563,7 +585,27 @@ def dictionary_frequency(
         raise HTTPException(status_code=500, detail=f"Frequency error: {e}")
 
 # Database setup for Auth & User Sync
+#
+# ⚠️ PRODUCTION DATA-LOSS RISK: DB_PATH lives on CACHE_DIR ("cache"), a
+# relative path on the container's local writable layer. Cloud Run
+# containers have no persistent disk — this file, and every user account,
+# password hash, session token, and synced vocabulary/progress row in it,
+# is wiped on every redeploy, and can also be lost on ordinary instance
+# recycling (scale-to-zero, crash restart, new revision rollout) since a
+# fresh instance starts from the container image with an empty CACHE_DIR.
+# There is currently no backup and no migration path — a redeploy is a
+# silent full data wipe for every registered user.
+#
+# Fixing this requires provisioning real persistent infrastructure (e.g. a
+# Cloud SQL instance, or a Cloud Run service mounted to a GCS bucket /
+# persistent volume) under the project's own GCP account and billing —
+# that's an infra/billing decision for a human to make deliberately, not
+# something to change silently in a code edit. Until that happens, treat
+# this backend as suitable for demos/dev only, not as a durable store for
+# real user accounts.
 DB_PATH = os.path.join(CACHE_DIR, "takt_app.db")
+
+SESSION_EXPIRY_DAYS = 30
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -582,17 +624,79 @@ def init_db():
             vocabulary_json TEXT NOT NULL DEFAULT '[]',
             articles_json TEXT NOT NULL DEFAULT '[]',
             stats_json TEXT NOT NULL DEFAULT '{}',
+            xp_events_json TEXT NOT NULL DEFAULT '[]',
+            streak_freezes INTEGER NOT NULL DEFAULT 1,
+            curriculum_progress_json TEXT NOT NULL DEFAULT '[]',
             updated_at TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            device_label TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    # Migrate pre-Phase-5 user_sync tables that predate the gamification columns.
+    existing_columns = {row[1] for row in cursor.execute("PRAGMA table_info(user_sync)").fetchall()}
+    if "xp_events_json" not in existing_columns:
+        cursor.execute("ALTER TABLE user_sync ADD COLUMN xp_events_json TEXT NOT NULL DEFAULT '[]'")
+    if "streak_freezes" not in existing_columns:
+        cursor.execute("ALTER TABLE user_sync ADD COLUMN streak_freezes INTEGER NOT NULL DEFAULT 1")
+    if "curriculum_progress_json" not in existing_columns:
+        cursor.execute("ALTER TABLE user_sync ADD COLUMN curriculum_progress_json TEXT NOT NULL DEFAULT '[]'")
+
     conn.commit()
     conn.close()
 
 init_db()
 
-def hash_pw(password: str) -> str:
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def _legacy_sha256_hash(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, stored_hash: str, conn: sqlite3.Connection, user_id: str) -> bool:
+    """Verify against bcrypt; transparently upgrade any pre-existing SHA-256 hash on success."""
+    if stored_hash.startswith("$2"):
+        return pwd_context.verify(password, stored_hash)
+    if stored_hash == _legacy_sha256_hash(password):
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(password), user_id))
+        conn.commit()
+        return True
+    return False
+
+def create_session(conn: sqlite3.Connection, user_id: str, device_label: str | None = None) -> str:
+    token = secrets.token_urlsafe(32)
+    now = datetime.utcnow()
+    expires_at = now + timedelta(days=SESSION_EXPIRY_DAYS)
+    conn.execute(
+        "INSERT INTO sessions (token, user_id, created_at, expires_at, device_label) VALUES (?, ?, ?, ?, ?)",
+        (token, user_id, now.isoformat(), expires_at.isoformat(), device_label),
+    )
+    conn.commit()
+    return token
+
+# In-memory sliding-window rate limit for login attempts, keyed by "ip:username".
+_login_attempts: dict[str, list[float]] = {}
+LOGIN_RATE_LIMIT = 5
+LOGIN_RATE_WINDOW_SECONDS = 300
+
+def check_login_rate_limit(key: str):
+    now = time.time()
+    attempts = [t for t in _login_attempts.get(key, []) if now - t < LOGIN_RATE_WINDOW_SECONDS]
+    if len(attempts) >= LOGIN_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many login attempts. Please try again later.")
+    attempts.append(now)
+    _login_attempts[key] = attempts
 
 def get_current_user_id(authorization: str = Header(None), x_auth_token: str = Header(None)) -> str:
     token = x_auth_token
@@ -607,23 +711,23 @@ def get_current_user_id(authorization: str = Header(None), x_auth_token: str = H
                 cursor = conn.cursor()
                 cursor.execute("SELECT id, password_hash FROM users WHERE username = ?", (username.strip().lower(),))
                 row = cursor.fetchone()
-                conn.close()
-                if row and row[1] == hash_pw(password):
+                if row and verify_password(password, row[1], conn, row[0]):
+                    conn.close()
                     return row[0]
+                conn.close()
             except Exception:
                 pass
 
     if token:
-        user_id_part = token.replace("token_", "").split("_")[0]
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM users WHERE id = ?", (user_id_part,))
+        cursor.execute("SELECT user_id, expires_at FROM sessions WHERE token = ?", (token,))
         row = cursor.fetchone()
         conn.close()
-        if row:
+        if row and datetime.fromisoformat(row[1]) > datetime.utcnow():
             return row[0]
-            
-    raise HTTPException(status_code=401, detail="Invalid or missing authentication credentials")
+
+    raise HTTPException(status_code=401, detail="Invalid, expired, or missing authentication credentials")
 
 class AuthRequest(BaseModel):
     username: str
@@ -633,17 +737,20 @@ class SyncPayload(BaseModel):
     vocabulary: list[dict] | None = None
     articles: list[dict] | None = None
     stats: dict | None = None
+    xp_events: list[dict] | None = None
+    streak_freezes: int | None = None
+    curriculum_progress: list[str] | None = None
 
 @app.post("/api/auth/register")
 def register_user(auth: AuthRequest):
     username = auth.username.strip().lower()
     if not username or len(auth.password) < 4:
         raise HTTPException(status_code=400, detail="Username cannot be empty and password must be at least 4 characters.")
-    
+
     user_id = str(uuid.uuid4())
-    pw_hash = hash_pw(auth.password)
+    pw_hash = hash_password(auth.password)
     now = datetime.utcnow().isoformat()
-    
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
@@ -655,28 +762,42 @@ def register_user(auth: AuthRequest):
     except sqlite3.IntegrityError:
         conn.close()
         raise HTTPException(status_code=400, detail="Username already exists. Please login instead.")
-    conn.close()
 
-    token = f"token_{user_id}_{hash_pw(username + now)[:10]}"
+    token = create_session(conn, user_id)
+    conn.close()
     return {"token": token, "user": {"id": user_id, "username": username}}
 
 @app.post("/api/auth/login")
-def login_user(auth: AuthRequest):
+def login_user(auth: AuthRequest, request: Request):
     username = auth.username.strip().lower()
-    pw_hash = hash_pw(auth.password)
-    
+    client_ip = request.client.host if request.client else "unknown"
+    check_login_rate_limit(f"{client_ip}:{username}")
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
     row = cursor.fetchone()
-    conn.close()
 
-    if not row or row[1] != pw_hash:
+    if not row or not verify_password(auth.password, row[1], conn, row[0]):
+        conn.close()
         raise HTTPException(status_code=401, detail="Invalid username or password.")
-    
+
     user_id = row[0]
-    token = f"token_{user_id}_{hash_pw(username)[:10]}"
+    token = create_session(conn, user_id)
+    conn.close()
     return {"token": token, "user": {"id": user_id, "username": username}}
+
+@app.delete("/api/auth/logout")
+def logout_user(authorization: str = Header(None), x_auth_token: str = Header(None)):
+    token = x_auth_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+    if token:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
+    return {"success": True}
 
 @app.get("/api/auth/me")
 def get_me(authorization: str = Header(None), x_auth_token: str = Header(None)):
@@ -695,31 +816,49 @@ def get_sync(authorization: str = Header(None), x_auth_token: str = Header(None)
     user_id = get_current_user_id(authorization, x_auth_token)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT vocabulary_json, articles_json, stats_json, updated_at FROM user_sync WHERE user_id = ?", (user_id,))
+    cursor.execute(
+        "SELECT vocabulary_json, articles_json, stats_json, xp_events_json, streak_freezes, curriculum_progress_json, updated_at "
+        "FROM user_sync WHERE user_id = ?",
+        (user_id,),
+    )
     row = cursor.fetchone()
     conn.close()
     if not row:
-        return {"vocabulary": [], "articles": [], "stats": {}, "updated_at": ""}
+        return {
+            "vocabulary": [], "articles": [], "stats": {},
+            "xp_events": [], "streak_freezes": 1, "curriculum_progress": [],
+            "updated_at": "",
+        }
     return {
         "vocabulary": json.loads(row[0]),
         "articles": json.loads(row[1]),
         "stats": json.loads(row[2]),
-        "updated_at": row[3]
+        "xp_events": json.loads(row[3]),
+        "streak_freezes": row[4],
+        "curriculum_progress": json.loads(row[5]),
+        "updated_at": row[6],
     }
 
 @app.post("/api/sync")
 def post_sync(payload: SyncPayload, authorization: str = Header(None), x_auth_token: str = Header(None)):
     user_id = get_current_user_id(authorization, x_auth_token)
     now = datetime.utcnow().isoformat()
-    
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT vocabulary_json, articles_json, stats_json FROM user_sync WHERE user_id = ?", (user_id,))
+    cursor.execute(
+        "SELECT vocabulary_json, articles_json, stats_json, xp_events_json, streak_freezes, curriculum_progress_json "
+        "FROM user_sync WHERE user_id = ?",
+        (user_id,),
+    )
     row = cursor.fetchone()
-    
+
     existing_vocab = json.loads(row[0]) if row and row[0] else []
     existing_articles = json.loads(row[1]) if row and row[1] else []
     existing_stats = json.loads(row[2]) if row and row[2] else {}
+    existing_xp_events = json.loads(row[3]) if row and row[3] else []
+    existing_streak_freezes = row[4] if row and row[4] is not None else 1
+    existing_curriculum = json.loads(row[5]) if row and row[5] else []
 
     if payload.vocabulary is not None:
         vocab_map = {item.get('id', item.get('word')): item for item in existing_vocab}
@@ -740,19 +879,44 @@ def post_sync(payload: SyncPayload, authorization: str = Header(None), x_auth_to
     if payload.stats is not None:
         existing_stats.update(payload.stats)
 
+    if payload.xp_events is not None:
+        # Additive union keyed by event id — an append-only log, never overwritten
+        # wholesale, so a device that syncs late can't erase XP earned elsewhere.
+        xp_map = {e.get('id'): e for e in existing_xp_events if e.get('id')}
+        for e in payload.xp_events:
+            eid = e.get('id')
+            if eid:
+                xp_map[eid] = e
+        existing_xp_events = list(xp_map.values())
+
+    if payload.streak_freezes is not None:
+        existing_streak_freezes = payload.streak_freezes
+
+    if payload.curriculum_progress is not None:
+        existing_curriculum = sorted(set(existing_curriculum) | set(payload.curriculum_progress))
+
     cursor.execute("""
-        INSERT INTO user_sync (user_id, vocabulary_json, articles_json, stats_json, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO user_sync (user_id, vocabulary_json, articles_json, stats_json, xp_events_json, streak_freezes, curriculum_progress_json, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             vocabulary_json = excluded.vocabulary_json,
             articles_json = excluded.articles_json,
             stats_json = excluded.stats_json,
+            xp_events_json = excluded.xp_events_json,
+            streak_freezes = excluded.streak_freezes,
+            curriculum_progress_json = excluded.curriculum_progress_json,
             updated_at = excluded.updated_at
-    """, (user_id, json.dumps(existing_vocab), json.dumps(existing_articles), json.dumps(existing_stats), now))
-    
+    """, (
+        user_id, json.dumps(existing_vocab), json.dumps(existing_articles), json.dumps(existing_stats),
+        json.dumps(existing_xp_events), existing_streak_freezes, json.dumps(existing_curriculum), now,
+    ))
+
     conn.commit()
     conn.close()
-    return {"status": "success", "updated_at": now, "count_vocab": len(existing_vocab)}
+    return {
+        "status": "success", "updated_at": now,
+        "count_vocab": len(existing_vocab), "count_xp_events": len(existing_xp_events),
+    }
 
 # Mount static web app if available
 web_build_dir = os.path.join(os.path.dirname(__file__), "web_build")

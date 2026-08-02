@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config.dart';
+import 'app_logger.dart';
 
 class BackendService {
   final String baseUrl = Config.backendUrl;
@@ -17,7 +18,7 @@ class BackendService {
       }
       return {'error': 'Failed with status ${response.statusCode}'};
     } catch (e) {
-      print('importFromUrl error: $e');
+      AppLogger.error("importFromUrl error", error: e, tag: 'BackendService');
       return {'error': 'Connection timed out or failed: $e'};
     }
   }
@@ -34,7 +35,7 @@ class BackendService {
       }
       return {'error': 'Server returned status ${response.statusCode}'};
     } catch (e) {
-      print('submitMediaUrl error: $e');
+      AppLogger.error("submitMediaUrl error", error: e, tag: 'BackendService');
       return {'error': 'Connection timed out or failed: $e'};
     }
   }
@@ -53,7 +54,7 @@ class BackendService {
         'statusCode': response.statusCode,
       };
     } catch (e) {
-      print('checkMediaStatus error: $e');
+      AppLogger.error("checkMediaStatus error", error: e, tag: 'BackendService');
       return {'error': e.toString(), 'status': 'error'};
     }
   }
@@ -71,7 +72,7 @@ class BackendService {
         throw Exception("Backend HTTP status ${response.statusCode}");
       }
     } catch (e) {
-      print('processFullArticleStream error: $e');
+      AppLogger.error("processFullArticleStream error", error: e, tag: 'BackendService');
       rethrow;
     }
   }
@@ -88,7 +89,7 @@ class BackendService {
       }
       return null;
     } catch (e) {
-      print('processText error: $e');
+      AppLogger.error("processText error", error: e, tag: 'BackendService');
       return null;
     }
   }
@@ -127,13 +128,13 @@ class BackendService {
               final data = jsonDecode(jsonStr) as Map<String, dynamic>;
               yield data;
             } catch (e) {
-              print('Error parsing SSE message: $e');
+              AppLogger.error("Error parsing SSE message", error: e, tag: 'BackendService');
             }
           }
         }
       }
     } catch (e) {
-      print('Stream error: $e');
+      AppLogger.error("Stream error", error: e, tag: 'BackendService');
       yield {'type': 'error', 'error': 'Connection error: $e'};
     } finally {
       client.close();
@@ -153,7 +154,7 @@ class BackendService {
         return data['video_url'] as String?;
       }
     } catch (e) {
-      print('Error fetching fresh video url: $e');
+      AppLogger.error("Error fetching fresh video url", error: e, tag: 'BackendService');
     }
     return null;
   }

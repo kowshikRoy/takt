@@ -6,7 +6,7 @@ import sqlite3
 import os
 import sys
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "../assets/german_dictionary_v16.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "../assets/german_dictionary_v17.db")
 FREQ_PATH = os.path.join(os.path.dirname(__file__), "german_freq_30k.txt")
 
 def populate_frequency(db_path=DB_PATH, freq_path=FREQ_PATH):

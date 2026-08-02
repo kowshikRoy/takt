@@ -5,3 +5,5 @@ uvicorn
 deep-translator>=1.11.4
 magika
 gradio
+passlib[bcrypt]
+bcrypt<4.1  # passlib 1.7.4 (unmaintained) breaks against bcrypt>=4.1's removed __about__ attribute

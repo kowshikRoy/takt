@@ -20,6 +20,7 @@
 .swiftpm/
 migrate_working_dir/
 .gemini/
+.claude/settings.local.json
 
 # IDE & Editor files
 *.iml
@@ -80,7 +81,16 @@ backend/cache/
 backend/assets/
 
 # Large data files & temporary databases
-# *.db - Now using Git LFS for database files in assets/
+# The app never bundles assets/*.db as a Flutter asset (not listed under
+# pubspec.yaml's flutter.assets, not loaded via rootBundle) — it downloads
+# the dictionary DB at runtime from a GitHub release URL instead (see
+# dictionary_service.dart). The many committed german_dictionary_v*.db files
+# in assets/ are leftover local outputs from scripts/build_dictionary.py and
+# create_lite_db.py, not something the app build needs. Ignoring them here
+# stops future script runs from re-adding more version bloat; it does not
+# remove the ones already committed (that would need a separate, deliberate
+# git history/LFS cleanup).
+assets/*.db
 *.db-shm
 *.db-wal
 *.jsonl

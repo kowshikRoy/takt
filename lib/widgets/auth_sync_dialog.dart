@@ -5,8 +5,8 @@ import '../services/sync_service.dart';
 class AuthSyncDialog extends StatefulWidget {
   const AuthSyncDialog({super.key});
 
-  static void show(BuildContext context) {
-    showDialog(
+  static Future<void> show(BuildContext context) {
+    return showDialog(
       context: context,
       builder: (context) => const AuthSyncDialog(),
     );
@@ -61,7 +61,9 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isSignUp ? "Account created & synced!" : "Logged in & synced!"),
+            content: Text(
+              _isSignUp ? "Account created & synced!" : "Logged in & synced!",
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -106,8 +108,8 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                   Text(
                     "Cloud Sync Active",
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -164,7 +166,7 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                         ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               );
             }
@@ -179,11 +181,12 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                     Text(
                       _isSignUp ? "Create Account" : "Sync Account Login",
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
+                      tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -199,7 +202,9 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                   decoration: InputDecoration(
                     labelText: "Username",
                     prefixIcon: const Icon(Icons.person_outline),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -209,7 +214,9 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                   decoration: InputDecoration(
                     labelText: "Password",
                     prefixIcon: const Icon(Icons.lock_outline),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 if (_errorMessage != null) ...[
@@ -224,13 +231,18 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                   onPressed: _isLoading ? null : _handleSubmit,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: _isLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : Text(_isSignUp ? "Sign Up & Sync" : "Log In & Sync"),
                 ),
@@ -243,7 +255,9 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                     });
                   },
                   child: Text(
-                    _isSignUp ? "Already have an account? Log In" : "Don't have an account? Sign Up",
+                    _isSignUp
+                        ? "Already have an account? Log In"
+                        : "Don't have an account? Sign Up",
                   ),
                 ),
               ],

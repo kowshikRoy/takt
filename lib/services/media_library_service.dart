@@ -9,8 +9,9 @@ import '../models/processing_status.dart';
 import '../models/subtitle_cue.dart';
 import 'backend_service.dart';
 import 'ondevice_ai_service.dart';
+import 'app_logger.dart';
 
-class LessonService extends ChangeNotifier {
+class MediaLibraryService extends ChangeNotifier {
   static const String _importedArticlesKey = 'imported_articles';
   static const String _customContentKeyPrefix = 'custom_content_';
   static const String _processedVideosKey = 'processed_videos';
@@ -24,7 +25,7 @@ class LessonService extends ChangeNotifier {
   List<Article> get importedArticles => _importedArticles;
   List<ProcessedVideo> get processedVideos => _processedVideos;
 
-  LessonService() {
+  MediaLibraryService() {
     _loadImportedArticles();
     _loadProcessedVideos();
     clearAllAnalysisCache();
@@ -240,7 +241,7 @@ class LessonService extends ChangeNotifier {
       if (statusStr == 'not_found' || statusCode == 404) {
         t.cancel();
         _pollingTimers.remove(taskId);
-        print("Server task $taskId returned 404. Automatically resubmitting URL: $originalUrl");
+        AppLogger.debug("Server task $taskId returned 404. Automatically resubmitting URL: $originalUrl", tag: 'MediaLibraryService');
         retryProcessingTask(taskId, originalUrl);
         return;
       }
@@ -410,7 +411,7 @@ class LessonService extends ChangeNotifier {
           content = pTexts.join('\n\n');
         }
       } catch (e) {
-        print("Local fallback web scraper error: $e");
+        AppLogger.error("Local fallback web scraper error", error: e, tag: 'MediaLibraryService');
       }
     }
 

@@ -4,6 +4,10 @@ import 'package:http/http.dart' as http;
 import '../config.dart';
 import 'auth_service.dart';
 import 'vocabulary_service.dart';
+import 'gamification_service.dart';
+import 'profile_service.dart';
+import 'curriculum_service.dart';
+import 'app_logger.dart';
 
 class SyncService extends ChangeNotifier {
   static final SyncService _instance = SyncService._internal();
@@ -40,20 +44,20 @@ class SyncService extends ChangeNotifier {
       };
 
       // 1. Fetch remote cloud state
-      final getResponse = await http.get(
-        Uri.parse('${Config.backendUrl}/api/sync'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 15));
+      final getResponse = await http
+          .get(Uri.parse('${Config.backendUrl}/api/sync'), headers: headers)
+          .timeout(const Duration(seconds: 15));
 
       Map<String, dynamic> remoteData = {};
       if (getResponse.statusCode == 200) {
         remoteData = jsonDecode(utf8.decode(getResponse.bodyBytes));
       }
 
-      // 2. Merge remote vocabulary into local VocabularyService
+      // 2. Merge remote state into local services
       final vocabService = VocabularyService();
-      
-      if (remoteData.containsKey('vocabulary') && remoteData['vocabulary'] is List) {
+
+      if (remoteData.containsKey('vocabulary') &&
+          remoteData['vocabulary'] is List) {
         final List remoteVocab = remoteData['vocabulary'];
         for (final rItem in remoteVocab) {
           if (rItem is Map<String, dynamic>) {
@@ -62,17 +66,41 @@ class SyncService extends ChangeNotifier {
         }
       }
 
-      // 3. Push updated local vocabulary to GCP backend
+      if (remoteData['xp_events'] is List) {
+        await GamificationService().mergeRemoteEvents(
+          remoteData['xp_events'] as List,
+        );
+      }
+      if (remoteData['streak_freezes'] is int) {
+        await ProfileService().mergeRemoteStreakFreezes(
+          remoteData['streak_freezes'] as int,
+        );
+      }
+      if (remoteData['curriculum_progress'] is List) {
+        await CurriculumService().mergeRemoteProgress(
+          remoteData['curriculum_progress'] as List,
+        );
+      }
+
+      // 3. Push updated local state to GCP backend
       final updatedLocalWords = await vocabService.getAllSavedWords();
       final vocabPayload = updatedLocalWords.map((w) => w.toJson()).toList();
 
-      final postResponse = await http.post(
-        Uri.parse('${Config.backendUrl}/api/sync'),
-        headers: headers,
-        body: jsonEncode({
-          'vocabulary': vocabPayload,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final postResponse = await http
+          .post(
+            Uri.parse('${Config.backendUrl}/api/sync'),
+            headers: headers,
+            body: jsonEncode({
+              'vocabulary': vocabPayload,
+              'xp_events': GamificationService().events
+                  .map((e) => e.toJson())
+                  .toList(),
+              'streak_freezes': ProfileService().streakFreezes,
+              'curriculum_progress': CurriculumService().completedNodeIds
+                  .toList(),
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (postResponse.statusCode == 200) {
         _lastSyncedAt = DateTime.now();
@@ -86,7 +114,7 @@ class SyncService extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      print("[SyncService] Sync error: $e");
+      AppLogger.error("Sync error", error: e, tag: 'SyncService');
       _syncError = e.toString();
       _isSyncing = false;
       notifyListeners();

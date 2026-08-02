@@ -1,12 +1,12 @@
-
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_theme.dart';
-import '../theme/theme_provider.dart';
 import '../services/vocabulary_service.dart';
 import '../services/profile_service.dart';
+import '../services/gamification_service.dart';
 import '../models/saved_word.dart';
+import '../widgets/capped_width.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -19,92 +19,30 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final bool isDesktop = constraints.maxWidth > 750;
-            if (isDesktop) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(32),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 40,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(context),
-                          const SizedBox(height: 32),
-                          Text(
-                            'Appearance',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onBackground,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildAppearanceSection(context),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 32),
-                    Expanded(
-                      flex: 60,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your Growth',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onBackground,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildGrowthCard(context),
-                        ],
-                      ),
-                    ),
-                  ],
+        child: CappedWidth(
+          maxWidth: 700,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                _buildHeader(context),
+                const SizedBox(height: 32),
+                Text(
+                  'Your Growth',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onBackground,
+                  ),
                 ),
-              );
-            }
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  _buildHeader(context),
-                  const SizedBox(height: 32),
-                  Text(
-                    'Your Growth',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onBackground,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildGrowthCard(context),
-                  const SizedBox(height: 32),
-                  Text(
-                    'Appearance',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onBackground,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildAppearanceSection(context),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            );
-          },
+                const SizedBox(height: 16),
+                _buildGrowthCard(context),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -113,20 +51,63 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     return Consumer<ProfileService>(
       builder: (context, profileService, _) {
+        if (profileService.justUsedStreakFreeze) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            profileService.acknowledgeStreakFreezeUsed();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/cat.png',
+                      width: 32,
+                      height: 32,
+                    ).animate().scale(
+                      duration: 350.ms,
+                      curve: Curves.elasticOut,
+                      begin: const Offset(0.4, 0.4),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Streak Freeze used! Your streak is safe. ❄️',
+                      ),
+                    ),
+                  ],
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          });
+        }
         return Row(
           children: [
+            if (Navigator.canPop(context)) ...[
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                tooltip: 'Back',
+                onPressed: () => Navigator.pop(context),
+              ),
+              const SizedBox(width: 4),
+            ],
             Container(
               width: 80,
               height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Theme.of(context).cardColor, width: 4),
+                border: Border.all(
+                  color: Theme.of(context).cardColor,
+                  width: 4,
+                ),
                 boxShadow: const [
                   BoxShadow(
                     color: Color.fromRGBO(0, 0, 0, 0.1),
                     blurRadius: 8,
                     offset: Offset(0, 4),
-                  )
+                  ),
                 ],
                 image: const DecorationImage(
                   image: AssetImage('assets/images/profile.jpg'),
@@ -155,7 +136,8 @@ class ProfileScreen extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.edit_outlined, size: 18),
                         tooltip: 'Edit Display Name',
-                        onPressed: () => _showEditNameDialog(context, profileService),
+                        onPressed: () =>
+                            _showEditNameDialog(context, profileService),
                       ),
                     ],
                   ),
@@ -164,10 +146,23 @@ class ProfileScreen extends StatelessWidget {
                     profileService.joinDateFormatted,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              tooltip: 'Settings',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               ),
             ),
           ],
@@ -176,7 +171,10 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showEditNameDialog(BuildContext context, ProfileService profileService) {
+  void _showEditNameDialog(
+    BuildContext context,
+    ProfileService profileService,
+  ) {
     final controller = TextEditingController(text: profileService.displayName);
     showDialog(
       context: context,
@@ -221,95 +219,152 @@ class ProfileScreen extends StatelessWidget {
             border: Border.all(color: theme.dividerColor),
             boxShadow: [
               BoxShadow(
-                color: (isDark ? Colors.black : Colors.black).withValues(alpha: 0.05),
+                color: (isDark ? Colors.black : Colors.black).withValues(
+                  alpha: 0.05,
+                ),
                 blurRadius: 2,
                 offset: const Offset(0, 1),
-              )
+              ),
             ],
           ),
           child: FutureBuilder<List<SavedWord>>(
-            future: Provider.of<VocabularyService>(context, listen: false).getSavedWords(),
+            future: Provider.of<VocabularyService>(
+              context,
+              listen: false,
+            ).getSavedWords(),
             builder: (context, snapshot) {
               final words = snapshot.data ?? [];
               final wordsCount = words.length;
-              final totalXp = profileService.calculateTotalXp(wordsCount);
               final curStreak = profileService.currentStreak;
 
-              return Column(
-                children: [
-                  _buildHeatmapCalendar(context, words),
-                  const SizedBox(height: 16),
-                  Divider(height: 1, color: theme.dividerColor),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+              return Consumer<GamificationService>(
+                builder: (context, gamification, _) {
+                  final totalXp = gamification.totalXp;
+                  final level = gamification.level;
+
+                  return Column(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      _buildHeatmapCalendar(context, words),
+                      const SizedBox(height: 16),
+                      Divider(height: 1, color: theme.dividerColor),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          Text(
-                            'Weekly Words',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                              fontSize: 12,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Weekly Words',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$wordsCount',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onBackground,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$wordsCount',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onBackground,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Current Streak',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  if (profileService.streakFreezes > 0) ...[
+                                    const SizedBox(width: 4),
+                                    Tooltip(
+                                      message:
+                                          '${profileService.streakFreezes} streak freeze(s) available',
+                                      child: const Text(
+                                        '❄️',
+                                        style: TextStyle(fontSize: 11),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$curStreak Days 🔥',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFD97706),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Current Streak',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$curStreak Days 🔥',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFD97706),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Total XP',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$totalXp',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onBackground,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Total XP',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primaryContainer,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'Lv.$level',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme
+                                            .colorScheme
+                                            .onPrimaryContainer,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$totalXp',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onBackground,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ],
-                  ),
-                ],
+                  );
+                },
               );
             },
           ),
@@ -335,10 +390,23 @@ class ProfileScreen extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('12-Week Activity Heatmap', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurfaceVariant)),
+            Text(
+              '12-Week Activity Heatmap',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
             Row(
               children: [
-                Text('Less ', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+                Text(
+                  'Less ',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 _buildHeatmapSquare(context, 0, primaryColor),
                 const SizedBox(width: 3),
                 _buildHeatmapSquare(context, 1, primaryColor),
@@ -346,7 +414,13 @@ class ProfileScreen extends StatelessWidget {
                 _buildHeatmapSquare(context, 2, primaryColor),
                 const SizedBox(width: 3),
                 _buildHeatmapSquare(context, 3, primaryColor),
-                Text(' More', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+                Text(
+                  ' More',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ],
@@ -382,7 +456,11 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeatmapSquare(BuildContext context, int count, Color primaryColor) {
+  Widget _buildHeatmapSquare(
+    BuildContext context,
+    int count,
+    Color primaryColor,
+  ) {
     Color color;
     if (count == 0) {
       color = Theme.of(context).dividerColor.withValues(alpha: 0.15);
@@ -399,164 +477,6 @@ class ProfileScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(3),
-      ),
-    );
-  }
-
-  Widget _buildAppearanceSection(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final currentMode = themeProvider.themeMode;
-    final currentTheme = themeProvider.colorTheme;
-    final currentFont = themeProvider.fontFamily;
-    final theme = Theme.of(context);
-
-    final colorThemes = [
-      {'label': 'Retro Teal', 'enum': AppColorTheme.retroTeal, 'color': const Color(0xFF2BBAA5)},
-      {'label': 'Classic Red', 'enum': AppColorTheme.classic, 'color': const Color(0xFFEA2A33)},
-      {'label': 'Retro Blue', 'enum': AppColorTheme.retroBlue, 'color': const Color(0xFF005F73)},
-      {'label': 'Retro Gold', 'enum': AppColorTheme.retroGold, 'color': const Color(0xFFEE9B00)},
-      {'label': 'Retro Rust', 'enum': AppColorTheme.retroRust, 'color': const Color(0xFFBB3E03)},
-    ];
-
-    final fonts = [
-      'Spline Sans',
-      'Lora',
-      'Roboto',
-      'Merriweather',
-      'Lexend',
-      'Montserrat',
-      'Lato',
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
-        boxShadow: const [
-          BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Theme Mode
-          _buildThemeOption(context, 'System', ThemeMode.system, currentMode, themeProvider),
-          Divider(height: 1, color: theme.dividerColor),
-          _buildThemeOption(context, 'Light Mode', ThemeMode.light, currentMode, themeProvider),
-          Divider(height: 1, color: theme.dividerColor),
-          _buildThemeOption(context, 'Dark Mode', ThemeMode.dark, currentMode, themeProvider),
-          Divider(height: 1, color: theme.dividerColor),
-
-          // 2. Color Palette
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'Color Palette',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: colorThemes.map((ct) {
-                final isSelected = currentTheme == ct['enum'];
-                final color = ct['color'] as Color;
-                final label = ct['label'] as String;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: FilterChip(
-                    avatar: CircleAvatar(backgroundColor: color, radius: 8),
-                    label: Text(label),
-                    selected: isSelected,
-                    onSelected: (_) => themeProvider.setColorTheme(ct['enum'] as AppColorTheme),
-                    selectedColor: color.withValues(alpha: 0.2),
-                    checkmarkColor: color,
-                    labelStyle: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? color : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Divider(height: 1, color: theme.dividerColor),
-
-          // 3. Typography
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'Typography',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: fonts.map((f) {
-                final isSelected = currentFont == f;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: FilterChip(
-                    label: Text(f),
-                    selected: isSelected,
-                    onSelected: (_) => themeProvider.setFontFamily(f),
-                    selectedColor: theme.colorScheme.primaryContainer,
-                    checkmarkColor: theme.colorScheme.primary,
-                    labelStyle: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildThemeOption(BuildContext context, String title, ThemeMode mode, ThemeMode currentGroupValue, ThemeProvider provider) {
-    final isSelected = mode == currentGroupValue;
-    final theme = Theme.of(context);
-    
-    return InkWell(
-      onTap: () => provider.setThemeMode(mode),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_circle_rounded, color: theme.primaryColor)
-            else 
-               Icon(Icons.circle_outlined, color: theme.dividerColor),
-          ],
-        ),
       ),
     );
   }

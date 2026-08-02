@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../models/saved_word.dart';
+import '../../models/xp_event.dart';
 import '../../services/vocabulary_service.dart';
 import '../../services/tts_service.dart';
+import '../../services/gamification_service.dart';
+import '../../services/sound_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/glance_word_sheet.dart';
+import '../../widgets/capped_width.dart';
 
 class VocabularyPracticeScreen extends StatefulWidget {
   const VocabularyPracticeScreen({super.key});
 
   @override
-  State<VocabularyPracticeScreen> createState() => _VocabularyPracticeScreenState();
+  State<VocabularyPracticeScreen> createState() =>
+      _VocabularyPracticeScreenState();
 }
 
 class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
@@ -18,7 +23,12 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   final TtsService _ttsService = TtsService();
 
   List<SavedWord> _dueWords = [];
-  Map<String, int> _counts = {'learning': 0, 'mastered': 0, 'reviewLater': 0, 'dueToday': 0};
+  Map<String, int> _counts = {
+    'learning': 0,
+    'mastered': 0,
+    'reviewLater': 0,
+    'dueToday': 0,
+  };
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = true;
@@ -48,6 +58,15 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
     if (_dueWords.isEmpty || _currentIndex >= _dueWords.length) return;
     final currentWord = _dueWords[_currentIndex];
     await _vocabService.recordReview(currentWord.id, rating);
+    GamificationService().awardXp(XpSource.reviewCompleted).then((_) {
+      if (GamificationService().justLeveledUp) {
+        SoundService().playLevelUp();
+      } else if (rating == ReviewRating.again) {
+        SoundService().playIncorrect();
+      } else {
+        SoundService().playCorrect();
+      }
+    });
 
     setState(() {
       _showAnswer = false;
@@ -73,39 +92,59 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Column(
-                children: [
-                  _buildHeaderStats(),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: _dueWords.isEmpty || _currentIndex >= _dueWords.length
-                        ? _buildCompletionCard()
-                        : _buildFlashcard(_dueWords[_currentIndex]),
-                  ),
-                ],
+              child: CappedWidth(
+                child: Column(
+                  children: [
+                    _buildHeaderStats(),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child:
+                          _dueWords.isEmpty || _currentIndex >= _dueWords.length
+                          ? _buildCompletionCard()
+                          : _buildFlashcard(_dueWords[_currentIndex]),
+                    ),
+                  ],
+                ),
               ),
             ),
     );
   }
 
   Widget _buildHeaderStats() {
-    final totalWords = (_counts['learning'] ?? 0) + (_counts['mastered'] ?? 0) + (_counts['reviewLater'] ?? 0);
+    final totalWords =
+        (_counts['learning'] ?? 0) +
+        (_counts['mastered'] ?? 0) +
+        (_counts['reviewLater'] ?? 0);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatItem("Due Today", "${_counts['dueToday'] ?? 0}", Colors.orange.shade800),
-              _buildStatItem("Learning", "${_counts['learning'] ?? 0}", Colors.amber.shade800),
-              _buildStatItem("Mastered", "${_counts['mastered'] ?? 0}", Colors.green.shade700),
+              _buildStatItem(
+                "Due Today",
+                "${_counts['dueToday'] ?? 0}",
+                Colors.orange.shade800,
+              ),
+              _buildStatItem(
+                "Learning",
+                "${_counts['learning'] ?? 0}",
+                Colors.amber.shade800,
+              ),
+              _buildStatItem(
+                "Mastered",
+                "${_counts['mastered'] ?? 0}",
+                Colors.green.shade700,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -117,7 +156,9 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
               label: Text("📖 Browse My Vocabulary List ($totalWords Words)"),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
@@ -150,10 +191,14 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                   children: [
                     Text(
                       'My Vocabulary (${allWords.length} Words)',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
+                      tooltip: 'Close',
                       onPressed: () => Navigator.pop(ctx),
                     ),
                   ],
@@ -172,11 +217,21 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                             leading: CircleAvatar(
                               backgroundColor: color.withValues(alpha: 0.2),
                               child: Text(
-                                w.word.isNotEmpty ? w.word[0].toUpperCase() : 'W',
-                                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                                w.word.isNotEmpty
+                                    ? w.word[0].toUpperCase()
+                                    : 'W',
+                                style: TextStyle(
+                                  color: color,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                            title: Text(w.word, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            title: Text(
+                              w.word,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             subtitle: Text(
                               '${w.category.name.toUpperCase()} • Interval: ${w.interval}d • Ease: ${w.easeFactor.toStringAsFixed(1)}x',
                               style: const TextStyle(fontSize: 11),
@@ -202,12 +257,19 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
       children: [
         Text(
           value,
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -245,7 +307,10 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: genderColor.withOpacity(0.4), width: 2),
+                  border: Border.all(
+                    color: genderColor.withOpacity(0.4),
+                    width: 2,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: genderColor.withOpacity(0.08),
@@ -269,8 +334,13 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () => _ttsService.speak(word.word, lang: 'de-DE'),
-                          icon: Icon(Icons.volume_up_rounded, color: genderColor),
+                          onPressed: () =>
+                              _ttsService.speak(word.word, lang: 'de-DE'),
+                          icon: Icon(
+                            Icons.volume_up_rounded,
+                            color: genderColor,
+                          ),
+                          tooltip: 'Play pronunciation',
                         ),
                       ],
                     ),
@@ -290,7 +360,10 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
 
                     if (!_showAnswer) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainer,
                           borderRadius: BorderRadius.circular(20),
@@ -300,7 +373,9 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -316,7 +391,8 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
-                      if (word.contextSentence != null && word.contextSentence!.isNotEmpty) ...[
+                      if (word.contextSentence != null &&
+                          word.contextSentence!.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         Text(
                           "\"${word.contextSentence}\"",
@@ -324,7 +400,9 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             fontStyle: FontStyle.italic,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -416,7 +494,11 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 color: Colors.green.shade50,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.check_circle_rounded, size: 48, color: Colors.green.shade700),
+              child: Icon(
+                Icons.check_circle_rounded,
+                size: 48,
+                color: Colors.green.shade700,
+              ),
             ).animate().scale(duration: 400.ms, curve: Curves.elasticOut),
             const SizedBox(height: 20),
             Text(

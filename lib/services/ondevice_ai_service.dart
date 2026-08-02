@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'dictionary_service.dart';
 import '../models/subtitle_cue.dart';
+import 'app_logger.dart';
 
 class GrammarTokenAnalysis {
   final String word;
@@ -65,7 +66,7 @@ class OnDeviceAIService {
       final isEnDownloaded = await modelManager.isModelDownloaded(TranslateLanguage.english.bcpCode);
 
       if (!isDeDownloaded || !isEnDownloaded) {
-        print("[OnDeviceAI] Downloading Google ML Kit German-English language models (~30MB)...");
+        AppLogger.debug("Downloading Google ML Kit German-English language models (~30MB)...", tag: 'OnDeviceAI');
         await modelManager.downloadModel(TranslateLanguage.german.bcpCode);
         await modelManager.downloadModel(TranslateLanguage.english.bcpCode);
       }
@@ -74,9 +75,9 @@ class OnDeviceAIService {
         sourceLanguage: TranslateLanguage.german,
         targetLanguage: TranslateLanguage.english,
       );
-      print("[OnDeviceAI] Google ML Kit Translator initialized successfully!");
+      AppLogger.debug("Google ML Kit Translator initialized successfully!", tag: 'OnDeviceAI');
     } catch (e) {
-      print("[OnDeviceAI] ML Kit init failed: $e");
+      AppLogger.error("ML Kit init failed", error: e, tag: 'OnDeviceAI');
     } finally {
       _isMlKitInitializing = false;
     }
@@ -201,7 +202,7 @@ class OnDeviceAIService {
             }
           }
         } catch (e) {
-          print("[OnDeviceAI] Lookup error for '$token': $e");
+          AppLogger.error("Lookup error for '$token'", error: e, tag: 'OnDeviceAI');
         }
 
         // Apply clean translation filter
@@ -244,7 +245,7 @@ class OnDeviceAIService {
         mlKitTranslation = await translator.translateText(sentence);
       }
     } catch (e) {
-      print("[OnDeviceAI] ML Kit NMT error: $e");
+      AppLogger.error("ML Kit NMT error", error: e, tag: 'OnDeviceAI');
     }
 
     final translatedSentence = (mlKitTranslation != null && mlKitTranslation.trim().isNotEmpty)
@@ -343,7 +344,7 @@ class OnDeviceAIService {
         return result.trim();
       }
     } catch (e) {
-      print("[OnDeviceAI] translateText failed: $e");
+      AppLogger.error("translateText failed", error: e, tag: 'OnDeviceAI');
     }
     return germanText;
   }

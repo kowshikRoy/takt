@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/lesson_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../services/media_library_service.dart';
 import '../models/article_model.dart';
 import '../models/processed_video.dart';
 import '../models/processing_status.dart';
@@ -11,6 +12,7 @@ import 'story_reader_screen.dart';
 import 'video_screen.dart';
 import 'create/text_input_screen.dart';
 import 'create/url_import_screen.dart';
+import 'skill_tree_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -78,29 +80,60 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final lessonService = Provider.of<LessonService>(context);
+    final mediaLibraryService = Provider.of<MediaLibraryService>(context);
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateOptions(context),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final bool isDesktop = constraints.maxWidth > 700;
-            return isDesktop
-                ? _buildDesktopLayout(context, lessonService)
-                : _buildMobileLayout(context, lessonService);
-          },
-        ),
+    return DefaultTabController(
+      length: 2,
+      child: Builder(
+        builder: (context) {
+          final tabController = DefaultTabController.of(context);
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            floatingActionButton: AnimatedBuilder(
+              animation: tabController,
+              builder: (context, _) {
+                if (tabController.index != 1) return const SizedBox.shrink();
+                return FloatingActionButton(
+                  onPressed: () => _showCreateOptions(context),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  child: const Icon(Icons.add, color: Colors.white),
+                );
+              },
+            ),
+            body: SafeArea(
+              child: Column(
+                children: [
+                  TabBar(
+                    tabs: const [Tab(text: 'Path'), Tab(text: 'Library')],
+                    labelColor: Theme.of(context).colorScheme.primary,
+                    unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                    indicatorColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        const SkillTreeScreen(),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final bool isDesktop = constraints.maxWidth > 700;
+                            return isDesktop
+                                ? _buildDesktopLayout(context, mediaLibraryService)
+                                : _buildMobileLayout(context, mediaLibraryService);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildDesktopLayout(BuildContext context, LessonService lessonService) {
+  Widget _buildDesktopLayout(BuildContext context, MediaLibraryService mediaLibraryService) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Row(
@@ -236,7 +269,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 const SizedBox(height: 24),
 
                 // Imported Articles
-                if (lessonService.importedArticles.isNotEmpty) ...[
+                if (mediaLibraryService.importedArticles.isNotEmpty) ...[
                   Text(
                     'Your Imports',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -245,10 +278,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: lessonService.importedArticles.length,
+                    itemCount: mediaLibraryService.importedArticles.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
-                      final article = lessonService.importedArticles[index];
+                      final article = mediaLibraryService.importedArticles[index];
                       return Card(
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -260,7 +293,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           subtitle: Text(article.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline, size: 18),
-                            onPressed: () => _confirmDelete(context, article, lessonService),
+                            tooltip: 'Delete article',
+                            onPressed: () => _confirmDelete(context, article, mediaLibraryService),
                           ),
                           onTap: () => _openReader(article),
                         ),
@@ -271,7 +305,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ],
 
                 // Transcribed Media
-                if (lessonService.processedVideos.isNotEmpty) ...[
+                if (mediaLibraryService.processedVideos.isNotEmpty) ...[
                   Text(
                     'Transcribed Media',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -280,10 +314,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: lessonService.processedVideos.length,
+                    itemCount: mediaLibraryService.processedVideos.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
-                      final video = lessonService.processedVideos[index];
+                      final video = mediaLibraryService.processedVideos[index];
                       return Card(
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -342,7 +376,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Widget _buildMobileLayout(BuildContext context, LessonService lessonService) {
+  Widget _buildMobileLayout(BuildContext context, MediaLibraryService mediaLibraryService) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,17 +401,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
 
           // Transcribed Media Section
-          if (lessonService.processedVideos.isNotEmpty) ...[
+          if (mediaLibraryService.processedVideos.isNotEmpty) ...[
             SectionHeader(title: 'Transcribed Media'),
             SizedBox(
               height: 220,
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 scrollDirection: Axis.horizontal,
-                itemCount: lessonService.processedVideos.length,
+                itemCount: mediaLibraryService.processedVideos.length,
                 itemBuilder: (context, index) {
-                  final video = lessonService.processedVideos[index];
-                  return _buildVideoCard(context, video, lessonService);
+                  final video = mediaLibraryService.processedVideos[index];
+                  return _buildVideoCard(context, video, mediaLibraryService);
                 },
               ),
             ),
@@ -385,22 +419,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ],
 
           // Imported Section
-          if (lessonService.importedArticles.isNotEmpty) ...[
+          if (mediaLibraryService.importedArticles.isNotEmpty) ...[
             SectionHeader(title: 'Imported'),
             SizedBox(
               height: 150,
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 scrollDirection: Axis.horizontal,
-                itemCount: lessonService.importedArticles.length,
+                itemCount: mediaLibraryService.importedArticles.length,
                 itemBuilder: (context, index) {
-                  final article = lessonService.importedArticles[index];
+                  final article = mediaLibraryService.importedArticles[index];
                   return Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: CompactArticleCard(
                       article: article,
                       onTap: () => _openReader(article),
-                      onDelete: () => _confirmDelete(context, article, lessonService),
+                      onDelete: () => _confirmDelete(context, article, mediaLibraryService),
                     ),
                   );
                 },
@@ -444,7 +478,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Widget _buildVideoCard(BuildContext context, ProcessedVideo video, LessonService lessonService) {
+  Widget _buildVideoCard(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
     final isCompleted = video.status == ProcessingStatus.completed;
     final isFailed = video.status == ProcessingStatus.failed;
     final isProcessing = !isCompleted && !isFailed;
@@ -481,10 +515,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   children: [
                     ClipRRect(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: Image.network(
-                        video.thumbnailUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: video.thumbnailUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade800),
+                        errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
                       ),
                     ),
                     if (isCompleted)
@@ -523,7 +557,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  void _confirmDelete(BuildContext context, Article article, LessonService lessonService) {
+  void _confirmDelete(BuildContext context, Article article, MediaLibraryService mediaLibraryService) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -540,7 +574,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ? const Text('Delete', style: TextStyle(color: Colors.red))
                   : const Text('Delete'),
               onPressed: () {
-                lessonService.deleteImportedArticle(article.id);
+                mediaLibraryService.deleteImportedArticle(article.id);
                 Navigator.of(dialogContext).pop();
               },
             ),

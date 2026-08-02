@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/article_model.dart';
 import '../story_reader_screen.dart';
-import '../../services/lesson_service.dart';
+import '../../services/media_library_service.dart';
 
 class TextInputScreen extends StatefulWidget {
   const TextInputScreen({super.key});
@@ -33,8 +33,8 @@ class _TextInputScreenState extends State<TextInputScreen> {
       imageUrl: 'assets/images/story_desert.png', // Use placeholder for now
     );
 
-    final lessonService = Provider.of<LessonService>(context, listen: false);
-    await lessonService.addImportedArticle(newArticle, _contentController.text);
+    final mediaLibraryService = Provider.of<MediaLibraryService>(context, listen: false);
+    await mediaLibraryService.addImportedArticle(newArticle, _contentController.text);
 
     if (mounted) {
       Navigator.pushReplacement(
@@ -56,6 +56,7 @@ class _TextInputScreenState extends State<TextInputScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+          tooltip: 'Close',
           onPressed: () => Navigator.pop(context),
         ),
       ),

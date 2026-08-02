@@ -11,8 +11,21 @@ import sys
 MAX_WORDS = None
 
 URL = "https://kaikki.org/dictionary/German/kaikki.org-dictionary-German.jsonl"
-DB_PATH = "../assets/german_dictionary_v16.db"
+DB_PATH = "../assets/german_dictionary_v17.db"
 TEMP_JSONL = "temp_dictionary.jsonl"
+
+# Max example sentences to keep per base word (Kaikki entries can have many;
+# a handful is plenty for a learner-facing "Examples" tab and keeps DB size sane).
+MAX_EXAMPLES_PER_WORD = 3
+# Learner-facing sentences should be short & modern. Kaikki's "quotation"-type
+# examples are pulled from old literary/archaic sources (long, unusual syntax)
+# and aren't a good fit here, so they're excluded even though they're real text.
+MAX_EXAMPLE_LENGTH = 180
+
+def _is_placeholder_translation(text):
+    # Wiktionary's literal "no one has translated this yet" boilerplate,
+    # e.g. "(please add an English translation of this quotation)".
+    return "please add" in text.lower()
 
 def setup_database(conn):
     c = conn.cursor()
@@ -21,6 +34,7 @@ def setup_database(conn):
     c.execute("DROP TABLE IF EXISTS forms")
     c.execute("DROP TABLE IF EXISTS tags")
     c.execute("DROP TABLE IF EXISTS relations")
+    c.execute("DROP TABLE IF EXISTS examples")
 
     # Main words table
     c.execute("""
@@ -71,7 +85,21 @@ def setup_database(conn):
             FOREIGN KEY(word_id) REFERENCES words(id)
         )
     """)
-    
+
+    # Real example sentences sourced from Wiktionary/Kaikki (sense.examples),
+    # not procedurally generated — replaces the old client-side template
+    # generator that produced grammatically wrong sentences (e.g. missing
+    # "zu"-infix placement for separable verbs).
+    c.execute("""
+        CREATE TABLE examples (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word_id INTEGER,
+            de TEXT NOT NULL,
+            en TEXT,
+            FOREIGN KEY(word_id) REFERENCES words(id)
+        )
+    """)
+
     # Indexes
     c.execute("CREATE INDEX idx_word ON words(word)")
     c.execute("CREATE INDEX idx_base_form ON words(base_form)") # Useful for finding all forms of a base
@@ -79,6 +107,7 @@ def setup_database(conn):
     c.execute("CREATE INDEX idx_forms_word_id ON forms(word_id)")
     c.execute("CREATE INDEX idx_forms_tag_id ON forms(tag_id)")
     c.execute("CREATE INDEX idx_relations_word_id ON relations(word_id)")
+    c.execute("CREATE INDEX idx_examples_word_id ON examples(word_id)")
     
     conn.commit()
 
@@ -171,7 +200,44 @@ def process_file(file_path, conn):
             # Insert Definitions
             for d in definitions:
                 c.execute("INSERT INTO definitions (word_id, definition) VALUES (?, ?)", (word_id, d))
-            
+
+            # Extract & Insert real example sentences (base words only, same
+            # reasoning as definitions above: inflected forms redirect to
+            # their base word rather than duplicating data).
+            if not base_form and "senses" in data:
+                seen_examples = set()
+                inserted = 0
+                for sense in data["senses"]:
+                    if inserted >= MAX_EXAMPLES_PER_WORD:
+                        break
+                    for ex in sense.get("examples", []):
+                        if inserted >= MAX_EXAMPLES_PER_WORD:
+                            break
+                        # Skip archaic/literary citations - not useful for learners
+                        if ex.get("type") == "quotation":
+                            continue
+                        text = ex.get("text")
+                        if not text:
+                            continue
+                        text = text.strip()
+                        if not text or text in seen_examples:
+                            continue
+                        # Multi-line or overlong entries are almost always
+                        # quotations that slipped through without a "type" tag
+                        if "\n" in text or len(text) > MAX_EXAMPLE_LENGTH:
+                            continue
+                        translation = ex.get("english") or ex.get("translation")
+                        if translation:
+                            translation = translation.strip() or None
+                            if translation and _is_placeholder_translation(translation):
+                                translation = None
+                        c.execute(
+                            "INSERT INTO examples (word_id, de, en) VALUES (?, ?, ?)",
+                            (word_id, text, translation),
+                        )
+                        seen_examples.add(text)
+                        inserted += 1
+
             # Extract and Insert Relations (Synonyms, Antonyms, Related)
             relations = set()  # Use set to deduplicate
             if not base_form and "senses" in data:  # Only for base words

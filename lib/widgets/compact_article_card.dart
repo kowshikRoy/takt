@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/article_model.dart';
 
 
@@ -45,10 +46,10 @@ class CompactArticleCard extends StatelessWidget {
                   height: 100,
                   width: double.infinity,
                   child: article.imageUrl.startsWith('http')
-                      ? Image.network(
-                          article.imageUrl,
+                      ? CachedNetworkImage(
+                          imageUrl: article.imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
+                          errorWidget: (context, url, error) {
                             return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
                           },
                         )

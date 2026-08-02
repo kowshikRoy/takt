@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/saved_word.dart';
 import 'sync_service.dart';
 import 'auth_service.dart';
+import 'app_logger.dart';
 
 class VocabularyService extends ChangeNotifier {
   static final VocabularyService _instance = VocabularyService._internal();
@@ -46,7 +47,7 @@ class VocabularyService extends ChangeNotifier {
         await database;
         await _migrateLegacyPreferences();
       } catch (e) {
-        print("[VocabularyService] DB init notice: $e");
+        AppLogger.error("DB init notice", error: e, tag: 'VocabularyService');
       }
     }
 
@@ -71,7 +72,7 @@ class VocabularyService extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print("[VocabularyService] Web load error: $e");
+      AppLogger.error("Web load error", error: e, tag: 'VocabularyService');
     }
   }
 
@@ -81,7 +82,7 @@ class VocabularyService extends ChangeNotifier {
       final list = _inMemoryWords.values.map((w) => w.toJson()).toList();
       await prefs.setString(_webStorageKey, jsonEncode(list));
     } catch (e) {
-      print("[VocabularyService] Web save error: $e");
+      AppLogger.error("Web save error", error: e, tag: 'VocabularyService');
     }
   }
 
@@ -139,7 +140,7 @@ class VocabularyService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print("[VocabularyService] Legacy migration notice: $e");
+      AppLogger.error("Legacy migration notice", error: e, tag: 'VocabularyService');
     }
   }
 

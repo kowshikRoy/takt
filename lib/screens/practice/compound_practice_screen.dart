@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../models/compound_word.dart';
+import '../../models/xp_event.dart';
 import '../../services/compound_service.dart';
+import '../../services/gamification_service.dart';
+import '../../services/sound_service.dart';
+import '../../widgets/capped_width.dart';
 
 class CompoundPracticeScreen extends StatefulWidget {
   const CompoundPracticeScreen({super.key});
@@ -30,7 +34,10 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
   void _loadNextWord() {
     setState(() {
       _currentWord = _compoundService.getRandomWord();
-      final distractors = _compoundService.getDistractors(_currentWord.fullMeaning, 3);
+      final distractors = _compoundService.getDistractors(
+        _currentWord.fullMeaning,
+        3,
+      );
       _options = [...distractors, _currentWord.fullMeaning];
       _options.shuffle();
 
@@ -51,155 +58,208 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
         _score++;
       }
     });
+
+    if (_isCorrect) {
+      GamificationService().awardXp(XpSource.exerciseCorrect).then((_) {
+        if (GamificationService().justLeveledUp) {
+          SoundService().playLevelUp();
+        } else {
+          SoundService().playCorrect();
+        }
+      });
+    } else {
+      SoundService().playIncorrect();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 128),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 8),
-                        Text(
-                          'COMPOUND WORD PUZZLE',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'What does this word mean?',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        
-                        _buildWordSplitVisual(context),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // If answered and correct, show the breakdown.
-                        // Otherwise, maybe hide it or show it only on result?
-                        // The original design showed it as part of the "learning".
-                        // Let's show it only if answered (correct or incorrect) to explain the word.
-                        if (_isAnswered) ...[
-                            _buildChoiceGrid(context),
-                            const SizedBox(height: 16),
-                        ] else ...[
-                            // Placeholder or empty space if we want to keep layout stable?
-                            // No, let's just let it appear.
-                        ],
-                        
-                        if (!_isAnswered)
-                          _buildOptionsGrid(context)
-                        else
-                          _buildResultCard(context),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Hint / Fun Fact
-                        if (!_isAnswered)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Theme.of(context).dividerColor),
-                            boxShadow: const [
-                              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
-                            ],
-                          ),
-                          child: RichText(
-                            textAlign: TextAlign.center,
-                            text: TextSpan(
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                fontSize: 14,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: 'Hint: ',
-                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
-                                ),
-                                const TextSpan(text: 'Combine the meanings of the two parts!'),
-                              ],
+      body: CappedWidth(
+        child: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildHeader(context),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 128),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 8),
+                          Text(
+                            'COMPOUND WORD PUZZLE',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'What does this word mean?',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+
+                          _buildWordSplitVisual(context),
+
+                          const SizedBox(height: 32),
+
+                          // If answered and correct, show the breakdown.
+                          // Otherwise, maybe hide it or show it only on result?
+                          // The original design showed it as part of the "learning".
+                          // Let's show it only if answered (correct or incorrect) to explain the word.
+                          if (_isAnswered) ...[
+                            _buildChoiceGrid(context),
+                            const SizedBox(height: 16),
+                          ] else ...[
+                            // Placeholder or empty space if we want to keep layout stable?
+                            // No, let's just let it appear.
+                          ],
+
+                          if (!_isAnswered)
+                            _buildOptionsGrid(context)
+                          else
+                            _buildResultCard(context),
+
+                          const SizedBox(height: 32),
+
+                          // Hint / Fun Fact
+                          if (!_isAnswered)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Theme.of(context).dividerColor,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color.fromRGBO(0, 0, 0, 0.05),
+                                    blurRadius: 2,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: RichText(
+                                textAlign: TextAlign.center,
+                                text: TextSpan(
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontSize: 14,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Hint: ',
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text:
+                                          'Combine the meanings of the two parts!',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Sticky Bottom Nav
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  border: Border(
+                    top: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromRGBO(0, 0, 0, 0.05),
+                      blurRadius: 6,
+                      offset: Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isAnswered
+                        ? _loadNextWord
+                        : null, // Disable if not answered? Or let them exit?
+                    // If not answered, button should probably be disabled or "Skip"?
+                    // Let's make it "Check" if we selected an option? No, selection is instant.
+                    // So only active if answered.
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isAnswered
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).disabledColor,
+                      elevation: _isAnswered ? 4 : 0,
+                      shadowColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _isAnswered ? 'Continue' : 'Select an answer',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: _isAnswered
+                                ? Colors.white
+                                : Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
+                          ),
                         ),
+                        if (_isAnswered) ...[
+                          const SizedBox(width: 12),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 24,
+                            color: Colors.white,
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          // Sticky Bottom Nav
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
-                boxShadow: const [
-                  BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 6, offset: Offset(0, -4))
-                ],
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isAnswered ? _loadNextWord : null, // Disable if not answered? Or let them exit?
-                  // If not answered, button should probably be disabled or "Skip"?
-                  // Let's make it "Check" if we selected an option? No, selection is instant.
-                  // So only active if answered.
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isAnswered ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
-                    elevation: _isAnswered ? 4 : 0,
-                    shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _isAnswered ? 'Continue' : 'Select an answer',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: _isAnswered ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      if (_isAnswered) ...[
-                        const SizedBox(width: 12),
-                        const Icon(Icons.arrow_forward_rounded, size: 24, color: Colors.white),
-                      ]
-                    ],
-                  ),
-                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -208,7 +268,9 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
+        color: Theme.of(
+          context,
+        ).scaffoldBackgroundColor.withValues(alpha: 0.95),
       ),
       child: Row(
         children: [
@@ -219,7 +281,12 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
               height: 40,
               decoration: const BoxDecoration(shape: BoxShape.circle),
               child: IconButton(
-                icon: Icon(Icons.close_rounded, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 24,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                tooltip: 'Close',
                 onPressed: () => Navigator.pop(context),
               ),
             ),
@@ -230,7 +297,9 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: (_score % 10) / 10 + 0.1, // Keep existing logic map
-                backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+                backgroundColor: Theme.of(
+                  context,
+                ).dividerColor.withValues(alpha: 0.3),
                 color: Theme.of(context).colorScheme.primary,
                 minHeight: 12,
               ),
@@ -244,12 +313,20 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: Theme.of(context).dividerColor),
               boxShadow: const [
-                BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1)),
+                BoxShadow(
+                  color: Color.fromRGBO(0, 0, 0, 0.05),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
             child: Row(
               children: [
-                Icon(Icons.favorite_rounded, color: Theme.of(context).colorScheme.primary, size: 20),
+                Icon(
+                  Icons.favorite_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   '$_score',
@@ -271,97 +348,120 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
     return Column(
       children: [
         Stack(
-          alignment: Alignment.center,
-          children: [
-             // Connector lines
-             Positioned(
-               top: 50,
-               child: SizedBox(
-                 width: 200,
-                 height: 64,
-                 child: Stack(
-                   children: [
-                     // Left dashed line
-                     Positioned(
-                       left: 40,
-                       top: 0, bottom: 0,
-                       child: Transform.rotate(
-                         angle: -0.2,
-                         child: CustomPaint(
-                           size: const Size(2, 64),
-                           painter: DashedLinePainter(color: Theme.of(context).colorScheme.secondary),
-                         ),
-                       ),
-                     ),
-                     // Right dashed line
-                     Positioned(
-                       right: 40,
-                       top: 0, bottom: 0,
-                       child: Transform.rotate(
-                         angle: 0.2,
-                         child: CustomPaint(
-                           size: const Size(2, 64),
-                           painter: DashedLinePainter(color: Theme.of(context).colorScheme.tertiary),
-                         ),
-                       ),
-                     ),
-                   ],
-                 ),
-               ),
-             ), // Added missing closing parenthesis and comma
-             // Word Parts
-             Row(
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: [
-                 // Part 1
-                 CustomPaint(
-                   painter: PuzzlePiecePainter(
-                     isLeft: true,
-                     colorStart: Theme.of(context).colorScheme.secondaryContainer,
-                     colorEnd: Theme.of(context).colorScheme.secondaryContainer,
-                     borderColor: Theme.of(context).colorScheme.secondary,
-                   ),
-                   child: Container(
-                     padding: const EdgeInsets.fromLTRB(28, 20, 48, 20),
-                     child: Text(
-                       _currentWord.part1,
-                       style: TextStyle(
-                         fontSize: 30,
-                         fontWeight: FontWeight.bold,
-                         letterSpacing: 0.5,
-                         color: Theme.of(context).colorScheme.onSecondaryContainer,
-                       ),
-                     ),
-                   ),
-                 ),
-                 // Part 2
-                 Transform.translate(
-                   offset: const Offset(-1, 0), // Slight overlap for seamless visual join
-                   child: CustomPaint(
-                     painter: PuzzlePiecePainter(
-                       isLeft: false,
-                       colorStart: Theme.of(context).colorScheme.tertiaryContainer,
-                       colorEnd: Theme.of(context).colorScheme.tertiaryContainer,
-                       borderColor: Theme.of(context).colorScheme.tertiary,
-                     ),
-                     child: Container(
-                       padding: const EdgeInsets.fromLTRB(48, 20, 28, 20),
-                       child: Text(
-                         _currentWord.part2,
-                         style: TextStyle(
-                           fontSize: 30,
-                           fontWeight: FontWeight.bold,
-                           letterSpacing: 0.5,
-                           color: Theme.of(context).colorScheme.onTertiaryContainer,
-                         ),
-                       ),
-                     ),
-                   ),
-                 ),
-               ],
-             )
-          ],
-        ).animate(key: ValueKey(_currentWord.fullWord)).scale(duration: 800.ms, curve: Curves.elasticOut),
+              alignment: Alignment.center,
+              children: [
+                // Connector lines
+                Positioned(
+                  top: 50,
+                  child: SizedBox(
+                    width: 200,
+                    height: 64,
+                    child: Stack(
+                      children: [
+                        // Left dashed line
+                        Positioned(
+                          left: 40,
+                          top: 0,
+                          bottom: 0,
+                          child: Transform.rotate(
+                            angle: -0.2,
+                            child: CustomPaint(
+                              size: const Size(2, 64),
+                              painter: DashedLinePainter(
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Right dashed line
+                        Positioned(
+                          right: 40,
+                          top: 0,
+                          bottom: 0,
+                          child: Transform.rotate(
+                            angle: 0.2,
+                            child: CustomPaint(
+                              size: const Size(2, 64),
+                              painter: DashedLinePainter(
+                                color: Theme.of(context).colorScheme.tertiary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ), // Added missing closing parenthesis and comma
+                // Word Parts
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Part 1
+                    CustomPaint(
+                      painter: PuzzlePiecePainter(
+                        isLeft: true,
+                        colorStart: Theme.of(
+                          context,
+                        ).colorScheme.secondaryContainer,
+                        colorEnd: Theme.of(
+                          context,
+                        ).colorScheme.secondaryContainer,
+                        borderColor: Theme.of(context).colorScheme.secondary,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(28, 20, 48, 20),
+                        child: Text(
+                          _currentWord.part1,
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Part 2
+                    Transform.translate(
+                      offset: const Offset(
+                        -1,
+                        0,
+                      ), // Slight overlap for seamless visual join
+                      child: CustomPaint(
+                        painter: PuzzlePiecePainter(
+                          isLeft: false,
+                          colorStart: Theme.of(
+                            context,
+                          ).colorScheme.tertiaryContainer,
+                          colorEnd: Theme.of(
+                            context,
+                          ).colorScheme.tertiaryContainer,
+                          borderColor: Theme.of(context).colorScheme.tertiary,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(48, 20, 28, 20),
+                          child: Text(
+                            _currentWord.part2,
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onTertiaryContainer,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+            .animate(key: ValueKey(_currentWord.fullWord))
+            .scale(duration: 800.ms, curve: Curves.elasticOut),
       ],
     );
   }
@@ -369,30 +469,42 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
   Widget _buildChoiceGrid(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _buildChoiceCard(
-          context, 
-          'Part 1', 
-          _currentWord.part1Icon ?? Icons.help_outline, 
-          _currentWord.part1Meaning, 
-          _currentWord.part1Subtitle, 
-          Theme.of(context).colorScheme.secondaryContainer,
-          Theme.of(context).colorScheme.onSecondaryContainer,
-        )),
+        Expanded(
+          child: _buildChoiceCard(
+            context,
+            'Part 1',
+            _currentWord.part1Icon ?? Icons.help_outline,
+            _currentWord.part1Meaning,
+            _currentWord.part1Subtitle,
+            Theme.of(context).colorScheme.secondaryContainer,
+            Theme.of(context).colorScheme.onSecondaryContainer,
+          ),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: _buildChoiceCard(
-          context, 
-          'Part 2', 
-          _currentWord.part2Icon ?? Icons.help_outline, 
-          _currentWord.part2Meaning, 
-          _currentWord.part2Subtitle, 
-          Theme.of(context).colorScheme.tertiaryContainer,
-          Theme.of(context).colorScheme.onTertiaryContainer,
-        )),
+        Expanded(
+          child: _buildChoiceCard(
+            context,
+            'Part 2',
+            _currentWord.part2Icon ?? Icons.help_outline,
+            _currentWord.part2Meaning,
+            _currentWord.part2Subtitle,
+            Theme.of(context).colorScheme.tertiaryContainer,
+            Theme.of(context).colorScheme.onTertiaryContainer,
+          ),
+        ),
       ],
     ).animate().fadeIn().slideY(begin: 0.2, end: 0);
   }
 
-  Widget _buildChoiceCard(BuildContext context, String label, IconData icon, String title, String subtitle, Color color, Color onColor) {
+  Widget _buildChoiceCard(
+    BuildContext context,
+    String label,
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+    Color onColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -400,7 +512,11 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color, width: 2),
         boxShadow: const [
-          BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.05),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
         ],
       ),
       child: Stack(
@@ -443,7 +559,9 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -490,7 +608,9 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
         textColor = Colors.red[800]!;
       } else {
         // Other options
-        textColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+        textColor = Theme.of(
+          context,
+        ).colorScheme.onSurface.withValues(alpha: 0.5);
       }
     }
 
@@ -505,9 +625,21 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor, width: _isAnswered && (text == _currentWord.fullMeaning || text == _selectedOption) ? 2 : 1),
+            border: Border.all(
+              color: borderColor,
+              width:
+                  _isAnswered &&
+                      (text == _currentWord.fullMeaning ||
+                          text == _selectedOption)
+                  ? 2
+                  : 1,
+            ),
             boxShadow: const [
-              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.03), blurRadius: 2, offset: Offset(0, 1))
+              BoxShadow(
+                color: Color.fromRGBO(0, 0, 0, 0.03),
+                blurRadius: 2,
+                offset: Offset(0, 1),
+              ),
             ],
           ),
           child: Text(
@@ -532,11 +664,20 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.white, const Color(0xFFF8FAFC)]),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, const Color(0xFFF8FAFC)],
+        ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: color.withOpacity(0.3)),
         boxShadow: const [
-           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 15, offset: Offset(0, 10), spreadRadius: -3)
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.1),
+            blurRadius: 15,
+            offset: Offset(0, 10),
+            spreadRadius: -3,
+          ),
         ],
       ),
       child: Container(
@@ -555,16 +696,30 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
-                        Theme.of(context).colorScheme.tertiaryContainer,
-                        Theme.of(context).colorScheme.tertiary
-                      ]),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Theme.of(context).colorScheme.tertiaryContainer,
+                          Theme.of(context).colorScheme.tertiary,
+                        ],
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
-                        BoxShadow(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5))
+                        BoxShadow(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.tertiary.withValues(alpha: 0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
                       ],
                     ),
-                    child: Icon(_currentWord.fullIcon ?? Icons.lightbulb_rounded, color: Theme.of(context).colorScheme.onTertiary, size: 36),
+                    child: Icon(
+                      _currentWord.fullIcon ?? Icons.lightbulb_rounded,
+                      color: Theme.of(context).colorScheme.onTertiary,
+                      size: 36,
+                    ),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
@@ -573,7 +728,14 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                       children: [
                         Row(
                           children: [
-                            Container(width: 8, height: 8, decoration: BoxDecoration(color: _getGenderColor(_currentWord.gender), shape: BoxShape.circle)),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: _getGenderColor(_currentWord.gender),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               _getGenderLabel(_currentWord.gender),
@@ -600,7 +762,9 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                           '${_currentWord.gender} ${_currentWord.fullWord}',
                           style: TextStyle(
                             fontStyle: FontStyle.italic,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontSize: 14,
                           ),
                         ),
@@ -611,13 +775,14 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
               ),
             ),
             Container(
-              width: 32, height: 32,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 20),
-            )
+            ),
           ],
         ),
       ),
@@ -626,19 +791,27 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
 
   Color _getGenderColor(String gender) {
     switch (gender.toLowerCase()) {
-      case 'die': return AppTheme.genderFem;
-      case 'der': return AppTheme.genderMasc;
-      case 'das': return AppTheme.genderNeu;
-      default: return AppTheme.genderNeu;
+      case 'die':
+        return AppTheme.genderFem;
+      case 'der':
+        return AppTheme.genderMasc;
+      case 'das':
+        return AppTheme.genderNeu;
+      default:
+        return AppTheme.genderNeu;
     }
   }
 
   String _getGenderLabel(String gender) {
     switch (gender.toLowerCase()) {
-      case 'die': return 'FEMININE';
-      case 'der': return 'MASCULINE';
-      case 'das': return 'NEUTER';
-      default: return 'NEUTER';
+      case 'die':
+        return 'FEMININE';
+      case 'der':
+        return 'MASCULINE';
+      case 'das':
+        return 'NEUTER';
+      default:
+        return 'NEUTER';
     }
   }
 }
@@ -660,7 +833,11 @@ class DashedLinePainter extends CustomPainter {
     double currentY = 0;
 
     while (currentY < max) {
-      canvas.drawLine(Offset(0, currentY), Offset(0, currentY + dashWidth), paint);
+      canvas.drawLine(
+        Offset(0, currentY),
+        Offset(0, currentY + dashWidth),
+        paint,
+      );
       currentY += dashWidth + dashSpace;
     }
   }
@@ -693,27 +870,30 @@ class PuzzlePiecePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     Path path = Path();
-    
+
     // Config for standard puzzle tab
-    double bumpSize = 16.0;   // How far it sticks out
-    double neckSize = 12.0;   // Width at the neck (base)
-    double headSize = 22.0;   // Width at the widest part
-    
+    double bumpSize = 16.0; // How far it sticks out
+    double neckSize = 12.0; // Width at the neck (base)
+    double headSize = 22.0; // Width at the widest part
+
     double radius = 16.0;
     double borderHeight = 0.0; // Flat 2D
     double centerY = size.height / 2;
-    
+
     // Circular Tab Config
     double tabRadius = 12.0;
 
     if (isLeft) {
       // LEFT PIECE (Has Right Tab)
       path.moveTo(radius, 0);
-      path.lineTo(size.width, 0); // Straight line to Top-Right (No corner radius)
-      
+      path.lineTo(
+        size.width,
+        0,
+      ); // Straight line to Top-Right (No corner radius)
+
       // Right edge down to Tab start
       path.lineTo(size.width, centerY - tabRadius);
-      
+
       // Draw Circular Tab (Outwards)
       // arcToPoint uses the end point. We want a semi-circle protruding right.
       path.arcToPoint(
@@ -721,49 +901,65 @@ class PuzzlePiecePainter extends CustomPainter {
         radius: Radius.circular(tabRadius),
         clockwise: true,
       );
-      
-      path.lineTo(size.width, size.height - borderHeight); // Straight line to Bottom-Right (No corner radius)
-      
+
+      path.lineTo(
+        size.width,
+        size.height - borderHeight,
+      ); // Straight line to Bottom-Right (No corner radius)
+
       // Bottom edge
       path.lineTo(radius, size.height - borderHeight);
-      
+
       // Bottom-left corner
-      path.quadraticBezierTo(0, size.height - borderHeight, 0, size.height - borderHeight - radius);
-      
+      path.quadraticBezierTo(
+        0,
+        size.height - borderHeight,
+        0,
+        size.height - borderHeight - radius,
+      );
+
       // Left edge
       path.lineTo(0, radius);
       // Top-left corner
       path.quadraticBezierTo(0, 0, radius, 0);
-      
     } else {
       // RIGHT PIECE (Has Left Socket)
-      path.moveTo(0, 0); // Top-Left starts sharp (0,0) as opposed to (radius, 0)
+      path.moveTo(
+        0,
+        0,
+      ); // Top-Left starts sharp (0,0) as opposed to (radius, 0)
       path.lineTo(size.width - radius, 0);
-      
+
       // Top-right corner
       path.quadraticBezierTo(size.width, 0, size.width, radius);
-      
+
       // Right edge
       path.lineTo(size.width, size.height - borderHeight - radius);
-      
+
       // Bottom-right corner
-      path.quadraticBezierTo(size.width, size.height - borderHeight, size.width - radius, size.height - borderHeight);
-      
+      path.quadraticBezierTo(
+        size.width,
+        size.height - borderHeight,
+        size.width - radius,
+        size.height - borderHeight,
+      );
+
       // Bottom edge
       path.lineTo(0, size.height - borderHeight); // Bottom-Left ends sharp
-      
+
       // Left edge with SOCKET (Indents Inwards)
       // Drawn Bottom-to-Top
       path.lineTo(0, centerY + tabRadius);
-      
+
       // Socket Shape (Inside)
       // arcToPoint to create inward semi-circle
       path.arcToPoint(
         Offset(0, centerY - tabRadius),
         radius: Radius.circular(tabRadius),
-        clockwise: true, // Clockwise from (0, +12) to (0, -12) creates an INWARD arc
+        clockwise:
+            true, // Clockwise from (0, +12) to (0, -12) creates an INWARD arc
       );
-      
+
       path.lineTo(0, 0); // Back to top-left start
     }
 
@@ -774,12 +970,13 @@ class PuzzlePiecePainter extends CustomPainter {
 
     // 2. Draw Border Stroke (Boundary)
     // Draw on top to ensure distinct edge
-    canvas.drawPath(path, Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
     );
-
   }
 
   @override
