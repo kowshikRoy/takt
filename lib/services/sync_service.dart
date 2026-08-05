@@ -37,7 +37,7 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = auth.token;
+      final token = await auth.getIdToken();
       final headers = {
         'Content-Type': 'application/json',
         'x-auth-token': token ?? '',

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "184475424927",
+    "project_id": "book-search-472921",
+    "storage_bucket": "book-search-472921.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:184475424927:android:c8079539a49dcba4d42aaa",
+        "android_client_info": {
+          "package_name": "com.example.takt"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBF-h7Mt_hqYq7JQEk6vYyENBQhiqujWdo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

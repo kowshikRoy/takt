@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/app_entry_point.dart';
 import 'theme/theme_provider.dart';
@@ -19,8 +21,11 @@ import 'services/book_guide_service.dart';
 void main() {
   // Catch everything else (async errors outside the widget tree).
   runZonedGuarded(
-    () {
+    () async {
       WidgetsFlutterBinding.ensureInitialized();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
 
       // Catch framework-level errors (widget build/layout/paint) that would
       // otherwise only show as a red error screen in debug and vanish silently

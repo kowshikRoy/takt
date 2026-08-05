@@ -1,9 +1,8 @@
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Query, Header, Request
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from passlib.context import CryptContext
 import yt_dlp
 import asyncio
 import uuid
@@ -11,11 +10,8 @@ import glob
 import json
 import os
 import sqlite3
-import base64
-import secrets
-import time
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime
 import hashlib
 from faster_whisper import WhisperModel
 from deep_translator import GoogleTranslator
@@ -24,6 +20,9 @@ from magika import Magika
 import re
 import requests
 import urllib.request
+from google.cloud import firestore
+import firebase_admin
+from firebase_admin import auth as firebase_auth
 
 CACHE_DIR = "cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -584,154 +583,30 @@ def dictionary_frequency(
         conn.close()
         raise HTTPException(status_code=500, detail=f"Frequency error: {e}")
 
-# Database setup for Auth & User Sync
+# Auth & User Sync
 #
-# ⚠️ PRODUCTION DATA-LOSS RISK: DB_PATH lives on CACHE_DIR ("cache"), a
-# relative path on the container's local writable layer. Cloud Run
-# containers have no persistent disk — this file, and every user account,
-# password hash, session token, and synced vocabulary/progress row in it,
-# is wiped on every redeploy, and can also be lost on ordinary instance
-# recycling (scale-to-zero, crash restart, new revision rollout) since a
-# fresh instance starts from the container image with an empty CACHE_DIR.
-# There is currently no backup and no migration path — a redeploy is a
-# silent full data wipe for every registered user.
-#
-# Fixing this requires provisioning real persistent infrastructure (e.g. a
-# Cloud SQL instance, or a Cloud Run service mounted to a GCS bucket /
-# persistent volume) under the project's own GCP account and billing —
-# that's an infra/billing decision for a human to make deliberately, not
-# something to change silently in a code edit. Until that happens, treat
-# this backend as suitable for demos/dev only, not as a durable store for
-# real user accounts.
-DB_PATH = os.path.join(CACHE_DIR, "takt_app.db")
+# Identity is handled by Firebase Authentication (email/password + Google
+# Sign-In) on the Flutter client; this backend only verifies the Firebase ID
+# token sent with each request and uses its `uid` claim to key synced
+# vocabulary/progress. Sync data is persisted in "takt", a dedicated
+# Firestore Native-mode database (separate from Cloud Run's local ephemeral
+# disk), so it survives redeploys, scale-to-zero, and instance recycling.
+# Delete protection is enabled on the database itself.
+db = firestore.Client(database="takt")
+SYNC_COLLECTION = "user_sync"  # doc id = Firebase uid
 
-SESSION_EXPIRY_DAYS = 30
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_sync (
-            user_id TEXT PRIMARY KEY,
-            vocabulary_json TEXT NOT NULL DEFAULT '[]',
-            articles_json TEXT NOT NULL DEFAULT '[]',
-            stats_json TEXT NOT NULL DEFAULT '{}',
-            xp_events_json TEXT NOT NULL DEFAULT '[]',
-            streak_freezes INTEGER NOT NULL DEFAULT 1,
-            curriculum_progress_json TEXT NOT NULL DEFAULT '[]',
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            token TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            device_label TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    """)
-
-    # Migrate pre-Phase-5 user_sync tables that predate the gamification columns.
-    existing_columns = {row[1] for row in cursor.execute("PRAGMA table_info(user_sync)").fetchall()}
-    if "xp_events_json" not in existing_columns:
-        cursor.execute("ALTER TABLE user_sync ADD COLUMN xp_events_json TEXT NOT NULL DEFAULT '[]'")
-    if "streak_freezes" not in existing_columns:
-        cursor.execute("ALTER TABLE user_sync ADD COLUMN streak_freezes INTEGER NOT NULL DEFAULT 1")
-    if "curriculum_progress_json" not in existing_columns:
-        cursor.execute("ALTER TABLE user_sync ADD COLUMN curriculum_progress_json TEXT NOT NULL DEFAULT '[]'")
-
-    conn.commit()
-    conn.close()
-
-init_db()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-def _legacy_sha256_hash(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def verify_password(password: str, stored_hash: str, conn: sqlite3.Connection, user_id: str) -> bool:
-    """Verify against bcrypt; transparently upgrade any pre-existing SHA-256 hash on success."""
-    if stored_hash.startswith("$2"):
-        return pwd_context.verify(password, stored_hash)
-    if stored_hash == _legacy_sha256_hash(password):
-        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(password), user_id))
-        conn.commit()
-        return True
-    return False
-
-def create_session(conn: sqlite3.Connection, user_id: str, device_label: str | None = None) -> str:
-    token = secrets.token_urlsafe(32)
-    now = datetime.utcnow()
-    expires_at = now + timedelta(days=SESSION_EXPIRY_DAYS)
-    conn.execute(
-        "INSERT INTO sessions (token, user_id, created_at, expires_at, device_label) VALUES (?, ?, ?, ?, ?)",
-        (token, user_id, now.isoformat(), expires_at.isoformat(), device_label),
-    )
-    conn.commit()
-    return token
-
-# In-memory sliding-window rate limit for login attempts, keyed by "ip:username".
-_login_attempts: dict[str, list[float]] = {}
-LOGIN_RATE_LIMIT = 5
-LOGIN_RATE_WINDOW_SECONDS = 300
-
-def check_login_rate_limit(key: str):
-    now = time.time()
-    attempts = [t for t in _login_attempts.get(key, []) if now - t < LOGIN_RATE_WINDOW_SECONDS]
-    if len(attempts) >= LOGIN_RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="Too many login attempts. Please try again later.")
-    attempts.append(now)
-    _login_attempts[key] = attempts
+firebase_admin.initialize_app()
 
 def get_current_user_id(authorization: str = Header(None), x_auth_token: str = Header(None)) -> str:
     token = x_auth_token
-    if not token and authorization:
-        if authorization.startswith("Bearer "):
-            token = authorization[7:]
-        elif authorization.startswith("Basic "):
-            try:
-                decoded = base64.b64decode(authorization[6:]).decode("utf-8")
-                username, password = decoded.split(":", 1)
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
-                cursor.execute("SELECT id, password_hash FROM users WHERE username = ?", (username.strip().lower(),))
-                row = cursor.fetchone()
-                if row and verify_password(password, row[1], conn, row[0]):
-                    conn.close()
-                    return row[0]
-                conn.close()
-            except Exception:
-                pass
-
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
     if token:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT user_id, expires_at FROM sessions WHERE token = ?", (token,))
-        row = cursor.fetchone()
-        conn.close()
-        if row and datetime.fromisoformat(row[1]) > datetime.utcnow():
-            return row[0]
-
+        try:
+            return firebase_auth.verify_id_token(token)["uid"]
+        except Exception:
+            pass
     raise HTTPException(status_code=401, detail="Invalid, expired, or missing authentication credentials")
-
-class AuthRequest(BaseModel):
-    username: str
-    password: str
 
 class SyncPayload(BaseModel):
     vocabulary: list[dict] | None = None
@@ -741,125 +616,78 @@ class SyncPayload(BaseModel):
     streak_freezes: int | None = None
     curriculum_progress: list[str] | None = None
 
-@app.post("/api/auth/register")
-def register_user(auth: AuthRequest):
-    username = auth.username.strip().lower()
-    if not username or len(auth.password) < 4:
-        raise HTTPException(status_code=400, detail="Username cannot be empty and password must be at least 4 characters.")
-
-    user_id = str(uuid.uuid4())
-    pw_hash = hash_password(auth.password)
-    now = datetime.utcnow().isoformat()
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    try:
-        cursor.execute("INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)",
-                       (user_id, username, pw_hash, now))
-        cursor.execute("INSERT INTO user_sync (user_id, vocabulary_json, articles_json, stats_json, updated_at) VALUES (?, '[]', '[]', '{}', ?)",
-                       (user_id, now))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        conn.close()
-        raise HTTPException(status_code=400, detail="Username already exists. Please login instead.")
-
-    token = create_session(conn, user_id)
-    conn.close()
-    return {"token": token, "user": {"id": user_id, "username": username}}
-
-@app.post("/api/auth/login")
-def login_user(auth: AuthRequest, request: Request):
-    username = auth.username.strip().lower()
-    client_ip = request.client.host if request.client else "unknown"
-    check_login_rate_limit(f"{client_ip}:{username}")
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
-    row = cursor.fetchone()
-
-    if not row or not verify_password(auth.password, row[1], conn, row[0]):
-        conn.close()
-        raise HTTPException(status_code=401, detail="Invalid username or password.")
-
-    user_id = row[0]
-    token = create_session(conn, user_id)
-    conn.close()
-    return {"token": token, "user": {"id": user_id, "username": username}}
-
-@app.delete("/api/auth/logout")
-def logout_user(authorization: str = Header(None), x_auth_token: str = Header(None)):
-    token = x_auth_token
-    if not token and authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-    if token:
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
-        conn.commit()
-        conn.close()
-    return {"success": True}
-
 @app.get("/api/auth/me")
 def get_me(authorization: str = Header(None), x_auth_token: str = Header(None)):
     user_id = get_current_user_id(authorization, x_auth_token)
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username, created_at FROM users WHERE id = ?", (user_id,))
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"id": row[0], "username": row[1], "created_at": row[2]}
+    user = firebase_auth.get_user(user_id)
+    created_at = None
+    if user.user_metadata and user.user_metadata.creation_timestamp:
+        created_at = datetime.utcfromtimestamp(user.user_metadata.creation_timestamp / 1000).isoformat()
+    return {
+        "id": user.uid,
+        "username": user.display_name or user.email,
+        "email": user.email,
+        "created_at": created_at,
+    }
 
 @app.get("/api/sync")
 def get_sync(authorization: str = Header(None), x_auth_token: str = Header(None)):
     user_id = get_current_user_id(authorization, x_auth_token)
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT vocabulary_json, articles_json, stats_json, xp_events_json, streak_freezes, curriculum_progress_json, updated_at "
-        "FROM user_sync WHERE user_id = ?",
-        (user_id,),
-    )
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
+    doc = db.collection(SYNC_COLLECTION).document(user_id).get()
+    if not doc.exists:
         return {
             "vocabulary": [], "articles": [], "stats": {},
             "xp_events": [], "streak_freezes": 1, "curriculum_progress": [],
             "updated_at": "",
         }
+    data = doc.to_dict()
     return {
-        "vocabulary": json.loads(row[0]),
-        "articles": json.loads(row[1]),
-        "stats": json.loads(row[2]),
-        "xp_events": json.loads(row[3]),
-        "streak_freezes": row[4],
-        "curriculum_progress": json.loads(row[5]),
-        "updated_at": row[6],
+        "vocabulary": data.get("vocabulary", []),
+        "articles": data.get("articles", []),
+        "stats": data.get("stats", {}),
+        "xp_events": data.get("xp_events", []),
+        "streak_freezes": data.get("streak_freezes", 1),
+        "curriculum_progress": data.get("curriculum_progress", []),
+        "updated_at": data.get("updated_at", ""),
     }
 
 @app.post("/api/sync")
 def post_sync(payload: SyncPayload, authorization: str = Header(None), x_auth_token: str = Header(None)):
     user_id = get_current_user_id(authorization, x_auth_token)
     now = datetime.utcnow().isoformat()
+    sync_ref = db.collection(SYNC_COLLECTION).document(user_id)
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT vocabulary_json, articles_json, stats_json, xp_events_json, streak_freezes, curriculum_progress_json "
-        "FROM user_sync WHERE user_id = ?",
-        (user_id,),
-    )
-    row = cursor.fetchone()
+    @firestore.transactional
+    def merge_sync(transaction):
+        snapshot = sync_ref.get(transaction=transaction)
+        existing = snapshot.to_dict() if snapshot.exists else {}
 
-    existing_vocab = json.loads(row[0]) if row and row[0] else []
-    existing_articles = json.loads(row[1]) if row and row[1] else []
-    existing_stats = json.loads(row[2]) if row and row[2] else {}
-    existing_xp_events = json.loads(row[3]) if row and row[3] else []
-    existing_streak_freezes = row[4] if row and row[4] is not None else 1
-    existing_curriculum = json.loads(row[5]) if row and row[5] else []
+        existing_vocab = existing.get("vocabulary", [])
+        existing_articles = existing.get("articles", [])
+        existing_stats = existing.get("stats", {})
+        existing_xp_events = existing.get("xp_events", [])
+        existing_streak_freezes = existing.get("streak_freezes", 1)
+        existing_curriculum = existing.get("curriculum_progress", [])
 
+        existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum = _merge_sync_payload(
+            payload, existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum
+        )
+
+        transaction.set(sync_ref, {
+            "vocabulary": existing_vocab, "articles": existing_articles, "stats": existing_stats,
+            "xp_events": existing_xp_events, "streak_freezes": existing_streak_freezes,
+            "curriculum_progress": existing_curriculum, "updated_at": now,
+        })
+        return existing_vocab, existing_xp_events
+
+    existing_vocab, existing_xp_events = merge_sync(db.transaction())
+
+    return {
+        "status": "success", "updated_at": now,
+        "count_vocab": len(existing_vocab), "count_xp_events": len(existing_xp_events),
+    }
+
+def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum):
     if payload.vocabulary is not None:
         vocab_map = {item.get('id', item.get('word')): item for item in existing_vocab}
         for item in payload.vocabulary:
@@ -895,28 +723,7 @@ def post_sync(payload: SyncPayload, authorization: str = Header(None), x_auth_to
     if payload.curriculum_progress is not None:
         existing_curriculum = sorted(set(existing_curriculum) | set(payload.curriculum_progress))
 
-    cursor.execute("""
-        INSERT INTO user_sync (user_id, vocabulary_json, articles_json, stats_json, xp_events_json, streak_freezes, curriculum_progress_json, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id) DO UPDATE SET
-            vocabulary_json = excluded.vocabulary_json,
-            articles_json = excluded.articles_json,
-            stats_json = excluded.stats_json,
-            xp_events_json = excluded.xp_events_json,
-            streak_freezes = excluded.streak_freezes,
-            curriculum_progress_json = excluded.curriculum_progress_json,
-            updated_at = excluded.updated_at
-    """, (
-        user_id, json.dumps(existing_vocab), json.dumps(existing_articles), json.dumps(existing_stats),
-        json.dumps(existing_xp_events), existing_streak_freezes, json.dumps(existing_curriculum), now,
-    ))
-
-    conn.commit()
-    conn.close()
-    return {
-        "status": "success", "updated_at": now,
-        "count_vocab": len(existing_vocab), "count_xp_events": len(existing_xp_events),
-    }
+    return existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum
 
 # Mount static web app if available
 web_build_dir = os.path.join(os.path.dirname(__file__), "web_build")

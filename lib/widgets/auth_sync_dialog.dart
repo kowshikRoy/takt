@@ -18,23 +18,23 @@ class AuthSyncDialog extends StatefulWidget {
 
 class _AuthSyncDialogState extends State<AuthSyncDialog> {
   bool _isSignUp = false;
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleSubmit() async {
-    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       setState(() {
         _errorMessage = "Please fill in all fields.";
       });
@@ -48,9 +48,45 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
 
     final authService = AuthService();
     final res = _isSignUp
-        ? await authService.register(username, password)
-        : await authService.login(username, password);
+        ? await authService.register(email, password)
+        : await authService.login(email, password);
 
+    await _handleAuthResult(res, _isSignUp ? "Account created & synced!" : "Logged in & synced!");
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final res = await AuthService().signInWithGoogle();
+    await _handleAuthResult(res, "Logged in & synced!");
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _errorMessage = "Enter your email above first, then tap this again.";
+      });
+      return;
+    }
+    final res = await AuthService().sendPasswordResetEmail(email);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          res['success'] == true
+              ? "Password reset email sent to $email"
+              : res['message'] ?? "Couldn't send reset email",
+        ),
+        backgroundColor: res['success'] == true ? Colors.green : Colors.red,
+      ),
+    );
+  }
+
+  Future<void> _handleAuthResult(Map<String, dynamic> res, String successMessage) async {
     setState(() {
       _isLoading = false;
     });
@@ -60,12 +96,7 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
         SyncService().syncNow();
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isSignUp ? "Account created & synced!" : "Logged in & synced!",
-            ),
-            backgroundColor: Colors.green,
-          ),
+          SnackBar(content: Text(successMessage), backgroundColor: Colors.green),
         );
       }
     } else {
@@ -85,7 +116,8 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
       child: Container(
         padding: const EdgeInsets.all(24),
         constraints: const BoxConstraints(maxWidth: 400),
-        child: AnimatedBuilder(
+        child: SingleChildScrollView(
+          child: AnimatedBuilder(
           animation: Listenable.merge([authService, syncService]),
           builder: (context, _) {
             if (authService.isAuthenticated) {
@@ -197,11 +229,38 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                   style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _handleGoogleSignIn,
+                  icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
+                  label: const Text("Continue with Google"),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.grey[300])),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        "or",
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: Colors.grey[300])),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 TextField(
-                  controller: _usernameController,
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: "Username",
-                    prefixIcon: const Icon(Icons.person_outline),
+                    labelText: "Email",
+                    prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -219,6 +278,15 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                     ),
                   ),
                 ),
+                if (!_isSignUp) ...[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _isLoading ? null : _handleForgotPassword,
+                      child: const Text("Forgot password?"),
+                    ),
+                  ),
+                ],
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 12),
                   Text(
@@ -263,6 +331,7 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
               ],
             );
           },
+          ),
         ),
       ),
     );

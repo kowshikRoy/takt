@@ -12,6 +12,7 @@ Hosted on **Google Cloud Run** in 🇪🇺 **Amsterdam, Europe (`europe-west4`)*
 - 🎥 **Media Processing (`/submit-media`)**: Downloads YouTube / Web media audio via `yt-dlp` and `ffmpeg`, transcribes German speech with `faster-whisper`, and generates synchronized bilingual subtitles.
 - ⏱️ **Task Status (`/status/{task_id}`)**: Asynchronous status polling endpoint for long-running media processing tasks.
 - 📖 **Dictionary Lookup (`/word-info/{word}`)**: Fallback word lookup and definition provider.
+- 🔐 **Auth & Cross-Device Sync (`/api/auth/*`, `/api/sync`)**: Username/password accounts (bcrypt) with session tokens, backed by a dedicated **Firestore Native-mode database (`takt`)** in `europe-west4` — separate from Cloud Run's ephemeral container disk, so accounts and synced vocabulary/XP/progress survive redeploys and scale-to-zero. Delete protection is enabled on the database.
 - 🎨 **Gradio Demo Interface (`/demo`)**: Web UI for testing media transcription and translation endpoints interactively.
 
 ---
@@ -27,6 +28,12 @@ docker build -t omniscribe .
 # Run container locally
 docker run -p 8080:8080 -e PORT=8080 omniscribe
 ```
+
+Auth/sync endpoints talk to the `takt` Firestore database, so local runs need
+Application Default Credentials with access to the `book-search-472921`
+project: `gcloud auth application-default login`. On Cloud Run this is
+automatic via the service's default compute service account (already
+`roles/editor` on the project).
 
 ### **2. Deploying to GCP Cloud Run (Europe - `europe-west4`)**
 
