@@ -529,6 +529,51 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                         ),
                       ),
+                    if (isProcessing)
+                      Container(
+                        color: Colors.black45,
+                        child: const Center(
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    if (isFailed)
+                      Container(
+                        color: Colors.black54,
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 26),
+                            const SizedBox(height: 6),
+                            Text(
+                              video.errorMessage ?? video.stageMessage ?? 'Transcript fetch failed',
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 11),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: () => mediaLibraryService.retryProcessingTask(
+                                video.taskId ?? video.id,
+                                video.url,
+                              ),
+                              icon: const Icon(Icons.refresh_rounded, size: 16, color: Colors.white),
+                              label: const Text('Retry', style: TextStyle(color: Colors.white, fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.white70),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),

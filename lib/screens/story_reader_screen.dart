@@ -999,6 +999,20 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                       ),
                       const SizedBox(height: 4),
 
+                      // Edit Paragraph Trigger
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        tooltip: 'Edit paragraph',
+                        onPressed: () => _editParagraph(index),
+                      ),
+                      const SizedBox(height: 4),
+
                       // Delete Paragraph Trigger
                       IconButton(
                         icon: Icon(
@@ -1257,6 +1271,116 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     ).whenComplete(() {
       _tappedWordNotifier.value = null;
     });
+  }
+
+  void _editParagraph(int index) async {
+    final paragraphs = _getParagraphList();
+    if (index < 0 || index >= paragraphs.length) return;
+
+    final currentText = _paragraphAnalysisData[index]?['german_text'] as String? ?? paragraphs[index];
+    final controller = TextEditingController(text: currentText);
+
+    final newText = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(sheetContext).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(sheetContext).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Edit Paragraph',
+                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  minLines: 3,
+                  maxLines: 10,
+                  style: _getReaderTextStyle(sheetContext).copyWith(fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Paragraph text…',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () =>
+                            Navigator.pop(sheetContext, controller.text.trim()),
+                        child: const Text('Save'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (newText == null || newText.isEmpty || newText == currentText) return;
+    if (!mounted) return;
+
+    paragraphs[index] = newText;
+    // The edited text supersedes any previously cached AI analysis for this
+    // paragraph — the old translation/grammar breakdown would now describe
+    // text that no longer exists.
+    _paragraphAnalysisData.remove(index);
+    _visibleParagraphTranslations.remove(index);
+
+    _loadedContent = paragraphs.join('\n\n');
+
+    final storyId = widget.article?.id ?? 'default_story';
+    final mediaLibraryService = Provider.of<MediaLibraryService>(context, listen: false);
+    if (widget.article != null) {
+      await mediaLibraryService.saveCustomContent(widget.article!.id, _loadedContent!);
+    }
+    await mediaLibraryService.saveCachedAnalysis(storyId, _paragraphAnalysisData);
+
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Paragraph updated'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _deleteParagraph(int index) async {
