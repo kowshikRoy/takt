@@ -1,132 +1,201 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/book_guide.dart';
+import '../../services/book_guide_service.dart';
+import '../../theme/books_modernist_style.dart';
 import 'textbook_unit_screen.dart';
 
-class BookDetailScreen extends StatelessWidget {
+class BookDetailScreen extends StatefulWidget {
   final BookGuide book;
 
   const BookDetailScreen({super.key, required this.book});
 
   @override
+  State<BookDetailScreen> createState() => _BookDetailScreenState();
+}
+
+class _BookDetailScreenState extends State<BookDetailScreen> {
+  final Map<int, (int done, int total)> _chapterProgress = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgress();
+  }
+
+  Future<void> _loadProgress() async {
+    final service = Provider.of<BookGuideService>(context, listen: false);
+    final prefs = await SharedPreferences.getInstance();
+    final Map<int, (int done, int total)> progress = {};
+
+    for (final chapter in widget.book.chapters) {
+      final unit = await service.loadTextbookUnit(chapter.jsonAssetPath);
+      if (unit == null) continue;
+      final allIds = unit.pages
+          .expand((p) => p.sections.map((s) => s.id))
+          .toSet();
+      final completed = (prefs.getStringList(
+                'completed_sections_unit_${unit.unitNumber}',
+              ) ??
+              [])
+          .where(allIds.contains)
+          .length;
+      progress[chapter.chapterNumber] = (completed, allIds.length);
+    }
+
+    if (mounted) {
+      setState(() => _chapterProgress.addAll(progress));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final totalDone = _chapterProgress.values.fold(0, (s, p) => s + p.$1);
+    final totalSections = _chapterProgress.values.fold(0, (s, p) => s + p.$2);
+    final bookProgress = totalSections > 0 ? totalDone / totalSections : 0.0;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(book.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-      ),
+      backgroundColor: BooksModernist.bg,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Book Banner Card
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                  ),
-                ),
-                child: Row(
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.asset(
-                        book.coverImage,
-                        width: 65,
-                        height: 90,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 65,
-                          height: 90,
-                          color: colorScheme.primary,
-                          child: const Icon(Icons.book_rounded, size: 36, color: Colors.white),
-                        ),
+                    _buildBookHeader(),
+                    _buildProgressSection(totalDone, totalSections, bookProgress),
+                    const ModernistDivider(margin: EdgeInsets.symmetric(horizontal: 20)),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: Text(
+                        'Kapitel (${widget.book.chapters.length})',
+                        style: BooksModernist.heading(size: 15),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: Text(
-                              'CEFR ${book.cefrLevel}',
-                              style: TextStyle(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            book.title,
-                            style: TextStyle(
-                              color: colorScheme.onSurface,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            book.subtitle,
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
+                    ...widget.book.chapters.map(
+                      (chapter) => _buildChapterRow(context, chapter),
                     ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              Text(
-                'Chapters (${book.chapters.length})',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: book.chapters.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final chapter = book.chapters[index];
-                  return _buildChapterCard(context, chapter);
-                },
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildChapterCard(BuildContext context, ChapterSummary chapter) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: BooksModernist.divider, width: 2)),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () => Navigator.of(context).pop(),
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: Icon(Icons.chevron_left_rounded, color: BooksModernist.text, size: 26),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              widget.book.title,
+              style: BooksModernist.heading(size: 17),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GrayscaleCover(
+            assetPath: widget.book.coverImage,
+            width: 84,
+            height: 112,
+            border: Border.all(color: BooksModernist.divider),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ModernistTag('CEFR ${widget.book.cefrLevel}'),
+                const SizedBox(height: 8),
+                Text(
+                  widget.book.title,
+                  style: BooksModernist.heading(size: 21, height: 1.15),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.book.subtitle,
+                  style: BooksModernist.body(
+                    size: 12.5,
+                    color: BooksModernist.text.withValues(alpha: 0.65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressSection(int done, int total, double progress) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'FORTSCHRITT',
+                style: BooksModernist.body(
+                  size: 11,
+                  weight: FontWeight.w700,
+                  color: BooksModernist.text.withValues(alpha: 0.6),
+                ),
+              ),
+              Text(
+                '$done / $total Abschnitte',
+                style: BooksModernist.body(
+                  size: 11,
+                  weight: FontWeight.w700,
+                  color: BooksModernist.text.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ModernistProgressBar(progress: progress, height: 6),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChapterRow(BuildContext context, ChapterSummary chapter) {
+    final progress = _chapterProgress[chapter.chapterNumber];
+    final done = progress?.$1 ?? 0;
+    final total = progress?.$2 ?? 0;
 
     return InkWell(
       onTap: () {
@@ -135,95 +204,90 @@ class BookDetailScreen extends StatelessWidget {
           MaterialPageRoute(
             builder: (_) => TextbookUnitScreen(
               chapterSummary: chapter,
-              bookTitle: book.title,
+              bookTitle: widget.book.title,
             ),
           ),
         );
       },
-      borderRadius: BorderRadius.circular(4),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-          ),
+          border: Border(bottom: BorderSide(color: BooksModernist.dividerThin)),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Center(
-                child: Text(
-                  '${chapter.chapterNumber}',
-                  style: TextStyle(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              color: BooksModernist.text,
+              child: Text(
+                '${chapter.chapterNumber}',
+                style: BooksModernist.heading(size: 14, color: BooksModernist.bg),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Kapitel ${chapter.chapterNumber}: ${chapter.title}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: colorScheme.onSurface,
-                    ),
+                    style: BooksModernist.heading(size: 14.5),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     chapter.topic,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colorScheme.onSurfaceVariant,
+                    style: BooksModernist.body(
+                      size: 12,
+                      color: BooksModernist.text.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.style_rounded, size: 14, color: colorScheme.primary),
-                      const SizedBox(width: 4),
                       Text(
-                        '${chapter.wordCount} Words',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.primary,
+                        '${chapter.wordCount} Wörter',
+                        style: BooksModernist.body(
+                          size: 11,
+                          weight: FontWeight.w700,
+                          color: BooksModernist.accentDark,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Icon(Icons.headphones_rounded, size: 14, color: colorScheme.primary),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 14),
                       Text(
-                        '${chapter.audioCount} Dialogues',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.primary,
+                        '${chapter.audioCount} Dialoge',
+                        style: BooksModernist.body(
+                          size: 11,
+                          weight: FontWeight.w700,
+                          color: BooksModernist.accentDark,
                         ),
                       ),
                     ],
                   ),
+                  if (total > 0) ...[
+                    const SizedBox(height: 8),
+                    ModernistProgressBar(progress: done / total, height: 3),
+                  ],
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            if (total > 0)
+              Text(
+                '$done/$total',
+                style: BooksModernist.body(
+                  size: 10,
+                  weight: FontWeight.w700,
+                  color: BooksModernist.accentDark,
+                ),
+              ),
+            const SizedBox(width: 6),
             Icon(
-              Icons.arrow_forward_ios_rounded,
+              Icons.chevron_right_rounded,
               size: 18,
-              color: colorScheme.onSurfaceVariant,
+              color: BooksModernist.text.withValues(alpha: 0.4),
             ),
           ],
         ),

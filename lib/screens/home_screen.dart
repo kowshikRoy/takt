@@ -16,7 +16,11 @@ import '../models/article_model.dart';
 import '../widgets/today_words_card.dart';
 import '../services/sync_service.dart';
 import '../services/book_guide_service.dart';
+import '../models/book_guide.dart';
+import '../theme/books_modernist_style.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'books/book_detail_screen.dart';
+import 'books/textbook_unit_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback? onOpenLearnTab;
@@ -128,156 +132,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildCourseBooksSection(BuildContext context) {
-    final bookService = Provider.of<BookGuideService>(context);
-    final books = bookService.books;
-    if (books.isEmpty) return const SizedBox.shrink();
-
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Course Books & Study Guides',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'CEFR PATHS',
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ...books.map((book) {
-          return InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => BookDetailScreen(book: book),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(4),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                ),
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Image.asset(
-                      book.coverImage,
-                      width: 56,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 56,
-                        height: 72,
-                        color: colorScheme.primary,
-                        child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 30),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                              child: Text(
-                                book.cefrLevel,
-                                style: TextStyle(
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                book.title,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 17,
-                                  color: colorScheme.onSurface,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          book.subtitle,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${book.totalChapters} Chapters  •  Interactive Vocabulary & Audios',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 18,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ],
-    );
+    return const _CourseBooksSection();
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -1250,6 +1105,240 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The "Kursbücher" entry point, restyled to the Books feature's fixed
+/// Modernist identity (see lib/theme/books_modernist_style.dart) — plus a
+/// "Weiterlesen" resume banner once TextbookUnitScreen has persisted a last
+/// read position. Kept as its own small StatefulWidget so HomeScreen itself
+/// doesn't need to become stateful just for this one section's async load.
+class _CourseBooksSection extends StatefulWidget {
+  const _CourseBooksSection();
+
+  @override
+  State<_CourseBooksSection> createState() => _CourseBooksSectionState();
+}
+
+class _CourseBooksSectionState extends State<_CourseBooksSection> {
+  String? _resumeBookTitle;
+  ChapterSummary? _resumeChapter;
+  String? _resumePageLabel;
+  int _resumeDone = 0;
+  int _resumeTotal = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadResume();
+  }
+
+  Future<void> _loadResume() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bookTitle = prefs.getString('books_last_read_book_title');
+    final chapterNumber = prefs.getInt('books_last_read_chapter_number');
+    final pageIndex = prefs.getInt('books_last_read_page_index') ?? 0;
+    if (bookTitle == null || chapterNumber == null || !mounted) return;
+
+    final service = Provider.of<BookGuideService>(context, listen: false);
+    BookGuide? book;
+    try {
+      book = service.books.firstWhere((b) => b.title == bookTitle);
+    } catch (_) {
+      return;
+    }
+    ChapterSummary? chapter;
+    try {
+      chapter =
+          book.chapters.firstWhere((c) => c.chapterNumber == chapterNumber);
+    } catch (_) {
+      return;
+    }
+
+    final unit = await service.loadTextbookUnit(chapter.jsonAssetPath);
+    if (unit == null || !mounted) return;
+    final allIds = unit.pages.expand((p) => p.sections.map((s) => s.id)).toSet();
+    final completed = (prefs.getStringList(
+              'completed_sections_unit_${unit.unitNumber}',
+            ) ??
+            [])
+        .where(allIds.contains)
+        .length;
+    final page = pageIndex < unit.pages.length ? unit.pages[pageIndex] : null;
+
+    if (mounted) {
+      setState(() {
+        _resumeBookTitle = bookTitle;
+        _resumeChapter = chapter;
+        _resumePageLabel = page != null ? 'Seite ${page.pageNumber}' : null;
+        _resumeDone = completed;
+        _resumeTotal = allIds.length;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bookService = Provider.of<BookGuideService>(context);
+    final books = bookService.books;
+    if (books.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      color: BooksModernist.bg,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Kursbücher', style: BooksModernist.heading(size: 18)),
+              const ModernistTag('CEFR-PFADE'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_resumeChapter != null) _buildResumeBanner(context),
+          ...books.map((book) => _buildBookRow(context, book)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResumeBanner(BuildContext context) {
+    final book = Provider.of<BookGuideService>(context, listen: false)
+        .books
+        .firstWhere((b) => b.title == _resumeBookTitle);
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TextbookUnitScreen(
+              chapterSummary: _resumeChapter!,
+              bookTitle: book.title,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(14),
+        color: BooksModernist.text,
+        child: Row(
+          children: [
+            GrayscaleCover(
+              assetPath: 'assets/images/netzwerk_a2_kapitel_01.jpg',
+              width: 44,
+              height: 58,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'WEITERLESEN',
+                    style: BooksModernist.body(
+                      size: 10,
+                      weight: FontWeight.w700,
+                      color: BooksModernist.accent200,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Kapitel ${_resumeChapter!.chapterNumber}${_resumePageLabel != null ? ' · $_resumePageLabel' : ''}',
+                    style: BooksModernist.heading(size: 15, color: BooksModernist.bg),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_resumeChapter!.title} — $_resumeDone / $_resumeTotal Abschnitte',
+                    style: BooksModernist.body(
+                      size: 12,
+                      color: BooksModernist.bg.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: BooksModernist.bg),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookRow(BuildContext context, BookGuide book) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => BookDetailScreen(book: book)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: BooksModernist.dividerThin)),
+        ),
+        child: Row(
+          children: [
+            GrayscaleCover(
+              assetPath: book.coverImage,
+              width: 52,
+              height: 68,
+              border: Border.all(color: BooksModernist.divider),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ModernistTag(book.cefrLevel),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          book.title,
+                          style: BooksModernist.heading(size: 16),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    book.subtitle,
+                    style: BooksModernist.body(
+                      size: 12,
+                      color: BooksModernist.text.withValues(alpha: 0.65),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${book.totalChapters} Kapitel · Wortschatz, Audio & Übungen',
+                    style: BooksModernist.body(
+                      size: 11,
+                      weight: FontWeight.w600,
+                      color: BooksModernist.accentDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: BooksModernist.text.withValues(alpha: 0.4),
+            ),
+          ],
         ),
       ),
     );
