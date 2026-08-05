@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 class TtsProgress {
@@ -23,11 +24,38 @@ class TtsService {
     _initTts();
   }
 
+  bool _webVoicesReady = false;
+
+  /// On web, `speechSynthesis.getVoices()` returns an empty list on the first
+  /// call and populates asynchronously. flutter_tts's `setLanguage` silently
+  /// does nothing when that list is empty, leaving the utterance on the
+  /// browser's default voice — so German text gets read aloud by an English
+  /// voice. Poll until the voice list is actually populated.
+  Future<void> _ensureWebVoicesLoaded() async {
+    if (!kIsWeb || _webVoicesReady) return;
+    for (var attempt = 0; attempt < 25; attempt++) {
+      try {
+        final voices = await _flutterTts.getVoices;
+        if (voices is List && voices.isNotEmpty) {
+          _webVoicesReady = true;
+          return;
+        }
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
   Future<void> _initTts() async {
-    await _flutterTts.setLanguage("de-DE");
-    await _flutterTts.setSpeechRate(0.5); // Slightly slower for learners
-    await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
+    try {
+      await _ensureWebVoicesLoaded();
+      await _flutterTts.setLanguage("de-DE");
+      // Rate scales differ by platform: web is 0–10 with 1.0 as normal speed,
+      // while Android/iOS are 0–1 with 0.5 as normal. Using 0.5 on web would
+      // play at half speed.
+      await _flutterTts.setSpeechRate(kIsWeb ? 0.9 : 0.5);
+      await _flutterTts.setVolume(1.0);
+      await _flutterTts.setPitch(1.0);
+    } catch (_) {}
 
     _flutterTts.setProgressHandler((text, start, end, word) {
       _progressController.add(TtsProgress(text, start, end, word));
@@ -47,6 +75,9 @@ class TtsService {
   }
 
   Future<void> speak(String text, {String lang = "de-DE"}) async {
+    // Guards against the first tap being spoken in the wrong voice if the
+    // browser hasn't finished loading its voice list yet.
+    await _ensureWebVoicesLoaded();
     await _flutterTts.setLanguage(lang);
     await _flutterTts.speak(text);
   }
@@ -57,6 +88,7 @@ class TtsService {
   }
 
   Future<void> setLanguage(String lang) async {
+    await _ensureWebVoicesLoaded();
     await _flutterTts.setLanguage(lang);
   }
 

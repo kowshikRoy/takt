@@ -1,9 +1,17 @@
-# Miscellaneous
+# Miscellaneous & OS
 *.class
 *.log
 *.pyc
+*.pyo
+*.pyd
 *.swp
+*~
+*.tmp
+*.bak
 .DS_Store
+._*
+.Spotlight-V100
+.Trashes
 .atom/
 .build/
 .buildlog/
@@ -11,39 +19,82 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+.gemini/
+.claude/settings.local.json
 
-# IntelliJ related
+# IDE & Editor files
 *.iml
 *.ipr
 *.iws
 .idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+.vscode/
+.cursor/
+*.sublime-project
+*.sublime-workspace
 
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
+**/build/
 /coverage/
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
+# Native platform build artifacts & dependencies
 /android/app/debug
 /android/app/profile
 /android/app/release
+android/.gradle/
+android/local.properties
+android/app/build/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+macos/Pods/
+macos/Flutter/ephemeral/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
 
-# Large data files
-# *.db - Now using Git LFS for database files in assets/
+# Symbolication & Obfuscation
+app.*.symbols
+app.*.map.json
+
+# Python / Backend / Virtualenvs
+**/__pycache__/
+**/.pytest_cache/
+**/.coverage
+**/htmlcov/
+**/*.egg-info/
+venv/
+.venv/
+env/
+.env
+.env.*
+backend/venv/
+backend/web_build/
+backend/cache/
+backend/assets/
+
+# Large data files & temporary databases
+# The app never bundles assets/*.db as a Flutter asset (not listed under
+# pubspec.yaml's flutter.assets, not loaded via rootBundle) — it downloads
+# the dictionary DB at runtime from a GitHub release URL instead (see
+# dictionary_service.dart). The many committed german_dictionary_v*.db files
+# in assets/ are leftover local outputs from scripts/build_dictionary.py and
+# create_lite_db.py, not something the app build needs. Ignoring them here
+# stops future script runs from re-adding more version bloat; it does not
+# remove the ones already committed (that would need a separate, deliberate
+# git history/LFS cleanup).
+assets/*.db
+*.db-shm
+*.db-wal
 *.jsonl
+temp_*.jsonl
+
+# Screenshots and generated root assets
+/*.png

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../models/article_model.dart';
 
@@ -35,15 +36,21 @@ class ArticleCard extends StatelessWidget {
                 children: [
                    Container(
                     color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    child: Image(
-                      image: article.imageUrl.startsWith('http')
-                          ? NetworkImage(article.imageUrl) as ImageProvider
-                          : AssetImage(article.imageUrl),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(child: Icon(Icons.broken_image_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant));
-                      },
-                    ),
+                    child: article.imageUrl.startsWith('http')
+                        ? CachedNetworkImage(
+                            imageUrl: article.imageUrl,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) {
+                              return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
+                            },
+                          )
+                        : Image.asset(
+                            article.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
+                            },
+                          ),
                   ),
                   // Gradient overlay for text readability if needed, or just plain image as per design
                   if (onDelete != null)
@@ -54,7 +61,7 @@ class ArticleCard extends StatelessWidget {
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: onDelete,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(4),
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -152,7 +159,7 @@ class ArticleCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8), // slightly more rounded
+        borderRadius: BorderRadius.circular(4), // slightly more rounded
       ),
       child: Text(
         level,

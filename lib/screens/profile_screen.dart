@@ -1,9 +1,12 @@
-
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_theme.dart';
-import '../theme/theme_provider.dart';
+import '../services/vocabulary_service.dart';
+import '../services/profile_service.dart';
+import '../services/gamification_service.dart';
+import '../models/saved_word.dart';
+import '../widgets/capped_width.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -15,87 +18,190 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            _buildHeader(context),
-            const SizedBox(height: 32),
-            Text(
-              'Your Growth',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onBackground,
-              ),
+      body: SafeArea(
+        child: CappedWidth(
+          maxWidth: 700,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                _buildHeader(context),
+                const SizedBox(height: 32),
+                Text(
+                  'Your Growth',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onBackground,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildGrowthCard(context),
+                const SizedBox(height: 32),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildGrowthCard(context),
-            const SizedBox(height: 32),
-             Text(
-              'Appearance',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onBackground,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildAppearanceSection(context),
-            const SizedBox(height: 32),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Theme.of(context).cardColor, width: 4),
-            boxShadow: const [
-              BoxShadow(
-                color: Color.fromRGBO(0, 0, 0, 0.1),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              )
-            ],
-            image: const DecorationImage(
-              image: AssetImage('assets/images/profile.jpg'),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        const SizedBox(width: 20),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Consumer<ProfileService>(
+      builder: (context, profileService, _) {
+        if (profileService.justUsedStreakFreeze) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            profileService.acknowledgeStreakFreezeUsed();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/cat.png',
+                      width: 32,
+                      height: 32,
+                    ).animate().scale(
+                      duration: 350.ms,
+                      curve: Curves.elasticOut,
+                      begin: const Offset(0.4, 0.4),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Streak Freeze used! Your streak is safe. ❄️',
+                      ),
+                    ),
+                  ],
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          });
+        }
+        return Row(
           children: [
-            Text(
-              'Matrix Code',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onBackground,
+            if (Navigator.canPop(context)) ...[
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                tooltip: 'Back',
+                onPressed: () => Navigator.pop(context),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).cardColor,
+                  width: 4,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromRGBO(0, 0, 0, 0.1),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+                image: const DecorationImage(
+                  image: AssetImage('assets/images/profile.jpg'),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Joined December 2025',
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          profileService.displayName,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onBackground,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        tooltip: 'Edit Display Name',
+                        onPressed: () =>
+                            _showEditNameDialog(context, profileService),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    profileService.joinDateFormatted,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              tooltip: 'Settings',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showEditNameDialog(
+    BuildContext context,
+    ProfileService profileService,
+  ) {
+    final controller = TextEditingController(text: profileService.displayName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Display Name'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Your Name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              profileService.updateDisplayName(controller.text);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -103,157 +209,264 @@ class ProfileScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
-        boxShadow: [
-          BoxShadow(color: (isDark ? Colors.black : Colors.black).withValues(alpha: 0.05), blurRadius: 2, offset: const Offset(0, 1))
-        ],
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 96,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _buildBar(context, 'M', 0.3),
-                _buildBar(context, 'T', 0.5),
-                _buildBar(context, 'W', 0.4),
-                _buildBar(context, 'T', 0.75, isFaint: true),
-                _buildBar(context, 'F', 0.9, isToday: true),
-                _buildBar(context, 'S', 0.1),
-                _buildBar(context, 'S', 0.1),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Divider(height: 1, color: theme.dividerColor),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Weekly Words', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
-                  const SizedBox(height: 2),
-                  Text('124', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onBackground)),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Total XP', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
-                  const SizedBox(height: 2),
-                  Text('3,450', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onBackground)),
-                ],
+    return Consumer2<ProfileService, VocabularyService>(
+      builder: (context, profileService, vocabService, _) {
+        final words = vocabService.cachedSavedWords;
+        final wordsCount = words.length;
+        final curStreak = profileService.currentStreak;
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: theme.dividerColor),
+            boxShadow: [
+              BoxShadow(
+                color: (isDark ? Colors.black : Colors.black).withValues(
+                  alpha: 0.05,
+                ),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
               ),
             ],
-          )
-        ],
-      ),
+          ),
+          child: Consumer<GamificationService>(
+            builder: (context, gamification, _) {
+              final totalXp = gamification.totalXp;
+              final level = gamification.level;
+
+              return Column(
+                children: [
+                  _buildHeatmapCalendar(context, words),
+                  const SizedBox(height: 16),
+                  Divider(height: 1, color: theme.dividerColor),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Weekly Words',
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$wordsCount',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onBackground,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Current Streak',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              if (profileService.streakFreezes > 0) ...[
+                                const SizedBox(width: 4),
+                                Tooltip(
+                                  message:
+                                      '${profileService.streakFreezes} streak freeze(s) available',
+                                  child: const Text(
+                                    '❄️',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$curStreak Days 🔥',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFD97706),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Total XP',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Lv.$level',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$totalXp',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onBackground,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildBar(BuildContext context, String day, double heightPct, {bool isFaint = false, bool isToday = false}) {
+  Widget _buildHeatmapCalendar(BuildContext context, List<SavedWord> words) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
+    final Map<String, int> dailyCounts = {};
+    for (final w in words) {
+      final key = '${w.createdAt.year}-${w.createdAt.month}-${w.createdAt.day}';
+      dailyCounts[key] = (dailyCounts[key] ?? 0) + 1;
+    }
+
+    final now = DateTime.now();
     return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (isToday)
-          Text(day, style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 10))
-        else
-          Text(day, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.0), fontSize: 10)),
-        
-        const SizedBox(height: 4),
-        
-        Container(
-          width: 36,
-          height: 80 * heightPct,
-          decoration: BoxDecoration(
-            color: isToday 
-                ? theme.primaryColor 
-                : (isFaint ? theme.primaryColor.withValues(alpha: 0.4) : theme.dividerColor),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
-            boxShadow: isToday ? [
-              BoxShadow(
-                 color: theme.primaryColor.withValues(alpha: 0.4),
-                 blurRadius: 15,
-                 spreadRadius: 0,
-              )
-            ] : null,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '12-Week Activity Heatmap',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  'Less ',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                _buildHeatmapSquare(context, 0, primaryColor),
+                const SizedBox(width: 3),
+                _buildHeatmapSquare(context, 1, primaryColor),
+                const SizedBox(width: 3),
+                _buildHeatmapSquare(context, 2, primaryColor),
+                const SizedBox(width: 3),
+                _buildHeatmapSquare(context, 3, primaryColor),
+                Text(
+                  ' More',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 115,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: 12,
+            itemBuilder: (context, colIndex) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 6.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(7, (rowIndex) {
+                    final daysAgo = (11 - colIndex) * 7 + (6 - rowIndex);
+                    final date = now.subtract(Duration(days: daysAgo));
+                    final key = '${date.year}-${date.month}-${date.day}';
+                    final count = dailyCounts[key] ?? 0;
+                    return Tooltip(
+                      message: '$count words on ${date.month}/${date.day}',
+                      child: _buildHeatmapSquare(context, count, primaryColor),
+                    );
+                  }),
+                ),
+              );
+            },
           ),
-          child: isToday ? Stack(
-            clipBehavior: Clip.none,
-            children: [
-               Positioned(
-                 top: -3,
-                 left: 0, right: 0,
-                 child: Center(child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle))),
-               )
-            ],
-          ) : null,
         ),
       ],
     );
   }
 
-  Widget _buildAppearanceSection(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final currentMode = themeProvider.themeMode;
-    final theme = Theme.of(context);
-
+  Widget _buildHeatmapSquare(
+    BuildContext context,
+    int count,
+    Color primaryColor,
+  ) {
+    Color color;
+    if (count == 0) {
+      color = Theme.of(context).dividerColor.withValues(alpha: 0.15);
+    } else if (count == 1) {
+      color = primaryColor.withValues(alpha: 0.35);
+    } else if (count == 2) {
+      color = primaryColor.withValues(alpha: 0.65);
+    } else {
+      color = primaryColor;
+    }
     return Container(
+      width: 14,
+      height: 14,
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
-        boxShadow: const [
-          BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.05), blurRadius: 2, offset: Offset(0, 1))
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildThemeOption(context, 'System', ThemeMode.system, currentMode, themeProvider),
-          Divider(height: 1, color: theme.dividerColor),
-          _buildThemeOption(context, 'Light Mode', ThemeMode.light, currentMode, themeProvider),
-          Divider(height: 1, color: theme.dividerColor),
-          _buildThemeOption(context, 'Dark Mode', ThemeMode.dark, currentMode, themeProvider),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildThemeOption(BuildContext context, String title, ThemeMode mode, ThemeMode currentGroupValue, ThemeProvider provider) {
-    final isSelected = mode == currentGroupValue;
-    final theme = Theme.of(context);
-    
-    return InkWell(
-      onTap: () => provider.setThemeMode(mode),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_circle_rounded, color: theme.primaryColor)
-            else 
-               Icon(Icons.circle_outlined, color: theme.dividerColor),
-          ],
-        ),
+        color: color,
+        borderRadius: BorderRadius.circular(3),
       ),
     );
   }

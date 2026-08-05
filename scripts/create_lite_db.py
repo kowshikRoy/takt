@@ -8,8 +8,8 @@ Create a lite database with ~30K most common words using heuristics:
 import sqlite3
 import os
 
-SOURCE_DB = "../assets/german_dictionary_v16.db"
-TARGET_DB = "../assets/german_dictionary_v16_lite.db"
+SOURCE_DB = "../assets/german_dictionary_v17.db"
+TARGET_DB = "../assets/german_dictionary_v17_lite.db"
 
 def create_lite_database():
     print(f"Creating lite database from {SOURCE_DB}...")
@@ -112,14 +112,21 @@ def create_lite_database():
         source_c.execute("SELECT * FROM words WHERE id = ?", (word_id,))
         row = source_c.fetchone()
         if row:
-            target_c.execute("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?)", row)
+            placeholders = ','.join(['?'] * len(row))
+            target_c.execute(f"INSERT INTO words VALUES ({placeholders})", row)
     
     # Copy definitions
     for word_id in all_word_ids:
         source_c.execute("SELECT * FROM definitions WHERE word_id = ?", (word_id,))
         for row in source_c.fetchall():
             target_c.execute("INSERT INTO definitions VALUES (?, ?, ?)", row)
-    
+
+    # Copy real example sentences
+    for word_id in all_word_ids:
+        source_c.execute("SELECT * FROM examples WHERE word_id = ?", (word_id,))
+        for row in source_c.fetchall():
+            target_c.execute("INSERT INTO examples VALUES (?, ?, ?, ?)", row)
+
     # Copy forms
     for word_id in all_word_ids:
         source_c.execute("SELECT * FROM forms WHERE word_id = ?", (word_id,))
@@ -156,12 +163,15 @@ def create_lite_database():
     total_forms = target_c.fetchone()[0]
     target_c.execute("SELECT COUNT(*) FROM relations")
     total_relations = target_c.fetchone()[0]
-    
+    target_c.execute("SELECT COUNT(*) FROM examples")
+    total_examples = target_c.fetchone()[0]
+
     print(f"\\nLite database created:")
     print(f"  Base words: {base_words}")
     print(f"  Total words (with inflections): {total_words}")
     print(f"  Forms: {total_forms}")
     print(f"  Relations: {total_relations}")
+    print(f"  Examples: {total_examples}")
     
     source_conn.close()
     target_conn.close()
@@ -169,6 +179,7 @@ def create_lite_database():
     # VACUUM to reduce size
     print("\\nOptimizing database size...")
     conn = sqlite3.connect(TARGET_DB)
+    conn.execute("PRAGMA user_version = 17")
     conn.execute("VACUUM")
     conn.close()
     

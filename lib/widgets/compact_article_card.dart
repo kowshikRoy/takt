@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/article_model.dart';
 
 
@@ -25,7 +26,7 @@ class CompactArticleCard extends StatelessWidget {
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           boxShadow: [
              BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -41,17 +42,24 @@ class CompactArticleCard extends StatelessWidget {
             // Image with Badge
             Stack(
               children: [
-                Container(
+                SizedBox(
                   height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    image: DecorationImage(
-                      image: article.imageUrl.startsWith('http')
-                          ? NetworkImage(article.imageUrl) as ImageProvider
-                          : AssetImage(article.imageUrl),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                  width: double.infinity,
+                  child: article.imageUrl.startsWith('http')
+                      ? CachedNetworkImage(
+                          imageUrl: article.imageUrl,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) {
+                            return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
+                          },
+                        )
+                      : Image.asset(
+                          article.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
+                          },
+                        ),
                 ),
                 // Level badge (hide for imported articles)
                 if (article.level != 'Imported')
@@ -83,7 +91,7 @@ class CompactArticleCard extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: onDelete,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(4),
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(

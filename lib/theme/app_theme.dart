@@ -228,7 +228,7 @@ class AppTheme {
         color: colorScheme.surfaceContainer,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
         ),
         margin: EdgeInsets.zero,
@@ -240,16 +240,52 @@ class AppTheme {
           foregroundColor: colorScheme.onPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: const StadiumBorder(), // Expressive Roundness
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           textStyle: getButtonTextStyle(fontFamily),
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          shape: const StadiumBorder(),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
+      ),
+
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+      ),
+
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+      ),
+
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+
+      bottomSheetTheme: const BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+        ),
+      ),
+
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+
+      snackBarTheme: SnackBarThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
 
       iconButtonTheme: IconButtonThemeData(
@@ -311,7 +347,7 @@ class AppTheme {
         color: colorScheme.surfaceContainer,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
         ),
         margin: EdgeInsets.zero,
@@ -322,7 +358,7 @@ class AppTheme {
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
           elevation: 0,
-          shape: const StadiumBorder(),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           textStyle: getButtonTextStyle(fontFamily),
         ),
@@ -330,9 +366,45 @@ class AppTheme {
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          shape: const StadiumBorder(),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
+      ),
+
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+      ),
+
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+      ),
+
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+
+      bottomSheetTheme: const BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+        ),
+      ),
+
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+
+      snackBarTheme: SnackBarThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       
       appBarTheme: AppBarTheme(

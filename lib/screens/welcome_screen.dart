@@ -1,10 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/analytics_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/auth_sync_dialog.dart';
+import 'app_entry_point.dart';
 import 'main_scaffold.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
+
+  static Future<void> _markOnboardingSeen() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(AppEntryPoint.hasSeenOnboardingKey, true);
+      AnalyticsService.logEvent('onboarding_completed');
+    } catch (_) {}
+  }
+
+  static void _enterApp(BuildContext context) {
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const MainScaffold()));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,29 +31,36 @@ class WelcomeScreen extends StatelessWidget {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
               child: Row(
                 children: [
-                   Container(
+                  Container(
                     width: 48,
                     height: 48,
                     alignment: Alignment.center,
-                    child: Icon(Icons.language, color: Theme.of(context).colorScheme.primary, size: 30),
+                    child: Icon(
+                      Icons.language,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 30,
+                    ),
                   ),
                   Expanded(
                     child: Text(
                       'DeutschApp',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 48), // Balance for centering
                 ],
               ),
             ),
-            
+
             // Scrollable Content
             Expanded(
               child: SingleChildScrollView(
@@ -62,40 +86,53 @@ class WelcomeScreen extends StatelessWidget {
                           RichText(
                             textAlign: TextAlign.center,
                             text: TextSpan(
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
                                     fontSize: 16,
                                     height: 1.5,
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                               children: [
-                                TextSpan(text: 'Learn with our unique color-coded method for genders: '),
+                                TextSpan(
+                                  text:
+                                      'Learn with our unique color-coded method for genders: ',
+                                ),
                                 TextSpan(
                                   text: 'Masculine',
                                   style: TextStyle(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                      ? AppTheme.genderMascDark 
-                                      : AppTheme.genderMasc, 
-                                    fontWeight: FontWeight.w600
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? AppTheme.genderMascDark
+                                        : AppTheme.genderMasc,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 TextSpan(text: ', '),
                                 TextSpan(
                                   text: 'Feminine',
                                   style: TextStyle(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                      ? AppTheme.genderFemDark 
-                                      : AppTheme.genderFem, 
-                                    fontWeight: FontWeight.w600
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? AppTheme.genderFemDark
+                                        : AppTheme.genderFem,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 TextSpan(text: ', and '),
                                 TextSpan(
                                   text: 'Neutral',
                                   style: TextStyle(
-                                    color: Theme.of(context).brightness == Brightness.dark 
-                                      ? AppTheme.genderNeuDark 
-                                      : AppTheme.genderNeu, 
-                                    fontWeight: FontWeight.w600
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? AppTheme.genderNeuDark
+                                        : AppTheme.genderNeu,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 TextSpan(text: '.'),
@@ -113,32 +150,46 @@ class WelcomeScreen extends StatelessWidget {
                       height: 320,
                       margin: const EdgeInsets.symmetric(horizontal: 24),
                       decoration: BoxDecoration(
-                         color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F2F5),
-                         borderRadius: BorderRadius.circular(16),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF2A2A2A)
+                            : const Color(0xFFF0F2F5),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                           // Simplified: No transforms initially to debug
-                           Column(
-                             mainAxisAlignment: MainAxisAlignment.center,
-                             children: [
-                               _buildGenderCard(context, 'Der', 
-                                 Theme.of(context).brightness == Brightness.dark ? AppTheme.genderMascDark : AppTheme.genderMasc, 
-                                 80
-                               ),
-                               const SizedBox(height: 12),
-                               _buildGenderCard(context, 'Die', 
-                                 Theme.of(context).brightness == Brightness.dark ? AppTheme.genderFemDark : AppTheme.genderFem, 
-                                 96
-                               ),
-                               const SizedBox(height: 12),
-                               _buildGenderCard(context, 'Das', 
-                                 Theme.of(context).brightness == Brightness.dark ? AppTheme.genderNeuDark : AppTheme.genderNeu, 
-                                 64
-                               ),
-                             ],
-                           ),
+                          // Simplified: No transforms initially to debug
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _buildGenderCard(
+                                context,
+                                'Der',
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? AppTheme.genderMascDark
+                                    : AppTheme.genderMasc,
+                                80,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildGenderCard(
+                                context,
+                                'Die',
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? AppTheme.genderFemDark
+                                    : AppTheme.genderFem,
+                                96,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildGenderCard(
+                                context,
+                                'Das',
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? AppTheme.genderNeuDark
+                                    : AppTheme.genderNeu,
+                                64,
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -152,11 +203,14 @@ class WelcomeScreen extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'WHY DEUTSCHAPP?',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
                         ),
                       ),
                     ),
@@ -171,21 +225,27 @@ class WelcomeScreen extends StatelessWidget {
                         children: [
                           _buildCarouselItem(
                             context,
-                            Theme.of(context).brightness == Brightness.dark ? AppTheme.genderMascDark : AppTheme.genderMasc,
+                            Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.genderMascDark
+                                : AppTheme.genderMasc,
                             'Master Der, Die, Das',
                             'Visualize genders with colors immediately.',
                           ),
                           const SizedBox(width: 16),
                           _buildCarouselItem(
                             context,
-                            Theme.of(context).brightness == Brightness.dark ? AppTheme.genderFemDark : AppTheme.genderFem,
+                            Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.genderFemDark
+                                : AppTheme.genderFem,
                             'Conquer Cases',
                             'Learn nominative to genitive naturally.',
                           ),
                           const SizedBox(width: 16),
                           _buildCarouselItem(
                             context,
-                            Theme.of(context).brightness == Brightness.dark ? AppTheme.genderNeuDark : AppTheme.genderNeu,
+                            Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.genderNeuDark
+                                : AppTheme.genderNeu,
                             'Compound Words',
                             'Break down complex vocabulary.',
                           ),
@@ -197,13 +257,19 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Footer
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                border: Border(top: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.1))),
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.1),
+                  ),
+                ),
               ),
               child: Column(
                 children: [
@@ -211,14 +277,15 @@ class WelcomeScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (_) => const MainScaffold()),
-                        );
+                      onPressed: () async {
+                        await _markOnboardingSeen();
+                        if (context.mounted) _enterApp(context);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
-                        shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                        shadowColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.2),
                         elevation: 8,
                       ),
                       child: Row(
@@ -231,17 +298,23 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                   const SizedBox(height: 12),
-                   TextButton(
-                     onPressed: () {},
-                     child: Text(
-                       'I already have an account',
-                       style: TextStyle(
-                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                         fontWeight: FontWeight.w600,
-                       ),
-                     ),
-                   )
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () async {
+                      await AuthSyncDialog.show(context);
+                      await _markOnboardingSeen();
+                      if (context.mounted) _enterApp(context);
+                    },
+                    child: Text(
+                      'I already have an account',
+                      style: TextStyle(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -251,19 +324,24 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGenderCard(BuildContext context, String label, Color color, double barWidth) {
+  Widget _buildGenderCard(
+    BuildContext context,
+    String label,
+    Color color,
+    double barWidth,
+  ) {
     return Container(
-      width: 192, 
+      width: 192,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(4),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Row(
@@ -274,7 +352,7 @@ class WelcomeScreen extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               label.substring(0, 1),
@@ -285,7 +363,13 @@ class WelcomeScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
               const SizedBox(height: 4),
               Container(
                 height: 4,
@@ -302,25 +386,30 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCarouselItem(BuildContext context, Color color, String title, String subtitle) {
+  Widget _buildCarouselItem(
+    BuildContext context,
+    Color color,
+    String title,
+    String subtitle,
+  ) {
     return Container(
       width: 180,
       height: 140, // Fixed height for carousel items
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           Container(
+          Container(
             width: 32,
             height: 32,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(Icons.class_, color: color, size: 16),
           ),
@@ -330,11 +419,16 @@ class WelcomeScreen extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           const SizedBox(height: 4),
-           Text(
+          Text(
             subtitle,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 10),
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
+              fontSize: 10,
+            ),
           ),
         ],
       ),

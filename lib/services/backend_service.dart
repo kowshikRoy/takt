@@ -1,180 +1,161 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config.dart';
+import 'app_logger.dart';
 
 class BackendService {
-  // Singleton pattern
-  static final BackendService _instance = BackendService._internal();
-  factory BackendService() => _instance;
-  BackendService._internal();
-
   final String baseUrl = Config.backendUrl;
-  
-  // Cache storage: key="$lang:$text" -> value=Response Map
-  final Map<String, Map<String, dynamic>> _cache = {};
-
-  Future<Map<String, dynamic>?> processText(String text, {String? lang}) async {
-    // 1. Check cache
-    String cacheKey = '${lang ?? "auto"}:$text';
-    if (_cache.containsKey(cacheKey)) {
-      print('DEBUG: Cache hit for translation');
-      return _cache[cacheKey];
-    }
-
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/process'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'text': text,
-          if (lang != null) 'lang': lang,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-        
-        // 2. Save to cache
-        _cache[cacheKey] = data;
-        
-        return data;
-      } else {
-        print('Backend error: ${response.statusCode} - ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      print('Backend connection error: $e');
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>?> processFullArticle(String fullText, {String? lang}) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/process_full'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'text': fullText,
-          if (lang != null) 'lang': lang,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(utf8.decode(response.bodyBytes));
-      } else {
-        print('Backend error: ${response.statusCode} - ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      print('Batch process error: $e');
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>?> analyzeWord(String word, String sentence) async {
-    // We can use the analyze endpoint for purely POS tagging of a specific word
-    // Or we can use process() and find the word. 
-    // Let's use /analyze which is specific for "word in context"
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/analyze'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'sentence': sentence,
-          'word': word,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(utf8.decode(response.bodyBytes));
-      }
-      return null;
-    } catch (e) {
-      print('Correction error: $e');
-      return null;
-    }
-  }
 
   Future<Map<String, dynamic>?> importFromUrl(String url) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/import_url'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'url': url,
-        }),
-      );
-
+        body: jsonEncode({'url': url}),
+      ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
-        try {
-          return jsonDecode(utf8.decode(response.bodyBytes));
-        } catch (e) {
-          print('JSON decode error: $e');
-          print('Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
-          return {'error': 'Backend returned invalid response. Please check if the backend is running properly.'};
-        }
-      } else {
-        print('Import error: ${response.statusCode} - ${response.body}');
-        try {
-          final errorData = jsonDecode(response.body);
-          return {'error': errorData['error'] ?? 'Failed to import from URL'};
-        } catch (e) {
-          // If we can't parse the error as JSON, return a generic error
-          return {'error': 'Server error (${response.statusCode}). Please check backend connection.'};
-        }
+        return jsonDecode(utf8.decode(response.bodyBytes));
       }
+      return {'error': 'Failed with status ${response.statusCode}'};
     } catch (e) {
-      print('Import connection error: $e');
-      return {'error': 'Network error: Could not connect to backend. Please ensure the backend is running.'};
+      AppLogger.error("importFromUrl error", error: e, tag: 'BackendService');
+      return {'error': 'Connection timed out or failed: $e'};
     }
   }
 
-  Stream<Map<String, dynamic>> processFullArticleStream(String fullText, {String? lang}) async* {
+  Future<Map<String, dynamic>?> submitMediaUrl(String url) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/submit-media'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'url': url}),
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+      return {'error': 'Server returned status ${response.statusCode}'};
+    } catch (e) {
+      AppLogger.error("submitMediaUrl error", error: e, tag: 'BackendService');
+      return {'error': 'Connection timed out or failed: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>?> checkMediaStatus(String taskId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/status/$taskId'),
+      ).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+      return {
+        'error': 'Server returned status ${response.statusCode}',
+        'status': response.statusCode == 404 ? 'not_found' : 'error',
+        'statusCode': response.statusCode,
+      };
+    } catch (e) {
+      AppLogger.error("checkMediaStatus error", error: e, tag: 'BackendService');
+      return {'error': e.toString(), 'status': 'error'};
+    }
+  }
+
+  Stream<Map<String, dynamic>> processFullArticleStream(String text, {String lang = 'auto'}) async* {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/process_full_stream'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': text, 'lang': lang}),
+      ).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        yield jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        throw Exception("Backend HTTP status ${response.statusCode}");
+      }
+    } catch (e) {
+      AppLogger.error("processFullArticleStream error", error: e, tag: 'BackendService');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> processText(String text, {String lang = 'de'}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/process_text'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': text, 'lang': lang}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+      return null;
+    } catch (e) {
+      AppLogger.error("processText error", error: e, tag: 'BackendService');
+      return null;
+    }
+  }
+
+  Stream<Map<String, dynamic>> streamLesson(String topic, String level) async* {
     final client = http.Client();
     try {
-      final request = http.Request('POST', Uri.parse('$baseUrl/process_full_stream'));
+      final request = http.Request(
+        'POST',
+        Uri.parse('$baseUrl/stream_lesson'),
+      );
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode({
-        'text': fullText,
-        if (lang != null) 'lang': lang,
+        'topic': topic,
+        'level': level,
       });
 
       final response = await client.send(request);
-      
+
       if (response.statusCode != 200) {
         yield {'type': 'error', 'error': 'Server error: ${response.statusCode}'};
         return;
       }
 
       String buffer = '';
-      
       await for (var chunk in response.stream.transform(utf8.decoder)) {
-        print('DEBUG: Received chunk of ${chunk.length} characters');
         buffer += chunk;
-        
         while (buffer.contains('\n\n')) {
           final endIndex = buffer.indexOf('\n\n');
           final message = buffer.substring(0, endIndex);
           buffer = buffer.substring(endIndex + 2);
-          
+
           if (message.startsWith('data: ')) {
             final jsonStr = message.substring(6);
             try {
               final data = jsonDecode(jsonStr) as Map<String, dynamic>;
-              print('DEBUG: Parsed message type: ${data['type']}');
               yield data;
             } catch (e) {
-              print('Error parsing SSE message: $e');
+              AppLogger.error("Error parsing SSE message", error: e, tag: 'BackendService');
             }
           }
         }
       }
     } catch (e) {
-      print('Stream error: $e');
+      AppLogger.error("Stream error", error: e, tag: 'BackendService');
       yield {'type': 'error', 'error': 'Connection error: $e'};
     } finally {
       client.close();
     }
   }
-}
 
+  Future<String?> getFreshVideoUrl(String mediaUrl) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/refresh-url'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'url': mediaUrl}),
+      ).timeout(const Duration(seconds: 30));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        return data['video_url'] as String?;
+      }
+    } catch (e) {
+      AppLogger.error("Error fetching fresh video url", error: e, tag: 'BackendService');
+    }
+    return null;
+  }
+}
