@@ -64,6 +64,37 @@ class SavedWord {
   String get translation => primaryDefinition;
   DateTime get dateSaved => createdAt;
 
+  /// Returns 0 to 4 mastery level:
+  /// Level 0: New (0 repetitions)
+  /// Level 1: Apprentice (1 repetition or interval <= 3 days)
+  /// Level 2: Familiar (2 repetitions or interval <= 10 days)
+  /// Level 3: Proficient (3-4 repetitions or interval <= 30 days)
+  /// Level 4: Mastered (5+ repetitions or interval > 30 days or category == VocabCategory.mastered)
+  int get masteryLevel {
+    if (category == VocabCategory.mastered) return 4;
+    if (repetitions == 0) return 0;
+    if (repetitions == 1 || interval <= 3) return 1;
+    if (repetitions == 2 || interval <= 10) return 2;
+    if (repetitions <= 4 || interval <= 30) return 3;
+    return 4;
+  }
+
+  String get masteryLevelLabel {
+    switch (masteryLevel) {
+      case 0:
+        return 'Lvl 0 • Neu';
+      case 1:
+        return 'Lvl 1 • Anfänger';
+      case 2:
+        return 'Lvl 2 • Vertraut';
+      case 3:
+        return 'Lvl 3 • Fortgeschritten';
+      case 4:
+      default:
+        return 'Lvl 4 • Meister';
+    }
+  }
+
   /// Computes the next SRS state based on SM-2 algorithm rules
   SavedWord calculateNextReview(ReviewRating rating) {
     int nextInterval = interval;

@@ -86,6 +86,8 @@ flutter:
     - assets/sounds/
     - assets/images/cat.png
     - assets/images/sofa.png
+    - assets/books/
+    - assets/books/netzwerk-a2/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

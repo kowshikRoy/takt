@@ -450,21 +450,18 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   top: 60,
                   left: 16,
                   right: 16,
-                  child: Container(
-                    constraints: const BoxConstraints(maxHeight: 320),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: colorScheme.outlineVariant),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
+                  child: Material(
+                    color: Theme.of(context).cardColor,
+                    elevation: 6,
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      constraints: const BoxConstraints(maxHeight: 320),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                      ),
+                      child: _buildSearchResultsList(context),
                     ),
-                    child: _buildSearchResultsList(context),
                   ),
                 ),
             ],
@@ -509,27 +506,30 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             ),
             const SizedBox(width: 4),
           ],
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'German Dictionary',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'German Dictionary',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Text(
-                '50,000+ Words • Frequency Indexed',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colorScheme.onSurfaceVariant,
+                Text(
+                  '50,000+ Words • Frequency Indexed',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const Spacer(),
           IconButton(
             icon: Icon(
               Icons.refresh_rounded,
@@ -546,13 +546,15 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Widget _buildSearchResultsList(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        itemCount: _searchResults.length,
+    return Material(
+      type: MaterialType.transparency,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: _searchResults.length,
         separatorBuilder: (_, __) => Divider(
           height: 1,
           color: colorScheme.outlineVariant.withValues(alpha: 0.5),
@@ -625,7 +627,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           );
         },
       ),
-    );
+    ));
   }
 
   Widget _buildRecentWordsBar(BuildContext context) {
@@ -1025,11 +1027,13 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Explore Top Frequency Words',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                'Explore Top Frequency Words',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
             ),
             Text(
               '${displayWords.length} Words',
@@ -1809,9 +1813,11 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 color: colorScheme.primary,
               ),
               const SizedBox(width: 6),
-              const Text(
-                'Verb Conjugation Table',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              const Expanded(
+                child: Text(
+                  'Verb Conjugation Table',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
               ),
             ],
           ),
@@ -1846,6 +1852,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
+              const double minPerfectWidth = 110.0;
+              final double perfectWidth = (constraints.maxWidth - 24 - 72 - 85 - 85)
+                  .clamp(minPerfectWidth, double.infinity);
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: ConstrainedBox(
@@ -1906,7 +1915,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                   ),
                                 ),
                               ),
-                              Expanded(
+                              SizedBox(
+                                width: perfectWidth,
                                 child: Text(
                                   'PERFECT',
                                   style: TextStyle(
@@ -1977,7 +1987,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                     ),
                                   ),
                                 ),
-                                Expanded(
+                                SizedBox(
+                                  width: perfectWidth,
                                   child: Text(
                                     perfectForms[index],
                                     style: TextStyle(
@@ -1985,6 +1996,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                       fontWeight: FontWeight.w500,
                                       color: colorScheme.onSurfaceVariant,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],

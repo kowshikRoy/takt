@@ -1,0 +1,504 @@
+{
+  "unit_number": 2,
+  "title": "Nach der Schulzeit",
+  "objectives": [
+    "Berichte aus der Schulzeit verstehen",
+    "über die Schulzeit sprechen",
+    "Kommentare schreiben",
+    "eine Radiosendung verstehen",
+    "über Erfahrungen sprechen",
+    "die eigene Meinung sagen",
+    "etwas präsentieren",
+    "Informationen über ein Schulsystem verstehen",
+    "über Schultypen sprechen"
+  ],
+  "pages": [
+    {
+      "page_number": 18,
+      "sections": [
+        {
+          "id": "p18_sec1c",
+          "type": "profiles",
+          "title": "5 Jahre Abi - Klassentreffen",
+          "instruction": "Hören Sie die fünf Gespräche und ergänzen Sie die Steckbriefe.",
+          "audio_id": "1.8-12",
+          "text_content": null,
+          "profiles": [
+            {
+              "id": "1",
+              "name": "Ayla Kaya",
+              "text": "Hat nach der Schule ein Praktikum gemacht und studiert jetzt Grafik.",
+              "attributes": {
+                "nach_der_schule": "Praktikum bei einer Werbeagentur",
+                "jetzt": "Grafik studieren"
+              }
+            },
+            {
+              "id": "2",
+              "name": "Luis Mürrle",
+              "text": "Hat auf Messen gejobbt und macht jetzt eine Ausbildung zum Hotelkaufmann.",
+              "attributes": {
+                "nach_der_schule": "auf Messen jobben",
+                "jetzt": "Ausbildung zum Hotelkaufmann"
+              }
+            },
+            {
+              "id": "3",
+              "name": "Simone Kowalski",
+              "text": "Ist durch Südamerika gereist und studiert jetzt Medizin.",
+              "attributes": {
+                "nach_der_schule": "durch Südamerika reisen",
+                "jetzt": "Medizin studieren"
+              }
+            },
+            {
+              "id": "4",
+              "name": "Pablo Esposito",
+              "text": "Hat als Verkäufer gearbeitet und macht jetzt eine Ausbildung zum Altenpfleger.",
+              "attributes": {
+                "nach_der_schule": "als Verkäufer arbeiten",
+                "jetzt": "Ausbildung zum Altenpfleger"
+              }
+            },
+            {
+              "id": "5",
+              "name": "Frida Müller",
+              "text": "Machte eine Ausbildung zur Krankenschwester und studiert jetzt Informatik.",
+              "attributes": {
+                "nach_der_schule": "Ausbildung zur Krankenschwester",
+                "jetzt": "Informatik studieren"
+              }
+            }
+          ],
+          "chat_messages": null,
+          "items": null
+        }
+      ]
+    },
+    {
+      "page_number": 20,
+      "sections": [
+        {
+          "id": "p20_sec3a_profiles",
+          "type": "profiles",
+          "title": "Schule – eine schöne Zeit?",
+          "instruction": "Lesen Sie die Einträge auf der Schulplattform. Je zwei Einträge passen zusammen. Ordnen Sie zu.",
+          "audio_id": null,
+          "text_content": null,
+          "profiles": [
+            {
+              "id": "1",
+              "name": "Ole Jansen (2005–2014)",
+              "text": "Ich wollte immer erwachsen sein. Das verstehe ich jetzt gar nicht mehr. In der Schule hatte ich so viel Freizeit. Und sechs Wochen Sommerferien! Da musste man nichts machen und konnte immer ins Schwimmbad fahren.",
+              "attributes": null
+            },
+            {
+              "id": "2",
+              "name": "Sorin Popa (1993–1998)",
+              "text": "Ich bin erst mit 14 Jahren nach Deutschland gekommen. Am Anfang war es schwer, ich konnte ja die Sprache nicht richtig sprechen. Aber nach ein paar Monaten hatte ich viele Freunde und dann war alles gut. Ich hatte mit ihnen immer einen Riesenspaß! Hauptsache, wir konnten uns jeden Tag sehen.",
+              "attributes": null
+            },
+            {
+              "id": "3",
+              "name": "Sybille Michel (1996–2002)",
+              "text": "Wer kennt noch die Englischlehrerin Frau Lindner? Wir sollten jeden Tag 30 Wörter lernen und mussten dreimal pro Woche einen Vokabeltest schreiben. Man durfte keinen Fehler machen, sie war sofort wütend. Zum Glück hatte ich auch tolle Lehrer und der Direktor war nett!",
+              "attributes": null
+            },
+            {
+              "id": "4",
+              "name": "Nael Sanchez (2003–2012)",
+              "text": "Ich musste jeden Tag schon um sechs Uhr aufstehen. Schrecklich! Ich habe auf dem Land gewohnt und musste mit dem Bus um sieben Uhr zur Schule fahren.",
+              "attributes": null
+            },
+            {
+              "id": "A",
+              "name": "Kati Grubens (1993–2000)",
+              "text": "Ja, Frau Lindner war sehr streng. Aber ich denke gern an die Schule. Ich hatte gute Lehrer und der Unterricht hat meistens Spaß gemacht. Ich habe kurz vor dem Abitur die Schule gewechselt, aber mit vielen Freunden von der alten Schule habe ich heute noch Kontakt.",
+              "attributes": null
+            },
+            {
+              "id": "B",
+              "name": "Anna Keindl (2010–2019)",
+              "text": "Ich musste erst um Viertel nach sieben aufstehen, immer noch früh ... Jetzt bin ich an der Uni und kann wenigstens an two Tagen später kommen. 😊",
+              "attributes": null
+            },
+            {
+              "id": "C",
+              "name": "Liam Davis (1989–1998)",
+              "text": "Oh ja, die Freunde waren auch für mich immer wichtig. Ich habe viele lustige Erinnerungen an die Schulzeit. Die Partys waren auch immer witzig. 🥳 Nur das Essen in der Cafeteria war furchtbar.",
+              "attributes": null
+            },
+            {
+              "id": "D",
+              "name": "Emin Özer (2006–2015)",
+              "text": "Ja, das kenne ich gut. Jetzt arbeite ich in einem Reisebüro und habe so wenig Zeit. In der Schulzeit konnte ich nachmittags meine Freunde treffen und alle paar Wochen waren Ferien. Ich konnte ausschlafen! Aber heute ...",
+              "attributes": null
+            }
+          ],
+          "chat_messages": null,
+          "items": null
+        },
+        {
+          "id": "p20_sec3a_matching",
+          "type": "exercise",
+          "title": "Aufgabe 3a Matching",
+          "instruction": "Welche zwei Einträge gehören zusammen?",
+          "audio_id": null,
+          "text_content": null,
+          "profiles": null,
+          "chat_messages": null,
+          "items": [
+            {"id": "1", "prompt": "1 (Ole Jansen)", "answer": "D", "options": null, "match_target": "D (Emin Özer - Thema: Freizeit und Ferien)"},
+            {"id": "2", "prompt": "2 (Sorin Popa)", "answer": "C", "options": null, "match_target": "C (Liam Davis - Thema: Freunde in der Schulzeit)"},
+            {"id": "3", "prompt": "3 (Sybille Michel)", "answer": "A", "options": null, "match_target": "A (Kati Grubens - Thema: Englischlehrerin Frau Lindner)"},
+            {"id": "4", "prompt": "4 (Nael Sanchez)", "answer": "B", "options": null, "match_target": "B (Anna Keindl - Thema: Früh aufstehen)"}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 21,
+      "sections": [
+        {
+          "id": "p21_ex6a",
+          "type": "exercise",
+          "title": "Aussprache: e",
+          "instruction": "Hören Sie die Wörter und kreuzen Sie an: Wo klingt e wie in See, wo wie in danke?",
+          "audio_id": "1.14",
+          "text_content": null,
+          "profiles": null,
+          "chat_messages": null,
+          "items": [
+            {"id": "1", "prompt": "Schule", "answer": "danke", "options": ["See", "danke"], "match_target": null},
+            {"id": "2", "prompt": "heute", "answer": "danke", "options": ["See", "danke"], "match_target": null},
+            {"id": "3", "prompt": "Medizin", "answer": "See", "options": ["See", "danke"], "match_target": null},
+            {"id": "4", "prompt": "Weg", "answer": "See", "options": ["See", "danke"], "match_target": null},
+            {"id": "5", "prompt": "Hausaufgabe", "answer": "danke", "options": ["See", "danke"], "match_target": null},
+            {"id": "6", "prompt": "sehr", "answer": "See", "options": ["See", "danke"], "match_target": null},
+            {"id": "7", "prompt": "Geschichte", "answer": "danke", "options": ["See", "danke"], "match_target": null},
+            {"id": "8", "prompt": "Note", "answer": "danke", "options": ["See", "danke"], "match_target": null},
+            {"id": "9", "prompt": "Idee", "answer": "See", "options": ["See", "danke"], "match_target": null},
+            {"id": "10", "prompt": "Beruf", "answer": "See", "options": ["See", "danke"], "match_target": null},
+            {"id": "11", "prompt": "Gespräch", "answer": "danke", "options": ["See", "danke"], "match_target": null},
+            {"id": "12", "prompt": "wollte", "answer": "danke", "options": ["See", "danke"], "match_target": null}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 22,
+      "sections": [
+        {
+          "id": "p22_sec7a",
+          "type": "profiles",
+          "title": "Nach dem Schulabschluss",
+          "instruction": "Sehen Sie die Fotos an und ordnen Sie die Namen und Tätigkeiten zu.",
+          "audio_id": "1.16",
+          "text_content": null,
+          "profiles": [
+            {
+              "id": "A",
+              "name": "Vida",
+              "text": "19 Jahre alt, macht ein FSJ (Freiwilliges Soziales Jahr), betreut Menschen mit Behinderung.",
+              "attributes": {"alter": "19", "status": "FSJ"}
+            },
+            {
+              "id": "B",
+              "name": "Sara",
+              "text": "17 Jahre alt, macht eine Ausbildung zur Gärtnerin.",
+              "attributes": {"alter": "17", "status": "Ausbildung zur Gärtnerin"}
+            },
+            {
+              "id": "C",
+              "name": "Maike",
+              "text": "21 Jahre alt, studiert Jura an der Universität.",
+              "attributes": {"alter": "21", "status": "Jura-Studium"}
+            }
+          ],
+          "chat_messages": null,
+          "items": null
+        },
+        {
+          "id": "p22_sec7c",
+          "type": "exercise",
+          "title": "Aufgabe 7c",
+          "instruction": "Hören Sie noch einmal und kreuzen Sie an: richtig oder falsch?",
+          "audio_id": "1.16",
+          "text_content": null,
+          "profiles": null,
+          "chat_messages": null,
+          "items": [
+            {"id": "1", "prompt": "Maike: Seit einem Jahr bin ich mit der Schule fertig.", "answer": "richtig", "options": ["richtig", "falsch"], "match_target": null},
+            {"id": "2", "prompt": "Maike: Nach der Schule wollte ich weiter bei meinen Eltern wohnen.", "answer": "falsch", "options": ["richtig", "falsch"], "match_target": null},
+            {"id": "3", "prompt": "Sara: Ich wollte eine Pause vom Lernen haben.", "answer": "richtig", "options": ["richtig", "falsch"], "match_target": null},
+            {"id": "4", "prompt": "Sara: Ich helfe einer Familie mit einem Kind.", "answer": "falsch", "options": ["richtig", "falsch"], "match_target": null},
+            {"id": "5", "prompt": "Vida: Vor zwei Jahren habe ich mit meinem Job angefangen.", "answer": "falsch", "options": ["richtig", "falsch"], "match_target": null},
+            {"id": "6", "prompt": "Vida: Meine Eltern zahlen meine Miete.", "answer": "falsch", "options": ["richtig", "falsch"], "match_target": null}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 23,
+      "sections": [
+        {
+          "id": "p23_ex8b",
+          "type": "exercise",
+          "title": "Aufgabe 8b",
+          "instruction": "Hören Sie das Gespräch von Vida, Alex und Fabian und antworten Sie in Stichpunkten.",
+          "audio_id": "1.17",
+          "text_content": null,
+          "profiles": null,
+          "chat_messages": null,
+          "items": [
+            {"id": "1", "prompt": "Wie gefällt Vida das Studium in Leipzig?", "answer": "Sehr gut, es macht Spaß.", "options": null, "match_target": null},
+            {"id": "2", "prompt": "Wann machen Alex und Fabian den Schulabschluss?", "answer": "In einem Monat / bald.", "options": null, "match_target": null},
+            {"id": "3", "prompt": "Warum möchte Alex nicht gleich mit dem Studium anfangen?", "answer": "Er möchte eine Pause machen und reisen.", "options": null, "match_target": null},
+            {"id": "4", "prompt": "Was schlägt Vida Alex für die Zeit nach der Schule vor?", "answer": "Ein Praktikum oder Sprachkurs.", "options": null, "match_target": null},
+            {"id": "5", "prompt": "Warum findet Fabian eine Pause nicht gut?", "answer": "Man verliert Zeit.", "options": null, "match_target": null},
+            {"id": "6", "prompt": "Was möchte Vida mit Alex und Fabian in Leipzig machen?", "answer": "Zusammen wohnen / eine WG gründen.", "options": null, "match_target": null}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 24,
+      "sections": [
+        {
+          "id": "p24_schultypen_profiles",
+          "type": "profiles",
+          "title": "Schultypen in Deutschland",
+          "instruction": "Lesen Sie die Berichte über Schultypen.",
+          "audio_id": null,
+          "text_content": null,
+          "profiles": [
+            {
+              "id": "1",
+              "name": "Sebastian Lamm",
+              "text": "Ich war in der Realschule, dort hat es mir eigentlich gut gefallen. Wir haben viel gelernt, wir hatten auch Praktika und die Schule dauert nur sechs Jahre. Mathe war für mich ziemlich schwer - das muss ich jetzt nicht mehr lernen! Ich habe meinen Realschulabschluss geschafft und beginne jetzt eine Ausbildung zum Physiotherapeuten. Vielleicht mache ich später noch das Abitur und studiere.",
+              "attributes": {
+                "schultyp": "Realschule",
+                "dauer": "6 Jahre",
+                "schulabschluss": "Realschulabschluss",
+                "gut": "Praktika",
+                "nicht_so_gut": "Mathe"
+              }
+            },
+            {
+              "id": "2",
+              "name": "Vanessa Freytag",
+              "text": "Ich war fünf Jahre in der Hauptschule. Wir hatten nicht so viele Fächer, zum Beispiel nur eine Fremdsprache - das ist schade. Deutsch, Mathe und die Vorbereitung auf die Arbeitswelt waren besonders wichtig. Wir haben oft Projekte gemacht, das war super. Seit dem Hauptschulabschluss bin ich Azubi in einer Arztpraxis. Bald bin ich fertig und kann zum Glück als Arzthelferin bleiben.",
+              "attributes": {
+                "schultyp": "Hauptschule",
+                "dauer": "5 Jahre",
+                "schulabschluss": "Hauptschulabschluss",
+                "gut": "Projekte",
+                "nicht_so_gut": "nur eine Fremdsprache"
+              }
+            },
+            {
+              "id": "3",
+              "name": "Defne Yilmaz",
+              "text": "Ich habe vor zwei Monaten Abitur gemacht. Ich möchte später Biologie studieren, aber jetzt mache ich erst mal ein Praktikum. Ich möchte endlich das Berufsleben kennenlernen. Ich war acht Jahre im Gymnasium. Physik, Chemie und Biologie waren meine Lieblingsfächer. Ich habe auch zwei Sprachen gelernt: Englisch und Spanisch. Am Nachmittag hatten wir fast jeden Tag Unterricht, das war oft stressig.",
+              "attributes": {
+                "schultyp": "Gymnasium",
+                "dauer": "8 Jahre",
+                "schulabschluss": "Abitur",
+                "gut": "Lieblingsfächer Physik, Chemie, Biologie",
+                "nicht_so_gut": "Nachmittagsunterricht (stressig)"
+              }
+            },
+            {
+              "id": "4",
+              "name": "Darian Kulprin",
+              "text": "Ich war nach der Grundschule sechs Jahre in einer Gesamtschule. Ich finde den Schultyp gut, weil man dort alle Abschlüsse machen kann. Man muss also nicht schon mit zehn Jahren wählen. Für mich war der Realschulabschluss perfekt, weil ich eine Ausbildung machen wollte. Wir mussten viel lernen, manchmal zu viel, finde ich. Jetzt bin ich fertig und habe eine Lehre als Bankkaufmann angefangen.",
+              "attributes": {
+                "schultyp": "Gesamtschule",
+                "dauer": "6 Jahre",
+                "schulabschluss": "Realschulabschluss",
+                "gut": "alle Abschlüsse möglich",
+                "nicht_so_gut": "viel zu lernen"
+              }
+            }
+          ],
+          "chat_messages": null,
+          "items": null
+        }
+      ]
+    },
+    {
+      "page_number": 26,
+      "sections": [
+        {
+          "id": "p26_wg_sec13c",
+          "type": "exercise",
+          "title": "Die Netzwerk-WG - Das Schulprojekt",
+          "instruction": "Zu wem passen die Aussagen? Notieren Sie M für Max oder L für Luca.",
+          "audio_id": null,
+          "text_content": null,
+          "profiles": null,
+          "chat_messages": null,
+          "items": [
+            {"id": "1", "prompt": "Willst du im Garten arbeiten?", "answer": "L", "options": ["M", "L"], "match_target": null},
+            {"id": "2", "prompt": "Ich bin morgen früh in der Schule.", "answer": "M", "options": ["M", "L"], "match_target": null},
+            {"id": "3", "prompt": "Wir haben in der Schule auch ein Projekt gemacht.", "answer": "L", "options": ["M", "L"], "match_target": null},
+            {"id": "4", "prompt": "Hoffentlich macht das nicht nur mir Spaß.", "answer": "M", "options": ["M", "L"], "match_target": null},
+            {"id": "5", "prompt": "Du bist schon hier?", "answer": "L", "options": ["M", "L"], "match_target": null},
+            {"id": "6", "prompt": "Was? Schon so spät? Ich komme zu spät.", "answer": "M", "options": ["M", "L"], "match_target": null},
+            {"id": "7", "prompt": "Du kannst mein Fahrrad nehmen.", "answer": "L", "options": ["M", "L"], "match_target": null},
+            {"id": "8", "prompt": "Ich packe die Sachen für dich ein.", "answer": "L", "options": ["M", "L"], "match_target": null},
+            {"id": "9", "prompt": "Das ist echt super von dir.", "answer": "M", "options": ["M", "L"], "match_target": null},
+            {"id": "10", "prompt": "Viel Spaß in der Schule.", "answer": "L", "options": ["M", "L"], "match_target": null}
+          ]
+        },
+        {
+          "id": "p26_wg_sec14b",
+          "type": "exercise",
+          "title": "In der Schule - Dialoge",
+          "instruction": "Bring die Sätze der beiden Dialoge A und B in die richtige Reihenfolge.",
+          "audio_id": null,
+          "text_content": null,
+          "profiles": null,
+          "chat_messages": null,
+          "items": [
+            {"id": "a1", "prompt": "Dialog A - Satz 1", "answer": "Nimm nicht zu viele Samen, nur wenige.", "options": null, "match_target": null},
+            {"id": "a2", "prompt": "Dialog A - Satz 2", "answer": "Und jetzt Erde darüber. So machen wir das. Machst du fertig?", "options": null, "match_target": null},
+            {"id": "a3", "prompt": "Dialog A - Satz 3", "answer": "Mach ich doch.", "options": null, "match_target": null},
+            {"id": "a4", "prompt": "Dialog A - Satz 4", "answer": "Ich werde sicher nicht Gärtner. Das ist so wäh!", "options": null, "match_target": null},
+            {"id": "a5", "prompt": "Dialog A - Satz 5", "answer": "Was willst du denn werden?", "options": null, "match_target": null},
+            {"id": "b1", "prompt": "Dialog B - Satz 1", "answer": "Warum bist du nicht unser Biolehrer?", "options": null, "match_target": null},
+            {"id": "b2", "prompt": "Dialog B - Satz 2", "answer": "Ich bin noch gar kein Lehrer, ich studiere noch.", "options": null, "match_target": null},
+            {"id": "b3", "prompt": "Dialog B - Satz 3", "answer": "Wolltest du schon immer Lehrer werden?", "options": null, "match_target": null},
+            {"id": "b4", "prompt": "Dialog B - Satz 4", "answer": "Nein. Aber dann habe ich ein Freiwilliges Soziales Jahr gemacht.", "options": null, "match_target": null},
+            {"id": "b5", "prompt": "Dialog B - Satz 5", "answer": "Das machst du gut. Jetzt kann der Salat wachsen.", "options": null, "match_target": null}
+          ]
+        }
+      ]
+    }
+  ],
+  "grammar": [
+    {
+      "title": "Modalverben im Präteritum",
+      "rule": "Die Modalverben müssen, können, wollen, dürfen und sollen im Präteritum bilden ihre Formen ohne Umlaut.",
+      "examples": [
+        "In der Schule musste ich früh aufstehen.",
+        "Früher konnte ich nachmittags meine Freunde treffen.",
+        "Man durfte keinen Fehler machen."
+      ],
+      "table_data": {
+        "müssen": ["musste", "musstest", "musste", "mussten", "musstet", "mussten"],
+        "können": ["konnte", "konntest", "konnte", "konnten", "konntet", "konnten"],
+        "wollen": ["wollte", "wolltest", "wollte", "wollten", "wolltet", "wollten"],
+        "dürfen": ["durfte", "durftest", "durfte", "durften", "durftet", "durften"],
+        "sollen": ["sollte", "solltest", "sollte", "sollten", "solltet", "sollten"]
+      }
+    },
+    {
+      "title": "Artikel im Dativ",
+      "rule": "Bestimmter, unbestimmter, Negations- und Possessivartikel im Dativ.",
+      "examples": [
+        "der Job → mit dem / einem / keinem / meinem Job",
+        "das Jahr → in dem / einem / keinem / meinem Jahr",
+        "die Schule → in der / einer / keiner / meiner Schule",
+        "die Eltern → mit den / - / keinen / meinen Eltern"
+      ],
+      "table_data": {
+        "Maskulin (der)": ["dem", "einem", "keinem", "meinem"],
+        "Neutral (das)": ["dem", "einem", "keinem", "meinem"],
+        "Feminin (die)": ["der", "einer", "keiner", "meiner"],
+        "Plural (die)": ["den", "-", "keinen", "meinen"]
+      }
+    },
+    {
+      "title": "Possessivartikel im Dativ",
+      "rule": "Anpassung der Endung im Dativ (ihrem, seinem, deiner, euren).",
+      "examples": [
+        "Sie ist mit ihrem Job zufrieden.",
+        "Er ist nach seinem Praktikum nach Indien gereist.",
+        "Kann man in deiner Schule Abitur machen?",
+        "Im Sommer fahrt ihr mit euren Freunden nach Berlin."
+      ],
+      "table_data": null
+    }
+  ],
+  "redemittel": [
+    {
+      "category": "über die Schulzeit sprechen",
+      "items": [
+        {
+          "title": "Fragen stellen und beantworten",
+          "phrases": [
+            "Wie lange musstest du Hausaufgaben machen? – Zwei Stunden am Tag.",
+            "Konntest du am Wochenende Sport machen? – Ja, da hatte ich Zeit.",
+            "Durftest du am Abend Freunde treffen? – Nein, nur am Wochenende.",
+            "Musstest du eine Schuluniform tragen? – Nein, ich konnte meine Kleidung selbst wählen."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Kommentare schreiben",
+      "items": [
+        {
+          "title": "Auf Beiträge reagieren",
+          "phrases": [
+            "Das kann ich gut verstehen. Ich habe auch ...",
+            "Das war bei mir auch so / nicht so.",
+            "Das ist ja lustig/schrecklich/...!",
+            "Das kenne ich auch/gut.",
+            "Das ist interessant, denn ich ...",
+            "Das überrascht mich, weil ..."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Meinung äußern",
+      "items": [
+        {
+          "title": "seine Meinung sagen",
+          "phrases": [
+            "Ich finde ... (nicht) gut/schlecht/toll.",
+            "Das ist meine Meinung.",
+            "..., denke/finde ich."
+          ]
+        },
+        {
+          "title": "zustimmen",
+          "phrases": [
+            "Das stimmt.",
+            "Das ist richtig.",
+            "Genau.",
+            "Das ist eine super Idee."
+          ]
+        },
+        {
+          "title": "ablehnen",
+          "phrases": [
+            "Das stimmt nicht.",
+            "So einfach ist das nicht.",
+            "Das sehe ich anders.",
+            "Ich denke, das geht nicht."
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Präsentation",
+      "items": [
+        {
+          "title": "Eine Universität oder Ausbildung präsentieren",
+          "phrases": [
+            "Die Universität in ... gibt es seit ...",
+            "Sie hat ... Studenten.",
+            "Man kann dort zum Beispiel ... studieren.",
+            "Sie ist bekannt für ...",
+            "Die Ausbildung zum/zur ... dauert ...",
+            "Man macht die Ausbildung in einem Büro / einer Werkstatt / ...",
+            "In der Ausbildung lernt man ..."
+          ]
+        }
+      ]
+    }
+  ]
+}

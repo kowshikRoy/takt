@@ -25,6 +25,15 @@ class DictionaryService {
 
   factory DictionaryService() => _instance;
 
+  @visibleForTesting
+  static Future<void> resetForTesting() async {
+    if (_database != null && _database!.isOpen) {
+      await _database!.close();
+    }
+    _database = null;
+    _dbCompleter = null;
+  }
+
   DictionaryService._internal();
 
   Future<Database?> get database async {
@@ -51,15 +60,15 @@ class DictionaryService {
     final newPath = join(dbDir, _dbFileName);
     final oldPath = join(dbDir, "german_dictionary_v3.db");
 
-    if (!await File(newPath).exists() && await File(oldPath).exists()) {
+    if (!File(newPath).existsSync() && File(oldPath).existsSync()) {
       try {
         if (_database != null && _database!.isOpen) {
           await _database!.close();
           _database = null;
         }
-        await File(oldPath).rename(newPath);
+        File(oldPath).renameSync(newPath);
       } catch (_) {
-        try { await File(oldPath).delete(); } catch (_) {}
+        try { if (File(oldPath).existsSync()) File(oldPath).deleteSync(); } catch (_) {}
       }
     }
     return newPath;
@@ -67,31 +76,24 @@ class DictionaryService {
 
   Future<Database> _initDatabase() async {
     final path = await _getDatabasePath();
-    
-    bool isValid = false;
-    
-    if (await File(path).exists()) {
-      try {
-        AppLogger.debug("Verifying existing dictionary database at $path...", tag: 'DictionaryService');
-        var db = await openDatabase(path, readOnly: true);
-        await db.rawQuery("SELECT count(*) FROM words LIMIT 1;");
-        await db.close();
-        isValid = true;
-        AppLogger.debug("Database verification successful.", tag: 'DictionaryService');
-      } catch (e) {
-        AppLogger.error("Database verification failed: $e. Will re-download.", error: e, tag: 'DictionaryService');
-        isValid = false;
-      }
-    }
 
-    if (!isValid) {
-      try { await deleteDatabase(path); } catch (_) {}
+    if (!File(path).existsSync()) {
       await _downloadDatabaseFile(path);
     }
 
-    final db = await openDatabase(path);
-    await _ensureSchemaColumns(db);
-    return db;
+    try {
+      final db = await openDatabase(path);
+      await db.rawQuery("SELECT count(*) FROM words LIMIT 1;");
+      await _ensureSchemaColumns(db);
+      return db;
+    } catch (e) {
+      AppLogger.error("Database open/verify failed: $e. Will re-download.", error: e, tag: 'DictionaryService');
+      try { await deleteDatabase(path); } catch (_) {}
+      await _downloadDatabaseFile(path);
+      final db = await openDatabase(path);
+      await _ensureSchemaColumns(db);
+      return db;
+    }
   }
 
   bool _hasCheckedColumns = false;
