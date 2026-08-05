@@ -318,16 +318,44 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final video = mediaLibraryService.processedVideos[index];
+                      final isFailed = video.status == ProcessingStatus.failed;
                       return Card(
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
-                          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                          side: BorderSide(
+                            color: isFailed
+                                ? Theme.of(context).colorScheme.error.withValues(alpha: 0.5)
+                                : Theme.of(context).colorScheme.outlineVariant,
+                          ),
                         ),
                         child: ListTile(
-                          leading: const Icon(Icons.video_library_rounded, color: Colors.teal),
+                          leading: Icon(
+                            isFailed ? Icons.error_outline_rounded : Icons.video_library_rounded,
+                            color: isFailed ? Theme.of(context).colorScheme.error : Colors.teal,
+                          ),
                           title: Text(video.effectiveTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          subtitle: Text(video.status.name, style: const TextStyle(fontSize: 11)),
+                          subtitle: Text(
+                            isFailed
+                                ? (video.errorMessage ?? video.stageMessage ?? 'Transcript fetch failed')
+                                : video.status.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isFailed ? Theme.of(context).colorScheme.error : null,
+                            ),
+                          ),
+                          trailing: isFailed
+                              ? IconButton(
+                                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                                  tooltip: 'Retry',
+                                  onPressed: () => mediaLibraryService.retryProcessingTask(
+                                    video.taskId ?? video.id,
+                                    video.url,
+                                  ),
+                                )
+                              : null,
                           onTap: () {
                             if (video.status == ProcessingStatus.completed) {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
