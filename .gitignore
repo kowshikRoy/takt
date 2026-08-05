@@ -96,5 +96,11 @@ assets/*.db
 *.jsonl
 temp_*.jsonl
 
+# Book source files (PDFs, audio, extras) — only track JSON data files
+assets/books/**
+!assets/books/**/
+!assets/books/**/*.json
+
 # Screenshots and generated root assets
 /*.png
+

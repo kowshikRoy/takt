@@ -14,26 +14,27 @@ import 'services/gamification_service.dart';
 import 'services/curriculum_service.dart';
 import 'services/sound_service.dart';
 import 'services/notification_service.dart';
+import 'services/book_guide_service.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Catch framework-level errors (widget build/layout/paint) that would
-  // otherwise only show as a red error screen in debug and vanish silently
-  // in release, with nothing anywhere recording that they happened.
-  FlutterError.onError = (FlutterErrorDetails details) {
-    AppLogger.error(
-      'Uncaught Flutter error',
-      error: details.exception,
-      stackTrace: details.stack,
-      tag: 'FlutterError',
-    );
-    FlutterError.presentError(details);
-  };
-
   // Catch everything else (async errors outside the widget tree).
   runZonedGuarded(
     () {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      // Catch framework-level errors (widget build/layout/paint) that would
+      // otherwise only show as a red error screen in debug and vanish silently
+      // in release, with nothing anywhere recording that they happened.
+      FlutterError.onError = (FlutterErrorDetails details) {
+        AppLogger.error(
+          'Uncaught Flutter error',
+          error: details.exception,
+          stackTrace: details.stack,
+          tag: 'FlutterError',
+        );
+        FlutterError.presentError(details);
+      };
+
       runApp(
         MultiProvider(
           providers: [
@@ -47,6 +48,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => CurriculumService()),
             ChangeNotifierProvider(create: (_) => SoundService()),
             ChangeNotifierProvider(create: (_) => NotificationService()),
+            ChangeNotifierProvider(create: (_) => BookGuideService()),
           ],
           child: const MyApp(),
         ),

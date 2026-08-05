@@ -33,6 +33,15 @@ class VocabularyService extends ChangeNotifier {
 
   factory VocabularyService() => _instance;
 
+  @visibleForTesting
+  static Future<void> resetForTesting() async {
+    if (_db != null && _db!.isOpen) {
+      await _db!.close();
+    }
+    _db = null;
+    _dbCompleter = null;
+  }
+
   VocabularyService._internal() {
     _init();
   }

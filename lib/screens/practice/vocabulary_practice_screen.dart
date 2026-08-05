@@ -253,8 +253,8 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                               ),
                             ),
                             subtitle: Text(
-                              '${w.category.name.toUpperCase()} • Interval: ${w.interval}d • Ease: ${w.easeFactor.toStringAsFixed(1)}x',
-                              style: const TextStyle(fontSize: 11),
+                              w.masteryLevelLabel,
+                              style: const TextStyle(fontSize: 12),
                             ),
                             trailing: const Icon(Icons.chevron_right_rounded),
                             onTap: () {

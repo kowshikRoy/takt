@@ -82,7 +82,6 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
 
   List<Map<String, dynamic>> _detailsList = [];
   SavedWord? _savedWord;
-  bool _isLoading = true;
   final int _selectedSenseIndex = 0;
   String? _pluralForm;
   String _cefrBadge = 'B1';
@@ -178,7 +177,6 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
         _savedWord = saved;
         _pluralForm = foundPlural;
         _cefrBadge = cefr;
-        _isLoading = false;
       });
     }
   }
@@ -482,119 +480,73 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
             ),
           ],
 
-          const SizedBox(height: 20),
-
-          // 1-Tap Category Switcher Buttons
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else ...[
-            Text(
-              "LEARNING STATUS",
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+          const SizedBox(height: 16),
+          if (_savedWord == null) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _setCategory(VocabCategory.learning),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add to Learning Deck'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4)),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
+          ] else ...[
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Expanded(
-                  child: _buildCategoryChip(
-                    label: "Learning",
-                    icon: Icons.school_rounded,
-                    category: VocabCategory.learning,
-                    color: Colors.amber.shade800,
-                  ),
-                ),
+                ...List.generate(4, (index) {
+                  final isEarned = index < _savedWord!.masteryLevel;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Icon(
+                      isEarned ? Icons.star_rounded : Icons.star_border_rounded,
+                      size: 16,
+                      color: isEarned
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  );
+                }),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: _buildCategoryChip(
-                    label: "Mastered",
-                    icon: Icons.check_circle_rounded,
-                    category: VocabCategory.mastered,
-                    color: Colors.green.shade700,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildCategoryChip(
-                    label: "Bookmark",
-                    icon: Icons.bookmark_rounded,
-                    category: VocabCategory.reviewLater,
-                    color: Colors.blue.shade700,
+                Text(
+                  'Mastery Level ${_savedWord!.masteryLevel} / 4',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => DictionaryScreen(initialSearchQuery: widget.word),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.menu_book_rounded, size: 18),
-                label: const Text('View Forms, Declensions & Examples →'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                ),
+            const SizedBox(height: 12),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => DictionaryScreen(initialSearchQuery: widget.word),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.menu_book_rounded, size: 18),
+              label: const Text('View Forms & Declensions →'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               ),
             ),
-          ],
+          ),
         ],
       ).animate().fade(duration: 200.ms).slideY(begin: 0.1, end: 0),
-    );
-  }
-
-  Widget _buildCategoryChip({
-    required String label,
-    required IconData icon,
-    required VocabCategory category,
-    required Color color,
-  }) {
-    final bool isSelected = _savedWord != null && _savedWord!.category == category;
-
-    return InkWell(
-      onTap: () => _setCategory(category),
-      borderRadius: BorderRadius.circular(4),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: isSelected ? color : Theme.of(context).dividerColor.withValues(alpha: 0.5),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              isSelected ? icon : icon,
-              size: 20,
-              color: isSelected ? color : Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? color : Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

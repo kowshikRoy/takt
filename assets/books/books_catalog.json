@@ -1,0 +1,28 @@
+[
+  {
+    "id": "netzwerk_a2",
+    "title": "Netzwerk neu A2",
+    "subtitle": "Deutsch als Fremdsprache - Kursbuch",
+    "cefrLevel": "A2",
+    "coverImage": "assets/images/netzwerk_a2_cover.jpg",
+    "totalChapters": 12,
+    "chapters": [
+      {
+        "chapterNumber": 1,
+        "title": "Und was machst du?",
+        "topic": "Beruf, Familie, Sprachen & Freizeit",
+        "jsonAssetPath": "assets/books/netzwerk-a2/unit_01.json",
+        "wordCount": 141,
+        "audioCount": 7
+      },
+      {
+        "chapterNumber": 2,
+        "title": "Nach der Schulzeit",
+        "topic": "Schule, Ausbildung, Studium & Erinnerungen",
+        "jsonAssetPath": "assets/books/netzwerk-a2/unit_02.json",
+        "wordCount": 128,
+        "audioCount": 6
+      }
+    ]
+  }
+]

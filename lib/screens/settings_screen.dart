@@ -85,15 +85,34 @@ class SettingsScreen extends StatelessWidget {
           ),
           Consumer<SoundService>(
             builder: (context, soundService, _) {
-              return SwitchListTile(
-                title: const Text('Sound Effects'),
-                subtitle: const Text('Correct/incorrect and level-up cues'),
-                secondary: Icon(
-                  Icons.volume_up_rounded,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                value: soundService.enabled,
-                onChanged: (val) => soundService.setEnabled(val),
+              return Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text('Sound Effects'),
+                    subtitle: const Text('Correct/incorrect and level-up cues'),
+                    secondary: Icon(
+                      Icons.volume_up_rounded,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    value: soundService.enabled,
+                    onChanged: (val) => soundService.setEnabled(val),
+                  ),
+                  if (soundService.enabled)
+                    ListTile(
+                      contentPadding: const EdgeInsets.only(left: 32, right: 16),
+                      title: const Text('Sound Style'),
+                      subtitle: Text(
+                        SoundService.availablePacks[soundService.soundPack] ??
+                            'Marimba (Duolingo Style)',
+                      ),
+                      leading: Icon(
+                        Icons.music_note_rounded,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _showSoundPackDialog(context, soundService),
+                    ),
+                ],
               );
             },
           ),
@@ -215,6 +234,42 @@ class SettingsScreen extends StatelessWidget {
               (val) => provider.setThemeMode(val!),
             ),
           ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSoundPackDialog(BuildContext context, SoundService soundService) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sound Style'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: SoundService.availablePacks.entries.map((entry) {
+            return RadioListTile<String>(
+              title: Text(entry.value),
+              secondary: IconButton(
+                icon: const Icon(Icons.volume_up_rounded),
+                tooltip: 'Preview sound',
+                onPressed: () => soundService.previewSoundPack(entry.key),
+              ),
+              value: entry.key,
+              groupValue: soundService.soundPack,
+              onChanged: (val) {
+                if (val != null) {
+                  soundService.setSoundPack(val, preview: true);
+                  Navigator.pop(context);
+                }
+              },
+            );
+          }).toList(),
         ),
         actions: [
           TextButton(
