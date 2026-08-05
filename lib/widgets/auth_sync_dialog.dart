@@ -81,7 +81,7 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
     final syncService = SyncService();
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       child: Container(
         padding: const EdgeInsets.all(24),
         constraints: const BoxConstraints(maxWidth: 400),
@@ -203,7 +203,7 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                     labelText: "Username",
                     prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
@@ -215,7 +215,7 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                     labelText: "Password",
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
@@ -232,7 +232,7 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                   child: _isLoading

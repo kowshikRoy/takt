@@ -209,13 +209,17 @@ class ProfileScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Consumer<ProfileService>(
-      builder: (context, profileService, _) {
+    return Consumer2<ProfileService, VocabularyService>(
+      builder: (context, profileService, vocabService, _) {
+        final words = vocabService.cachedSavedWords;
+        final wordsCount = words.length;
+        final curStreak = profileService.currentStreak;
+
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: theme.cardColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(color: theme.dividerColor),
             boxShadow: [
               BoxShadow(
@@ -227,144 +231,130 @@ class ProfileScreen extends StatelessWidget {
               ),
             ],
           ),
-          child: FutureBuilder<List<SavedWord>>(
-            future: Provider.of<VocabularyService>(
-              context,
-              listen: false,
-            ).getSavedWords(),
-            builder: (context, snapshot) {
-              final words = snapshot.data ?? [];
-              final wordsCount = words.length;
-              final curStreak = profileService.currentStreak;
+          child: Consumer<GamificationService>(
+            builder: (context, gamification, _) {
+              final totalXp = gamification.totalXp;
+              final level = gamification.level;
 
-              return Consumer<GamificationService>(
-                builder: (context, gamification, _) {
-                  final totalXp = gamification.totalXp;
-                  final level = gamification.level;
-
-                  return Column(
+              return Column(
+                children: [
+                  _buildHeatmapCalendar(context, words),
+                  const SizedBox(height: 16),
+                  Divider(height: 1, color: theme.dividerColor),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildHeatmapCalendar(context, words),
-                      const SizedBox(height: 16),
-                      Divider(height: 1, color: theme.dividerColor),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Text(
+                            'Weekly Words',
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$wordsCount',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onBackground,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Weekly Words',
+                                'Current Streak',
                                 style: TextStyle(
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.6,
-                                  ),
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
                                   fontSize: 12,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              if (profileService.streakFreezes > 0) ...[
+                                const SizedBox(width: 4),
+                                Tooltip(
+                                  message:
+                                      '${profileService.streakFreezes} streak freeze(s) available',
+                                  child: const Text(
+                                    '❄️',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$curStreak Days 🔥',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFD97706),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               Text(
-                                '$wordsCount',
+                                'Total XP',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onBackground,
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Lv.$level',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'Current Streak',
-                                    style: TextStyle(
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  if (profileService.streakFreezes > 0) ...[
-                                    const SizedBox(width: 4),
-                                    Tooltip(
-                                      message:
-                                          '${profileService.streakFreezes} streak freeze(s) available',
-                                      child: const Text(
-                                        '❄️',
-                                        style: TextStyle(fontSize: 11),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '$curStreak Days 🔥',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFFD97706),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'Total XP',
-                                    style: TextStyle(
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      'Lv.$level',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: theme
-                                            .colorScheme
-                                            .onPrimaryContainer,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '$totalXp',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onBackground,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: 2),
+                          Text(
+                            '$totalXp',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onBackground,
+                            ),
                           ),
                         ],
                       ),
                     ],
-                  );
-                },
+                  ),
+                ],
               );
             },
           ),

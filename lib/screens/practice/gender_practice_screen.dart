@@ -830,7 +830,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
       ),
       builder: (ctx) {
         return Padding(
@@ -845,7 +845,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: Theme.of(ctx).dividerColor,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
@@ -925,7 +925,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
         color: isSelected
             ? color.withValues(alpha: 0.12)
             : Theme.of(ctx).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: isSelected
               ? color
@@ -1052,7 +1052,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
               ),
               InkWell(
                 onTap: _showModeSelectionSheet,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(4),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -1062,7 +1062,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                     color: Theme.of(
                       context,
                     ).colorScheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(4),
                     border: Border.all(
                       color: Theme.of(
                         context,
@@ -1104,7 +1104,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Theme.of(
@@ -1129,7 +1129,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
                   children: [
@@ -1181,7 +1181,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(32),
+                          borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color: _isAnswered
                                 ? _getGenderColor(current.genderCode)
@@ -1223,7 +1223,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                       color: Colors.amber.withValues(
                                         alpha: 0.15,
                                       ),
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(4),
                                       border: Border.all(
                                         color: Colors.amber.withValues(
                                           alpha: 0.5,
@@ -1261,7 +1261,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                           .colorScheme
                                           .primary
                                           .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       'Rank #${current.freqRank}',
@@ -1319,7 +1319,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                           ).withValues(alpha: 0.15)
                                         : Theme.of(context).colorScheme.primary
                                               .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
                                     _isAnswered ? current.article : '?',
@@ -1391,7 +1391,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                           .colorScheme
                                           .surfaceContainerHighest
                                           .withValues(alpha: 0.5),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(4),
                                       border: Border.all(
                                         color: Theme.of(
                                           context,
@@ -1419,7 +1419,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                       color: _getGenderColor(
                                         current.genderCode,
                                       ).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(4),
                                       border: Border.all(
                                         color: _getGenderColor(
                                           current.genderCode,
@@ -1460,7 +1460,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                               ),
                             ),
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(4),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(
@@ -1471,7 +1471,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                               color: Theme.of(
                                 context,
                               ).colorScheme.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(4),
                               border: Border.all(
                                 color: Theme.of(
                                   context,
@@ -1538,7 +1538,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                     ),
                                   ),
                                 ),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(4),
                                 child: Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(
@@ -1551,7 +1551,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                         : _getGenderColor(
                                             current.genderCode,
                                           ).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(4),
                                     border: Border.all(
                                       color: rule.isException
                                           ? Colors.orange
@@ -1678,7 +1678,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                     ? Colors.green
                                     : Theme.of(context).colorScheme.primary,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
                               icon: const Icon(
@@ -1796,7 +1796,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
             width: isSelected || (isCorrectCode && _isAnswered) ? 2.5 : 1.5,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(4),
           ),
           padding: EdgeInsets.zero,
           minimumSize: Size.zero,
@@ -1943,7 +1943,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -1981,7 +1981,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           ),
           decoration: BoxDecoration(
             color: Theme.of(ctx).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.25),
@@ -2007,7 +2007,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                     height: 5,
                     decoration: BoxDecoration(
                       color: Theme.of(ctx).dividerColor,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
@@ -2079,7 +2079,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Theme.of(ctx).cardColor,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(4),
                     border: Border.all(color: Theme.of(ctx).dividerColor),
                   ),
                   child: Text(
@@ -2107,7 +2107,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: genderColor.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(4),
                     border: Border.all(
                       color: genderColor.withValues(alpha: 0.3),
                     ),
@@ -2148,7 +2148,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.orange.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(4),
                       border: Border.all(
                         color: Colors.orange.withValues(alpha: 0.4),
                       ),

@@ -40,7 +40,7 @@ class GlanceWordSheet extends StatefulWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540, maxHeight: 680),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(4),
               child: GlanceWordSheet(
                 word: word,
                 detailsList: detailsList,
@@ -261,7 +261,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
       ),
       padding: EdgeInsets.only(
         left: 20,
@@ -300,7 +300,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           "⚡ $contextNote",
@@ -320,7 +320,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: genderColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
                               border: Border.all(color: genderColor.withValues(alpha: 0.4)),
                             ),
                             child: Text(
@@ -337,7 +337,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             '$_cefrBadge • CEFR',
@@ -353,7 +353,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF9844A).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
                               border: Border.all(color: const Color(0xFFF9844A).withValues(alpha: 0.4)),
                             ),
                             child: Text(
@@ -448,7 +448,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.4)),
               ),
               child: Column(
@@ -544,7 +544,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                 label: const Text('View Forms, Declensions & Examples →'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 ),
               ),
             ),
@@ -564,13 +564,13 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
 
     return InkWell(
       onTap: () => _setCategory(category),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(4),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? color.withValues(alpha: 0.15) : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isSelected ? color : Theme.of(context).dividerColor.withValues(alpha: 0.5),
             width: isSelected ? 2 : 1,

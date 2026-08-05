@@ -78,7 +78,7 @@ class LessonNodeWidget extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: theme.scaffoldBackgroundColor, width: 2),
                     ),
                     child: Text(

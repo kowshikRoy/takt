@@ -494,7 +494,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: colorScheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                           color: hasUpdate
                               ? colorScheme.primary.withValues(alpha: 0.3)
@@ -547,7 +547,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                             decoration: BoxDecoration(
                                               color: colorScheme.primary,
                                               borderRadius:
-                                                  BorderRadius.circular(12),
+                                                  BorderRadius.circular(4),
                                             ),
                                             child: const Text(
                                               'UPDATE AVAILABLE',
@@ -616,7 +616,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                   style: FilledButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(4),
                                     ),
                                   ),
                                   icon: const Icon(
@@ -631,7 +631,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                   style: OutlinedButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(4),
                                     ),
                                   ),
                                   icon: const Icon(

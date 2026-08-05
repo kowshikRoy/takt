@@ -195,7 +195,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   elevation: 0,
                   color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(4),
                     side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
                   ),
                   child: Padding(
@@ -250,12 +250,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     return Card(
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(4),
                         side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                       ),
                       child: ListTile(
                         leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(4),
                           child: Image.asset(article.imageUrl, width: 44, height: 44, fit: BoxFit.cover),
                         ),
                         title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -285,7 +285,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       return Card(
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(4),
                           side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                         ),
                         child: ListTile(
@@ -321,7 +321,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       return Card(
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(4),
                           side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                         ),
                         child: ListTile(
@@ -488,7 +488,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -500,7 +500,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           onTap: () {
             if (isCompleted) {
               Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
@@ -514,7 +514,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   fit: StackFit.expand,
                   children: [
                     ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                       child: CachedNetworkImage(
                         imageUrl: video.thumbnailUrl,
                         fit: BoxFit.cover,
@@ -597,7 +597,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

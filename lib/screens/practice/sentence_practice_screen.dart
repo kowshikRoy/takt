@@ -109,7 +109,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: progress,
                             backgroundColor: Theme.of(
@@ -205,7 +205,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                               : Theme.of(
                                   context,
                                 ).colorScheme.primary.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(4),
                           border: _isChecked && _isCorrect
                               ? Border.all(
                                   color: _getCaseColor(exercise.targetCase),
@@ -446,7 +446,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                               : Theme.of(context).colorScheme.primary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                         ),
                         child: Text(
@@ -496,7 +496,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
       decoration: BoxDecoration(
         color: bgColor,
         border: Border.all(color: borderColor, width: isTarget ? 2 : 1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         word,
@@ -521,7 +521,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
           width: 2,
           style: BorderStyle.solid,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }
@@ -541,7 +541,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
         backgroundColor: isSelected
             ? Theme.of(context).colorScheme.primary.withOpacity(0.05)
             : Theme.of(context).cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         side: BorderSide(
           color: isSelected
               ? Theme.of(context).colorScheme.primary

@@ -93,7 +93,7 @@ class _CelebrationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -111,7 +111,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(4),
         side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       child: Padding(
@@ -131,7 +131,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       '$savedCount/$goalCount',
@@ -203,7 +203,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSaved ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4) : theme.cardColor,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isSaved ? theme.colorScheme.primary.withValues(alpha: 0.4) : theme.colorScheme.outlineVariant,
           ),

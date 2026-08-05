@@ -142,7 +142,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
                                   color: Theme.of(context).dividerColor,
                                 ),
@@ -227,7 +227,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                         context,
                       ).colorScheme.primary.withValues(alpha: 0.2),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                     child: Row(
@@ -294,7 +294,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: (_score % 10) / 10 + 0.1, // Keep existing logic map
                 backgroundColor: Theme.of(
@@ -310,7 +310,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(4),
               border: Border.all(color: Theme.of(context).dividerColor),
               boxShadow: const [
                 BoxShadow(
@@ -509,7 +509,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color, width: 2),
         boxShadow: const [
           BoxShadow(
@@ -529,7 +529,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 label.toUpperCase(),
@@ -616,15 +616,15 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
 
     return Material(
       color: backgroundColor,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(4),
       child: InkWell(
         onTap: _isAnswered ? null : () => _handleAnswer(text),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         child: AnimatedContainer(
           duration: 300.ms,
           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(
               color: borderColor,
               width:
@@ -669,7 +669,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
           end: Alignment.bottomRight,
           colors: [Colors.white, const Color(0xFFF8FAFC)],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color.withOpacity(0.3)),
         boxShadow: const [
           BoxShadow(
@@ -684,7 +684,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -704,7 +704,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                           Theme.of(context).colorScheme.tertiary,
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(4),
                       boxShadow: [
                         BoxShadow(
                           color: Theme.of(

@@ -17,6 +17,19 @@ class VocabularyService extends ChangeNotifier {
   static const String _webStorageKey = 'user_vocabulary_json_v1';
 
   final Map<String, SavedWord> _inMemoryWords = {};
+  List<SavedWord> _cachedSavedWords = [];
+  List<SavedWord> _cachedDueWords = [];
+
+  List<SavedWord> get cachedSavedWords => _cachedSavedWords;
+  List<SavedWord> get cachedDueWords => _cachedDueWords;
+  int get cachedSavedCount => _cachedSavedWords.length;
+  int get cachedDueCount => _cachedDueWords.length;
+
+  Future<void> refreshCache() async {
+    _cachedSavedWords = await getSavedWords();
+    _cachedDueWords = await getDueWords();
+    notifyListeners();
+  }
 
   factory VocabularyService() => _instance;
 
@@ -50,6 +63,8 @@ class VocabularyService extends ChangeNotifier {
         AppLogger.error("DB init notice", error: e, tag: 'VocabularyService');
       }
     }
+
+    await refreshCache();
 
     // Auto-sync if user is authenticated
     if (AuthService().isAuthenticated) {
@@ -158,7 +173,9 @@ class VocabularyService extends ChangeNotifier {
         );
       }
     }
-    if (notify) notifyListeners();
+    if (notify) {
+      await refreshCache();
+    }
 
     if (triggerSync && AuthService().isAuthenticated) {
       SyncService().syncNow();
@@ -180,7 +197,7 @@ class VocabularyService extends ChangeNotifier {
         await db.delete('saved_words', where: 'id = ?', whereArgs: [id]);
       }
     }
-    notifyListeners();
+    await refreshCache();
 
     if (AuthService().isAuthenticated) {
       SyncService().syncNow();

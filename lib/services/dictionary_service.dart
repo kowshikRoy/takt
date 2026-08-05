@@ -403,6 +403,28 @@ class DictionaryService {
     }
   }
 
+  Future<List<Map<String, String?>>> getExamplesForWord(String word) async {
+    final clean = word.trim();
+    if (clean.isEmpty) return [];
+    if (!kIsWeb) {
+      final db = await database;
+      if (db != null) {
+        final wordRes = await db.query(
+          'words',
+          columns: ['id', 'base_form'],
+          where: 'word = ? COLLATE NOCASE',
+          whereArgs: [clean],
+        );
+        if (wordRes.isNotEmpty) {
+          final wordId = wordRes.first['id'] as int;
+          final baseForm = wordRes.first['base_form'] as String?;
+          return await _getExamplesForWord(db, wordId, baseForm);
+        }
+      }
+    }
+    return [];
+  }
+
   Future<Map<String, dynamic>?> getWordDetails(int wordId) async {
     if (!kIsWeb) {
       final db = await database;
@@ -422,11 +444,9 @@ class DictionaryService {
           word['definitions'] = definitions;
 
           try {
-            final List<Map<String, dynamic>> formsRes = await db.query(
-              'forms',
-              columns: ['form'],
-              where: 'word_id = ?',
-              whereArgs: [wordId],
+            final List<Map<String, dynamic>> formsRes = await db.rawQuery(
+              'SELECT f.form, t.tags FROM forms f LEFT JOIN tags t ON f.tag_id = t.id WHERE f.word_id = ?',
+              [wordId],
             );
             word['forms'] = formsRes;
           } catch (_) {

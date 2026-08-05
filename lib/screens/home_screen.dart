@@ -210,7 +210,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(4),
                       border: Border.all(
                         color: Theme.of(context).colorScheme.outlineVariant,
                       ),
@@ -245,411 +245,324 @@ class HomeScreen extends StatelessWidget {
   Widget _buildDailySessionCard(BuildContext context) {
     return Consumer2<VocabularyService, ProfileService>(
       builder: (context, vocabService, profileService, _) {
-        return FutureBuilder<List<SavedWord>>(
-          future: vocabService.getDueWords(),
-          builder: (context, dueSnapshot) {
-            final dueWords = dueSnapshot.data ?? [];
-            final dueCount = dueWords.length;
+        final dueCount = vocabService.cachedDueCount;
+        final savedCount = vocabService.cachedSavedCount;
 
-            final streak = profileService.currentStreak;
-            final completedTasks = profileService.dailyTasksCompleted;
-            final isGoalAchieved = profileService.isDailyGoalAchieved;
+        final streak = profileService.currentStreak;
+        final completedTasks = profileService.dailyTasksCompleted;
+        final isGoalAchieved = profileService.isDailyGoalAchieved;
 
-            final bool warmUpDone =
-                profileService.todayReviewsCount > 0 || dueCount == 0;
-            final bool storyDone = profileService.todayStoryRead;
-            final bool saveDone = profileService.todayWordsSaved > 0;
+        final bool warmUpDone = profileService.todayReviewsCount > 0 || dueCount == 0;
+        final bool storyDone = profileService.todayStoryRead;
+        final bool saveDone = profileService.todayWordsSaved > 0;
 
-            final colorScheme = Theme.of(context).colorScheme;
+        final bool isUnlocked = savedCount >= 5;
+        final colorScheme = Theme.of(context).colorScheme;
 
-            return Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-                side: BorderSide(
-                  color: isGoalAchieved
-                      ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
-                      : colorScheme.outlineVariant,
-                  width: isGoalAchieved ? 2 : 1,
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+            side: BorderSide(
+              color: isGoalAchieved
+                  ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
+                  : colorScheme.outlineVariant,
+              width: isGoalAchieved ? 2 : 1,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Positioned(
+                right: -24,
+                top: -24,
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: isGoalAchieved
+                        ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                        : colorScheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                children: [
-                  Positioned(
-                    right: -24,
-                    top: -24,
-                    child: Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        color: isGoalAchieved
-                            ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
-                            : colorScheme.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      'Daily Session',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: streak > 0
-                                            ? const Color(
-                                                0xFFF9844A,
-                                              ).withValues(alpha: 0.2)
-                                            : colorScheme.primaryContainer,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            streak > 0
-                                                ? Icons
-                                                      .local_fire_department_rounded
-                                                : Icons.bolt_rounded,
-                                            size: 14,
-                                            color: streak > 0
-                                                ? const Color(0xFFD97706)
-                                                : colorScheme.primary,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            streak > 0
-                                                ? '$streak Day Streak'
-                                                : 'Start streak!',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: streak > 0
-                                                  ? const Color(0xFFD97706)
-                                                  : colorScheme.primary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
                                 Text(
-                                  isGoalAchieved
-                                      ? '🎉 Daily goal achieved! Outstanding work.'
-                                      : '$completedTasks of 3 daily tasks completed',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: isGoalAchieved
-                                            ? const Color(0xFFD97706)
-                                            : colorScheme.onSurfaceVariant,
-                                        fontWeight: isGoalAchieved
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
+                                  'Daily Session',
+                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
                                       ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: streak > 0
+                                        ? const Color(0xFFF9844A).withValues(alpha: 0.2)
+                                        : colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        streak > 0 ? Icons.local_fire_department_rounded : Icons.bolt_rounded,
+                                        size: 14,
+                                        color: streak > 0 ? const Color(0xFFD97706) : colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        streak > 0 ? '$streak Day Streak' : 'Start streak!',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: streak > 0 ? const Color(0xFFD97706) : colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: isGoalAchieved
-                                    ? const Color(
-                                        0xFFF59E0B,
-                                      ).withValues(alpha: 0.2)
-                                    : colorScheme.primaryContainer,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '$completedTasks/3',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                            const SizedBox(height: 6),
+                            Text(
+                              isGoalAchieved
+                                  ? '🎉 Daily goal achieved! Outstanding work.'
+                                  : '$completedTasks of 3 daily tasks completed',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: isGoalAchieved
                                         ? const Color(0xFFD97706)
-                                        : colorScheme.primary,
+                                        : colorScheme.onSurfaceVariant,
+                                    fontWeight: isGoalAchieved ? FontWeight.w600 : FontWeight.normal,
                                   ),
-                                ),
-                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
-
-                        // Task 1: SRS Vocabulary Warm-up
-                        GestureDetector(
-                          onTap: () {
-                            profileService.recordActivityToday(review: true);
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const VocabularyPracticeScreen(),
-                              ),
-                            );
-                          },
-                          child: _buildSessionItem(
-                            context,
-                            iconWidget: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: warmUpDone
-                                    ? const Color(0xFF22C55E)
-                                    : colorScheme.surfaceContainerHighest,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                warmUpDone ? Icons.check : Icons.school_rounded,
-                                color: warmUpDone
-                                    ? Colors.white
-                                    : colorScheme.primary,
-                                size: 14,
-                              ),
-                            ),
-                            title: warmUpDone
-                                ? 'Warm-up: Vocabulary (Completed)'
-                                : 'Warm-up: $dueCount words due for review',
-                            isCompleted: warmUpDone,
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isGoalAchieved
+                                ? const Color(0xFFF59E0B).withValues(alpha: 0.2)
+                                : colorScheme.primaryContainer,
+                            shape: BoxShape.circle,
                           ),
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        // Task 2: German Reading Lesson
-                        GestureDetector(
-                          onTap: () {
-                            profileService.recordActivityToday(story: true);
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => StoryReaderScreen(
-                                  article: _dailyLessonArticle,
-                                ),
+                          child: Center(
+                            child: Text(
+                              '$completedTasks/3',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isGoalAchieved ? const Color(0xFFD97706) : colorScheme.primary,
                               ),
-                            );
-                          },
-                          child: _buildSessionItem(
-                            context,
-                            iconWidget: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: storyDone
-                                    ? const Color(0xFF22C55E)
-                                    : colorScheme.primary.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                shape: BoxShape.circle,
-                                border: storyDone
-                                    ? null
-                                    : Border.all(
-                                        color: colorScheme.primary,
-                                        width: 2,
-                                      ),
-                              ),
-                              child: Icon(
-                                storyDone
-                                    ? Icons.check
-                                    : Icons.menu_book_rounded,
-                                color: storyDone
-                                    ? Colors.white
-                                    : colorScheme.primary,
-                                size: 14,
-                              ),
-                            ),
-                            title: storyDone
-                                ? 'Lesson: Die Sahara (Read Today)'
-                                : 'Lesson: Die Sahara (Tap to Read)',
-                            isCompleted: storyDone,
-                          ),
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        // Task 3: Discovery Word Capture
-                        _buildSessionItem(
-                          context,
-                          iconWidget: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: saveDone
-                                  ? const Color(0xFF22C55E)
-                                  : colorScheme.surfaceContainerHighest,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              saveDone
-                                  ? Icons.check
-                                  : Icons.bookmark_add_rounded,
-                              color: saveDone
-                                  ? Colors.white
-                                  : colorScheme.primary,
-                              size: 14,
                             ),
                           ),
-                          title: saveDone
-                              ? 'Challenge: Captured 1 word today!'
-                              : 'Challenge: Save 1 word from Discover/Dictionary',
-                          isCompleted: saveDone,
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Daily Review Item (Dynamic SRS Unlock)
-                        FutureBuilder<List<SavedWord>>(
-                          future: vocabService.getSavedWords(),
-                          builder: (context, snapshot) {
-                            final savedCount = snapshot.hasData
-                                ? snapshot.data!.length
-                                : 0;
-                            final isUnlocked = savedCount >= 5;
-                            return InkWell(
-                              onTap: () {
-                                if (isUnlocked) {
-                                  profileService.recordActivityToday(
-                                    review: true,
-                                  );
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const VocabularyPracticeScreen(),
-                                    ),
-                                  );
-                                } else {
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => AlertDialog(
-                                      title: const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.lock_outline_rounded,
-                                            color: Colors.orange,
-                                          ),
-                                          SizedBox(width: 10),
-                                          Text('Daily Review Locked'),
-                                        ],
-                                      ),
-                                      content: Text(
-                                        'Daily Spaced Repetition (SRS) review unlocks after saving 5 words to your dictionary.\n\n'
-                                        'You currently have $savedCount / 5 words saved. Visit the Learn tab or Dictionary to save more words!',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Text('Got it'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(16),
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: isUnlocked
-                                      ? colorScheme.primaryContainer.withValues(
-                                          alpha: 0.5,
-                                        )
-                                      : colorScheme.surfaceContainerHigh,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isUnlocked
-                                        ? colorScheme.primary.withValues(
-                                            alpha: 0.3,
-                                          )
-                                        : colorScheme.outlineVariant,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      isUnlocked
-                                          ? Icons.style_rounded
-                                          : Icons.lock_outline_rounded,
-                                      color: isUnlocked
-                                          ? colorScheme.primary
-                                          : Colors.orange,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            isUnlocked
-                                                ? 'Daily Review: $dueCount Due Now'
-                                                : 'Daily Review (Unlock at 5 words)',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleSmall
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            isUnlocked
-                                                ? 'Review your personalized SRS vocabulary deck'
-                                                : '$savedCount of 5 words saved so far',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.copyWith(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(
-                                      Icons.arrow_forward_ios_rounded,
-                                      size: 16,
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+
+                    // Task 1: SRS Vocabulary Warm-up
+                    GestureDetector(
+                      onTap: () {
+                        profileService.recordActivityToday(review: true);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
+                        );
+                      },
+                      child: _buildSessionItem(
+                        context,
+                        iconWidget: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: warmUpDone ? const Color(0xFF22C55E) : colorScheme.surfaceContainerHighest,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            warmUpDone ? Icons.check : Icons.school_rounded,
+                            color: warmUpDone ? Colors.white : colorScheme.primary,
+                            size: 14,
+                          ),
+                        ),
+                        title: warmUpDone
+                            ? 'Warm-up: Vocabulary (Completed)'
+                            : 'Warm-up: $dueCount words due for review',
+                        isCompleted: warmUpDone,
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Task 2: German Reading Lesson
+                    GestureDetector(
+                      onTap: () {
+                        profileService.recordActivityToday(story: true);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => StoryReaderScreen(
+                              article: _dailyLessonArticle,
+                            ),
+                          ),
+                        );
+                      },
+                      child: _buildSessionItem(
+                        context,
+                        iconWidget: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: storyDone ? const Color(0xFF22C55E) : colorScheme.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                            border: storyDone
+                                ? null
+                                : Border.all(color: colorScheme.primary, width: 2),
+                          ),
+                          child: Icon(
+                            storyDone ? Icons.check : Icons.menu_book_rounded,
+                            color: storyDone ? Colors.white : colorScheme.primary,
+                            size: 14,
+                          ),
+                        ),
+                        title: storyDone
+                            ? 'Lesson: Die Sahara (Read Today)'
+                            : 'Lesson: Die Sahara (Tap to Read)',
+                        isCompleted: storyDone,
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Task 3: Discovery Word Capture
+                    _buildSessionItem(
+                      context,
+                      iconWidget: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: saveDone ? const Color(0xFF22C55E) : colorScheme.surfaceContainerHighest,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          saveDone ? Icons.check : Icons.bookmark_add_rounded,
+                          color: saveDone ? Colors.white : colorScheme.primary,
+                          size: 14,
+                        ),
+                      ),
+                      title: saveDone
+                          ? 'Challenge: Captured 1 word today!'
+                          : 'Challenge: Save 1 word from Discover/Dictionary',
+                      isCompleted: saveDone,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Daily Review Item (Dynamic SRS Unlock)
+                    InkWell(
+                      onTap: () {
+                        if (isUnlocked) {
+                          profileService.recordActivityToday(review: true);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
+                          );
+                        } else {
+                          showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Row(
+                                children: [
+                                  Icon(Icons.lock_outline_rounded, color: Colors.orange),
+                                  SizedBox(width: 10),
+                                  Text('Daily Review Locked'),
+                                ],
+                              ),
+                              content: Text(
+                                'Daily Spaced Repetition (SRS) review unlocks after saving 5 words to your dictionary.\n\n'
+                                'You currently have $savedCount / 5 words saved. Visit the Learn tab or Dictionary to save more words!',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Got it'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isUnlocked
+                              ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+                              : colorScheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: isUnlocked
+                                ? colorScheme.primary.withValues(alpha: 0.3)
+                                : colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isUnlocked ? Icons.style_rounded : Icons.lock_outline_rounded,
+                              color: isUnlocked ? colorScheme.primary : Colors.orange,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isUnlocked
+                                        ? 'Daily Review: $dueCount Due Now'
+                                        : 'Daily Review (Unlock at 5 words)',
+                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    isUnlocked
+                                        ? 'Review your personalized SRS vocabulary deck'
+                                        : '$savedCount of 5 words saved so far',
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );
@@ -968,7 +881,7 @@ class HomeScreen extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         side: BorderSide(color: Colors.purple.shade100),
       ),
       clipBehavior: Clip.antiAlias,
@@ -999,7 +912,7 @@ class HomeScreen extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(4),
                     border: Border.all(color: Colors.purple.shade100),
                   ),
                   child: const Icon(
@@ -1042,7 +955,7 @@ class HomeScreen extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         side: BorderSide(
           color: const Color(0xFFD1FAE5),
         ), // Custom color for visual distinctiveness
@@ -1075,7 +988,7 @@ class HomeScreen extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(4),
                     border: Border.all(
                       color: Colors.black.withValues(alpha: 0.05),
                     ),
@@ -1129,7 +1042,7 @@ class HomeScreen extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         side: BorderSide(color: borderColor),
       ),
       clipBehavior: Clip.antiAlias,
@@ -1153,7 +1066,7 @@ class HomeScreen extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Icon(icon, color: iconColor, size: 20),
                     ),

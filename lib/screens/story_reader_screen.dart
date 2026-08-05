@@ -469,7 +469,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 ? (isDark ? const Color(0xFF322C28) : const Color(0xFFEBE0D0))
                 : Theme.of(context).cardColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(4),
               side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
             ),
             child: Padding(
@@ -577,7 +577,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             elevation: 0,
             color: colorScheme.surfaceContainerHigh,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(4),
               side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
             ),
             child: Padding(
@@ -668,7 +668,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     '${(progress * 100).round()}% read',
@@ -749,7 +749,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
@@ -832,7 +832,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     sourceTag,
@@ -915,7 +915,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         color: isSpoken
             ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         border: isSpoken
             ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6), width: 1.5)
             : null,
@@ -933,7 +933,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Column(
                     children: [
@@ -1039,7 +1039,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(4),
                         border: Border(
                           left: BorderSide(
                             color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
@@ -1345,7 +1345,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               height: MediaQuery.of(context).size.height * 0.75,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
               ),
               child: Column(
                 children: [
@@ -1422,7 +1422,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1453,7 +1453,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1516,7 +1516,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                               margin: const EdgeInsets.only(bottom: 8),
                               color: Theme.of(context).colorScheme.surfaceContainerLow,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(4),
                                 side: BorderSide(
                                   color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
                                 ),
@@ -1605,7 +1605,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1769,7 +1769,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(4),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.16),

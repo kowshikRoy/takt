@@ -46,7 +46,7 @@ class _MainScaffoldState extends State<MainScaffold>
   List<Widget> get _screens => [
     HomeScreen(onOpenLearnTab: () => _onItemTapped(1)),
     const DiscoverScreen(),
-    const DictionaryScreen(),
+    DictionaryScreen(onBackToHome: () => _onItemTapped(0)),
     const ProfileScreen(),
   ];
 
@@ -58,7 +58,17 @@ class _MainScaffoldState extends State<MainScaffold>
 
   @override
   Widget build(BuildContext context) {
-    return CelebrationOverlay(child: _buildScaffold(context));
+    return PopScope(
+      canPop: _selectedIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _selectedIndex != 0 && _selectedIndex != 2) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        }
+      },
+      child: CelebrationOverlay(child: _buildScaffold(context)),
+    );
   }
 
   Widget _buildScaffold(BuildContext context) {
@@ -148,7 +158,7 @@ class _MainScaffoldState extends State<MainScaffold>
 
                         return InkWell(
                           onTap: () => _onItemTapped(index),
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(4),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             padding: EdgeInsets.symmetric(
@@ -161,7 +171,7 @@ class _MainScaffoldState extends State<MainScaffold>
                                       context,
                                     ).colorScheme.primaryContainer
                                   : Colors.transparent,
-                              borderRadius: BorderRadius.circular(28),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: useExtendedRail
                                 ? Row(
@@ -254,7 +264,7 @@ class _MainScaffoldState extends State<MainScaffold>
                                   vertical: 12,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
                                 side: BorderSide(
                                   color: auth.isAuthenticated

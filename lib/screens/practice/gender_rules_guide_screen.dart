@@ -352,7 +352,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                 fillColor: Theme.of(context).cardColor,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(4),
                   borderSide: BorderSide(color: Theme.of(context).dividerColor),
                 ),
               ),
@@ -360,21 +360,24 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
           ),
 
           // Category Filter Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                _buildFilterChip('all', 'All Rules (${_allRules.length})', Icons.grid_view_rounded, Colors.grey),
-                const SizedBox(width: 8),
-                _buildFilterChip('f', 'Die / Feminine', Icons.female_rounded, AppTheme.genderFem),
-                const SizedBox(width: 8),
-                _buildFilterChip('n', 'Das / Neuter', Icons.trip_origin_rounded, AppTheme.genderNeu),
-                const SizedBox(width: 8),
-                _buildFilterChip('m', 'Der / Masculine', Icons.male_rounded, AppTheme.genderMasc),
-                const SizedBox(width: 8),
-                _buildFilterChip('exceptions', 'The Odd 10% Exceptions ⚠️', Icons.warning_amber_rounded, Colors.orange),
-              ],
+          SizedBox(
+            height: 48,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  _buildFilterChip('all', 'All Rules (${_allRules.length})', Icons.grid_view_rounded, Colors.grey),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('f', 'Die / Feminine', Icons.female_rounded, AppTheme.genderFem),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('n', 'Das / Neuter', Icons.trip_origin_rounded, AppTheme.genderNeu),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('m', 'Der / Masculine', Icons.male_rounded, AppTheme.genderMasc),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('exceptions', 'The Odd 10% Exceptions ⚠️', Icons.warning_amber_rounded, Colors.orange),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -387,7 +390,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)),
                 ),
                 child: Row(
@@ -480,7 +483,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Theme.of(ctx).cardColor,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: isTarget ? color : color.withValues(alpha: 0.4),
           width: isTarget ? 3 : 1.5,
@@ -501,7 +504,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             ),
             child: Row(
               children: [
@@ -510,7 +513,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     rule.suffix,
@@ -540,7 +543,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '${rule.article.toUpperCase()} (${rule.genderCode.toUpperCase()})',
@@ -556,7 +559,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.green.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '${rule.certainty} Certainty',
@@ -612,12 +615,12 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                         ex.toLowerCase().contains(widget.targetWord!.toLowerCase());
                     return InkWell(
                       onTap: () => _ttsService.speak(ex, lang: 'de-DE'),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(4),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: isWordTarget ? color.withValues(alpha: 0.25) : color.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color: isWordTarget ? color : color.withValues(alpha: 0.3),
                             width: isWordTarget ? 2 : 1,
@@ -656,7 +659,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
                 ),
                 child: Column(

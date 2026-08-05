@@ -153,7 +153,7 @@ class WelcomeScreen extends StatelessWidget {
                         color: Theme.of(context).brightness == Brightness.dark
                             ? const Color(0xFF2A2A2A)
                             : const Color(0xFFF0F2F5),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Stack(
                         alignment: Alignment.center,
@@ -335,7 +335,7 @@ class WelcomeScreen extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(4),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -352,7 +352,7 @@ class WelcomeScreen extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               label.substring(0, 1),
@@ -398,7 +398,7 @@ class WelcomeScreen extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
@@ -409,7 +409,7 @@ class WelcomeScreen extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(Icons.class_, color: color, size: 16),
           ),

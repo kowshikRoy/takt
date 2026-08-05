@@ -61,7 +61,7 @@ class ArticleCard extends StatelessWidget {
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: onDelete,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(4),
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -159,7 +159,7 @@ class ArticleCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8), // slightly more rounded
+        borderRadius: BorderRadius.circular(4), // slightly more rounded
       ),
       child: Text(
         level,

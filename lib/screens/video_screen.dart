@@ -10,10 +10,54 @@ import 'package:takt/models/processing_status.dart';
 import 'package:takt/models/subtitle_cue.dart';
 import 'package:takt/services/ondevice_ai_service.dart';
 import 'package:takt/models/saved_word.dart';
+import 'package:takt/services/dictionary_service.dart';
+import 'package:takt/services/vocabulary_service.dart';
+import 'package:takt/services/tts_service.dart';
+import 'package:takt/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:takt/services/media_library_service.dart';
 import 'package:takt/config.dart';
 import 'package:takt/widgets/glance_word_sheet.dart';
+
+class KeyMediaVocab {
+  final String word;
+  final String? baseForm;
+  final String? pos;
+  final String? gender;
+  final String primaryDefinition;
+  final String? ipa;
+  final int cueIndex;
+  final double cueStartTime;
+  final String cueOriginal;
+  final String cueTranslated;
+  final int? freqRank;
+  final String difficultyLabel;
+
+  KeyMediaVocab({
+    required this.word,
+    this.baseForm,
+    this.pos,
+    this.gender,
+    required this.primaryDefinition,
+    this.ipa,
+    required this.cueIndex,
+    required this.cueStartTime,
+    required this.cueOriginal,
+    required this.cueTranslated,
+    this.freqRank,
+    this.difficultyLabel = 'B1',
+  });
+
+  String get article {
+    final g = (gender ?? '').toLowerCase();
+    if (g == 'm' || g == 'masculine') return 'der';
+    if (g == 'f' || g == 'feminine') return 'die';
+    if (g == 'n' || g == 'neuter') return 'das';
+    return '';
+  }
+
+  String get fullWordWithArticle => article.isNotEmpty ? '$article $word' : word;
+}
 
 class VideoScreen extends StatefulWidget {
   final ProcessedVideo? processedVideo;
@@ -28,6 +72,9 @@ class _VideoScreenState extends State<VideoScreen>
     with SingleTickerProviderStateMixin {
   VideoPlayerController? _videoPlayerController;
   final TextEditingController _urlController = TextEditingController();
+  final TtsService _ttsService = TtsService();
+  final VocabularyService _vocabService = VocabularyService();
+
   bool _isLoading = false;
   String? _errorMessage;
   List<SubtitleCue> _subtitles = [];
@@ -43,6 +90,12 @@ class _VideoScreenState extends State<VideoScreen>
   final List<SavedWord> _inMemorySavedWords = [];
   bool _showControls = true;
   Timer? _controlsTimer;
+
+  // Key Vocabulary Extraction State
+  List<KeyMediaVocab> _keyVocabList = [];
+  bool _isLoadingVocab = false;
+  int _activeViewIndex = 0; // 0: Key Vocabulary, 1: Full Transcript Cues
+  Set<String> _savedVocabIds = {};
 
   void _startControlsTimer() {
     _controlsTimer?.cancel();
@@ -84,6 +137,10 @@ class _VideoScreenState extends State<VideoScreen>
     _directVideoUrl = video.videoUrl;
     _subtitles = video.subtitles;
     _subtitleKeys = List.generate(_subtitles.length, (_) => GlobalKey());
+
+    // Extract Key Vocabulary from Subtitle Cues
+    _extractKeyVocabulary();
+
     if (_directVideoUrl != null && _directVideoUrl!.isNotEmpty) {
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(_directVideoUrl!),
@@ -109,6 +166,151 @@ class _VideoScreenState extends State<VideoScreen>
             }
           });
       _videoPlayerController?.addListener(_onVideoPlayerUpdate);
+    }
+  }
+
+  Future<void> _extractKeyVocabulary() async {
+    if (_subtitles.isEmpty) return;
+
+    setState(() {
+      _isLoadingVocab = true;
+    });
+
+    final dictService = DictionaryService();
+    final savedWords = await _vocabService.getSavedWords();
+    final savedSet = savedWords.map((w) => w.word.toLowerCase().trim()).toSet();
+
+    final Set<String> seenWords = {};
+    final List<KeyMediaVocab> extracted = [];
+
+    // Stop words filter
+    final stopWords = {
+      'der', 'die', 'das', 'dem', 'den', 'des', 'ein', 'eine', 'einen', 'einem',
+      'einer', 'eines', 'und', 'oder', 'aber', 'ist', 'sind', 'war', 'waren',
+      'in', 'im', 'zu', 'zum', 'zur', 'mit', 'von', 'aus', 'bei', 'nach',
+      'über', 'unter', 'vor', 'hinter', 'neben', 'auf', 'an', 'für', 'um',
+      'durch', 'gegen', 'ohne', 'nicht', 'ja', 'nein', 'so', 'dass', 'daß',
+      'wie', 'als', 'auch', 'noch', 'nur', 'schon', 'mehr', 'sehr', 'viel',
+      'ich', 'du', 'er', 'sie', 'es', 'wir', 'ihr', 'mich', 'dich',
+      'ihn', 'uns', 'euch', 'ihnen', 'mein', 'dein', 'sein', 'unser',
+      'euer', 'sich', 'was', 'wer', 'wo', 'wann', 'warum', 'dies',
+      'diese', 'dieser', 'dieses', 'diesen', 'diesem', 'alle', 'alles', 'man'
+    };
+
+    for (int cueIdx = 0; cueIdx < _subtitles.length; cueIdx++) {
+      final cue = _subtitles[cueIdx];
+      final tokens = cue.original
+          .replaceAll(RegExp(r'[^\wäöüßÄÖÜ\s-]'), '')
+          .split(RegExp(r'\s+'));
+
+      for (final rawToken in tokens) {
+        final cleanToken = rawToken.trim();
+        final lower = cleanToken.toLowerCase();
+
+        if (cleanToken.length < 3) continue;
+        if (stopWords.contains(lower)) continue;
+        if (seenWords.contains(lower)) continue;
+
+        // Perform fast dictionary lookup
+        final matches = await dictService.lookupWordFast(cleanToken);
+        if (matches.isNotEmpty) {
+          final first = matches.first;
+          final defs = (first['definitions'] as List?) ?? [];
+          String def = defs.isNotEmpty ? defs.first.toString() : '';
+          if (def.isEmpty && first['definition'] != null) {
+            def = first['definition'].toString();
+          }
+          if (def.isEmpty) continue;
+
+          seenWords.add(lower);
+
+          final pos = (first['pos'] as String? ?? '').toLowerCase();
+          final gender = first['gender'] as String?;
+          final baseForm = first['base_form'] as String?;
+          final ipa = first['ipa'] as String?;
+          final freqRank = first['freq_rank'] is int ? first['freq_rank'] as int : null;
+
+          String difficulty = 'B1';
+          if (freqRank != null) {
+            if (freqRank <= 300) difficulty = 'A1';
+            else if (freqRank <= 1000) difficulty = 'A2';
+            else if (freqRank <= 3000) difficulty = 'B1';
+            else if (freqRank <= 8000) difficulty = 'B2';
+            else difficulty = 'C1';
+          }
+
+          extracted.add(
+            KeyMediaVocab(
+              word: first['word'] as String? ?? cleanToken,
+              baseForm: baseForm,
+              pos: pos,
+              gender: gender,
+              primaryDefinition: def,
+              ipa: ipa,
+              cueIndex: cueIdx,
+              cueStartTime: cue.start,
+              cueOriginal: cue.original,
+              cueTranslated: cue.translated,
+              freqRank: freqRank,
+              difficultyLabel: difficulty,
+            ),
+          );
+
+          if (extracted.length >= 25) break;
+        }
+      }
+      if (extracted.length >= 25) break;
+    }
+
+    if (mounted) {
+      setState(() {
+        _keyVocabList = extracted;
+        _savedVocabIds = savedSet;
+        _isLoadingVocab = false;
+      });
+    }
+  }
+
+  Future<void> _toggleSaveVocab(KeyMediaVocab vocab) async {
+    final wordId = vocab.word.toLowerCase().trim();
+    final isSaved = _savedVocabIds.contains(wordId);
+
+    if (isSaved) {
+      await _vocabService.removeWord(wordId);
+      setState(() {
+        _savedVocabIds.remove(wordId);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Removed "${vocab.word}" from Learning Deck')),
+        );
+      }
+    } else {
+      final saved = SavedWord(
+        id: wordId,
+        word: vocab.word,
+        baseForm: vocab.baseForm,
+        pos: vocab.pos,
+        gender: vocab.gender,
+        primaryDefinition: vocab.primaryDefinition,
+        definitions: [vocab.primaryDefinition],
+        ipa: vocab.ipa,
+        contextSentence: vocab.cueOriginal,
+        sourceTitle: widget.processedVideo?.title ?? 'Media Lesson',
+        category: VocabCategory.learning,
+      );
+      await _vocabService.upsertWord(saved);
+      setState(() {
+        _savedVocabIds.add(wordId);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved "${vocab.fullWordWithArticle}" to Learning Deck! 🎉'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     }
   }
 
@@ -151,8 +353,7 @@ class _VideoScreenState extends State<VideoScreen>
 
   void _onVideoPlayerUpdate() {
     if (!mounted) return;
-    if (_videoPlayerController != null &&
-        _videoPlayerController!.value.hasError) {
+    if (_videoPlayerController != null && _videoPlayerController!.value.hasError) {
       if (_errorMessage == null) {
         setState(() {
           _errorMessage = 'Media stream error or link expired.';
@@ -189,7 +390,7 @@ class _VideoScreenState extends State<VideoScreen>
     if (foundIndex != _currentSubtitleIndex) {
       setState(() {
         _currentSubtitleIndex = foundIndex;
-        if (_currentSubtitleIndex != -1) {
+        if (_currentSubtitleIndex != -1 && _activeViewIndex == 1) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToCurrentSubtitle();
           });
@@ -199,9 +400,7 @@ class _VideoScreenState extends State<VideoScreen>
   }
 
   void _scrollToCurrentSubtitle() {
-    if (_currentSubtitleIndex == -1 ||
-        _currentSubtitleIndex >= _subtitleKeys.length)
-      return;
+    if (_currentSubtitleIndex == -1 || _currentSubtitleIndex >= _subtitleKeys.length) return;
 
     final context = _subtitleKeys[_currentSubtitleIndex].currentContext;
     if (context != null) {
@@ -272,6 +471,8 @@ class _VideoScreenState extends State<VideoScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (_isFullscreen) {
       return Scaffold(
         backgroundColor: Colors.black,
@@ -286,12 +487,7 @@ class _VideoScreenState extends State<VideoScreen>
                   top: 0,
                   left: 0,
                   child: IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                    tooltip: 'Back',
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 28),
                     onPressed: () {
                       Navigator.pop(context);
                     },
@@ -307,74 +503,24 @@ class _VideoScreenState extends State<VideoScreen>
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(child: _buildFoldAwareBody(context)),
-    );
-  }
-
-  /// Detects a vertical fold hinge (book-style foldable, unfolded) via
-  /// [MediaQueryData.displayFeatures] and lays the video out to its left
-  /// and the subtitle transcript to its right, so neither pane straddles
-  /// the hinge itself. Falls back to the normal stacked layout otherwise.
-  /// See design doc §7 "Foldable-specific".
-  Widget _buildFoldAwareBody(BuildContext context) {
-    final videoColumn = AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      child: _isPlayerMinimized
-          ? _buildMiniPlayer(context)
-          : _buildVideoPlayer(context),
-    );
-
-    final transcriptContent = _subtitles.isEmpty
-        ? _buildNoSubtitlesMessage(context)
-        : _buildTranscriptList(context);
-
-    final mediaQuery = MediaQuery.of(context);
-    DisplayFeature? hinge;
-    for (final feature in mediaQuery.displayFeatures) {
-      if (feature.type == DisplayFeatureType.hinge ||
-          feature.type == DisplayFeatureType.fold) {
-        hinge = feature;
-        break;
-      }
-    }
-
-    final isVerticalHinge =
-        hinge != null && hinge.bounds.height >= hinge.bounds.width;
-
-    if (isVerticalHinge) {
-      final leftWidth = hinge.bounds.left;
-      final rightWidth = mediaQuery.size.width - hinge.bounds.right;
-      if (leftWidth > 200 && rightWidth > 200) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: SafeArea(
+        child: Column(
           children: [
-            SizedBox(
-              width: leftWidth,
-              child: Column(
-                children: [
-                  videoColumn,
-                  if (widget.processedVideo == null) _buildUrlInput(context),
-                  if (_errorMessage != null) _buildErrorMessage(context),
-                ],
-              ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: _isPlayerMinimized ? _buildMiniPlayer(context) : _buildVideoPlayer(context),
             ),
-            SizedBox(
-              width: hinge.bounds.width,
-            ), // straddle the hinge with empty space, not content
-            SizedBox(width: rightWidth, child: transcriptContent),
+            if (widget.processedVideo == null) _buildUrlInput(context),
+            if (_errorMessage != null) _buildErrorMessage(context),
+            Expanded(
+              child: _subtitles.isEmpty
+                  ? _buildNoSubtitlesMessage(context)
+                  : _buildTranscriptList(context),
+            ),
           ],
-        );
-      }
-    }
-
-    return Column(
-      children: [
-        videoColumn,
-        if (widget.processedVideo == null) _buildUrlInput(context),
-        if (_errorMessage != null) _buildErrorMessage(context),
-        Expanded(child: transcriptContent),
-      ],
+        ),
+      ),
     );
   }
 
@@ -394,12 +540,7 @@ class _VideoScreenState extends State<VideoScreen>
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-                tooltip: 'Back',
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 22),
                 onPressed: () {
                   Navigator.pop(context);
                 },
@@ -411,11 +552,7 @@ class _VideoScreenState extends State<VideoScreen>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: IconButton(
-                icon: const Icon(
-                  Icons.unfold_less_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+                icon: const Icon(Icons.unfold_less_rounded, color: Colors.white, size: 22),
                 tooltip: 'Minimize to Article Mode',
                 onPressed: () {
                   setState(() {
@@ -434,29 +571,20 @@ class _VideoScreenState extends State<VideoScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final isPlaying = _videoPlayerController?.value.isPlaying ?? false;
     final currentPos = _videoPlayerController?.value.position ?? Duration.zero;
-    final totalDuration =
-        _videoPlayerController?.value.duration ?? Duration.zero;
+    final totalDuration = _videoPlayerController?.value.duration ?? Duration.zero;
     final progress = totalDuration.inMilliseconds > 0
-        ? (currentPos.inMilliseconds / totalDuration.inMilliseconds).clamp(
-            0.0,
-            1.0,
-          )
+        ? (currentPos.inMilliseconds / totalDuration.inMilliseconds).clamp(0.0, 1.0)
         : 0.0;
 
-    String currentLine = 'Media Article Mode';
-    if (_currentSubtitleIndex != -1 &&
-        _currentSubtitleIndex < _subtitles.length) {
+    String currentLine = 'Media Vocabulary & Insights Mode';
+    if (_currentSubtitleIndex != -1 && _currentSubtitleIndex < _subtitles.length) {
       currentLine = _subtitles[_currentSubtitleIndex].original;
     }
 
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -469,19 +597,11 @@ class _VideoScreenState extends State<VideoScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12.0,
-              vertical: 8.0,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(
-                    Icons.arrow_back_rounded,
-                    color: colorScheme.onSurface,
-                    size: 20,
-                  ),
-                  tooltip: 'Back',
+                  icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface, size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Container(
@@ -494,13 +614,10 @@ class _VideoScreenState extends State<VideoScreen>
                   child: IconButton(
                     padding: EdgeInsets.zero,
                     icon: Icon(
-                      isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
+                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                       color: colorScheme.primary,
                       size: 22,
                     ),
-                    tooltip: isPlaying ? 'Pause' : 'Play',
                     onPressed: () async {
                       if (_videoPlayerController == null) return;
                       if (isPlaying) {
@@ -532,17 +649,11 @@ class _VideoScreenState extends State<VideoScreen>
                         children: [
                           Text(
                             '${_formatDuration(currentPos)} / ${_formatDuration(totalDuration)}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
+                            style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                             decoration: BoxDecoration(
                               color: colorScheme.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(6),
@@ -562,11 +673,7 @@ class _VideoScreenState extends State<VideoScreen>
                   ),
                 ),
                 IconButton(
-                  icon: Icon(
-                    Icons.unfold_more_rounded,
-                    color: colorScheme.primary,
-                    size: 22,
-                  ),
+                  icon: Icon(Icons.unfold_more_rounded, color: colorScheme.primary, size: 22),
                   tooltip: 'Expand Media Player',
                   onPressed: () {
                     setState(() {
@@ -599,14 +706,14 @@ class _VideoScreenState extends State<VideoScreen>
       isPortraitVideo = videoAspectRatio < 1.0;
 
       if (isPortraitVideo) {
-        playerHeight = screenHeight * 0.45;
+        playerHeight = screenHeight * 0.42;
       } else {
         playerHeight = screenWidth * 9 / 16;
-        if (playerHeight > 340) playerHeight = 340;
+        if (playerHeight > 320) playerHeight = 320;
       }
     } else {
       playerHeight = screenWidth * 9 / 16;
-      if (playerHeight > 340) playerHeight = 340;
+      if (playerHeight > 320) playerHeight = 320;
     }
 
     return Container(
@@ -621,27 +728,16 @@ class _VideoScreenState extends State<VideoScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      color: Colors.orangeAccent,
-                      size: 44,
-                    ),
+                    const Icon(Icons.error_outline_rounded, color: Colors.orangeAccent, size: 44),
                     const SizedBox(height: 10),
                     const Text(
                       'Media Stream Link Expired',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'YouTube/Media direct streams expire after a few hours.\nRefresh link to stream video again.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 11,
-                      ),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 14),
@@ -651,25 +747,14 @@ class _VideoScreenState extends State<VideoScreen>
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
                             : const Icon(Icons.refresh_rounded, size: 18),
-                        label: Text(
-                          _isLoading
-                              ? 'Refreshing Link...'
-                              : 'Refresh Stream Link',
-                        ),
+                        label: Text(_isLoading ? 'Refreshing Link...' : 'Refresh Stream Link'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         onPressed: _isLoading
                             ? null
@@ -677,36 +762,21 @@ class _VideoScreenState extends State<VideoScreen>
                                 setState(() {
                                   _isLoading = true;
                                 });
-                                final mediaLibraryService =
-                                    Provider.of<MediaLibraryService>(
-                                      context,
-                                      listen: false,
-                                    );
-                                final ok = await mediaLibraryService
-                                    .refreshVideoUrl(
-                                      widget.processedVideo!.id,
-                                      widget.processedVideo!.url,
-                                    );
+                                final mediaService = Provider.of<MediaLibraryService>(context, listen: false);
+                                final ok = await mediaService.refreshVideoUrl(
+                                  widget.processedVideo!.id,
+                                  widget.processedVideo!.url,
+                                );
                                 if (ok && mounted) {
-                                  final index = mediaLibraryService
-                                      .processedVideos
-                                      .indexWhere(
-                                        (v) =>
-                                            v.id == widget.processedVideo!.id,
-                                      );
+                                  final index = mediaService.processedVideos.indexWhere((v) => v.id == widget.processedVideo!.id);
                                   if (index != -1) {
-                                    _directVideoUrl = mediaLibraryService
-                                        .processedVideos[index]
-                                        .videoUrl;
+                                    _directVideoUrl = mediaService.processedVideos[index].videoUrl;
                                     setState(() {
                                       _isLoading = false;
                                       _errorMessage = null;
                                     });
                                     _videoPlayerController?.dispose();
-                                    _videoPlayerController =
-                                        VideoPlayerController.networkUrl(
-                                          Uri.parse(_directVideoUrl!),
-                                        );
+                                    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(_directVideoUrl!));
                                     await _videoPlayerController!.initialize();
                                     _videoPlayerController!.play();
                                     return;
@@ -715,8 +785,7 @@ class _VideoScreenState extends State<VideoScreen>
                                 if (mounted) {
                                   setState(() {
                                     _isLoading = false;
-                                    _errorMessage =
-                                        'Could not refresh link. Please check network.';
+                                    _errorMessage = 'Could not refresh link. Please check network.';
                                   });
                                 }
                               },
@@ -725,117 +794,101 @@ class _VideoScreenState extends State<VideoScreen>
                 ),
               )
             : (_videoPlayerController?.value.isInitialized ?? false)
-            ? GestureDetector(
-                onTap: _toggleControls,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: <Widget>[
-                    if (_videoPlayerController!.value.size.width > 0 &&
-                        _videoPlayerController!.value.size.height > 0)
-                      FittedBox(
-                        fit: BoxFit.cover,
-                        child: SizedBox(
-                          width: _videoPlayerController!.value.size.width,
-                          height: _videoPlayerController!.value.size.height,
-                          child: Opacity(
-                            opacity: 0.35,
-                            child: VideoPlayer(_videoPlayerController!),
-                          ),
-                        ),
-                      ),
-                    Builder(
-                      builder: (context) {
-                        final hasVideoTrack =
-                            (_videoPlayerController?.value.size.width ?? 0) >
-                                0 &&
-                            (_videoPlayerController?.value.size.height ?? 0) >
-                                0;
-                        if (hasVideoTrack) {
-                          return Center(
-                            child: AspectRatio(
-                              aspectRatio:
-                                  (_videoPlayerController?.value.aspectRatio ??
-                                          0) >
-                                      0
-                                  ? _videoPlayerController!.value.aspectRatio
-                                  : (16 / 9),
-                              child: VideoPlayer(_videoPlayerController!),
-                            ),
-                          );
-                        } else {
-                          return Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Theme.of(
-                                    context,
-                                  ).colorScheme.primaryContainer,
-                                  Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHigh,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                ? GestureDetector(
+                    onTap: _toggleControls,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        if (_videoPlayerController!.value.size.width > 0 && _videoPlayerController!.value.size.height > 0)
+                          FittedBox(
+                            fit: BoxFit.cover,
+                            child: SizedBox(
+                              width: _videoPlayerController!.value.size.width,
+                              height: _videoPlayerController!.value.size.height,
+                              child: Opacity(
+                                opacity: 0.35,
+                                child: VideoPlayer(_videoPlayerController!),
                               ),
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary
-                                        .withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.graphic_eq_rounded,
-                                    size: 48,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                          ),
+                        Builder(
+                          builder: (context) {
+                            final hasVideoTrack = (_videoPlayerController?.value.size.width ?? 0) > 0 &&
+                                                  (_videoPlayerController?.value.size.height ?? 0) > 0;
+                            if (hasVideoTrack) {
+                              return Center(
+                                child: AspectRatio(
+                                  aspectRatio: (_videoPlayerController?.value.aspectRatio ?? 0) > 0 
+                                      ? _videoPlayerController!.value.aspectRatio 
+                                      : (16 / 9),
+                                  child: VideoPlayer(_videoPlayerController!),
+                                ),
+                              );
+                            } else {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Theme.of(context).colorScheme.primaryContainer,
+                                      Theme.of(context).colorScheme.surfaceContainerHigh,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Audio Media Stream',
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.graphic_eq_rounded,
+                                        size: 48,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Audio Media Stream',
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: _buildVideoHeader(context),
-                    ),
-                    Positioned(
-                      bottom: 12,
-                      left: 12,
-                      right: 12,
-                      child: AnimatedOpacity(
-                        opacity: _showControls ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 250),
-                        child: IgnorePointer(
-                          ignoring: !_showControls,
-                          child: _buildVideoControls(),
+                              );
+                            }
+                          },
                         ),
-                      ),
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: _buildVideoHeader(context),
+                        ),
+                        Positioned(
+                          bottom: 12,
+                          left: 12,
+                          right: 12,
+                          child: AnimatedOpacity(
+                            opacity: _showControls ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 250),
+                            child: IgnorePointer(
+                              ignoring: !_showControls,
+                              child: _buildVideoControls(),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              )
-            : const Center(child: CircularProgressIndicator()),
+                  )
+                : const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -859,7 +912,6 @@ class _VideoScreenState extends State<VideoScreen>
               color: Colors.white,
               size: 24,
             ),
-            tooltip: _videoPlayerController!.value.isPlaying ? 'Pause' : 'Play',
             onPressed: () async {
               if (_videoPlayerController == null) return;
 
@@ -903,8 +955,6 @@ class _VideoScreenState extends State<VideoScreen>
           ),
           const SizedBox(width: 4),
           PopupMenuButton<double>(
-            initialValue: _playbackSpeed,
-            tooltip: '${_playbackSpeed}x Playback Speed',
             icon: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
             onSelected: (speed) {
               setState(() {
@@ -922,13 +972,10 @@ class _VideoScreenState extends State<VideoScreen>
           ),
           IconButton(
             icon: Icon(
-              _isFullscreen
-                  ? Icons.fullscreen_exit_rounded
-                  : Icons.fullscreen_rounded,
+              _isFullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
               color: Colors.white,
               size: 22,
             ),
-            tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
             onPressed: _toggleFullscreen,
           ),
         ],
@@ -947,9 +994,7 @@ class _VideoScreenState extends State<VideoScreen>
             controller: _urlController,
             decoration: InputDecoration(
               labelText: 'Media URL',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               prefixIcon: Icon(Icons.link_rounded, color: colorScheme.primary),
             ),
           ),
@@ -971,13 +1016,8 @@ class _VideoScreenState extends State<VideoScreen>
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -990,10 +1030,7 @@ class _VideoScreenState extends State<VideoScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Text(
         _errorMessage!,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.error,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w600),
         textAlign: TextAlign.center,
       ),
     );
@@ -1023,9 +1060,7 @@ class _VideoScreenState extends State<VideoScreen>
             padding: const EdgeInsets.all(20.0),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1035,10 +1070,7 @@ class _VideoScreenState extends State<VideoScreen>
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          Icons.bookmark_rounded,
-                          color: colorScheme.primary,
-                        ),
+                        Icon(Icons.bookmark_rounded, color: colorScheme.primary),
                         const SizedBox(width: 8),
                         Text(
                           'Saved Vocabulary',
@@ -1051,10 +1083,7 @@ class _VideoScreenState extends State<VideoScreen>
                       ],
                     ),
                     IconButton(
-                      icon: Icon(
-                        Icons.close_rounded,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                      icon: Icon(Icons.close_rounded, color: colorScheme.onSurfaceVariant),
                       tooltip: 'Close',
                       onPressed: () => Navigator.pop(context),
                     ),
@@ -1067,16 +1096,12 @@ class _VideoScreenState extends State<VideoScreen>
                           child: Text(
                             'No saved German words yet.\nTap any German word in the transcript to bookmark it!',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 14,
-                            ),
+                            style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
                           ),
                         )
                       : ListView.separated(
                           itemCount: words.length,
-                          separatorBuilder: (context, index) =>
-                              Divider(color: colorScheme.outlineVariant),
+                          separatorBuilder: (context, index) => Divider(color: colorScheme.outlineVariant),
                           itemBuilder: (context, index) {
                             final item = words[index];
                             return ListTile(
@@ -1094,30 +1119,17 @@ class _VideoScreenState extends State<VideoScreen>
                                 children: [
                                   Text(
                                     item.translation,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: colorScheme.onSurface,
-                                    ),
+                                    style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
                                   ),
-                                  if (item.contextSentence != null &&
-                                      item.contextSentence!.isNotEmpty)
+                                  if (item.contextSentence != null && item.contextSentence!.isNotEmpty)
                                     Text(
                                       'Context: "${item.contextSentence}"',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: colorScheme.onSurfaceVariant,
-                                        fontStyle: FontStyle.italic,
-                                      ),
+                                      style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
                                     ),
                                 ],
                               ),
                               trailing: IconButton(
-                                icon: Icon(
-                                  Icons.delete_outline_rounded,
-                                  color: colorScheme.error,
-                                  size: 20,
-                                ),
-                                tooltip: 'Remove word',
+                                icon: Icon(Icons.delete_outline_rounded, color: colorScheme.error, size: 20),
                                 onPressed: () {
                                   _inMemorySavedWords.remove(item);
                                   setModalState(() {});
@@ -1155,7 +1167,10 @@ class _VideoScreenState extends State<VideoScreen>
           return WidgetSpan(
             child: GestureDetector(
               onTap: () => _showWordInfoDialog(word, text),
-              child: Text('$word ', style: style),
+              child: Text(
+                '$word ',
+                style: style,
+              ),
             ),
           );
         }).toList(),
@@ -1167,7 +1182,9 @@ class _VideoScreenState extends State<VideoScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
     );
 
     final aiService = OnDeviceAIService();
@@ -1207,11 +1224,7 @@ class _VideoScreenState extends State<VideoScreen>
               const SizedBox(height: 12),
               Text(
                 summary,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: colorScheme.onSurface,
-                ),
+                style: TextStyle(fontSize: 15, height: 1.5, color: colorScheme.onSurface),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -1221,9 +1234,7 @@ class _VideoScreenState extends State<VideoScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.primary,
                     foregroundColor: colorScheme.onPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: const Text('Close'),
                 ),
@@ -1235,13 +1246,625 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
+  void _startMediaVocabPracticeSheet() {
+    if (_keyVocabList.isEmpty) return;
+    int practiceIndex = 0;
+    bool showAnswer = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final colorScheme = Theme.of(context).colorScheme;
+          final item = _keyVocabList[practiceIndex];
+          final isSaved = _savedVocabIds.contains(item.word.toLowerCase().trim());
+
+          Color genderColor = colorScheme.primary;
+          if (item.gender == 'm' || item.gender == 'masculine') genderColor = AppTheme.genderMasc;
+          if (item.gender == 'f' || item.gender == 'feminine') genderColor = AppTheme.genderFem;
+          if (item.gender == 'n' || item.gender == 'neuter') genderColor = AppTheme.genderNeu;
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            padding: const EdgeInsets.all(24.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.psychology_rounded, color: colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Practice Media Deck',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '${practiceIndex + 1} of ${_keyVocabList.length}',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                LinearProgressIndicator(
+                  value: (practiceIndex + 1) / _keyVocabList.length,
+                  backgroundColor: colorScheme.surfaceContainerHigh,
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                const SizedBox(height: 24),
+
+                // Flashcard Area
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (item.article.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: genderColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  item.article,
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: genderColor),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                            ],
+                            Text(
+                              item.word,
+                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.volume_up_rounded, color: colorScheme.primary),
+                              onPressed: () => _ttsService.speak(item.fullWordWithArticle, lang: 'de-DE'),
+                            ),
+                          ],
+                        ),
+                        if (item.ipa != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            item.ipa!,
+                            style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        if (!showAnswer)
+                          OutlinedButton.icon(
+                            onPressed: () => setSheetState(() => showAnswer = true),
+                            icon: const Icon(Icons.flip_rounded),
+                            label: const Text('Reveal Meaning & Context'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            ),
+                          )
+                        else ...[
+                          Text(
+                            item.primaryDefinition,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  '"${item.cueOriginal}"',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.cueTranslated,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Navigation & Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _toggleSaveVocab(item),
+                        icon: Icon(isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded),
+                        label: Text(isSaved ? 'Saved' : 'Bookmark'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          if (practiceIndex < _keyVocabList.length - 1) {
+                            setSheetState(() {
+                              practiceIndex++;
+                              showAnswer = false;
+                            });
+                          } else {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('🎉 Media Vocabulary Practice Completed!')),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_forward_rounded),
+                        label: Text(practiceIndex < _keyVocabList.length - 1 ? 'Next Word' : 'Finish'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildKeyVocabularyView(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (_isLoadingVocab) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Extracting key vocabulary & insights...',
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_keyVocabList.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.style_outlined, size: 48, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+            const SizedBox(height: 12),
+            Text(
+              'No key vocabulary extracted yet.',
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _extractKeyVocabulary,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Extract Vocabulary'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      children: [
+        // Hero Header Card
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                colorScheme.primaryContainer,
+                colorScheme.surfaceContainerHigh,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.lightbulb_rounded, color: colorScheme.primary, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Media Vocabulary Insights',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                        ),
+                        Text(
+                          '${_keyVocabList.length} key German terms extracted from transcript cues',
+                          style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _startMediaVocabPracticeSheet,
+                  icon: const Icon(Icons.psychology_rounded, size: 18),
+                  label: const Text('🎯 Practice Media Deck'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Vocabulary Cards List
+        ..._keyVocabList.map((vocab) {
+          final isSaved = _savedVocabIds.contains(vocab.word.toLowerCase().trim());
+          Color genderColor = colorScheme.primary;
+          if (vocab.gender == 'm' || vocab.gender == 'masculine') genderColor = AppTheme.genderMasc;
+          if (vocab.gender == 'f' || vocab.gender == 'feminine') genderColor = AppTheme.genderFem;
+          if (vocab.gender == 'n' || vocab.gender == 'neuter') genderColor = AppTheme.genderNeu;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12.0),
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(18.0),
+              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Row: Word & Badges
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (vocab.article.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: genderColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          vocab.article,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: genderColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vocab.word,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          if (vocab.ipa != null)
+                            Text(
+                              vocab.ipa!,
+                              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (vocab.pos != null && vocab.pos!.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          vocab.pos!.toUpperCase(),
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        vocab.difficultyLabel,
+                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                        color: isSaved ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                        size: 20,
+                      ),
+                      onPressed: () => _toggleSaveVocab(vocab),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Primary Definition
+                Text(
+                  vocab.primaryDefinition,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Context Snippet Card
+                GestureDetector(
+                  onTap: () => _seekToSubtitle(vocab.cueStartTime),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.play_circle_fill_rounded, size: 18, color: colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '"${vocab.cueOriginal}"',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                vocab.cueTranslated,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          _formatDuration(Duration(seconds: vocab.cueStartTime.toInt())),
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Bottom Actions Toolbar
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => _ttsService.speak(vocab.fullWordWithArticle, lang: 'de-DE'),
+                      icon: const Icon(Icons.volume_up_rounded, size: 16),
+                      label: const Text('Listen', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: () => GlanceWordSheet.show(
+                        context,
+                        word: vocab.word,
+                        contextSentence: vocab.cueOriginal,
+                        sourceTitle: widget.processedVideo?.title ?? 'Media Lesson',
+                      ),
+                      icon: const Icon(Icons.menu_book_rounded, size: 16),
+                      label: const Text('Declensions & Forms', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFullTranscriptView(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      itemCount: _subtitles.length,
+      itemBuilder: (context, index) {
+        final cue = _subtitles[index];
+        final bool isCurrent = _currentSubtitleIndex == index;
+        return GestureDetector(
+          onTap: () => _seekToSubtitle(cue.start),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              key: _subtitleKeys[index],
+              margin: const EdgeInsets.only(bottom: 12.0),
+              decoration: BoxDecoration(
+                color: isCurrent
+                    ? colorScheme.primaryContainer.withValues(alpha: 0.4)
+                    : Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16.0),
+                border: Border.all(
+                  color: isCurrent
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  width: isCurrent ? 1.5 : 0.8,
+                ),
+                boxShadow: isCurrent
+                    ? [
+                        BoxShadow(
+                          color: colorScheme.primary.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (isCurrent)
+                      Container(
+                        width: 4,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            bottomLeft: Radius.circular(16),
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildTappableLine(
+                              cue.original,
+                              TextStyle(
+                                fontSize: isCurrent ? 17 : 16,
+                                height: 1.5,
+                                fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                                color: isCurrent ? colorScheme.primary : colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 6.0),
+                            _hideTranslations
+                                ? Text(
+                                    "••••••••••••••••••••",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                                      letterSpacing: 2,
+                                    ),
+                                  )
+                                : _buildTappableLine(
+                                    cue.translated,
+                                    TextStyle(
+                                      fontSize: 14,
+                                      height: 1.4,
+                                      fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+                                      color: isCurrent
+                                          ? colorScheme.primary.withValues(alpha: 0.8)
+                                          : colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildTranscriptList(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       children: [
+        // Mode Switcher Header Bar
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             border: Border(
@@ -1251,202 +1874,107 @@ class _VideoScreenState extends State<VideoScreen>
             ),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Text(
-                    "Transcript & Article",
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${_subtitles.length} cues',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ChoiceChip(
+                        selected: _activeViewIndex == 0,
+                        avatar: Icon(
+                          Icons.lightbulb_rounded,
+                          size: 16,
+                          color: _activeViewIndex == 0
+                              ? colorScheme.onPrimary
+                              : colorScheme.primary,
+                        ),
+                        label: Text(
+                          'Key Vocabulary (${_keyVocabList.length})',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: _activeViewIndex == 0
+                                ? colorScheme.onPrimary
+                                : colorScheme.onSurface,
+                          ),
+                        ),
+                        selectedColor: colorScheme.primary,
+                        onSelected: (_) => setState(() => _activeViewIndex = 0),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        selected: _activeViewIndex == 1,
+                        avatar: Icon(
+                          Icons.subtitles_rounded,
+                          size: 16,
+                          color: _activeViewIndex == 1
+                              ? colorScheme.onPrimary
+                              : colorScheme.primary,
+                        ),
+                        label: Text(
+                          'Full Cues (${_subtitles.length})',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: _activeViewIndex == 1
+                                ? colorScheme.onPrimary
+                                : colorScheme.onSurface,
+                          ),
+                        ),
+                        selectedColor: colorScheme.primary,
+                        onSelected: (_) => setState(() => _activeViewIndex = 1),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      _hideTranslations
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      size: 20,
-                      color: _hideTranslations
-                          ? colorScheme.primary
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                    tooltip: _hideTranslations
-                        ? "Show Translations"
-                        : "Hide Translations (Active Recall)",
-                    onPressed: () {
-                      setState(() {
-                        _hideTranslations = !_hideTranslations;
-                      });
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.bookmark_border_rounded,
-                      size: 20,
-                      color: colorScheme.primary,
-                    ),
-                    tooltip: "Saved Vocabulary",
-                    onPressed: _showSavedVocabularySheet,
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.auto_awesome_rounded,
-                      size: 20,
-                      color: colorScheme.primary,
-                    ),
-                    tooltip: "AI Summary",
-                    onPressed: _showOnDeviceSummaryDialog,
-                  ),
-                ],
+              IconButton(
+                icon: Icon(
+                  _hideTranslations
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  size: 20,
+                  color: _hideTranslations
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
+                ),
+                tooltip: _hideTranslations
+                    ? "Show Translations"
+                    : "Hide Translations (Active Recall)",
+                onPressed: () {
+                  setState(() {
+                    _hideTranslations = !_hideTranslations;
+                  });
+                },
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.bookmark_border_rounded,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
+                tooltip: "Saved Vocabulary",
+                onPressed: _showSavedVocabularySheet,
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
+                tooltip: "AI Summary",
+                onPressed: _showOnDeviceSummaryDialog,
               ),
             ],
           ),
         ),
+
+        // Sub View Content
         Expanded(
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 12.0,
-            ),
-            itemCount: _subtitles.length,
-            itemBuilder: (context, index) {
-              final cue = _subtitles[index];
-              final bool isCurrent = _currentSubtitleIndex == index;
-              return GestureDetector(
-                onTap: () => _seekToSubtitle(cue.start),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16.0),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    key: _subtitleKeys[index],
-                    margin: const EdgeInsets.only(bottom: 12.0),
-                    decoration: BoxDecoration(
-                      color: isCurrent
-                          ? colorScheme.primaryContainer.withValues(alpha: 0.4)
-                          : Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(16.0),
-                      border: Border.all(
-                        color: isCurrent
-                            ? colorScheme.primary
-                            : colorScheme.outlineVariant.withValues(alpha: 0.5),
-                        width: isCurrent ? 1.5 : 0.8,
-                      ),
-                      boxShadow: isCurrent
-                          ? [
-                              BoxShadow(
-                                color: colorScheme.primary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                    ),
-                    child: IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (isCurrent)
-                            Container(
-                              width: 4,
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  bottomLeft: Radius.circular(16),
-                                ),
-                              ),
-                            ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildTappableLine(
-                                    cue.original,
-                                    TextStyle(
-                                      fontSize: isCurrent ? 17 : 16,
-                                      height: 1.5,
-                                      fontWeight: isCurrent
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                      color: isCurrent
-                                          ? colorScheme.primary
-                                          : colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6.0),
-                                  _hideTranslations
-                                      ? Text(
-                                          "••••••••••••••••••••",
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: colorScheme.onSurfaceVariant
-                                                .withValues(alpha: 0.5),
-                                            letterSpacing: 2,
-                                          ),
-                                        )
-                                      : _buildTappableLine(
-                                          cue.translated,
-                                          TextStyle(
-                                            fontSize: 14,
-                                            height: 1.4,
-                                            fontWeight: isCurrent
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
-                                            color: isCurrent
-                                                ? colorScheme.primary
-                                                      .withValues(alpha: 0.8)
-                                                : colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+          child: _activeViewIndex == 0
+              ? _buildKeyVocabularyView(context)
+              : _buildFullTranscriptView(context),
         ),
       ],
     );

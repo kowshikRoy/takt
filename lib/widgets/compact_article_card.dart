@@ -26,7 +26,7 @@ class CompactArticleCard extends StatelessWidget {
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(4),
           boxShadow: [
              BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -91,7 +91,7 @@ class CompactArticleCard extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: onDelete,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(4),
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(

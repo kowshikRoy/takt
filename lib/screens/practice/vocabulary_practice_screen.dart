@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../models/saved_word.dart';
 import '../../models/xp_event.dart';
 import '../../services/vocabulary_service.dart';
+import '../../services/dictionary_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/gamification_service.dart';
 import '../../services/sound_service.dart';
@@ -20,6 +21,7 @@ class VocabularyPracticeScreen extends StatefulWidget {
 
 class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   final VocabularyService _vocabService = VocabularyService();
+  final DictionaryService _dictionaryService = DictionaryService();
   final TtsService _ttsService = TtsService();
 
   List<SavedWord> _dueWords = [];
@@ -32,6 +34,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = true;
+  final Map<String, Map<String, String?>> _exampleCache = {};
 
   @override
   void initState() {
@@ -51,6 +54,23 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
         _showAnswer = false;
         _isLoading = false;
       });
+      _preloadExamples();
+    }
+  }
+
+  Future<void> _preloadExamples() async {
+    for (final word in _dueWords) {
+      if (word.contextSentence == null || word.contextSentence!.isEmpty) {
+        final lower = word.word.toLowerCase().trim();
+        if (!_exampleCache.containsKey(lower)) {
+          final examples = await _dictionaryService.getExamplesForWord(word.word);
+          if (examples.isNotEmpty && mounted) {
+            setState(() {
+              _exampleCache[lower] = examples.first;
+            });
+          }
+        }
+      }
     }
   }
 
@@ -100,8 +120,8 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                     Expanded(
                       child:
                           _dueWords.isEmpty || _currentIndex >= _dueWords.length
-                          ? _buildCompletionCard()
-                          : _buildFlashcard(_dueWords[_currentIndex]),
+                              ? _buildCompletionCard()
+                              : _buildFlashcard(_dueWords[_currentIndex]),
                     ),
                   ],
                 ),
@@ -120,7 +140,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
         ),
@@ -157,7 +177,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
             ),
@@ -179,8 +199,8 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
         return Container(
           height: MediaQuery.of(ctx).size.height * 0.8,
           decoration: BoxDecoration(
-            color: Theme.of(ctx).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: Column(
             children: [
@@ -190,7 +210,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'My Vocabulary (${allWords.length} Words)',
+                      'All Saved Words (${allWords.length})',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -275,6 +295,91 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
     );
   }
 
+  Widget _buildExampleSentence(SavedWord word) {
+    String? german = word.contextSentence;
+    String? english;
+
+    final lower = word.word.toLowerCase().trim();
+    if ((german == null || german.isEmpty) && _exampleCache.containsKey(lower)) {
+      german = _exampleCache[lower]!['de'];
+      english = _exampleCache[lower]!['en'];
+    }
+
+    if (german == null || german.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.format_quote_rounded,
+                size: 16,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'EXAMPLE SENTENCE',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => _ttsService.speak(german!, lang: 'de-DE'),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Icon(
+                    Icons.volume_up_rounded,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '"$german"',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              fontStyle: FontStyle.italic,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          if (english != null && english.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              english,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildFlashcard(SavedWord word) {
     final genderColor = _getGenderColor(word.gender);
 
@@ -285,7 +390,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
           // Progress indicator
           LinearProgressIndicator(
             value: (_currentIndex + 1) / _dueWords.length,
-            backgroundColor: Theme.of(context).dividerColor.withOpacity(0.2),
+            backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.2),
             valueColor: AlwaysStoppedAnimation<Color>(genderColor),
             borderRadius: BorderRadius.circular(4),
           ),
@@ -298,22 +403,34 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 setState(() {
                   _showAnswer = !_showAnswer;
                 });
+                if (_showAnswer && (word.contextSentence == null || word.contextSentence!.isEmpty)) {
+                  final lower = word.word.toLowerCase().trim();
+                  if (!_exampleCache.containsKey(lower)) {
+                    _dictionaryService.getExamplesForWord(word.word).then((examples) {
+                      if (examples.isNotEmpty && mounted) {
+                        setState(() {
+                          _exampleCache[lower] = examples.first;
+                        });
+                      }
+                    });
+                  }
+                }
               },
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(4),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: genderColor.withOpacity(0.4),
+                    color: genderColor.withValues(alpha: 0.4),
                     width: 2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: genderColor.withOpacity(0.08),
+                      color: genderColor.withValues(alpha: 0.08),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -366,7 +483,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           "Tap card to flip answer",
@@ -391,21 +508,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
-                      if (word.contextSentence != null &&
-                          word.contextSentence!.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          "\"${word.contextSentence}\"",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontStyle: FontStyle.italic,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                      _buildExampleSentence(word),
                     ],
                   ],
                 ),
@@ -451,9 +554,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                   ),
                 ),
               ],
-            ).animate().fade(duration: 200.ms).slideY(begin: 0.2, end: 0)
-          else
-            const SizedBox(height: 48), // Spacer when not flipped
+            ),
         ],
       ),
     );
@@ -469,8 +570,10 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         elevation: 2,
       ),
       child: Text(
@@ -483,48 +586,58 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   Widget _buildCompletionCard() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.check_circle_rounded,
-                size: 48,
-                color: Colors.green.shade700,
-              ),
-            ).animate().scale(duration: 400.ms, curve: Curves.elasticOut),
-            const SizedBox(height: 20),
-            Text(
-              "All Caught Up!",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+        padding: const EdgeInsets.all(24.0),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
             ),
-            const SizedBox(height: 8),
-            Text(
-              "You've completed all your scheduled reviews for today. Save new words from stories or videos to expand your queue!",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.task_alt_rounded,
+                size: 64,
+                color: Colors.green,
               ),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: _loadDeck,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text("Refresh Queue"),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                'All Reviews Completed!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You are all caught up for today. Great job keeping your memory fresh!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Back to Home'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
