@@ -1,22 +1,20 @@
-import 'package:flutter/material.dart';
-import '../models/compound_word.dart';
+import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/services.dart';
+import '../models/compound_word.dart';
 
 class CompoundService {
-  final List<CompoundWord> _compounds = [
+  List<CompoundWord> _compounds = [
     const CompoundWord(
       part1: 'Glüh',
       part2: 'birne',
       part1Meaning: 'Glow',
       part2Meaning: 'Pear',
       fullWord: 'Glühbirne',
-      fullMeaning: 'Lightbulb',
+      fullMeaning: 'Light bulb',
       gender: 'Die',
       part1Subtitle: '"Glüh-"',
       part2Subtitle: '"-birne"',
-      part1Icon: Icons.local_fire_department_rounded,
-      part2Icon: Icons.eco_rounded,
-      fullIcon: Icons.lightbulb_rounded,
     ),
     const CompoundWord(
       part1: 'Hand',
@@ -28,51 +26,39 @@ class CompoundService {
       gender: 'Der',
       part1Subtitle: '"Hand-"',
       part2Subtitle: '"-schuh"',
-      part1Icon: Icons.back_hand_rounded,
-      part2Icon: Icons.do_not_step_rounded,
-      fullIcon: Icons.pan_tool_rounded,
     ),
     const CompoundWord(
       part1: 'Fern',
       part2: 'sehen',
-      part1Meaning: 'Far',
+      part1Meaning: 'Remote',
       part2Meaning: 'See',
       fullWord: 'Fernsehen',
-      fullMeaning: 'Television',
+      fullMeaning: 'Tv',
       gender: 'Das',
       part1Subtitle: '"Fern-"',
       part2Subtitle: '"-sehen"',
-      part1Icon: Icons.landscape_rounded,
-      part2Icon: Icons.visibility_rounded,
-      fullIcon: Icons.tv_rounded,
     ),
     const CompoundWord(
       part1: 'Kühl',
       part2: 'schrank',
       part1Meaning: 'Cool',
-      part2Meaning: 'Cupboard',
+      part2Meaning: 'Wardrobe',
       fullWord: 'Kühlschrank',
-      fullMeaning: 'Fridge',
+      fullMeaning: 'Refrigerator',
       gender: 'Der',
       part1Subtitle: '"Kühl-"',
       part2Subtitle: '"-schrank"',
-      part1Icon: Icons.ac_unit_rounded,
-      part2Icon: Icons.kitchen_rounded,
-      fullIcon: Icons.kitchen_rounded,
     ),
     const CompoundWord(
       part1: 'Flug',
       part2: 'zeug',
       part1Meaning: 'Flight',
-      part2Meaning: 'Stuff',
+      part2Meaning: 'Things',
       fullWord: 'Flugzeug',
       fullMeaning: 'Airplane',
       gender: 'Das',
       part1Subtitle: '"Flug-"',
       part2Subtitle: '"-zeug"',
-      part1Icon: Icons.flight_rounded,
-      part2Icon: Icons.category_rounded,
-      fullIcon: Icons.flight_rounded,
     ),
     const CompoundWord(
       part1: 'Wörter',
@@ -84,29 +70,87 @@ class CompoundService {
       gender: 'Das',
       part1Subtitle: '"Wörter-"',
       part2Subtitle: '"-buch"',
-      part1Icon: Icons.translate_rounded,
-      part2Icon: Icons.menu_book_rounded,
-      fullIcon: Icons.menu_book_rounded,
     ),
     const CompoundWord(
       part1: 'Schild',
       part2: 'kröte',
-      part1Meaning: 'Shield',
+      part1Meaning: 'Sign',
       part2Meaning: 'Toad',
       fullWord: 'Schildkröte',
-      fullMeaning: 'Turtle',
+      fullMeaning: 'Tortoise',
       gender: 'Die',
       part1Subtitle: '"Schild-"',
       part2Subtitle: '"-kröte"',
-      part1Icon: Icons.shield_rounded,
-      part2Icon: Icons.pets_rounded,
-      fullIcon: Icons.pets_rounded,
+    ),
+    const CompoundWord(
+      part1: 'Regen',
+      part2: 'schirm',
+      part1Meaning: 'Rain',
+      part2Meaning: 'Screen',
+      fullWord: 'Regenschirm',
+      fullMeaning: 'Umbrella',
+      gender: 'Der',
+      part1Subtitle: '"Regen-"',
+      part2Subtitle: '"-schirm"',
+    ),
+    const CompoundWord(
+      part1: 'Zahn',
+      part2: 'bürste',
+      part1Meaning: 'Tooth',
+      part2Meaning: 'Brush',
+      fullWord: 'Zahnbürste',
+      fullMeaning: 'Toothbrush',
+      gender: 'Die',
+      part1Subtitle: '"Zahn-"',
+      part2Subtitle: '"-bürste"',
+    ),
+    const CompoundWord(
+      part1: 'Fahr',
+      part2: 'rad',
+      part1Meaning: 'Drive',
+      part2Meaning: 'Wheel',
+      fullWord: 'Fahrrad',
+      fullMeaning: 'Bicycle',
+      gender: 'Das',
+      part1Subtitle: '"Fahr-"',
+      part2Subtitle: '"-rad"',
     ),
   ];
+
+  bool _isLoaded = false;
+
+  /// Loads verified programmatic compounds from assets/compound_words.json
+  Future<void> loadAssetCompounds() async {
+    if (_isLoaded) return;
+    try {
+      final jsonStr = await rootBundle.loadString('assets/compound_words.json');
+      final List data = json.decode(jsonStr);
+      final loaded = data.map((item) => CompoundWord(
+        part1: item['part1'],
+        part2: item['part2'],
+        part1Meaning: item['part1Meaning'],
+        part2Meaning: item['part2Meaning'],
+        fullWord: item['fullWord'],
+        fullMeaning: item['fullMeaning'],
+        gender: item['gender'],
+        part1Subtitle: item['part1Subtitle'],
+        part2Subtitle: item['part2Subtitle'],
+      )).toList();
+
+      if (loaded.isNotEmpty) {
+        _compounds = loaded;
+      }
+      _isLoaded = true;
+    } catch (_) {}
+  }
 
   CompoundWord getRandomWord() {
     final random = Random();
     return _compounds[random.nextInt(_compounds.length)];
+  }
+
+  List<CompoundWord> getAllWords() {
+    return List.unmodifiable(_compounds);
   }
 
   // Get distractor meanings
@@ -115,7 +159,6 @@ class CompoundService {
     allMeanings.remove(correctMeaning);
     allMeanings.shuffle();
     if (allMeanings.length < count) {
-       // Fallback if not enough words
        return allMeanings;
     }
     return allMeanings.take(count).toList();

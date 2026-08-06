@@ -18,6 +18,7 @@ import 'package:provider/provider.dart';
 import 'package:takt/services/media_library_service.dart';
 import 'package:takt/config.dart';
 import 'package:takt/widgets/glance_word_sheet.dart';
+import 'package:takt/l10n/app_localizations.dart';
 
 class KeyMediaVocab {
   final String word;
@@ -86,7 +87,8 @@ class _VideoScreenState extends State<VideoScreen>
   bool _isFullscreen = false;
   bool _isPlayerMinimized = false;
   double _playbackSpeed = 1.0;
-  bool _hideTranslations = false;
+  bool _hideTranslations = true;
+  final Set<int> _activeActionCues = {};
   final List<SavedWord> _inMemorySavedWords = [];
   bool _showControls = true;
   Timer? _controlsTimer;
@@ -314,6 +316,43 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
+  Future<void> _addAllVocabToLearning() async {
+    if (_keyVocabList.isEmpty) return;
+
+    int addedCount = 0;
+    for (final vocab in _keyVocabList) {
+      final wordId = vocab.word.toLowerCase().trim();
+      if (!_savedVocabIds.contains(wordId)) {
+        final saved = SavedWord(
+          id: wordId,
+          word: vocab.word,
+          baseForm: vocab.baseForm,
+          pos: vocab.pos,
+          gender: vocab.gender,
+          primaryDefinition: vocab.primaryDefinition,
+          definitions: [vocab.primaryDefinition],
+          ipa: vocab.ipa,
+          contextSentence: vocab.cueOriginal,
+          sourceTitle: widget.processedVideo?.title ?? 'Media Lesson',
+          category: VocabCategory.learning,
+        );
+        await _vocabService.upsertWord(saved);
+        _savedVocabIds.add(wordId);
+        addedCount++;
+      }
+    }
+
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added $addedCount German terms to Learning Deck! 🎉'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _videoPlayerController?.removeListener(_onVideoPlayerUpdate);
@@ -396,6 +435,8 @@ class _VideoScreenState extends State<VideoScreen>
           });
         }
       });
+    } else if (_videoPlayerController!.value.isPlaying && _currentSubtitleIndex != -1) {
+      setState(() {});
     }
   }
 
@@ -1159,17 +1200,58 @@ class _VideoScreenState extends State<VideoScreen>
     );
   }
 
-  Widget _buildTappableLine(String text, TextStyle style) {
+  Widget _buildTappableLine(
+    String text,
+    TextStyle style, {
+    bool isCurrentCue = false,
+    double cueStart = 0,
+    double cueEnd = 0,
+  }) {
     final words = text.split(' ');
+    int activeWordIndex = -1;
+
+    if (isCurrentCue &&
+        _videoPlayerController != null &&
+        _videoPlayerController!.value.isPlaying &&
+        cueEnd > cueStart) {
+      final currentPosSec = _videoPlayerController!.value.position.inMilliseconds / 1000.0;
+      if (currentPosSec >= cueStart && currentPosSec <= cueEnd) {
+        final progress = (currentPosSec - cueStart) / (cueEnd - cueStart);
+        activeWordIndex = (progress * words.length).floor().clamp(0, words.length - 1);
+      }
+    }
+
+    final colorScheme = Theme.of(context).colorScheme;
+
     return RichText(
       text: TextSpan(
-        children: words.map((word) {
+        children: words.asMap().entries.map((entry) {
+          final wordIndex = entry.key;
+          final word = entry.value;
+          final isHighlighted = isCurrentCue && wordIndex == activeWordIndex;
+
           return WidgetSpan(
             child: GestureDetector(
               onTap: () => _showWordInfoDialog(word, text),
-              child: Text(
-                '$word ',
-                style: style,
+              child: Container(
+                padding: isHighlighted
+                    ? const EdgeInsets.symmetric(horizontal: 3, vertical: 1)
+                    : EdgeInsets.zero,
+                decoration: isHighlighted
+                    ? BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(4),
+                      )
+                    : null,
+                child: Text(
+                  '$word ',
+                  style: isHighlighted
+                      ? style.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        )
+                      : style,
+                ),
               ),
             ),
           );
@@ -1459,7 +1541,7 @@ class _VideoScreenState extends State<VideoScreen>
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(
-              'Extracting key vocabulary & insights...',
+              'Extracting key vocabulary...',
               style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
             ),
           ],
@@ -1492,45 +1574,34 @@ class _VideoScreenState extends State<VideoScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       children: [
-        // Hero Header Card
+        // Minimalist Header Card
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                colorScheme.primaryContainer,
-                colorScheme.surfaceContainerHigh,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.lightbulb_rounded, color: colorScheme.primary, size: 22),
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Media Vocabulary Insights',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                          '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocabulary"} (${_keyVocabList.length})',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
-                          '${_keyVocabList.length} key German terms extracted from transcript cues',
+                          AppLocalizations.of(context)?.subtitleKeyVocab ?? 'Important German vocabulary from transcript',
                           style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
                         ),
                       ],
@@ -1538,29 +1609,48 @@ class _VideoScreenState extends State<VideoScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _startMediaVocabPracticeSheet,
-                  icon: const Icon(Icons.psychology_rounded, size: 18),
-                  label: const Text('🎯 Practice Media Deck'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _addAllVocabToLearning,
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: Text(
+                        AppLocalizations.of(context)?.actionAddAllToLearning ?? 'Add all to Learning',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        side: BorderSide(color: colorScheme.primary),
+                        foregroundColor: colorScheme.primary,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: _startMediaVocabPracticeSheet,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      side: BorderSide(color: colorScheme.outlineVariant),
+                      foregroundColor: colorScheme.onSurface,
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context)?.actionPractice ?? 'Practice',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // Vocabulary Cards List
         ..._keyVocabList.map((vocab) {
-          final isSaved = _savedVocabIds.contains(vocab.word.toLowerCase().trim());
           Color genderColor = colorScheme.primary;
           if (vocab.gender == 'm' || vocab.gender == 'masculine') genderColor = AppTheme.genderMasc;
           if (vocab.gender == 'f' || vocab.gender == 'feminine') genderColor = AppTheme.genderFem;
@@ -1568,15 +1658,15 @@ class _VideoScreenState extends State<VideoScreen>
 
           return Container(
             margin: const EdgeInsets.only(bottom: 12.0),
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(14.0),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(18.0),
+              borderRadius: BorderRadius.circular(6.0),
               border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 6,
+                  blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -1586,19 +1676,19 @@ class _VideoScreenState extends State<VideoScreen>
               children: [
                 // Top Row: Word & Badges
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (vocab.article.isNotEmpty) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: genderColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           vocab.article,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: genderColor,
                           ),
@@ -1607,84 +1697,67 @@ class _VideoScreenState extends State<VideoScreen>
                       const SizedBox(width: 8),
                     ],
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            vocab.word,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                          if (vocab.ipa != null)
-                            Text(
-                              vocab.ipa!,
-                              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
-                            ),
-                        ],
+                      child: Text(
+                        vocab.word,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
                     ),
-                    if (vocab.pos != null && vocab.pos!.isNotEmpty)
+                    if (vocab.pos != null && vocab.pos!.isNotEmpty) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: colorScheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           vocab.pos!.toUpperCase(),
                           style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
                         ),
                       ),
-                    const SizedBox(width: 6),
+                      const SizedBox(width: 6),
+                    ],
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(6),
+                        color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         vocab.difficultyLabel,
                         style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.primary),
                       ),
                     ),
-                    IconButton(
-                      icon: Icon(
-                        isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        color: isSaved ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                        size: 20,
-                      ),
-                      onPressed: () => _toggleSaveVocab(vocab),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
 
                 // Primary Definition
                 Text(
                   vocab.primaryDefinition,
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                     color: colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
                 // Context Snippet Card
                 GestureDetector(
                   onTap: () => _seekToSubtitle(vocab.cueStartTime),
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(12),
+                      color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.play_circle_fill_rounded, size: 18, color: colorScheme.primary),
+                        Icon(Icons.play_circle_fill_rounded, size: 16, color: colorScheme.primary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -1694,48 +1767,71 @@ class _VideoScreenState extends State<VideoScreen>
                                 '"${vocab.cueOriginal}"',
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                                style: TextStyle(fontSize: 12, color: colorScheme.onSurface),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                vocab.cueTranslated,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
-                              ),
+                              if (vocab.cueTranslated.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  vocab.cueTranslated,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                                ),
+                              ],
                             ],
                           ),
                         ),
+                        const SizedBox(width: 6),
                         Text(
                           _formatDuration(Duration(seconds: vocab.cueStartTime.toInt())),
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: colorScheme.primary),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
                 // Bottom Actions Toolbar
                 Row(
                   children: [
-                    TextButton.icon(
-                      onPressed: () => _ttsService.speak(vocab.fullWordWithArticle, lang: 'de-DE'),
-                      icon: const Icon(Icons.volume_up_rounded, size: 16),
-                      label: const Text('Listen', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    InkWell(
+                      onTap: () => _ttsService.speak(vocab.fullWordWithArticle, lang: 'de-DE'),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.volume_up_rounded, size: 14, color: colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)?.actionListen ?? 'Listen',
+                              style: TextStyle(fontSize: 11, color: colorScheme.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    TextButton.icon(
-                      onPressed: () => GlanceWordSheet.show(
+                    const SizedBox(width: 12),
+                    InkWell(
+                      onTap: () => GlanceWordSheet.show(
                         context,
                         word: vocab.word,
                         contextSentence: vocab.cueOriginal,
                         sourceTitle: widget.processedVideo?.title ?? 'Media Lesson',
                       ),
-                      icon: const Icon(Icons.menu_book_rounded, size: 16),
-                      label: const Text('Declensions & Forms', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.menu_book_rounded, size: 14, color: colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)?.actionGrammarForms ?? 'Grammar & Forms',
+                              style: TextStyle(fontSize: 11, color: colorScheme.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1747,113 +1843,162 @@ class _VideoScreenState extends State<VideoScreen>
     );
   }
 
+  void _deleteCue(int index) {
+    if (index < 0 || index >= _subtitles.length) return;
+    setState(() {
+      _subtitles.removeAt(index);
+      _activeActionCues.remove(index);
+    });
+  }
+
   Widget _buildFullTranscriptView(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      itemCount: _subtitles.length,
-      itemBuilder: (context, index) {
-        final cue = _subtitles[index];
-        final bool isCurrent = _currentSubtitleIndex == index;
-        return GestureDetector(
-          onTap: () => _seekToSubtitle(cue.start),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16.0),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              key: _subtitleKeys[index],
-              margin: const EdgeInsets.only(bottom: 12.0),
-              decoration: BoxDecoration(
-                color: isCurrent
-                    ? colorScheme.primaryContainer.withValues(alpha: 0.4)
-                    : Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(16.0),
-                border: Border.all(
-                  color: isCurrent
-                      ? colorScheme.primary
-                      : colorScheme.outlineVariant.withValues(alpha: 0.5),
-                  width: isCurrent ? 1.5 : 0.8,
-                ),
-                boxShadow: isCurrent
-                    ? [
-                        BoxShadow(
-                          color: colorScheme.primary.withValues(alpha: 0.12),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-              ),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (isCurrent)
-                      Container(
-                        width: 4,
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            bottomLeft: Radius.circular(16),
-                          ),
-                        ),
-                      ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildTappableLine(
-                              cue.original,
-                              TextStyle(
-                                fontSize: isCurrent ? 17 : 16,
-                                height: 1.5,
-                                fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                                color: isCurrent ? colorScheme.primary : colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 6.0),
-                            _hideTranslations
-                                ? Text(
-                                    "••••••••••••••••••••",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                                      letterSpacing: 2,
-                                    ),
-                                  )
-                                : _buildTappableLine(
-                                    cue.translated,
-                                    TextStyle(
-                                      fontSize: 14,
-                                      height: 1.4,
-                                      fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                                      color: isCurrent
-                                          ? colorScheme.primary.withValues(alpha: 0.8)
-                                          : colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                          ],
-                        ),
-                      ),
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        if (_activeActionCues.isNotEmpty) {
+          setState(() {
+            _activeActionCues.clear();
+          });
+        }
+      },
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        itemCount: _subtitles.length,
+        itemBuilder: (context, index) {
+          final cue = _subtitles[index];
+          final bool isCurrent = _currentSubtitleIndex == index;
+          final bool isActionsVisible = _activeActionCues.contains(index);
+
+          return GestureDetector(
+            onTap: () => _seekToSubtitle(cue.start),
+            onLongPress: () {
+              setState(() {
+                if (_activeActionCues.contains(index)) {
+                  _activeActionCues.remove(index);
+                } else {
+                  _activeActionCues.add(index);
+                }
+              });
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6.0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                key: _subtitleKeys[index],
+                margin: const EdgeInsets.only(bottom: 12.0),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(6.0),
+                  border: Border.all(
+                    color: isActionsVisible
+                        ? colorScheme.primary
+                        : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    width: isActionsVisible ? 1.5 : 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTappableLine(
+                        cue.original,
+                        TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurface,
+                        ),
+                        isCurrentCue: isCurrent,
+                        cueStart: cue.start,
+                        cueEnd: cue.end,
+                      ),
+                      if (!_hideTranslations) ...[
+                        const SizedBox(height: 6.0),
+                        _buildTappableLine(
+                          cue.translated,
+                          TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      if (isActionsVisible) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: colorScheme.outlineVariant),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () => _showWordInfoDialog(cue.original, cue.original),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit_rounded, size: 14, color: colorScheme.primary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        AppLocalizations.of(context)?.actionEdit ?? 'Edit',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Container(height: 12, width: 1, color: colorScheme.outlineVariant),
+                              InkWell(
+                                onTap: () => _deleteCue(index),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        AppLocalizations.of(context)?.actionDelete ?? 'Delete',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -1882,15 +2027,8 @@ class _VideoScreenState extends State<VideoScreen>
                     children: [
                       ChoiceChip(
                         selected: _activeViewIndex == 0,
-                        avatar: Icon(
-                          Icons.lightbulb_rounded,
-                          size: 16,
-                          color: _activeViewIndex == 0
-                              ? colorScheme.onPrimary
-                              : colorScheme.primary,
-                        ),
                         label: Text(
-                          'Key Vocabulary (${_keyVocabList.length})',
+                          '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocabulary"} (${_keyVocabList.length})',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -1913,7 +2051,7 @@ class _VideoScreenState extends State<VideoScreen>
                               : colorScheme.primary,
                         ),
                         label: Text(
-                          'Full Cues (${_subtitles.length})',
+                          '${AppLocalizations.of(context)?.titleFullCues ?? "Full Cues"} (${_subtitles.length})',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -1932,39 +2070,21 @@ class _VideoScreenState extends State<VideoScreen>
               IconButton(
                 icon: Icon(
                   _hideTranslations
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
+                      ? Icons.g_translate_rounded
+                      : Icons.translate_rounded,
                   size: 20,
-                  color: _hideTranslations
+                  color: !_hideTranslations
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,
                 ),
                 tooltip: _hideTranslations
-                    ? "Show Translations"
-                    : "Hide Translations (Active Recall)",
+                    ? (AppLocalizations.of(context)?.actionShowTranslation ?? 'Show Translations')
+                    : (AppLocalizations.of(context)?.actionHideTranslation ?? 'Hide Translations'),
                 onPressed: () {
                   setState(() {
                     _hideTranslations = !_hideTranslations;
                   });
                 },
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.bookmark_border_rounded,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                tooltip: "Saved Vocabulary",
-                onPressed: _showSavedVocabularySheet,
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                tooltip: "AI Summary",
-                onPressed: _showOnDeviceSummaryDialog,
               ),
             ],
           ),

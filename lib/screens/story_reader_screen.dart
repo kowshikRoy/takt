@@ -11,8 +11,10 @@ import '../services/media_library_service.dart';
 import '../services/tts_service.dart';
 import '../services/ondevice_ai_service.dart';
 
+import 'package:takt/l10n/app_localizations.dart';
 import '../models/article_model.dart';
 import '../widgets/glance_word_sheet.dart';
+import '../theme/books_modernist_style.dart';
 
 class _TappedWordData {
   final String word;
@@ -44,12 +46,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   TtsProgress? _currentTtsProgress;
   StreamSubscription? _ttsSubscription;
   final Set<int> _visibleParagraphTranslations = {};
+  final Set<int> _completedParagraphIndices = {};
+  final Set<int> _activeActionParagraphs = {};
 
   static final RegExp _wordTokenRegex = RegExp(r'^([^\wäöüÄÖÜß]*)([\wäöüÄÖÜß]+)([^\wäöüÄÖÜß]*)$');
 
   // Reader Settings State
   final ValueNotifier<double> _scrollProgressNotifier = ValueNotifier<double>(0.0);
-  double _fontSize = 18.0;
+  double _fontSize = 14.0;
   double _speechRate = 0.5; // 0.5 is flutter_tts default (~1.0x)
   String _fontFamily = 'Sans'; // 'Serif', 'Sans', 'Mono'
   double _lineHeight = 1.6; // 1.4, 1.6, 1.9
@@ -196,7 +200,6 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     if (cached != null && cached.isNotEmpty && mounted) {
       setState(() {
         _paragraphAnalysisData = cached;
-        _visibleParagraphTranslations.addAll(cached.keys);
         _isLoadingAnalysis = false;
       });
       _loadWordGenders();
@@ -226,7 +229,6 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             'source_lang': 'de',
             'is_on_device': true,
           };
-          _visibleParagraphTranslations.add(i);
         });
       }
 
@@ -344,112 +346,66 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    Color scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
+
+    Color scaffoldBg = BooksModernist.bg;
     if (_isSepiaMode) {
       scaffoldBg = isDark ? const Color(0xFF262220) : const Color(0xFFF6F0E6);
     }
 
     return Scaffold(
       backgroundColor: scaffoldBg,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isDesktop = constraints.maxWidth > 850;
-
-          if (isDesktop) {
-            return CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                _buildStickyHeader(context),
-                SliverPadding(
-                  padding: const EdgeInsets.all(28),
-                  sliver: SliverToBoxAdapter(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1200),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Left Story Column (Flex 65)
-                            Expanded(
-                              flex: 65,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildTitleSection(context),
-                                  const SizedBox(height: 16),
-                                  if (_showGenderHighlighting) _buildGenderLegend(context),
-                                  const SizedBox(height: 20),
-                                  _buildStoryContent(context),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 32),
-
-                            // Right Sidebar Column (Flex 35)
-                            Expanded(
-                              flex: 35,
-                              child: _buildDesktopReaderSidebar(context),
-                            ),
-                          ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: Column(
+                children: [
+                  // 1. Sharp Bordered Textbook Page Card Container (Identical to TextbookUnitScreen)
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                      decoration: BoxDecoration(
+                        color: _isSepiaMode
+                            ? (isDark ? const Color(0xFF322C28) : const Color(0xFFEBE0D0))
+                            : BooksModernist.surface,
+                        border: Border.all(color: BooksModernist.divider, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () {
+                          if (_activeActionParagraphs.isNotEmpty) {
+                            setState(() {
+                              _activeActionParagraphs.clear();
+                            });
+                          }
+                        },
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildStoryContent(context),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          }
-
-          // Mobile / Mobile Web Single-Column Layout
-          return Stack(
-            children: [
-              CustomScrollView(
-                controller: _scrollController,
-                slivers: [
-                  _buildStickyHeader(context),
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16, 16, 16, 160 + bottomInset),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 720),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildTitleSection(context),
-                                const SizedBox(height: 16),
-                                if (_showGenderHighlighting) _buildGenderLegend(context),
-                                const SizedBox(height: 20),
-                                _buildStoryContent(context),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
                 ],
               ),
-
-              // Floating Bottom Reader Toolbar (Mobile)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: bottomInset + 12,
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 600),
-                    child: _buildFloatingReaderToolbar(context),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -629,116 +585,195 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     );
   }
 
-  Widget _buildStickyHeader(BuildContext context) {
-    return SliverAppBar(
-      pinned: true,
-      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      automaticallyImplyLeading: false,
-      title: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Back Button (40x40)
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                icon: Icon(Icons.arrow_back_rounded,
-                    size: 20, color: Theme.of(context).colorScheme.onSurface),
-                tooltip: 'Back',
-                onPressed: () {
+  Widget _buildHeader() {
+    List<String> paragraphs = _getParagraphList();
+    final isAnyTranslationVisible = _visibleParagraphTranslations.isNotEmpty;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+          child: Row(
+            children: [
+              InkWell(
+                onTap: () {
                   _ttsService.stop();
-                  Navigator.pop(context);
+                  Navigator.of(context).pop();
+                },
+                child: const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Icon(
+                    Icons.chevron_left_rounded,
+                    color: BooksModernist.text,
+                    size: 28,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.article?.title ?? 'Lesetext',
+                  style: BooksModernist.heading(size: 15),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (_isLoadingAnalysis) ...[
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: BooksModernist.accent,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              IconButton(
+                icon: Icon(
+                  _isPlayingTts ? Icons.pause_rounded : Icons.mic_rounded,
+                  size: 20,
+                  color: _isPlayingTts ? BooksModernist.accent : BooksModernist.accentDark,
+                ),
+                tooltip: _isPlayingTts ? 'Pause' : 'Audio anhören',
+                onPressed: _togglePlayAllTts,
+              ),
+              IconButton(
+                icon: Icon(
+                  isAnyTranslationVisible ? Icons.translate_rounded : Icons.g_translate_rounded,
+                  size: 20,
+                  color: isAnyTranslationVisible ? BooksModernist.accent : BooksModernist.accentDark,
+                ),
+                tooltip: 'Übersetzung umschalten',
+                onPressed: () {
+                  setState(() {
+                    if (_visibleParagraphTranslations.isNotEmpty) {
+                      _visibleParagraphTranslations.clear();
+                    } else {
+                      for (int i = 0; i < paragraphs.length; i++) {
+                        _visibleParagraphTranslations.add(i);
+                      }
+                    }
+                  });
                 },
               ),
-            ),
+            ],
+          ),
+        ),
+        ValueListenableBuilder<double>(
+          valueListenable: _scrollProgressNotifier,
+          builder: (context, progress, _) {
+            return ModernistProgressBar(
+              progress: progress,
+              height: 3,
+            );
+          },
+        ),
+      ],
+    );
+  }
 
-            // Center Scroll % Badge
-            ValueListenableBuilder<double>(
-              valueListenable: _scrollProgressNotifier,
-              builder: (context, progress, _) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '${(progress * 100).round()}% read',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            // Right Action Controls (Uniform 40x40 Size & Padding)
-            Row(
-              children: [
-                // Analysis Status Indicator
-                Container(
-                  width: 40, height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    shape: BoxShape.circle,
-                  ),
-                  child: _isLoadingAnalysis
-                      ? SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
-                        )
-                      : Icon(Icons.check_circle_rounded, size: 20, color: Colors.green.shade600),
-                ),
-                const SizedBox(width: 8),
-
-                // Reader Preferences Sheet Trigger (40x40)
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.tune_rounded, size: 20, color: Theme.of(context).colorScheme.onSurface),
-                    tooltip: 'Display settings',
-                    onPressed: () => _showDisplaySettingsSheet(context),
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Dark / Light Theme Switch (40x40)
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.brightness_6_rounded,
-                        size: 20, color: Theme.of(context).colorScheme.onSurface),
-                    tooltip: 'Toggle theme',
-                    onPressed: () {
-                      Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
-                    },
-                  ),
-                ),
-              ],
+  Widget _buildHeaderActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: BooksModernist.surface,
+          border: Border.all(color: BooksModernist.divider),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: BooksModernist.accentDark),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: BooksModernist.body(
+                size: 11,
+                weight: FontWeight.w700,
+                color: BooksModernist.accentDark,
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTopPageSlider() {
+    List<String> paragraphs = _getParagraphList();
+    if (paragraphs.length <= 1) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: List.generate(paragraphs.length, (index) {
+              final isSelected = index == (_currentlySpokenParagraphIndex ?? 0);
+
+              return Expanded(
+                child: Center(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 150),
+                    opacity: isSelected ? 1.0 : 0.0,
+                    child: Text(
+                      'S. ${index + 1}',
+                      style: BooksModernist.body(
+                        size: 10.5,
+                        weight: FontWeight.w800,
+                        color: BooksModernist.accentDark,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: List.generate(paragraphs.length, (index) {
+              final isSelected = index == (_currentlySpokenParagraphIndex ?? 0);
+
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() {
+                      _currentlySpokenParagraphIndex = index;
+                    });
+                    _scrollToParagraph(index);
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: index < paragraphs.length - 1 ? 6.0 : 0.0,
+                      top: 2.0,
+                      bottom: 4.0,
+                    ),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? BooksModernist.accent
+                            : BooksModernist.divider.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
@@ -748,10 +783,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: BooksModernist.surface,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: BooksModernist.dividerThin,
         ),
       ),
       child: Row(
@@ -779,10 +814,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          style: BooksModernist.body(
+            size: 12,
+            weight: FontWeight.w600,
+            color: BooksModernist.text.withValues(alpha: 0.8),
           ),
         ),
       ],
@@ -794,7 +829,6 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     String mainHeadline = rawTitle;
     String? sourceTag;
 
-    // Clean up domain suffixes like "- sgi-ch.org" into a clean source tag
     if (rawTitle.contains(' - ')) {
       final parts = rawTitle.split(' - ');
       if (parts.last.contains('.')) {
@@ -808,7 +842,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            color: BooksModernist.accent,
             width: 2,
           ),
         ),
@@ -818,50 +852,34 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         children: [
           Row(
             children: [
+              ModernistTag(widget.article?.level ?? 'LESETEXT', accent: true),
+              const SizedBox(width: 10),
               Text(
-                widget.article?.level ?? 'KAPITEL 3',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.bold,
+                'KAPITEL ${widget.article?.id ?? '1'}',
+                style: BooksModernist.body(
+                  size: 11.5,
+                  weight: FontWeight.w700,
+                  color: BooksModernist.text.withValues(alpha: 0.6),
                 ),
               ),
               if (sourceTag != null) ...[
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    sourceTag,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
+                ModernistTag(sourceTag),
               ],
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             mainHeadline,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              height: 1.25,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            style: BooksModernist.heading(size: 18, height: 1.25),
           ),
           if (widget.article == null) ...[
             const SizedBox(height: 4),
             Text(
               'The Lost Key',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontStyle: FontStyle.italic,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              style: BooksModernist.body(
+                size: 13,
+                color: BooksModernist.text.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -882,7 +900,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
         return Padding(
           key: _paragraphKeys[index],
-          padding: const EdgeInsets.only(bottom: 24.0),
+          padding: const EdgeInsets.only(bottom: 18.0),
           child: _buildInteractiveParagraph(context, germanText, index),
         );
       }),
@@ -892,194 +910,164 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   TextStyle _getReaderTextStyle(BuildContext context) {
     final baseColor = _isSepiaMode
         ? const Color(0xFF322720)
-        : Theme.of(context).colorScheme.onSurface;
+        : BooksModernist.text;
 
     if (_fontFamily == 'Serif') {
       return GoogleFonts.lora(fontSize: _fontSize, height: _lineHeight, color: baseColor);
     } else if (_fontFamily == 'Mono') {
       return GoogleFonts.robotoMono(fontSize: _fontSize, height: _lineHeight, color: baseColor);
     } else {
-      return GoogleFonts.splineSans(fontSize: _fontSize, height: _lineHeight, color: baseColor);
+      return BooksModernist.font(context, size: _fontSize, height: _lineHeight, color: baseColor);
     }
   }
 
   Widget _buildInteractiveParagraph(BuildContext context, String text, int index) {
     final englishTranslation = _paragraphAnalysisData[index]?['english_translation'] as String?;
     final isTranslationVisible = _visibleParagraphTranslations.contains(index);
-    final isSpoken = _currentlySpokenParagraphIndex == index && _isPlayingTts;
+    final isActionsVisible = _activeActionParagraphs.contains(index);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: isSpoken ? const EdgeInsets.all(10) : EdgeInsets.zero,
-      decoration: BoxDecoration(
-        color: isSpoken
-            ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(4),
-        border: isSpoken
-            ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6), width: 1.5)
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Styled Left Action Column
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(4),
+    return GestureDetector(
+      onLongPress: () {
+        setState(() {
+          if (_activeActionParagraphs.contains(index)) {
+            _activeActionParagraphs.remove(index);
+          } else {
+            _activeActionParagraphs.add(index);
+          }
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: _isSepiaMode
+              ? (Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF322C28)
+                  : const Color(0xFFEBE0D0))
+              : BooksModernist.bg,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isActionsVisible ? BooksModernist.accent : BooksModernist.dividerThin,
+            width: isActionsVisible ? 1.5 : 1,
+          ),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ValueListenableBuilder<_TappedWordData?>(
+              valueListenable: _tappedWordNotifier,
+              builder: (context, tappedData, _) {
+                return RichText(
+                  text: TextSpan(
+                    style: _getReaderTextStyle(context),
+                    children: _buildParagraphSpans(context, text, index),
                   ),
-                  child: Column(
-                    children: [
-                      // Audio Speak Paragraph
-                      IconButton(
-                        icon: Icon(
-                          Icons.volume_up_rounded,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.primary,
+                );
+              },
+            ),
+            if (isActionsVisible) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: BooksModernist.surface,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: BooksModernist.dividerThin),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => _showAiGrammarExplainer(context, text, index),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.auto_awesome_rounded, size: 14, color: BooksModernist.accent),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)?.actionGrammar ?? 'Grammar',
+                              style: BooksModernist.body(size: 11, weight: FontWeight.w600),
+                            ),
+                          ],
                         ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        tooltip: 'Listen to paragraph',
-                        onPressed: () {
-                          _ttsService.setSpeechRate(_speechRate);
-                          _ttsService.speak(text);
-                        },
                       ),
-                      const SizedBox(height: 4),
-
-                      // Inline Translation Toggle
-                      IconButton(
-                        icon: _isLoadingAnalysis && (englishTranslation == null || englishTranslation.isEmpty)
-                            ? SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
-                              )
-                            : Icon(
-                                isTranslationVisible ? Icons.translate_rounded : Icons.g_translate_rounded,
-                                size: 20,
-                                color: isTranslationVisible
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
+                    Container(height: 12, width: 1, color: BooksModernist.dividerThin),
+                    InkWell(
+                      onTap: () => _editParagraph(index),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit_rounded, size: 14, color: BooksModernist.accentDark),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)?.actionEdit ?? 'Edit',
+                              style: BooksModernist.body(size: 11, weight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(height: 12, width: 1, color: BooksModernist.dividerThin),
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _activeActionParagraphs.remove(index);
+                        });
+                        _deleteParagraph(index);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)?.actionDelete ?? 'Delete',
+                              style: BooksModernist.body(
+                                size: 11,
+                                weight: FontWeight.w600,
+                                color: Colors.redAccent,
                               ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        tooltip: 'Toggle paragraph translation',
-                        onPressed: () {
-                          setState(() {
-                            if (_visibleParagraphTranslations.contains(index)) {
-                              _visibleParagraphTranslations.remove(index);
-                            } else {
-                              _visibleParagraphTranslations.add(index);
-                            }
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 4),
-
-                      // In-App AI Grammar Explainer Sheet Trigger
-                      IconButton(
-                        icon: Icon(
-                          Icons.auto_awesome_rounded,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.tertiary,
+                            ),
+                          ],
                         ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        tooltip: 'AI Grammar Breakdown',
-                        onPressed: () => _showAiGrammarExplainer(context, text, index),
                       ),
-                      const SizedBox(height: 4),
-
-                      // Edit Paragraph Trigger
-                      IconButton(
-                        icon: Icon(
-                          Icons.edit_outlined,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        tooltip: 'Edit paragraph',
-                        onPressed: () => _editParagraph(index),
-                      ),
-                      const SizedBox(height: 4),
-
-                      // Delete Paragraph Trigger
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        tooltip: 'Delete paragraph',
-                        onPressed: () => _deleteParagraph(index),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (isTranslationVisible && englishTranslation != null && englishTranslation.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: BooksModernist.accent100,
+                  borderRadius: BorderRadius.circular(6),
+                  border: const Border(
+                    left: BorderSide(
+                      color: BooksModernist.accentDark,
+                      width: 3.5,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  englishTranslation,
+                  style: BooksModernist.body(
+                    size: 12,
+                    color: BooksModernist.accentDark,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-
-              // Paragraph Body & Translation
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ValueListenableBuilder<_TappedWordData?>(
-                      valueListenable: _tappedWordNotifier,
-                      builder: (context, tappedData, _) {
-                        return RichText(
-                          text: TextSpan(
-                            style: _getReaderTextStyle(context),
-                            children: _buildParagraphSpans(context, text, index),
-                          ),
-                        );
-                      },
-                    ),
-                  if (isTranslationVisible && englishTranslation != null && englishTranslation.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 10.0),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border(
-                          left: BorderSide(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-                            width: 3.5,
-                          ),
-                        ),
-                      ),
-                      child: Text(
-                        englishTranslation,
-                        style: GoogleFonts.splineSans(
-                          fontSize: (_fontSize - 3).clamp(12.0, 20.0),
-                          fontStyle: FontStyle.italic,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          height: 1.45,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            ],
           ],
         ),
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 
   List<InlineSpan> _buildParagraphSpans(BuildContext context, String text, int paragraphIndex) {
     List<String> rawTokens = text.split(' ');
@@ -1189,13 +1177,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             word.toLowerCase() == tappedData.word.toLowerCase();
 
         Color? backgroundColor;
-        Color? textColor = isHighlighted ? Theme.of(context).colorScheme.onPrimary : wordColor;
+        Color? textColor = wordColor;
 
         if (isTappedWord) {
           backgroundColor = Theme.of(context).colorScheme.primaryContainer;
           textColor = Theme.of(context).colorScheme.onPrimaryContainer;
         } else if (isHighlighted) {
-          backgroundColor = Theme.of(context).colorScheme.primary;
+          backgroundColor = Theme.of(context).colorScheme.primaryContainer;
+          textColor = Theme.of(context).colorScheme.primary;
         }
 
         spans.add(
@@ -1588,7 +1577,6 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                     result.translatedSentence,
                                     style: TextStyle(
                                       fontSize: 15,
-                                      fontStyle: FontStyle.italic,
                                       height: 1.4,
                                       color: Theme.of(context).colorScheme.onSurface,
                                     ),

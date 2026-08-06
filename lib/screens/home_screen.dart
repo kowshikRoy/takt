@@ -19,6 +19,7 @@ import '../services/book_guide_service.dart';
 import '../models/book_guide.dart';
 import '../theme/books_modernist_style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:takt/l10n/app_localizations.dart';
 import 'books/book_detail_screen.dart';
 import 'books/textbook_unit_screen.dart';
 
@@ -64,7 +65,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'DAILY SESSION',
+                    AppLocalizations.of(context)?.sectionDailySession ?? 'DAILY SESSION',
                     style: BooksModernist.body(
                       size: 11,
                       weight: FontWeight.w800,

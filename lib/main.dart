@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/app_entry_point.dart';
@@ -100,6 +102,13 @@ class MyApp extends StatelessWidget {
         themeProvider.colorTheme,
       ),
       themeMode: themeProvider.themeMode,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       home: const AppEntryPoint(),
     );
   }

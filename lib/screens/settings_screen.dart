@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:takt/l10n/app_localizations.dart';
 import '../theme/theme_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/dictionary_service.dart';
@@ -12,23 +13,24 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(l10n?.titleSettings ?? 'Settings'),
         backgroundColor: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
       ),
       body: ListView(
         children: [
           const SizedBox(height: 16),
-          _buildSectionHeader(context, 'Appearance'),
+          _buildSectionHeader(context, l10n?.sectionAppearance ?? 'Appearance'),
 
           // Theme Mode Selector
           ListTile(
-            title: const Text('App Theme'),
+            title: Text(l10n?.labelAppTheme ?? 'App Theme'),
             subtitle: Text(_getThemeModeName(themeProvider.themeMode)),
             leading: Icon(
               Icons.brightness_6_rounded,
@@ -40,7 +42,7 @@ class SettingsScreen extends StatelessWidget {
 
           // Color Theme Selector
           ListTile(
-            title: const Text('Color Palette'),
+            title: Text(l10n?.labelColorPalette ?? 'Color Palette'),
             subtitle: Text(_getColorThemeName(themeProvider.colorTheme)),
             leading: Icon(
               Icons.color_lens_rounded,
@@ -54,7 +56,7 @@ class SettingsScreen extends StatelessWidget {
 
           // Font Family Selector
           ListTile(
-            title: const Text('Typography'),
+            title: Text(l10n?.labelTypography ?? 'Typography'),
             subtitle: Text(themeProvider.fontFamily),
             leading: Icon(
               Icons.font_download_rounded,
@@ -66,11 +68,11 @@ class SettingsScreen extends StatelessWidget {
 
           const Divider(indent: 16, endIndent: 16),
 
-          _buildSectionHeader(context, 'Practice & Learning'),
+          _buildSectionHeader(context, l10n?.sectionPracticeLearning ?? 'Practice & Learning'),
           Consumer<ProfileService>(
             builder: (context, profileService, _) {
               return ListTile(
-                title: const Text('Daily Word Goal'),
+                title: Text(l10n?.labelDailyGoal ?? 'Daily Word Goal'),
                 subtitle: Text(
                   '${profileService.dailyWordGoalCount} new words per day',
                 ),
@@ -88,7 +90,7 @@ class SettingsScreen extends StatelessWidget {
               return Column(
                 children: [
                   SwitchListTile(
-                    title: const Text('Sound Effects'),
+                    title: Text(l10n?.labelSoundEffects ?? 'Sound Effects'),
                     subtitle: const Text('Correct/incorrect and level-up cues'),
                     secondary: Icon(
                       Icons.volume_up_rounded,

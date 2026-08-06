@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:takt/l10n/app_localizations.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'discover_screen.dart';
@@ -77,26 +78,27 @@ class _MainScaffoldState extends State<MainScaffold>
     final bool useExtendedRail = windowClass.isAtLeastExpanded;
 
     if (isDesktop) {
+      final l10n = AppLocalizations.of(context);
       final items = [
         {
           'icon': Icons.home_outlined,
           'selectedIcon': Icons.home_rounded,
-          'label': 'Home',
+          'label': l10n?.navHome ?? 'Home',
         },
         {
           'icon': Icons.school_outlined,
           'selectedIcon': Icons.school_rounded,
-          'label': 'Learn',
+          'label': l10n?.navLearn ?? 'Learn',
         },
         {
           'icon': Icons.menu_book_outlined,
           'selectedIcon': Icons.menu_book_rounded,
-          'label': 'Dictionary',
+          'label': l10n?.navDictionary ?? 'Dictionary',
         },
         {
           'icon': Icons.person_outline,
           'selectedIcon': Icons.person_rounded,
-          'label': 'Profile',
+          'label': l10n?.navProfile ?? 'Profile',
         },
       ];
 
@@ -370,14 +372,23 @@ class _MainScaffoldState extends State<MainScaffold>
             fontWeight: FontWeight.bold,
             fontSize: 10,
           ),
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Learn'),
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book_rounded),
-              label: 'Dictionary',
+              icon: const Icon(Icons.home),
+              label: AppLocalizations.of(context)?.navHome ?? 'Home',
             ),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.school),
+              label: AppLocalizations.of(context)?.navLearn ?? 'Learn',
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.menu_book_rounded),
+              label: AppLocalizations.of(context)?.navDictionary ?? 'Dictionary',
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.person),
+              label: AppLocalizations.of(context)?.navProfile ?? 'Profile',
+            ),
           ],
         ),
       ),
