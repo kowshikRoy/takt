@@ -55,7 +55,12 @@ pytest test_server_integration.py
 ```
 
 ### Cloud Run Deployment (`europe-west4` - Amsterdam)
+Prerequisites: `gcloud` CLI installed and authenticated (`gcloud auth login`) with access to
+project `book-search-472921` (`gcloud config get-value project` should already show it — if not,
+`gcloud config set project book-search-472921`). No manual `docker build`/`push` step needed —
+`--source=.` has Cloud Build do it server-side.
 ```bash
+cd backend   # --source=. deploys the current working directory — must run from backend/
 gcloud run deploy omniscribe \
   --project=book-search-472921 \
   --region=europe-west4 \
@@ -65,6 +70,27 @@ gcloud run deploy omniscribe \
   --cpu=2 \
   --timeout=300s
 ```
+On success, `gcloud` prints `Service URL: https://omniscribe-184475424927.europe-west4.run.app`
+(same URL as `lib/config.dart`'s `backendUrl` — this command redeploys the existing service, it
+doesn't mint a new URL) and reports the new revision (e.g. `omniscribe-00038-sg6`) serving 100%
+of traffic. The whole rollout (Cloud Build + Cloud Run revision + traffic switch) typically takes
+several minutes — run it in the background and poll/tail rather than blocking on it.
+
+### Web App Deployment (Firebase Hosting)
+The Flutter **web app** (`flutter build web`) is a separate deploy target from the omniscribe
+Cloud Run service above — the omniscribe URL is API-only (no `/` route, so it 404s if opened in
+a browser). The web app is hosted on a dedicated Firebase Hosting **site** (not the project's
+default `book-search-472921.web.app`, since that project hosts multiple unrelated services):
+site ID `deutschapp-takt`, hosting target `takt-web` (mapping lives in `.firebaserc`, target
+config in `firebase.json`'s `hosting.target`).
+```bash
+flutter build web --release
+firebase deploy --only hosting:takt-web --project book-search-472921
+```
+Live at: **https://deutschapp-takt.web.app**
+Note: on web, `sqflite` (offline dictionary) and Google ML Kit (on-device translation) are
+unavailable per the platform guards in `dictionary_service.dart`/`ondevice_ai_service.dart` —
+the web build automatically falls back to the online dictionary/translation APIs instead.
 
 ### Data Curation & Database Scripts (`scripts/`)
 ```bash
