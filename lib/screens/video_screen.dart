@@ -2354,6 +2354,14 @@ class _VideoScreenState extends State<VideoScreen>
                     const SizedBox(height: 8),
                     Row(
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                          tooltip: 'Cancel',
+                          onPressed: () => Navigator.pop(sheetContext),
+                        ),
+                        const SizedBox(width: 4),
                         Text(
                           AppLocalizations.of(sheetContext)?.actionEdit ?? 'Edit Cue',
                           style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
@@ -2377,28 +2385,27 @@ class _VideoScreenState extends State<VideoScreen>
                           ),
                         ),
                         const Spacer(),
-                        TextButton.icon(
-                          key: const Key('generate_translation_button'),
-                          onPressed: isTranslating ? null : generateTranslation,
-                          style: TextButton.styleFrom(
-                            foregroundColor: colorScheme.primary,
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        FilledButton.icon(
+                          key: const Key('save_cue_button'),
+                          style: FilledButton.styleFrom(
                             visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
                           ),
-                          icon: isTranslating
-                              ? SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: colorScheme.primary,
-                                  ),
-                                )
-                              : const Icon(Icons.auto_awesome_rounded, size: 14),
-                          label: Text(
-                            isTranslating ? 'Translating...' : 'Translate',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
+                          icon: const Icon(Icons.check_rounded, size: 16),
+                          label: const Text('Save', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          onPressed: () {
+                            Navigator.pop(
+                              sheetContext,
+                              SubtitleCue(
+                                start: cue.start,
+                                end: cue.end,
+                                original: originalController.text.trim(),
+                                translated: translatedController.text.trim(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -2430,7 +2437,7 @@ class _VideoScreenState extends State<VideoScreen>
                         labelText: 'Translation',
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
-                          key: const Key('translate_suffix_icon'),
+                          key: const Key('generate_translation_button'),
                           icon: isTranslating
                               ? SizedBox(
                                   width: 14,
@@ -2440,47 +2447,11 @@ class _VideoScreenState extends State<VideoScreen>
                                     color: colorScheme.primary,
                                   ),
                                 )
-                              : Icon(Icons.translate_rounded, color: colorScheme.primary, size: 18),
+                              : Icon(Icons.auto_awesome_rounded, color: colorScheme.primary, size: 18),
                           tooltip: 'Generate Translation',
                           onPressed: isTranslating ? null : generateTranslation,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(sheetContext),
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          ),
-                          child: const Text('Cancel', style: TextStyle(fontSize: 12)),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          key: const Key('save_cue_button'),
-                          style: ElevatedButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: colorScheme.onPrimary,
-                          ),
-                          onPressed: () {
-                            Navigator.pop(
-                              sheetContext,
-                              SubtitleCue(
-                                start: cue.start,
-                                end: cue.end,
-                                original: originalController.text.trim(),
-                                translated: translatedController.text.trim(),
-                              ),
-                            );
-                          },
-                          child: const Text('Save', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
                     ),
                   ],
                 ),

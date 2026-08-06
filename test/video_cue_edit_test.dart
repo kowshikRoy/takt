@@ -141,12 +141,12 @@ void main() {
       final originalField = find.byKey(const Key('edit_cue_original_field'));
       final translatedField = find.byKey(const Key('edit_cue_translated_field'));
       final generateButton = find.byKey(const Key('generate_translation_button'));
-      final suffixIcon = find.byKey(const Key('translate_suffix_icon'));
+      final saveButton = find.byKey(const Key('save_cue_button'));
 
       expect(originalField, findsOneWidget);
       expect(translatedField, findsOneWidget);
       expect(generateButton, findsOneWidget);
-      expect(suffixIcon, findsOneWidget);
+      expect(saveButton, findsOneWidget);
 
       // Modify the original German transcript
       await tester.enterText(originalField, 'Auf Wiedersehen');
@@ -159,7 +159,6 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       // Tap Save button
-      final saveButton = find.byKey(const Key('save_cue_button'));
       await tester.tap(saveButton);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
