@@ -594,70 +594,73 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                   ),
                 ), // Added missing closing parenthesis and comma
                 // Word Parts
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Part 1
-                    CustomPaint(
-                      painter: PuzzlePiecePainter(
-                        isLeft: true,
-                        colorStart: Theme.of(
-                          context,
-                        ).colorScheme.secondaryContainer,
-                        colorEnd: Theme.of(
-                          context,
-                        ).colorScheme.secondaryContainer,
-                        borderColor: Theme.of(context).colorScheme.secondary,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(28, 20, 48, 20),
-                        child: Text(
-                          _currentWord.part1,
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSecondaryContainer,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Part 2
-                    Transform.translate(
-                      offset: const Offset(
-                        -1,
-                        0,
-                      ), // Slight overlap for seamless visual join
-                      child: CustomPaint(
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Part 1
+                      CustomPaint(
                         painter: PuzzlePiecePainter(
-                          isLeft: false,
+                          isLeft: true,
                           colorStart: Theme.of(
                             context,
-                          ).colorScheme.tertiaryContainer,
+                          ).colorScheme.secondaryContainer,
                           colorEnd: Theme.of(
                             context,
-                          ).colorScheme.tertiaryContainer,
-                          borderColor: Theme.of(context).colorScheme.tertiary,
+                          ).colorScheme.secondaryContainer,
+                          borderColor: Theme.of(context).colorScheme.secondary,
                         ),
                         child: Container(
-                          padding: const EdgeInsets.fromLTRB(48, 20, 28, 20),
+                          padding: const EdgeInsets.fromLTRB(28, 20, 48, 20),
                           child: Text(
-                            _currentWord.part2,
+                            _currentWord.part1,
                             style: TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onTertiaryContainer,
+                              ).colorScheme.onSecondaryContainer,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      // Part 2
+                      Transform.translate(
+                        offset: const Offset(
+                          -1,
+                          0,
+                        ), // Slight overlap for seamless visual join
+                        child: CustomPaint(
+                          painter: PuzzlePiecePainter(
+                            isLeft: false,
+                            colorStart: Theme.of(
+                              context,
+                            ).colorScheme.tertiaryContainer,
+                            colorEnd: Theme.of(
+                              context,
+                            ).colorScheme.tertiaryContainer,
+                            borderColor: Theme.of(context).colorScheme.tertiary,
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(48, 20, 28, 20),
+                            child: Text(
+                              _currentWord.part2,
+                              style: TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onTertiaryContainer,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             )
