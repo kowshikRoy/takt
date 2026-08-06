@@ -145,7 +145,7 @@ class VocabularyService extends ChangeNotifier {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE saved_words (
@@ -159,6 +159,7 @@ class VocabularyService extends ChangeNotifier {
             ipa TEXT,
             contextSentence TEXT,
             sourceTitle TEXT,
+            contextExamples TEXT,
             category TEXT,
             interval INTEGER,
             easeFactor REAL,
@@ -168,6 +169,13 @@ class VocabularyService extends ChangeNotifier {
             createdAt TEXT
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          try {
+            await db.execute('ALTER TABLE saved_words ADD COLUMN contextExamples TEXT');
+          } catch (_) {}
+        }
       },
     );
   }
@@ -198,15 +206,46 @@ class VocabularyService extends ChangeNotifier {
   }
 
   Future<void> upsertWord(SavedWord word, {bool notify = true, bool triggerSync = true}) async {
+    SavedWord wordToSave = word;
+    final existing = await getSavedWord(word.id) ?? await getSavedWordByWord(word.word);
+    if (existing != null) {
+      final merged = List<WordContextExample>.from(existing.contextExamples);
+      for (final newEx in word.contextExamples) {
+        if (!merged.any((e) => e.sentence.trim().toLowerCase() == newEx.sentence.trim().toLowerCase())) {
+          merged.add(newEx);
+        }
+      }
+      wordToSave = SavedWord(
+        id: word.id,
+        word: word.word,
+        baseForm: word.baseForm ?? existing.baseForm,
+        pos: word.pos ?? existing.pos,
+        gender: word.gender ?? existing.gender,
+        primaryDefinition: word.primaryDefinition.isNotEmpty ? word.primaryDefinition : existing.primaryDefinition,
+        definitions: word.definitions.isNotEmpty ? word.definitions : existing.definitions,
+        ipa: word.ipa ?? existing.ipa,
+        contextSentence: word.contextSentence ?? existing.contextSentence,
+        sourceTitle: word.sourceTitle ?? existing.sourceTitle,
+        contextExamples: merged,
+        category: word.category,
+        interval: existing.interval,
+        easeFactor: existing.easeFactor,
+        repetitions: existing.repetitions,
+        dueDate: existing.dueDate,
+        lastReviewed: existing.lastReviewed,
+        createdAt: existing.createdAt,
+      );
+    }
+
     if (kIsWeb) {
-      _inMemoryWords[word.id] = word;
+      _inMemoryWords[wordToSave.id] = wordToSave;
       await _saveWebWords();
     } else {
       final db = await database;
       if (db != null) {
         await db.insert(
           'saved_words',
-          word.toMap(),
+          wordToSave.toMap(),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
@@ -217,6 +256,38 @@ class VocabularyService extends ChangeNotifier {
 
     if (triggerSync && AuthService().isAuthenticated) {
       SyncService().syncNow();
+    }
+  }
+
+  Future<void> recordEncounterExample(String word, WordContextExample example) async {
+    final wordId = word.toLowerCase().trim();
+    final existing = await getSavedWord(wordId) ?? await getSavedWordByWord(word);
+    if (existing != null) {
+      final merged = List<WordContextExample>.from(existing.contextExamples);
+      if (!merged.any((e) => e.sentence.trim().toLowerCase() == example.sentence.trim().toLowerCase())) {
+        merged.add(example);
+        final updated = SavedWord(
+          id: existing.id,
+          word: existing.word,
+          baseForm: existing.baseForm,
+          pos: existing.pos,
+          gender: existing.gender,
+          primaryDefinition: existing.primaryDefinition,
+          definitions: existing.definitions,
+          ipa: existing.ipa,
+          contextSentence: existing.contextSentence ?? example.sentence,
+          sourceTitle: existing.sourceTitle ?? example.sourceTitle,
+          contextExamples: merged,
+          category: existing.category,
+          interval: existing.interval,
+          easeFactor: existing.easeFactor,
+          repetitions: existing.repetitions,
+          dueDate: existing.dueDate,
+          lastReviewed: existing.lastReviewed,
+          createdAt: existing.createdAt,
+        );
+        await upsertWord(updated);
+      }
     }
   }
 

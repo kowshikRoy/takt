@@ -14,6 +14,45 @@ enum ReviewRating {
   easy,  // Rating 4: Effortless recall
 }
 
+class WordContextExample {
+  final String sentence;
+  final String? translation;
+  final String sourceTitle;
+  final String sourceType; // 'video' | 'article' | 'book' | 'dictionary'
+  final double? timestamp;
+  final DateTime savedAt;
+
+  WordContextExample({
+    required this.sentence,
+    this.translation,
+    required this.sourceTitle,
+    this.sourceType = 'article',
+    this.timestamp,
+    DateTime? savedAt,
+  }) : savedAt = savedAt ?? DateTime.now();
+
+  Map<String, dynamic> toMap() => {
+        'sentence': sentence,
+        'translation': translation,
+        'sourceTitle': sourceTitle,
+        'sourceType': sourceType,
+        'timestamp': timestamp,
+        'savedAt': savedAt.toIso8601String(),
+      };
+
+  factory WordContextExample.fromMap(Map<String, dynamic> map) =>
+      WordContextExample(
+        sentence: map['sentence']?.toString() ?? '',
+        translation: map['translation']?.toString(),
+        sourceTitle: map['sourceTitle']?.toString() ?? 'Context',
+        sourceType: map['sourceType']?.toString() ?? 'article',
+        timestamp: (map['timestamp'] as num?)?.toDouble(),
+        savedAt: map['savedAt'] != null
+            ? DateTime.tryParse(map['savedAt'].toString()) ?? DateTime.now()
+            : DateTime.now(),
+      );
+}
+
 class SavedWord {
   final String id;
   final String word;
@@ -25,6 +64,7 @@ class SavedWord {
   final String? ipa;
   final String? contextSentence;
   final String? sourceTitle;
+  final List<WordContextExample> contextExamples;
 
   VocabCategory category;
 
@@ -47,6 +87,7 @@ class SavedWord {
     this.ipa,
     this.contextSentence,
     this.sourceTitle,
+    List<WordContextExample>? contextExamples,
     this.category = VocabCategory.learning,
     this.interval = 0,
     this.easeFactor = 2.5,
@@ -54,8 +95,37 @@ class SavedWord {
     DateTime? dueDate,
     this.lastReviewed,
     DateTime? createdAt,
-  })  : dueDate = dueDate ?? DateTime.now(),
+  })  : contextExamples = contextExamples ??
+            (contextSentence != null && contextSentence.isNotEmpty
+                ? [
+                    WordContextExample(
+                      sentence: contextSentence,
+                      sourceTitle: sourceTitle ?? 'Saved Context',
+                      sourceType: inferSourceType(sourceTitle),
+                    )
+                  ]
+                : const []),
+        dueDate = dueDate ?? DateTime.now(),
         createdAt = createdAt ?? DateTime.now();
+
+  static String inferSourceType(String? sourceTitle) {
+    if (sourceTitle == null) return 'article';
+    final lower = sourceTitle.toLowerCase();
+    if (lower.contains('video') ||
+        lower.contains('movie') ||
+        lower.contains('media') ||
+        lower.contains('youtube') ||
+        lower.contains('omniscribe')) {
+      return 'video';
+    }
+    if (lower.contains('book') ||
+        lower.contains('textbook') ||
+        lower.contains('unit') ||
+        lower.contains('chapter')) {
+      return 'book';
+    }
+    return 'article';
+  }
 
   bool get isDue => category == VocabCategory.learning && DateTime.now().isAfter(dueDate);
 
@@ -152,6 +222,7 @@ class SavedWord {
       ipa: ipa,
       contextSentence: contextSentence,
       sourceTitle: sourceTitle,
+      contextExamples: contextExamples,
       category: category,
       interval: nextInterval,
       easeFactor: nextEaseFactor,
@@ -173,6 +244,7 @@ class SavedWord {
         'ipa': ipa,
         'contextSentence': contextSentence,
         'sourceTitle': sourceTitle,
+        'contextExamples': contextExamples.map((e) => e.toMap()).toList(),
         'category': category.name,
         'interval': interval,
         'easeFactor': easeFactor,
@@ -191,6 +263,14 @@ class SavedWord {
         defs = List<String>.from(jsonDecode(jsonMap['definitions']));
       } catch (_) {}
     }
+
+    List<WordContextExample> examples = [];
+    if (jsonMap['contextExamples'] is List) {
+      examples = (jsonMap['contextExamples'] as List)
+          .map((e) => WordContextExample.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+
     return SavedWord(
       id: jsonMap['id'] as String? ?? jsonMap['word'].toString().toLowerCase().trim(),
       word: jsonMap['word'] as String? ?? '',
@@ -202,6 +282,7 @@ class SavedWord {
       ipa: jsonMap['ipa'] as String?,
       contextSentence: jsonMap['contextSentence'] as String?,
       sourceTitle: jsonMap['sourceTitle'] as String?,
+      contextExamples: examples.isNotEmpty ? examples : null,
       category: VocabCategory.values.firstWhere(
         (e) => e.name == jsonMap['category'],
         orElse: () => VocabCategory.learning,
@@ -226,6 +307,7 @@ class SavedWord {
         'ipa': ipa,
         'contextSentence': contextSentence,
         'sourceTitle': sourceTitle,
+        'contextExamples': jsonEncode(contextExamples.map((e) => e.toMap()).toList()),
         'category': category.name,
         'interval': interval,
         'easeFactor': easeFactor,
@@ -235,28 +317,43 @@ class SavedWord {
         'createdAt': createdAt.toIso8601String(),
       };
 
-  factory SavedWord.fromMap(Map<String, dynamic> map) => SavedWord(
-        id: map['id'] as String,
-        word: map['word'] as String,
-        baseForm: map['baseForm'] as String?,
-        pos: map['pos'] as String?,
-        gender: map['gender'] as String?,
-        primaryDefinition: map['primaryDefinition'] as String? ?? '',
-        definitions: map['definitions'] != null
-            ? List<String>.from(jsonDecode(map['definitions'] as String))
-            : [],
-        ipa: map['ipa'] as String?,
-        contextSentence: map['contextSentence'] as String?,
-        sourceTitle: map['sourceTitle'] as String?,
-        category: VocabCategory.values.firstWhere(
-          (e) => e.name == map['category'],
-          orElse: () => VocabCategory.learning,
-        ),
-        interval: (map['interval'] as num?)?.toInt() ?? 0,
-        easeFactor: (map['easeFactor'] as num?)?.toDouble() ?? 2.5,
-        repetitions: (map['repetitions'] as num?)?.toInt() ?? 0,
-        dueDate: map['dueDate'] != null ? DateTime.parse(map['dueDate'] as String) : DateTime.now(),
-        lastReviewed: map['lastReviewed'] != null ? DateTime.parse(map['lastReviewed'] as String) : null,
-        createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'] as String) : DateTime.now(),
-      );
+  factory SavedWord.fromMap(Map<String, dynamic> map) {
+    List<WordContextExample> examples = [];
+    if (map['contextExamples'] != null) {
+      try {
+        final decoded = jsonDecode(map['contextExamples'] as String);
+        if (decoded is List) {
+          examples = decoded
+              .map((e) => WordContextExample.fromMap(Map<String, dynamic>.from(e as Map)))
+              .toList();
+        }
+      } catch (_) {}
+    }
+
+    return SavedWord(
+      id: map['id'] as String,
+      word: map['word'] as String,
+      baseForm: map['baseForm'] as String?,
+      pos: map['pos'] as String?,
+      gender: map['gender'] as String?,
+      primaryDefinition: map['primaryDefinition'] as String? ?? '',
+      definitions: map['definitions'] != null
+          ? List<String>.from(jsonDecode(map['definitions'] as String))
+          : [],
+      ipa: map['ipa'] as String?,
+      contextSentence: map['contextSentence'] as String?,
+      sourceTitle: map['sourceTitle'] as String?,
+      contextExamples: examples.isNotEmpty ? examples : null,
+      category: VocabCategory.values.firstWhere(
+        (e) => e.name == map['category'],
+        orElse: () => VocabCategory.learning,
+      ),
+      interval: (map['interval'] as num?)?.toInt() ?? 0,
+      easeFactor: (map['easeFactor'] as num?)?.toDouble() ?? 2.5,
+      repetitions: (map['repetitions'] as num?)?.toInt() ?? 0,
+      dueDate: map['dueDate'] != null ? DateTime.parse(map['dueDate'] as String) : DateTime.now(),
+      lastReviewed: map['lastReviewed'] != null ? DateTime.parse(map['lastReviewed'] as String) : null,
+      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'] as String) : DateTime.now(),
+    );
+  }
 }
