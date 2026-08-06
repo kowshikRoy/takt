@@ -130,10 +130,11 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   }
 
   Widget _buildHeaderStats() {
+    // Mastered words are hidden from the browse list (they stay saved and
+    // still count toward the "Mastered" stat above), so this count reflects
+    // only what "Browse My Vocabulary List" will actually show.
     final totalWords =
-        (_counts['learning'] ?? 0) +
-        (_counts['mastered'] ?? 0) +
-        (_counts['reviewLater'] ?? 0);
+        (_counts['learning'] ?? 0) + (_counts['reviewLater'] ?? 0);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -187,7 +188,12 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   }
 
   void _showSavedWordsDialog(BuildContext context) async {
-    final allWords = await _vocabService.getSavedWords();
+    // Mastered words stay saved but are hidden from this list — the user
+    // has already learned them and doesn't want them cluttering the browse
+    // view; they're still reflected in the "Mastered" stat tile above.
+    final allWords = (await _vocabService.getSavedWords())
+        .where((w) => w.masteryLevel < 4)
+        .toList();
     if (!context.mounted) return;
 
     showModalBottomSheet(
@@ -209,7 +215,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'All Saved Words (${allWords.length})',
+                      'My Vocabulary List (${allWords.length})',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -226,7 +232,12 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
               const Divider(height: 1),
               Expanded(
                 child: allWords.isEmpty
-                    ? const Center(child: Text('No saved vocabulary yet!'))
+                    ? const Center(
+                        child: Text(
+                          "No words to browse — you've either saved none yet or mastered them all!",
+                          textAlign: TextAlign.center,
+                        ),
+                      )
                     : ListView.builder(
                         itemCount: allWords.length,
                         itemBuilder: (ctx, index) {
