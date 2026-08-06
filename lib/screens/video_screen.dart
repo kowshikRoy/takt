@@ -551,6 +551,8 @@ class _VideoScreenState extends State<VideoScreen>
               curve: Curves.easeInOut,
               child: _isPlayerMinimized ? _buildMiniPlayer(context) : _buildVideoPlayer(context),
             ),
+            if (!_isPlayerMinimized && (_videoPlayerController?.value.isInitialized ?? false))
+              _buildExternalMediaControlBar(context),
             if (widget.processedVideo == null) _buildUrlInput(context),
             if (_errorMessage != null) _buildErrorMessage(context),
             Expanded(
@@ -912,23 +914,250 @@ class _VideoScreenState extends State<VideoScreen>
                           right: 0,
                           child: _buildVideoHeader(context),
                         ),
-                        Positioned(
-                          bottom: 12,
-                          left: 12,
-                          right: 12,
-                          child: AnimatedOpacity(
-                            opacity: _showControls ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 250),
-                            child: IgnorePointer(
-                              ignoring: !_showControls,
-                              child: _buildVideoControls(),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   )
                 : const Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+
+  Widget _buildExternalMediaControlBar(BuildContext context) {
+    if (_videoPlayerController == null || !_videoPlayerController!.value.isInitialized) {
+      return const SizedBox.shrink();
+    }
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final primaryColor = colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Row 1: Scrubber and Primary Playback Controls
+          Row(
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                icon: Icon(
+                  _videoPlayerController!.value.isPlaying
+                      ? Icons.pause_circle_filled_rounded
+                      : Icons.play_circle_fill_rounded,
+                  color: primaryColor,
+                  size: 34,
+                ),
+                onPressed: () async {
+                  if (_videoPlayerController == null) return;
+                  if (_videoPlayerController!.value.isPlaying) {
+                    await _videoPlayerController!.pause();
+                  } else {
+                    if (_videoPlayerController!.value.position >=
+                        _videoPlayerController!.value.duration) {
+                      await _videoPlayerController!.seekTo(Duration.zero);
+                    }
+                    await _videoPlayerController!.play();
+                  }
+                  setState(() {});
+                },
+              ),
+              const SizedBox(width: 4),
+              ValueListenableBuilder(
+                valueListenable: _videoPlayerController!,
+                builder: (context, VideoPlayerValue value, child) {
+                  return Text(
+                    _formatDuration(value.position),
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  );
+                },
+              ),
+              Expanded(
+                child: VideoProgressIndicator(
+                  _videoPlayerController!,
+                  allowScrubbing: true,
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                  colors: VideoProgressColors(
+                    playedColor: primaryColor,
+                    bufferedColor: primaryColor.withValues(alpha: 0.25),
+                    backgroundColor: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  ),
+                ),
+              ),
+              Text(
+                _formatDuration(_videoPlayerController!.value.duration),
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              PopupMenuButton<double>(
+                tooltip: 'Playback Speed',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                icon: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${_playbackSpeed}x',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                onSelected: (speed) {
+                  setState(() {
+                    _playbackSpeed = speed;
+                    _videoPlayerController?.setPlaybackSpeed(speed);
+                  });
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 0.5, child: Text('0.5x Speed')),
+                  const PopupMenuItem(value: 0.75, child: Text('0.75x Speed')),
+                  const PopupMenuItem(value: 1.0, child: Text('1.0x (Normal)')),
+                  const PopupMenuItem(value: 1.25, child: Text('1.25x Speed')),
+                  const PopupMenuItem(value: 1.5, child: Text('1.5x Speed')),
+                ],
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                icon: Icon(
+                  Icons.fullscreen_rounded,
+                  color: colorScheme.onSurfaceVariant,
+                  size: 22,
+                ),
+                tooltip: 'Fullscreen',
+                onPressed: _toggleFullscreen,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          // Row 2: Subtitle Tools & Navigation (Keywords, Full Subtitles, Translation Toggle, Replay 5s)
+          Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ChoiceChip(
+                        selected: _activeViewIndex == 0,
+                        avatar: Icon(
+                          Icons.key_rounded,
+                          size: 15,
+                          color: _activeViewIndex == 0
+                              ? colorScheme.onPrimary
+                              : colorScheme.primary,
+                        ),
+                        label: Text(
+                          '${AppLocalizations.of(context)?.titleKeyVocab ?? "Keywords"} (${_keyVocabList.length})',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: _activeViewIndex == 0
+                                ? colorScheme.onPrimary
+                                : colorScheme.onSurface,
+                          ),
+                        ),
+                        selectedColor: colorScheme.primary,
+                        onSelected: (_) => setState(() => _activeViewIndex = 0),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        selected: _activeViewIndex == 1,
+                        avatar: Icon(
+                          Icons.subtitles_rounded,
+                          size: 15,
+                          color: _activeViewIndex == 1
+                              ? colorScheme.onPrimary
+                              : colorScheme.primary,
+                        ),
+                        label: Text(
+                          '${AppLocalizations.of(context)?.titleFullCues ?? "Full Subtitles"} (${_subtitles.length})',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: _activeViewIndex == 1
+                                ? colorScheme.onPrimary
+                                : colorScheme.onSurface,
+                          ),
+                        ),
+                        selectedColor: colorScheme.primary,
+                        onSelected: (_) => setState(() => _activeViewIndex = 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                icon: Icon(
+                  Icons.replay_5_rounded,
+                  size: 20,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                tooltip: 'Replay 5s',
+                onPressed: () async {
+                  if (_videoPlayerController == null) return;
+                  final current = _videoPlayerController!.value.position;
+                  final target = current - const Duration(seconds: 5);
+                  await _videoPlayerController!.seekTo(target < Duration.zero ? Duration.zero : target);
+                },
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                icon: Icon(
+                  _hideTranslations
+                      ? Icons.g_translate_rounded
+                      : Icons.translate_rounded,
+                  size: 20,
+                  color: !_hideTranslations
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
+                ),
+                tooltip: _hideTranslations
+                    ? (AppLocalizations.of(context)?.actionShowTranslation ?? 'Show Translations')
+                    : (AppLocalizations.of(context)?.actionHideTranslation ?? 'Hide Translations'),
+                onPressed: () {
+                  setState(() {
+                    _hideTranslations = !_hideTranslations;
+                  });
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -2189,100 +2418,115 @@ class _VideoScreenState extends State<VideoScreen>
   }
 
   Widget _buildTranscriptList(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final showInternalBar = _isPlayerMinimized || (_videoPlayerController == null || !_videoPlayerController!.value.isInitialized);
 
-    return Column(
-      children: [
-        // Mode Switcher Header Bar
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            border: Border(
-              bottom: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+    if (showInternalBar) {
+      final colorScheme = Theme.of(context).colorScheme;
+
+      return Column(
+        children: [
+          // Mode Switcher Header Bar for Minimized / Standalone mode
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              border: Border(
+                bottom: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
               ),
             ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ChoiceChip(
-                        selected: _activeViewIndex == 0,
-                        label: Text(
-                          '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocabulary"} (${_keyVocabList.length})',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+            child: Row(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ChoiceChip(
+                          selected: _activeViewIndex == 0,
+                          avatar: Icon(
+                            Icons.key_rounded,
+                            size: 15,
                             color: _activeViewIndex == 0
                                 ? colorScheme.onPrimary
-                                : colorScheme.onSurface,
+                                : colorScheme.primary,
                           ),
+                          label: Text(
+                            '${AppLocalizations.of(context)?.titleKeyVocab ?? "Keywords"} (${_keyVocabList.length})',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: _activeViewIndex == 0
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurface,
+                            ),
+                          ),
+                          selectedColor: colorScheme.primary,
+                          onSelected: (_) => setState(() => _activeViewIndex = 0),
                         ),
-                        selectedColor: colorScheme.primary,
-                        onSelected: (_) => setState(() => _activeViewIndex = 0),
-                      ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        selected: _activeViewIndex == 1,
-                        avatar: Icon(
-                          Icons.subtitles_rounded,
-                          size: 16,
-                          color: _activeViewIndex == 1
-                              ? colorScheme.onPrimary
-                              : colorScheme.primary,
-                        ),
-                        label: Text(
-                          '${AppLocalizations.of(context)?.titleFullCues ?? "Full Cues"} (${_subtitles.length})',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          selected: _activeViewIndex == 1,
+                          avatar: Icon(
+                            Icons.subtitles_rounded,
+                            size: 15,
                             color: _activeViewIndex == 1
                                 ? colorScheme.onPrimary
-                                : colorScheme.onSurface,
+                                : colorScheme.primary,
                           ),
+                          label: Text(
+                            '${AppLocalizations.of(context)?.titleFullCues ?? "Full Subtitles"} (${_subtitles.length})',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: _activeViewIndex == 1
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurface,
+                            ),
+                          ),
+                          selectedColor: colorScheme.primary,
+                          onSelected: (_) => setState(() => _activeViewIndex = 1),
                         ),
-                        selectedColor: colorScheme.primary,
-                        onSelected: (_) => setState(() => _activeViewIndex = 1),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                icon: Icon(
-                  _hideTranslations
-                      ? Icons.g_translate_rounded
-                      : Icons.translate_rounded,
-                  size: 20,
-                  color: !_hideTranslations
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
+                IconButton(
+                  icon: Icon(
+                    _hideTranslations
+                        ? Icons.g_translate_rounded
+                        : Icons.translate_rounded,
+                    size: 20,
+                    color: !_hideTranslations
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                  tooltip: _hideTranslations
+                      ? (AppLocalizations.of(context)?.actionShowTranslation ?? 'Show Translations')
+                      : (AppLocalizations.of(context)?.actionHideTranslation ?? 'Hide Translations'),
+                  onPressed: () {
+                    setState(() {
+                      _hideTranslations = !_hideTranslations;
+                    });
+                  },
                 ),
-                tooltip: _hideTranslations
-                    ? (AppLocalizations.of(context)?.actionShowTranslation ?? 'Show Translations')
-                    : (AppLocalizations.of(context)?.actionHideTranslation ?? 'Hide Translations'),
-                onPressed: () {
-                  setState(() {
-                    _hideTranslations = !_hideTranslations;
-                  });
-                },
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
 
-        // Sub View Content
-        Expanded(
-          child: _activeViewIndex == 0
-              ? _buildKeyVocabularyView(context)
-              : _buildFullTranscriptView(context),
-        ),
-      ],
-    );
+          // Sub View Content
+          Expanded(
+            child: _activeViewIndex == 0
+                ? _buildKeyVocabularyView(context)
+                : _buildFullTranscriptView(context),
+          ),
+        ],
+      );
+    }
+
+    return _activeViewIndex == 0
+        ? _buildKeyVocabularyView(context)
+        : _buildFullTranscriptView(context);
   }
 }

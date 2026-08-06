@@ -181,4 +181,55 @@ void main() {
       expect(find.textContaining('Wiedersehen'), findsWidgets);
     },
   );
+
+  testWidgets(
+    'external media control bar renders below video with keywords, subtitles, and translation toggle',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+
+      final cue1 = SubtitleCue(
+        start: 0.0,
+        end: 3.0,
+        original: 'Hallo Welt',
+        translated: 'Hello World',
+      );
+
+      final video = ProcessedVideo(
+        id: 'video-3',
+        taskId: 'task-3',
+        url: 'https://example.com/video3',
+        status: ProcessingStatus.completed,
+        subtitles: [cue1],
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => MediaLibraryService()),
+          ],
+          child: MaterialApp(
+            home: VideoScreen(processedVideo: video),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify keywords and full subtitles chips exist
+      final choiceChips = find.byType(ChoiceChip);
+      expect(choiceChips, findsNWidgets(2));
+
+      // Verify translation toggle icon button exists (defaults to hidden translations with g_translate)
+      final translateToggle = find.byIcon(Icons.g_translate_rounded);
+      expect(translateToggle, findsOneWidget);
+
+      // Tap translation toggle to show translations
+      await tester.tap(translateToggle);
+      await tester.pump();
+
+      // Now translate_rounded icon should be displayed
+      expect(find.byIcon(Icons.translate_rounded), findsOneWidget);
+    },
+  );
 }
