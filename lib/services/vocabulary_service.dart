@@ -234,9 +234,35 @@ class VocabularyService extends ChangeNotifier {
     }
   }
 
+  /// Merges a word coming from the cloud into local storage. Cloud sync can
+  /// lag behind (a previous push failed, another device hasn't synced yet,
+  /// etc.), so a remote copy is not necessarily newer than what's on this
+  /// device. Blindly overwriting local rows with remote ones on every sync
+  /// (which runs automatically on every app launch) would silently revert
+  /// review progress made since the cloud was last updated — keep whichever
+  /// side actually has more review progress instead of trusting remote by
+  /// default.
   Future<void> mergeWordFromSync(Map<String, dynamic> jsonMap) async {
-    final word = SavedWord.fromJson(jsonMap);
-    await upsertWord(word, notify: true, triggerSync: false);
+    final incoming = SavedWord.fromJson(jsonMap);
+    final existing = await getSavedWord(incoming.id);
+    if (existing != null && _isAtLeastAsAdvanced(existing, incoming)) {
+      return;
+    }
+    await upsertWord(incoming, notify: true, triggerSync: false);
+  }
+
+  /// True if [local]'s review progress is at or ahead of [remote]'s, based
+  /// on whichever was reviewed more recently, falling back to repetition
+  /// count when neither side has been reviewed yet.
+  bool _isAtLeastAsAdvanced(SavedWord local, SavedWord remote) {
+    final localReviewed = local.lastReviewed;
+    final remoteReviewed = remote.lastReviewed;
+    if (localReviewed == null && remoteReviewed == null) {
+      return local.repetitions >= remote.repetitions;
+    }
+    if (localReviewed == null) return false;
+    if (remoteReviewed == null) return true;
+    return !localReviewed.isBefore(remoteReviewed);
   }
 
   Future<void> removeWord(String id) async {
