@@ -297,15 +297,17 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
   bool _isVerb(Map<String, dynamic> wordData) {
     final pos = wordData['pos']?.toString().toLowerCase() ?? '';
     if (pos == 'verb' || pos == 'v' || pos == 'verbs') return true;
-    final forms = (wordData['forms'] as List?) ?? [];
-    for (final f in forms) {
-      if (f is! Map) continue;
-      final tags = (f['tags'] ?? '').toString().toLowerCase();
-      if (tags.contains('first-person') ||
-          tags.contains('second-person') ||
-          tags.contains('preterite') ||
-          tags.contains('participle')) {
-        return true;
+    final rawForms = wordData['forms'];
+    if (rawForms is List) {
+      for (final f in rawForms) {
+        if (f is! Map) continue;
+        final tags = (f['tags'] ?? '').toString().toLowerCase();
+        if (tags.contains('first-person') ||
+            tags.contains('second-person') ||
+            tags.contains('preterite') ||
+            tags.contains('participle')) {
+          return true;
+        }
       }
     }
     return false;
@@ -612,10 +614,33 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
     );
   }
 
+  List<String> _parseTags(dynamic rawTags) {
+    if (rawTags == null) return [];
+    if (rawTags is List) {
+      return rawTags
+          .map((e) => e.toString().trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    if (rawTags is String) {
+      if (rawTags.contains(',')) {
+        return rawTags
+            .split(',')
+            .map((e) => e.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+      final trimmed = rawTags.trim();
+      return trimmed.isNotEmpty ? [trimmed] : [];
+    }
+    return [rawTags.toString()];
+  }
+
   Widget _buildDeclensionTab(
       BuildContext context, Map<String, dynamic> wordData) {
     final colorScheme = Theme.of(context).colorScheme;
-    final forms = (wordData['forms'] as List?) ?? [];
+    final rawForms = wordData['forms'];
+    final forms = rawForms is List ? rawForms : <dynamic>[];
 
     if (forms.isEmpty) {
       return Padding(
@@ -662,10 +687,9 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
           ),
           const SizedBox(height: 12),
           ...forms.map((f) {
+            if (f is! Map) return const SizedBox.shrink();
             final formStr = f['form']?.toString() ?? '';
-            final tagList = (f['tags'] is List)
-                ? (f['tags'] as List).map((e) => e.toString()).toList()
-                : (f['tags'] != null ? [f['tags'].toString()] : <String>[]);
+            final tagList = _parseTags(f['tags']);
 
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
