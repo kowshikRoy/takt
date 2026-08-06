@@ -7,8 +7,8 @@ import 'theme_provider.dart';
 class BooksModernist {
   BooksModernist._();
 
-  static const Color bg = Color(0xFFF3F2F2);
-  static const Color surface = Color(0xFFEAE9E9);
+  static const Color bg = Color(0xFFFAF6F0);
+  static const Color surface = Color(0xFFF2EEE7);
   static const Color text = Color(0xFF201E1D);
   static const Color accent = Color(0xFFEC3013);
   static const Color accentDark = Color(0xFFAE1800);

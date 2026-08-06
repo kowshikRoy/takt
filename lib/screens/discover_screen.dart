@@ -367,16 +367,29 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                               color: isFailed ? Theme.of(context).colorScheme.error : null,
                             ),
                           ),
-                          trailing: isFailed
-                              ? IconButton(
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isFailed)
+                                IconButton(
                                   icon: const Icon(Icons.refresh_rounded, size: 20),
                                   tooltip: 'Retry',
                                   onPressed: () => mediaLibraryService.retryProcessingTask(
                                     video.taskId ?? video.id,
                                     video.url,
                                   ),
-                                )
-                              : null,
+                                ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 20,
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                                tooltip: 'Delete',
+                                onPressed: () => _confirmDeleteVideo(context, video, mediaLibraryService),
+                              ),
+                            ],
+                          ),
                           onTap: () {
                             if (video.status == ProcessingStatus.completed) {
                               Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
@@ -682,6 +695,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           ],
                         ),
                       ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Material(
+                        color: Colors.transparent,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () => _confirmDeleteVideo(context, video, mediaLibraryService),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -698,6 +731,31 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _confirmDeleteVideo(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Transcribed Media'),
+          content: Text('Are you sure you want to delete "${video.effectiveTitle}"?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            TextButton(
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () {
+                mediaLibraryService.deleteProcessedVideo(video.id);
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

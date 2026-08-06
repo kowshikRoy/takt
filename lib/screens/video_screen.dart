@@ -1847,8 +1847,116 @@ class _VideoScreenState extends State<VideoScreen>
     if (index < 0 || index >= _subtitles.length) return;
     setState(() {
       _subtitles.removeAt(index);
+      if (index < _subtitleKeys.length) {
+        _subtitleKeys.removeAt(index);
+      }
       _activeActionCues.remove(index);
     });
+    _extractKeyVocabulary();
+  }
+
+  void _editCue(int index) async {
+    if (index < 0 || index >= _subtitles.length) return;
+    final cue = _subtitles[index];
+    final originalController = TextEditingController(text: cue.original);
+    final translatedController = TextEditingController(text: cue.translated);
+
+    final result = await showModalBottomSheet<SubtitleCue>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(sheetContext).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(sheetContext).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(sheetContext)?.actionEdit ?? 'Edit Subtitle Cue',
+                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  key: const Key('edit_cue_original_field'),
+                  controller: originalController,
+                  autofocus: true,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Original Text',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  key: const Key('edit_cue_translated_field'),
+                  controller: translatedController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Translation',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      key: const Key('save_cue_button'),
+                      onPressed: () {
+                        Navigator.pop(
+                          sheetContext,
+                          SubtitleCue(
+                            start: cue.start,
+                            end: cue.end,
+                            original: originalController.text.trim(),
+                            translated: translatedController.text.trim(),
+                          ),
+                        );
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result != null) {
+      if (!mounted) return;
+      setState(() {
+        _subtitles[index] = result;
+        _activeActionCues.remove(index);
+      });
+      _extractKeyVocabulary();
+    }
   }
 
   Widget _buildFullTranscriptView(BuildContext context) {
@@ -1947,7 +2055,7 @@ class _VideoScreenState extends State<VideoScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               InkWell(
-                                onTap: () => _showWordInfoDialog(cue.original, cue.original),
+                                onTap: () => _editCue(index),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   child: Row(

@@ -23,11 +23,11 @@ class AppTheme {
   static const Color _purpleSeed = Color(0xFF7C3AED); // Amethyst Violet (Gender Neutral)
   static const Color _slateSeed = Color(0xFF64748B);  // Slate Grey Accent
   
-  static const Color _classicBg = Color(0xFFFDF8F8);   // Cool White
-  static const Color _retroBg = Color(0xFFFFFCF2);     // Warm Vanilla
-  static const Color _modernistBg = Color(0xFFF3F2F2); // Warm Modernist Grey
-  static const Color _purpleBg = Color(0xFFFAF5FF);    // Soft Lavender Accent Background
-  static const Color _slateBg = Color(0xFFF8FAFC);     // Slate White Background
+  static const Color _classicBg = Color(0xFFFAF6F0);   // Warm Aged Vintage Paper
+  static const Color _retroBg = Color(0xFFFAF6F0);     // Warm Aged Vintage Paper
+  static const Color _modernistBg = Color(0xFFFAF6F0); // Warm Aged Vintage Paper
+  static const Color _purpleBg = Color(0xFFFAF6F0);    // Warm Aged Vintage Paper
+  static const Color _slateBg = Color(0xFFFAF6F0);     // Warm Aged Vintage Paper
 
   // Custom semantic colors that might not map directly to Scheme
   // Updated to match "Retro Rainbow" palette
@@ -217,7 +217,7 @@ class AppTheme {
       seedColor: seed,
       brightness: Brightness.light,
       surface: bg, 
-      surfaceContainer: theme == AppColorTheme.modernist ? const Color(0xFFEAE9E9) : const Color(0xFFFFFFFF),
+      surfaceContainer: const Color(0xFFF2EEE7),
     );
 
     // Override primary to match seed exactly

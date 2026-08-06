@@ -7,3 +7,5 @@ magika
 gradio
 google-cloud-firestore
 firebase-admin
+youtube-transcript-api
+pytubefix

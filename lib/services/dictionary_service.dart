@@ -452,11 +452,34 @@ class DictionaryService {
 
           word['definitions'] = definitions;
 
+          // If gender is missing and base_form is present, resolve gender from base word
+          if ((word['gender'] == null || word['gender'].toString().isEmpty) &&
+              word['base_form'] != null) {
+            try {
+              final baseRes = await db.query(
+                'words',
+                columns: ['gender'],
+                where: 'word = ?',
+                whereArgs: [word['base_form']],
+                limit: 1,
+              );
+              if (baseRes.isNotEmpty && baseRes.first['gender'] != null) {
+                word['gender'] = baseRes.first['gender'];
+              }
+            } catch (_) {}
+          }
+
           try {
-            final List<Map<String, dynamic>> formsRes = await db.rawQuery(
+            List<Map<String, dynamic>> formsRes = await db.rawQuery(
               'SELECT f.form, t.tags FROM forms f LEFT JOIN tags t ON f.tag_id = t.id WHERE f.word_id = ?',
               [wordId],
             );
+            if (formsRes.isEmpty && word['base_form'] != null) {
+              formsRes = await db.rawQuery(
+                'SELECT f.form, t.tags FROM forms f LEFT JOIN tags t ON f.tag_id = t.id WHERE f.word_id = (SELECT id FROM words WHERE word = ? LIMIT 1)',
+                [word['base_form']],
+              );
+            }
             word['forms'] = formsRes;
           } catch (_) {
             word['forms'] = [];
@@ -704,6 +727,233 @@ class DictionaryService {
         lower.contains('composite');
   }
 
+  /// Strip HTML tags and HTML entities for clean Wiktionary definition text
+  String _stripHtmlTags(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&#39;', "'")
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  /// Caches a dynamically fetched fallback word (Wiktionary or NMT) directly into german_dictionary.db
+  Future<int?> _cacheFetchedWordInDatabase({
+    required String word,
+    required String pos,
+    String? gender,
+    String? ipa,
+    required List<String> definitions,
+    List<Map<String, String?>> examples = const [],
+  }) async {
+    if (kIsWeb) return null;
+    try {
+      final db = await database;
+      if (db == null) return null;
+
+      final existing = await db.query(
+        'words',
+        columns: ['id'],
+        where: 'word = ? COLLATE NOCASE',
+        whereArgs: [word],
+        limit: 1,
+      );
+
+      if (existing.isNotEmpty) {
+        return existing.first['id'] as int;
+      }
+
+      final int wordId = await db.insert('words', {
+        'word': word,
+        'pos': pos,
+        'gender': gender,
+        'ipa': ipa,
+      });
+
+      for (final def in definitions) {
+        if (def.trim().isNotEmpty) {
+          await db.insert('definitions', {
+            'word_id': wordId,
+            'definition': def.trim(),
+          });
+        }
+      }
+
+      for (final ex in examples) {
+        final deText = ex['de']?.trim();
+        if (deText != null && deText.isNotEmpty) {
+          try {
+            await db.insert('examples', {
+              'word_id': wordId,
+              'de': deText,
+              'en': ex['en']?.trim(),
+            });
+          } catch (_) {}
+        }
+      }
+
+      AppLogger.info("Cached dynamic word '$word' ($pos) with ${examples.length} examples in german_dictionary.db with ID $wordId", tag: 'DictionaryService');
+      return wordId;
+    } catch (e) {
+      AppLogger.error("Failed to cache dynamic word in DB", error: e, tag: 'DictionaryService');
+      return null;
+    }
+  }
+
+  String _inferGenderIfNull(String wordStr, String? rawGender, String? pos) {
+    if (rawGender != null && rawGender.trim().isNotEmpty) {
+      final g = rawGender.trim().toLowerCase();
+      if (g == 'masculine' || g == 'm') return 'm';
+      if (g == 'feminine' || g == 'f') return 'f';
+      if (g == 'neuter' || g == 'n') return 'n';
+    }
+
+    final lower = wordStr.trim().toLowerCase();
+    
+    if (lower.endsWith('schaft') ||
+        lower.endsWith('ung') ||
+        lower.endsWith('heit') ||
+        lower.endsWith('keit') ||
+        lower.endsWith('tät') ||
+        lower.endsWith('tion') ||
+        lower.endsWith('ei') ||
+        lower.endsWith('in')) {
+      return 'f';
+    }
+    if (lower.endsWith('chen') ||
+        lower.endsWith('lein') ||
+        lower.endsWith('tum') ||
+        lower.endsWith('ment')) {
+      return 'n';
+    }
+    if (lower.endsWith('ismus') || lower.endsWith('ling') || lower.endsWith('or')) {
+      return 'm';
+    }
+
+    return '';
+  }
+
+  /// Wiktionary REST API Fallback (Fetches definitions, Part of Speech, Gender, IPA & example sentences)
+  Future<Map<String, dynamic>?> fetchWiktionaryFallback(String word) async {
+    final cleanWord = word.trim();
+    if (cleanWord.isEmpty) return null;
+
+    try {
+      final uri = Uri.parse(
+        'https://en.wiktionary.org/api/rest_v1/page/definition/${Uri.encodeComponent(cleanWord)}'
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+
+        final List<dynamic>? deEntries = data['de'] as List<dynamic>?;
+        if (deEntries != null && deEntries.isNotEmpty) {
+          String pos = 'word';
+          String? gender;
+          List<String> definitions = [];
+          List<Map<String, String?>> examples = [];
+
+          for (final entry in deEntries) {
+            if (entry is Map<String, dynamic>) {
+              final rawPos = entry['partOfSpeech']?.toString().toLowerCase();
+              if (rawPos != null && rawPos.isNotEmpty) {
+                if (rawPos.contains('noun')) {
+                  pos = 'noun';
+                  if (rawPos.contains('feminine') || rawPos.endsWith(' f') || rawPos.contains('(f)')) gender = 'f';
+                  else if (rawPos.contains('masculine') || rawPos.endsWith(' m') || rawPos.contains('(m)')) gender = 'm';
+                  else if (rawPos.contains('neuter') || rawPos.endsWith(' n') || rawPos.contains('(n)')) gender = 'n';
+                }
+                else if (rawPos.contains('verb')) pos = 'verb';
+                else if (rawPos.contains('adj')) pos = 'adj';
+                else if (rawPos.contains('adv')) pos = 'adv';
+                else if (rawPos.contains('prep')) pos = 'prep';
+                else if (pos == 'word') pos = rawPos;
+              }
+
+              final List<dynamic>? defsList = entry['definitions'] as List<dynamic>?;
+              if (defsList != null) {
+                for (final d in defsList) {
+                  if (d is Map<String, dynamic>) {
+                    if (d['definition'] != null) {
+                      final rawDef = d['definition'].toString();
+                      if (gender == null) {
+                        final gMatch = RegExp(r'class="gender"[^>]*>([fmn])<', caseSensitive: false).firstMatch(rawDef) ??
+                            RegExp(r'\b(feminine|masculine|neuter)\b', caseSensitive: false).firstMatch(rawDef);
+                        if (gMatch != null) {
+                          final gStr = gMatch.group(1)!.toLowerCase();
+                          if (gStr.startsWith('f')) gender = 'f';
+                          else if (gStr.startsWith('m')) gender = 'm';
+                          else if (gStr.startsWith('n')) gender = 'n';
+                        }
+                      }
+
+                      final cleanDef = _stripHtmlTags(rawDef);
+                      if (cleanDef.isNotEmpty && !definitions.contains(cleanDef)) {
+                        definitions.add(cleanDef);
+                      }
+                    }
+
+                    final List<dynamic>? parsedEx = d['parsedExamples'] as List<dynamic>?;
+                    if (parsedEx != null) {
+                      for (final ex in parsedEx) {
+                        if (ex is Map<String, dynamic> && ex['example'] != null) {
+                          final de = _stripHtmlTags(ex['example'].toString());
+                          final en = ex['translation'] != null ? _stripHtmlTags(ex['translation'].toString()) : null;
+                          if (de.isNotEmpty && !examples.any((e) => e['de'] == de)) {
+                            examples.add({'de': de, 'en': en});
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          if (gender == null && pos == 'noun') {
+            final inferred = _inferGenderIfNull(cleanWord, null, pos);
+            if (inferred.isNotEmpty) gender = inferred;
+          }
+
+          if (definitions.isNotEmpty) {
+            final int? cachedId = await _cacheFetchedWordInDatabase(
+              word: cleanWord,
+              pos: pos,
+              gender: gender,
+              definitions: definitions,
+              examples: examples,
+            );
+
+            return {
+              'id': cachedId ?? -1,
+              'word': cleanWord,
+              'pos': pos,
+              'gender': gender,
+              'ipa': null,
+              'freq_rank': null,
+              'definitions': definitions,
+              'forms': <Map<String, dynamic>>[],
+              'examples': examples,
+              'synonyms': <String>[],
+              'antonyms': <String>[],
+              'related': <String>[],
+              'isWiktionaryFallback': true,
+            };
+          }
+        }
+      }
+    } catch (e) {
+      AppLogger.error("Wiktionary REST API fallback error", error: e, tag: 'DictionaryService');
+    }
+
+    return null;
+  }
+
   /// Direct client-side Google Translate NMT Fallback (0 Backend Server Required)
   Future<Map<String, dynamic>?> translateWordOnline(String word) async {
     final cleanWord = word.trim();
@@ -769,8 +1019,26 @@ class DictionaryService {
       }
     }
 
-    // Direct Google Translate NMT Fallback for missing DB words (e.g. Furchtlosigkeit)
-    return await translateWordOnline(cleanWord);
+    // Step 1: Wiktionary REST API Fallback (Rich POS & Definitions)
+    final wiktionaryResult = await fetchWiktionaryFallback(cleanWord);
+    if (wiktionaryResult != null) {
+      return wiktionaryResult;
+    }
+
+    // Step 2: Direct Google Translate NMT Fallback (Safety Net)
+    final nmtResult = await translateWordOnline(cleanWord);
+    if (nmtResult != null) {
+      final defs = (nmtResult['definitions'] as List?)?.cast<String>() ?? [];
+      final int? cachedId = await _cacheFetchedWordInDatabase(
+        word: cleanWord,
+        pos: 'word',
+        definitions: defs,
+      );
+      if (cachedId != null) {
+        nmtResult['id'] = cachedId;
+      }
+    }
+    return nmtResult;
   }
 
   Future<List<Map<String, dynamic>>> lookupWordAllPOS(String word) async {
@@ -803,21 +1071,23 @@ class DictionaryService {
         ''', [clean]);
       }
       if (results.isEmpty) {
-        final onlineResult = await translateWordOnline(clean);
+        final onlineResult = await lookupWord(clean);
         if (onlineResult != null) {
           final String def = onlineResult['definition'] ??
               ((onlineResult['definitions'] as List?)?.firstOrNull?.toString() ?? '');
+          final String pos = onlineResult['pos']?.toString() ?? 'word';
           return [
             {
-              'id': -1,
+              'id': onlineResult['id'] ?? -1,
               'word': clean,
-              'pos': 'word',
-              'gender': null,
-              'ipa': null,
+              'pos': pos,
+              'gender': onlineResult['gender'],
+              'ipa': onlineResult['ipa'],
               'base_form': clean,
               'definition': def,
-              'definitions': [def],
-              'isNmtTranslation': true,
+              'definitions': onlineResult['definitions'] ?? [def],
+              'isWiktionaryFallback': onlineResult['isWiktionaryFallback'] ?? false,
+              'isNmtTranslation': onlineResult['isNmtTranslation'] ?? false,
             }
           ];
         }
@@ -1239,22 +1509,36 @@ class DictionaryService {
   }
 
   /// Fetches plural form from forms table for a noun if available
-  Future<String?> getPluralForm(int wordId, String wordStr) async {
+  Future<String?> getPluralForm(int wordId, String wordStr, {String? baseForm}) async {
     final db = await database;
     if (db == null) return null;
     try {
-      final List<Map<String, dynamic>> res = await db.query(
-        'forms',
-        columns: ['form'],
-        where: 'word_id = ?',
-        whereArgs: [wordId],
+      final List<Map<String, dynamic>> res = await db.rawQuery(
+        'SELECT f.form, t.tags FROM forms f LEFT JOIN tags t ON f.tag_id = t.id WHERE f.word_id = ? OR f.word_id = (SELECT id FROM words WHERE word = ? LIMIT 1)',
+        [wordId, baseForm ?? wordStr],
       );
 
+      final targetWord = (baseForm != null && baseForm.isNotEmpty) ? baseForm : wordStr;
+
+      // Priority 1: Nominative plural tag
       for (var row in res) {
         final form = row['form'] as String?;
-        if (form != null && form.isNotEmpty && form.toLowerCase() != wordStr.toLowerCase()) {
-          if (form[0] == form[0].toUpperCase()) {
-            return 'die $form';
+        final tags = (row['tags'] as String? ?? '').toLowerCase();
+        if (form != null && form.isNotEmpty && form.toLowerCase() != targetWord.toLowerCase()) {
+          if (tags.contains('plural') &&
+              (tags.contains('nominative') || (!tags.contains('genitive') && !tags.contains('dative')))) {
+            return form.toLowerCase().startsWith('die ') ? form : 'die $form';
+          }
+        }
+      }
+
+      // Priority 2: Any plural tag
+      for (var row in res) {
+        final form = row['form'] as String?;
+        final tags = (row['tags'] as String? ?? '').toLowerCase();
+        if (form != null && form.isNotEmpty && form.toLowerCase() != targetWord.toLowerCase()) {
+          if (tags.contains('plural')) {
+            return form.toLowerCase().startsWith('die ') ? form : 'die $form';
           }
         }
       }

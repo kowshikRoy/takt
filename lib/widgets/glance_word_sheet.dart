@@ -5,7 +5,8 @@ import '../services/vocabulary_service.dart';
 import '../services/dictionary_service.dart';
 import '../services/tts_service.dart';
 import '../theme/app_theme.dart';
-import '../screens/dictionary_screen.dart';
+import '../screens/word_detail_screen.dart';
+import 'word_header_card.dart';
 import 'package:flutter/services.dart';
 
 class GlanceWordSheet extends StatefulWidget {
@@ -170,7 +171,8 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
         else cefr = 'C1';
       }
       final wId = int.tryParse(first['id']?.toString() ?? '0') ?? 0;
-      foundPlural = await dictService.getPluralForm(wId, word);
+      final baseForm = first['base_form']?.toString();
+      foundPlural = await dictService.getPluralForm(wId, word, baseForm: baseForm);
     }
     if (mounted) {
       setState(() {
@@ -239,57 +241,37 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     }
   }
 
-  Widget _buildCategoryChip({
-    required String label,
-    required IconData icon,
-    required IconData activeIcon,
-    required VocabCategory category,
-  }) {
-    final bool isActive = _savedWord != null && _savedWord!.category == category;
-    final colorScheme = Theme.of(context).colorScheme;
+  String _inferGenderIfNull(String wordStr, String? rawGender, String? pos) {
+    if (rawGender != null && rawGender.trim().isNotEmpty) {
+      final g = rawGender.trim().toLowerCase();
+      if (g == 'masculine' || g == 'm') return 'm';
+      if (g == 'feminine' || g == 'f') return 'f';
+      if (g == 'neuter' || g == 'n') return 'n';
+    }
 
-    final Color activeBg = category == VocabCategory.mastered
-        ? Colors.green.shade700
-        : (category == VocabCategory.learning
-            ? colorScheme.primary
-            : Colors.amber.shade800);
+    final lower = wordStr.trim().toLowerCase();
+    
+    if (lower.endsWith('schaft') ||
+        lower.endsWith('ung') ||
+        lower.endsWith('heit') ||
+        lower.endsWith('keit') ||
+        lower.endsWith('tät') ||
+        lower.endsWith('tion') ||
+        lower.endsWith('ei') ||
+        lower.endsWith('in')) {
+      return 'f';
+    }
+    if (lower.endsWith('chen') ||
+        lower.endsWith('lein') ||
+        lower.endsWith('tum') ||
+        lower.endsWith('ment')) {
+      return 'n';
+    }
+    if (lower.endsWith('ismus') || lower.endsWith('ling') || lower.endsWith('or')) {
+      return 'm';
+    }
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _toggleCategory(category),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive ? activeBg : colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: isActive ? activeBg : colorScheme.outlineVariant.withValues(alpha: 0.5),
-              width: isActive ? 1.5 : 1.0,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isActive ? activeIcon : icon,
-                size: 15,
-                color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                  color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return '';
   }
 
   Color _getGenderColor(String? gender) {
@@ -306,7 +288,21 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     return '';
   }
 
-  Widget _buildContextSentence(BuildContext context, String sentence, String targetWord) {
+  String _extractSingleSentence(String text, String targetWord) {
+    final cleanWord = targetWord.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
+    final sentences = text.split(RegExp(r'(?<=[.!?])\s+|\n+'));
+    if (cleanWord.isNotEmpty) {
+      for (final s in sentences) {
+        if (s.toLowerCase().contains(cleanWord.toLowerCase())) {
+          return s.trim();
+        }
+      }
+    }
+    return sentences.first.trim();
+  }
+
+  Widget _buildContextSentence(BuildContext context, String rawText, String targetWord) {
+    final sentence = _extractSingleSentence(rawText, targetWord);
     final cleanWord = targetWord.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
     if (cleanWord.isEmpty || !sentence.toLowerCase().contains(cleanWord.toLowerCase())) {
       return Text(
@@ -364,24 +360,6 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
   Widget build(BuildContext context) {
     final activeDetails = _detailsList.isNotEmpty ? _detailsList[_selectedSenseIndex] : <String, dynamic>{};
     final word = activeDetails['word']?.toString() ?? widget.word;
-    final gender = activeDetails['gender']?.toString();
-    final ipa = activeDetails['ipa']?.toString();
-    final contextNote = activeDetails['contextNote']?.toString();
-
-    List<String> defs = [];
-    if (activeDetails['definitions'] != null) {
-      defs = List<String>.from(activeDetails['definitions']);
-    } else if (activeDetails['definition'] != null) {
-      defs = [activeDetails['definition'].toString()];
-    }
-
-    final genderColor = _getGenderColor(gender);
-    final article = _getArticle(gender);
-    final String pluralNounOnly = (_pluralForm != null && _pluralForm!.isNotEmpty)
-        ? (_pluralForm!.toLowerCase().startsWith('die ')
-            ? _pluralForm!.substring(4).trim()
-            : _pluralForm!.trim())
-        : '';
 
     return Container(
       decoration: BoxDecoration(
@@ -411,293 +389,47 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
           ),
           const SizedBox(height: 16),
 
-          // Header: Article + Headword + Audio Button
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (contextNote != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          "⚡ $contextNote",
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                      ),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            '$_cefrBadge • CEFR',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        if (article.isNotEmpty) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: genderColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: genderColor.withValues(alpha: 0.4)),
-                            ),
-                            child: Text(
-                              article.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                                color: genderColor,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        Expanded(
-                          child: Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: word,
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w900,
-                                    color: article.isNotEmpty ? genderColor : Theme.of(context).colorScheme.onSurface,
-                                  ),
-                                ),
-                                if (article.isNotEmpty && pluralNounOnly.isNotEmpty) ...[
-                                  TextSpan(
-                                    text: ', die $pluralNounOnly',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w700,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (ipa != null && ipa.isNotEmpty)
-                      Text(
-                        ipa,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              IconButton.filledTonal(
-                onPressed: () {
-                  String textToSpeak = word;
-                  if (article.isNotEmpty) {
-                    if (_pluralForm != null && _pluralForm!.isNotEmpty) {
-                      final pluralStr = _pluralForm!.toLowerCase().startsWith('die ')
-                          ? _pluralForm!
-                          : 'die $_pluralForm';
-                      textToSpeak = '$article $word, $pluralStr';
-                    } else {
-                      textToSpeak = '$article $word';
-                    }
-                  }
-                  _ttsService.speak(textToSpeak, lang: 'de-DE');
-                },
-                icon: const Icon(Icons.volume_up_rounded),
-                style: IconButton.styleFrom(
-                  backgroundColor: genderColor.withValues(alpha: 0.15),
-                  foregroundColor: genderColor,
-                ),
-              ),
-            ],
+          WordHeaderCard(
+            wordData: activeDetails.isNotEmpty
+                ? activeDetails
+                : {'word': widget.word},
+            pluralForm: _pluralForm,
+            savedWordIds:
+                _savedWord != null ? {_savedWord!.id.toLowerCase().trim()} : {},
+            savedWordCategories: _savedWord != null
+                ? {_savedWord!.id.toLowerCase().trim(): _savedWord!.category}
+                : {},
+            onCategorySelected: _toggleCategory,
+            contextSentence: widget.contextSentence,
           ),
 
-          const SizedBox(height: 16),
-
-          // Meanings list
-          if (defs.isNotEmpty) ...[
-            Text(
-              "DEFINITION",
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            ...defs.take(3).map((d) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("• ", style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                      Expanded(
-                        child: Text(
-                          d,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
-          ] else ...[
-            Text(
-              "No dictionary definition found.",
-              style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            ),
-          ],
-
-          // Context Sentence snippet
-          if (widget.contextSentence != null && widget.contextSentence!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.4)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.format_quote_rounded, size: 16, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(width: 4),
-                      Text(
-                        "Context",
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  _buildContextSentence(context, widget.contextSentence!, word),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 16),
-          // Vocabulary Status Header & Toggle Chips
-          Text(
-            "VOCABULARY STATUS",
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildCategoryChip(
-                label: 'Save',
-                icon: Icons.bookmark_border_rounded,
-                activeIcon: Icons.bookmark_rounded,
-                category: VocabCategory.reviewLater,
-              ),
-              const SizedBox(width: 8),
-              _buildCategoryChip(
-                label: 'Learning',
-                icon: Icons.psychology_outlined,
-                activeIcon: Icons.psychology_rounded,
-                category: VocabCategory.learning,
-              ),
-              const SizedBox(width: 8),
-              _buildCategoryChip(
-                label: 'Known',
-                icon: Icons.check_circle_outline_rounded,
-                activeIcon: Icons.check_circle_rounded,
-                category: VocabCategory.mastered,
-              ),
-            ],
-          ),
-          if (_savedWord != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ...List.generate(4, (index) {
-                  final isEarned = index < _savedWord!.masteryLevel;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: Icon(
-                      isEarned ? Icons.star_rounded : Icons.star_border_rounded,
-                      size: 15,
-                      color: isEarned
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  );
-                }),
-                const SizedBox(width: 6),
-                Text(
-                  'Mastery Level ${_savedWord!.masteryLevel} / 4',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ],
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () {
-                Navigator.of(context).pop();
+                final wordToExplore = word;
+                final wordDataToPass = Map<String, dynamic>.from(activeDetails);
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => DictionaryScreen(initialSearchQuery: widget.word),
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        WordDetailScreen(
+                      word: wordToExplore,
+                      wordData: wordDataToPass,
+                    ),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      );
+                    },
+                    transitionDuration: const Duration(milliseconds: 200),
                   ),
                 );
               },
               icon: const Icon(Icons.menu_book_rounded, size: 18),
-              label: const Text('View Forms & Declensions →'),
+              label: const Text('Explore in Dictionary →'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),

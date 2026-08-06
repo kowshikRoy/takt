@@ -8,16 +8,19 @@ import '../services/tts_service.dart';
 import '../models/saved_word.dart';
 import '../theme/breakpoints.dart';
 import '../theme/books_modernist_style.dart';
-
 import '../services/discovery_service.dart';
+import '../widgets/vocab_status_pills.dart';
+import 'word_detail_screen.dart';
 
 class DictionaryScreen extends StatefulWidget {
   final String? initialSearchQuery;
+  final Map<String, dynamic>? initialWordData;
   final VoidCallback? onBackToHome;
 
   const DictionaryScreen({
     super.key,
     this.initialSearchQuery,
+    this.initialWordData,
     this.onBackToHome,
   });
 
@@ -40,7 +43,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   bool _isSearching = false;
   bool _isLoadingDiscover = DiscoveryService().pool.isEmpty;
   String _selectedPosFilter = 'all'; // 'all', 'noun', 'verb', 'adj', 'saved'
-  int _selectedTabIndex = 0; // 0: Forms/Declension, 1: Examples, 2: Related
+  int _selectedTabIndex = 1; // Default to 1: Examples
   Set<String> _savedWordIds = {};
   Map<String, VocabCategory> _savedWordCategories = {};
   List<SavedWord> _rawSavedWords = [];
@@ -103,10 +106,45 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     super.initState();
     _loadDiscoverWords();
     _loadSavedWordStatus();
-    if (widget.initialSearchQuery != null &&
+
+    if (widget.initialWordData != null) {
+      _selectedWord = Map<String, dynamic>.from(widget.initialWordData!);
+      final wStr = _selectedWord!['word']?.toString() ?? '';
+      if (wStr.isNotEmpty) {
+        _searchController.text = wStr;
+        _wordImageFuture = _dictionaryService.getWordImageUrl(wStr);
+        _isSearching = true;
+      }
+    } else if (widget.initialSearchQuery != null &&
         widget.initialSearchQuery!.isNotEmpty) {
       _searchController.text = widget.initialSearchQuery!;
-      _onSearchChanged(widget.initialSearchQuery!);
+      _selectedWord = {
+        'word': widget.initialSearchQuery!,
+        'pos': '',
+        'gender': '',
+        'definitions': [],
+      };
+      _wordImageFuture =
+          _dictionaryService.getWordImageUrl(widget.initialSearchQuery!);
+      _isSearching = true;
+    }
+
+    if (widget.initialSearchQuery != null &&
+        widget.initialSearchQuery!.isNotEmpty) {
+      _performInitialDirectLookup(widget.initialSearchQuery!);
+    }
+  }
+
+  Future<void> _performInitialDirectLookup(String word) async {
+    final fullWord = await _dictionaryService.lookupWord(word);
+    if (mounted && fullWord != null) {
+      setState(() {
+        _selectedWord = fullWord;
+        _wordImageFuture =
+            _dictionaryService.getWordImageUrl(fullWord['word'] ?? word);
+      });
+    } else if (mounted && _selectedWord == null) {
+      _onSearchChanged(word);
     }
   }
 
@@ -202,28 +240,24 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
     if (mounted) {
       final selected = fullWord;
-      setState(() {
-        _selectedWord = selected;
-        _wordImageFuture = _dictionaryService.getWordImageUrl(
-          selected['word']?.toString() ?? '',
-          pos: selected['pos']?.toString(),
-        );
-        _isSearching = false;
-        _searchResults.clear();
-        _searchController.clear();
-
-        // Track in Recently Viewed Stack
-        final wordId = selected['id'] ?? selected['word'];
-        _recentWords.removeWhere((w) => (w['id'] ?? w['word']) == wordId);
-        _recentWords.insert(0, selected);
-        if (_recentWords.length > 10) {
-          _recentWords.removeLast();
-        }
-      });
+      final wordStr = selected['word']?.toString() ?? resultWord;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => WordDetailScreen(
+            word: wordStr,
+            wordData: selected,
+          ),
+        ),
+      );
     }
   }
 
   bool _handleBack() {
+    if ((widget.initialSearchQuery != null || widget.initialWordData != null) &&
+        Navigator.canPop(context)) {
+      Navigator.pop(context);
+      return true;
+    }
     if (_selectedWord != null) {
       setState(() {
         _selectedWord = null;
@@ -322,11 +356,13 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isDesktop = WindowClass.of(context).isAtLeastExpanded;
-    final bool canPopNormally =
-        Navigator.canPop(context) &&
-        _selectedWord == null &&
-        !_isSearching &&
-        _searchController.text.isEmpty;
+    final bool isDirectLookup =
+        widget.initialSearchQuery != null || widget.initialWordData != null;
+    final bool canPopNormally = Navigator.canPop(context) &&
+        (isDirectLookup ||
+            (_selectedWord == null &&
+                !_isSearching &&
+                _searchController.text.isEmpty));
 
     return PopScope(
       canPop: canPopNormally,
@@ -1182,35 +1218,60 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     );
   }
 
+  String _inferGenderIfNull(String wordStr, String? rawGender, String? pos) {
+    if (rawGender != null && rawGender.trim().isNotEmpty) {
+      final g = rawGender.trim().toLowerCase();
+      if (g == 'masculine' || g == 'm') return 'm';
+      if (g == 'feminine' || g == 'f') return 'f';
+      if (g == 'neuter' || g == 'n') return 'n';
+    }
+
+    final lower = wordStr.trim().toLowerCase();
+    
+    if (lower.endsWith('schaft') ||
+        lower.endsWith('ung') ||
+        lower.endsWith('heit') ||
+        lower.endsWith('keit') ||
+        lower.endsWith('tät') ||
+        lower.endsWith('tion') ||
+        lower.endsWith('ei') ||
+        lower.endsWith('in')) {
+      return 'f';
+    }
+    if (lower.endsWith('chen') ||
+        lower.endsWith('lein') ||
+        lower.endsWith('tum') ||
+        lower.endsWith('ment')) {
+      return 'n';
+    }
+    if (lower.endsWith('ismus') || lower.endsWith('ling') || lower.endsWith('or')) {
+      return 'm';
+    }
+
+    return '';
+  }
+
   Widget _buildMainCard(BuildContext context, Map<String, dynamic> wordData) {
     final colorScheme = Theme.of(context).colorScheme;
-    final gender = wordData['gender']?.toString();
     final word = wordData['word']?.toString() ?? '';
+    final pos = wordData['pos']?.toString();
+    final rawGender = wordData['gender']?.toString();
+    final gender = _inferGenderIfNull(word, rawGender, pos);
     final ipa = wordData['ipa']?.toString();
     final freq = wordData['freq_rank'];
     final defs = (wordData['definitions'] as List?) ?? [];
-    final wordId = word.toLowerCase().trim();
-    final isLearning =
-        _savedWordCategories[wordId] == VocabCategory.learning ||
-        (_savedWordIds.contains(wordId) &&
-            _savedWordCategories[wordId] == null);
-    final isMastered = _savedWordCategories[wordId] == VocabCategory.mastered;
 
     Color genderColor = colorScheme.primary;
-    String genderText = wordData['pos']?.toString().toUpperCase() ?? "TERM";
     String article = "";
 
     if (gender == 'masculine' || gender == 'm') {
       genderColor = AppTheme.genderMasc;
-      genderText = "MASCULINE (DER)";
       article = "Der";
     } else if (gender == 'feminine' || gender == 'f') {
       genderColor = AppTheme.genderFem;
-      genderText = "FEMININE (DIE)";
       article = "Die";
     } else if (gender == 'neuter' || gender == 'n') {
       genderColor = AppTheme.genderNeu;
-      genderText = "NEUTER (DAS)";
       article = "Das";
     }
 
@@ -1243,49 +1304,28 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
+                if (freq != null)
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: genderColor.withValues(alpha: 0.12),
+                        color: colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        genderText,
+                        _getCefrLevel(freq),
                         style: TextStyle(
-                          color: genderColor,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
+                          color: colorScheme.onSecondaryContainer,
                         ),
                       ),
                     ),
-                    if (freq != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '${_getCefrLevel(freq)} • CEFR',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSecondaryContainer,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
 
                 const SizedBox(height: 16),
 
@@ -1318,17 +1358,33 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                     ],
                     Flexible(
-                      child: Text(
-                        word,
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: Text(
+                          word,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        Icons.volume_up_rounded,
+                        size: 22,
+                        color: genderColor != colorScheme.primary ? genderColor : colorScheme.primary,
+                      ),
+                      onPressed: () => _ttsService.speak(word, lang: 'de-DE'),
                     ),
                   ],
                 ),
@@ -1337,6 +1393,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   const SizedBox(height: 4),
                   Text(
                     ipa,
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.notoSans(
                       fontSize: 14,
                       color: colorScheme.onSurfaceVariant.withValues(
@@ -1348,22 +1405,37 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
                 const SizedBox(height: 16),
 
-                // Numbered Definitions List
+                // Clean Arrow Definitions List (Consistent with GlanceWordSheet)
                 if (defs.isNotEmpty)
                   Column(
-                    children: defs.asMap().entries.map((entry) {
-                      final idx = entry.key + 1;
-                      final d = entry.value.toString();
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: defs.map((d) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          defs.length > 1 ? '$idx. $d' : d,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: colorScheme.onSurface,
-                          ),
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "→ ",
+                              style: TextStyle(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                d.toString(),
+                                textAlign: TextAlign.left,
+                                style: BooksModernist.body(
+                                  size: 14.5,
+                                  weight: FontWeight.w600,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     }).toList(),
@@ -1371,96 +1443,11 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
                 const SizedBox(height: 20),
 
-                // Action Buttons (Learn, Mastered & TTS Audio)
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () => _setStatus(wordData, VocabCategory.learning),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: isLearning
-                              ? Colors.green
-                              : colorScheme.primary,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        icon: Icon(
-                          isLearning
-                              ? Icons.check_circle_rounded
-                              : Icons.school_rounded,
-                          size: 18,
-                        ),
-                        label: Text(
-                          isLearning ? 'Learning' : 'Learn',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () => _setStatus(wordData, VocabCategory.mastered),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: isMastered
-                              ? Colors.amber.shade700
-                              : colorScheme.surfaceContainerHigh,
-                          foregroundColor: isMastered
-                              ? Colors.white
-                              : colorScheme.onSurfaceVariant,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        icon: Icon(
-                          isMastered
-                              ? Icons.verified_rounded
-                              : Icons.workspace_premium_rounded,
-                          size: 18,
-                        ),
-                        label: Text(
-                          'Mastered',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.volume_up_rounded,
-                          color: colorScheme.primary,
-                        ),
-                        tooltip: 'Play pronunciation',
-                        onPressed: () {
-                          final speakText = article.isNotEmpty
-                              ? '$article $word'
-                              : word;
-                          _ttsService.speak(speakText, lang: 'de-DE');
-                        },
-                      ),
-                    ),
-                  ],
+                // 1-line Vocabulary Status Pills (Consistent with GlanceWordSheet)
+                VocabStatusPills(
+                  currentCategory: _savedWordCategories[word.toLowerCase().trim()] ??
+                      (_savedWordIds.contains(word.toLowerCase().trim()) ? VocabCategory.reviewLater : null),
+                  onCategorySelected: (category) => _setStatus(wordData, category),
                 ),
               ],
             ),

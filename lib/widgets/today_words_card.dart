@@ -5,8 +5,8 @@ import '../services/discovery_service.dart';
 import '../services/profile_service.dart';
 import '../theme/app_theme.dart';
 
-/// Home screen "Today's Words" card — displays the persistent 20-word Daily Discovery Queue.
-/// Tapping a word saves it to the review queue. Users can also tap "Discover More" to load more words.
+/// Home screen "Today's Words" card — displays the persistent 20-word Daily Discovery Queue
+/// with a minimal vintage editorial aesthetic.
 class TodayWordsCard extends StatefulWidget {
   const TodayWordsCard({super.key});
 
@@ -54,13 +54,15 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
       case 'das':
         return AppTheme.genderNeu;
       default:
-        return Colors.grey;
+        return const Color(0xFF8C2D19);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
     final goalCount = ProfileService().dailyWordGoalCount;
 
     return Consumer<DiscoveryService>(
@@ -70,89 +72,95 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
         final savedToday = discoveryService.savedTodayCount;
         final isEmpty = !isLoading && candidates.isEmpty;
 
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-            side: BorderSide(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Daily Discovery Queue",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '$savedToday/$goalCount saved',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tap a word to add it to your review queue • ${candidates.length} in queue',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (isLoading && candidates.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                else if (isEmpty)
-                  _buildEmptyState(context, discoveryService)
-                else
-                  SizedBox(
-                    height: 96,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: candidates.length + 1,
-                      separatorBuilder: (_, _) => const SizedBox(width: 10),
-                      itemBuilder: (context, index) {
-                        if (index < candidates.length) {
-                          return _buildWordTile(context, candidates[index]);
-                        } else {
-                          return _buildDiscoverMoreTile(context, discoveryService);
-                        }
-                      },
-                    ),
-                  ),
-              ],
+        return Container(
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(
+              color: inkColor.withValues(alpha: 0.4),
+              width: 1,
             ),
+          ),
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "TÄGLICHE ENTDECKUNGEN",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.5,
+                      color: inkColor,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: inkColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: inkColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      '$savedToday / $goalCount GESPEICHERT',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                        color: inkColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Tippe auf ein Wort, um es zu deiner Wiederholungsliste hinzuzufügen',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: inkColor.withValues(alpha: 0.65),
+                ),
+              ),
+              const SizedBox(height: 14),
+              if (isLoading && candidates.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (isEmpty)
+                _buildEmptyState(context, discoveryService, inkColor)
+              else
+                SizedBox(
+                  height: 98,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: candidates.length + 1,
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
+                    itemBuilder: (context, index) {
+                      if (index < candidates.length) {
+                        return _buildWordTile(context, candidates[index], inkColor, isDark);
+                      } else {
+                        return _buildDiscoverMoreTile(context, discoveryService, inkColor, isDark);
+                      }
+                    },
+                  ),
+                ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, DiscoveryService discoveryService) {
-    final theme = Theme.of(context);
+  Widget _buildEmptyState(BuildContext context, DiscoveryService discoveryService, Color inkColor) {
     return Row(
       children: [
-        Image.asset('assets/images/cat.png', width: 44, height: 44)
+        Image.asset('assets/images/cat.png', width: 40, height: 40)
             .animate()
             .scale(duration: 400.ms, curve: Curves.elasticOut, begin: const Offset(0.4, 0.4)),
         const SizedBox(width: 12),
@@ -161,16 +169,26 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "You've reviewed all words in your queue!",
-                style: theme.textTheme.bodyMedium?.copyWith(
+                "Alle Wörter in deiner Warteschlange überprüft!",
+                style: TextStyle(
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
+                  color: inkColor,
                 ),
               ),
               const SizedBox(height: 4),
               TextButton.icon(
                 onPressed: () => discoveryService.discoverMore(limit: 20),
-                icon: const Icon(Icons.auto_awesome, size: 16),
-                label: const Text('Discover 20 More Words'),
+                icon: Icon(Icons.auto_awesome, size: 14, color: inkColor),
+                label: Text(
+                  '20 WEITERE WÖRTER ENTDECKEN',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.0,
+                    color: inkColor,
+                  ),
+                ),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
@@ -184,22 +202,22 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
     );
   }
 
-  Widget _buildWordTile(BuildContext context, Map<String, dynamic> entry) {
-    final theme = Theme.of(context);
+  Widget _buildWordTile(BuildContext context, Map<String, dynamic> entry, Color inkColor, bool isDark) {
     final wordStr = entry['word'] as String;
     final isSaving = _savingInFlight.contains(wordStr);
     final gender = entry['gender'] as String?;
+    final itemBg = isDark ? const Color(0xFF191715) : const Color(0xFFFAF6F0);
 
     return GestureDetector(
       onTap: isSaving ? null : () => _saveWord(context, entry),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 140,
-        padding: const EdgeInsets.all(12),
+        width: 142,
+        padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+          color: itemBg,
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(color: inkColor.withValues(alpha: 0.35)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,8 +227,8 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
               children: [
                 if (gender != null)
                   Container(
-                    width: 8,
-                    height: 8,
+                    width: 7,
+                    height: 7,
                     decoration: BoxDecoration(
                       color: _genderColor(gender),
                       shape: BoxShape.circle,
@@ -220,7 +238,11 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
                 Expanded(
                   child: Text(
                     wordStr,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: inkColor,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -229,22 +251,28 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
             ),
             Text(
               (entry['definition'] as String?) ?? '',
-              style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+              style: TextStyle(
+                fontSize: 11,
+                color: inkColor.withValues(alpha: 0.7),
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             Align(
               alignment: Alignment.centerRight,
               child: isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                  ? SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: inkColor,
+                      ),
                     )
                   : Icon(
                       Icons.add_circle_outline_rounded,
-                      size: 18,
-                      color: theme.colorScheme.primary,
+                      size: 17,
+                      color: inkColor,
                     ),
             ),
           ],
@@ -253,9 +281,9 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
     );
   }
 
-  Widget _buildDiscoverMoreTile(BuildContext context, DiscoveryService discoveryService) {
-    final theme = Theme.of(context);
+  Widget _buildDiscoverMoreTile(BuildContext context, DiscoveryService discoveryService, Color inkColor, bool isDark) {
     final isLoading = discoveryService.isLoading;
+    final itemBg = isDark ? const Color(0xFF2B2622) : const Color(0xFFE8E2D7);
 
     return GestureDetector(
       onTap: isLoading ? null : () => discoveryService.discoverMore(limit: 20),
@@ -263,10 +291,10 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
         width: 130,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(4),
+          color: itemBg,
+          borderRadius: BorderRadius.circular(2),
           border: Border.all(
-            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            color: inkColor.withValues(alpha: 0.5),
             style: BorderStyle.solid,
           ),
         ),
@@ -274,25 +302,29 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isLoading)
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: inkColor,
+                ),
               )
             else
               Icon(
                 Icons.auto_awesome,
-                color: theme.colorScheme.primary,
-                size: 24,
+                color: inkColor,
+                size: 22,
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
-              isLoading ? 'Loading...' : 'Discover\nMore Words',
+              isLoading ? 'LADEN...' : 'MEHR\nENTDECKEN',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.0,
+                color: inkColor,
               ),
             ),
           ],

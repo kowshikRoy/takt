@@ -29,151 +29,158 @@ class HomeScreen extends StatelessWidget {
 
   const HomeScreen({super.key, this.onOpenLearnTab});
 
-  // Single source of truth for the still-hardcoded "today's lesson" mock
-  // content — was previously duplicated verbatim in two places (Task 2's
-  // tap target and the bottom CTA button below it), which meant the two
-  // could silently drift out of sync.
   static Article get _dailyLessonArticle => Article(
-    id: 'cl1',
-    title: 'Wüsten der Welt: Die Sahara',
-    description: 'Extremtemperaturen und faszinierende Dünenlandschaften.',
-    level: 'B1',
-    date: DateTime.now(),
-    imageUrl: 'assets/images/story_desert.png',
-  );
+        id: 'cl1',
+        title: 'Wüsten der Welt: Die Sahara',
+        description: 'Extremtemperaturen und faszinierende Dünenlandschaften.',
+        level: 'B1',
+        date: DateTime.now(),
+        imageUrl: 'assets/images/story_desert.png',
+      );
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        await SyncService().syncNow();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Modernist Header
-            _buildHeader(context),
-            ModernistProgressBar(progress: 1.0, height: 2),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF181614) : const Color(0xFFFAF6F0);
+    final rustAccent = const Color(0xFF8C2D19);
 
-            const SizedBox(height: 20),
+    return Container(
+      color: bg,
+      child: RefreshIndicator(
+        onRefresh: () async {
+          await SyncService().syncNow();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              _buildHeader(context),
+              ModernistProgressBar(progress: 1.0, height: 2),
 
-            // Daily Session Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)?.sectionDailySession ?? 'DAILY SESSION',
-                    style: BooksModernist.body(
-                      size: 11,
-                      weight: FontWeight.w800,
-                      color: BooksModernist.accentDark,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildDailySessionCard(context),
-                ],
-              ),
-            ),
+              const SizedBox(height: 20),
 
-            const SizedBox(height: 24),
-
-            // Today's Words Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "TODAY'S WORDS",
-                    style: BooksModernist.body(
-                      size: 11,
-                      weight: FontWeight.w800,
-                      color: BooksModernist.accentDark,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const TodayWordsCard(),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Course Books Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'COURSE BOOKS',
-                    style: BooksModernist.body(
-                      size: 11,
-                      weight: FontWeight.w800,
-                      color: BooksModernist.accentDark,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildCourseBooksSection(context),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Practice Tools Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'PRACTICE TOOLS',
-                        style: BooksModernist.body(
-                          size: 11,
-                          weight: FontWeight.w800,
-                          color: BooksModernist.accentDark,
-                        ),
+              // Daily Session Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)?.sectionDailySession ?? 'DAILY SESSION',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                        color: rustAccent,
                       ),
-                      if (onOpenLearnTab != null)
-                        GestureDetector(
-                          onTap: onOpenLearnTab,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Structured Path',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Icon(
-                                Icons.arrow_forward_rounded,
-                                size: 14,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildDailySessionCard(context),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Today's Words Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "TODAY'S WORDS",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                        color: rustAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const TodayWordsCard(),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Course Books Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'COURSE BOOKS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                        color: rustAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildCourseBooksSection(context),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Practice Tools Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'PRACTICE TOOLS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                            color: rustAccent,
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPracticeGrid(context),
-                ],
+                        if (onOpenLearnTab != null)
+                          GestureDetector(
+                            onTap: onOpenLearnTab,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Structured Path',
+                                  style: TextStyle(
+                                    color: rustAccent,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 14,
+                                  color: rustAccent,
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildPracticeGrid(context),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-          ],
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
@@ -184,13 +191,18 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = const Color(0xFF8C2D19);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: cardBg,
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+            color: inkColor.withValues(alpha: 0.3),
           ),
         ),
       ),
@@ -213,11 +225,11 @@ class HomeScreen extends StatelessWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                        color: inkColor.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: BooksModernist.accent,
-                          width: 2,
+                          color: rustAccent,
+                          width: 1.5,
                         ),
                         image: DecorationImage(
                           image: (photoUrl != null &&
@@ -238,16 +250,21 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Text(
                     'GUTEN MORGEN!',
-                    style: BooksModernist.heading(size: 15, context: context),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: inkColor,
+                    ),
                   ),
                   Consumer<GamificationService>(
                     builder: (context, gamification, _) {
                       return Text(
                         'Level ${gamification.level}',
-                        style: BooksModernist.body(
-                          size: 11.5,
-                          weight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: inkColor.withValues(alpha: 0.7),
                         ),
                       );
                     },
@@ -265,9 +282,7 @@ class HomeScreen extends StatelessWidget {
                       auth.isAuthenticated
                           ? Icons.cloud_done_rounded
                           : Icons.cloud_queue_rounded,
-                      color: auth.isAuthenticated
-                          ? Colors.green
-                          : Theme.of(context).colorScheme.primary,
+                      color: inkColor,
                     ),
                     tooltip: 'Cloud Sync & Account',
                     onPressed: () => AuthSyncDialog.show(context),
@@ -283,17 +298,17 @@ class HomeScreen extends StatelessWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: BooksModernist.accent100,
-                      borderRadius: BorderRadius.circular(4),
+                      color: rustAccent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(3),
                       border: Border.all(
-                        color: BooksModernist.accent200,
+                        color: rustAccent.withValues(alpha: 0.4),
                       ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.local_fire_department_rounded,
-                          color: BooksModernist.accent,
+                          color: rustAccent,
                           size: 18,
                         ),
                         const SizedBox(width: 4),
@@ -302,7 +317,7 @@ class HomeScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: BooksModernist.accentDark,
+                            color: rustAccent,
                           ),
                         ),
                       ],
@@ -331,17 +346,22 @@ class HomeScreen extends StatelessWidget {
         final bool saveDone = profileService.todayWordsSaved > 0;
 
         final bool isUnlocked = savedCount >= 5;
-        final colorScheme = Theme.of(context).colorScheme;
+
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+        final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+        final rustAccent = const Color(0xFF8C2D19);
 
         return Card(
           elevation: 0,
+          color: cardBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(3),
             side: BorderSide(
               color: isGoalAchieved
-                  ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
-                  : colorScheme.outlineVariant,
-              width: isGoalAchieved ? 2 : 1,
+                  ? rustAccent
+                  : inkColor.withValues(alpha: 0.35),
+              width: isGoalAchieved ? 1.5 : 1,
             ),
           ),
           clipBehavior: Clip.antiAlias,
@@ -358,245 +378,265 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Session Tasks',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                            const SizedBox(height: 6),
-                            Text(
-                              isGoalAchieved
-                                  ? '🎉 Daily goal achieved! Outstanding work.'
-                                  : '$completedTasks of 3 daily tasks completed',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: isGoalAchieved
-                                        ? const Color(0xFFD97706)
-                                        : colorScheme.onSurfaceVariant,
-                                    fontWeight: isGoalAchieved ? FontWeight.w600 : FontWeight.normal,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: isGoalAchieved
-                                ? const Color(0xFFF59E0B).withValues(alpha: 0.2)
-                                : colorScheme.primaryContainer,
-                            shape: BoxShape.circle,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: inkColor,
                           ),
-                          child: Center(
-                            child: Text(
-                              '$completedTasks/3',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isGoalAchieved ? const Color(0xFFD97706) : colorScheme.primary,
-                              ),
-                            ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          isGoalAchieved
+                              ? '🎉 Daily goal achieved! Outstanding work.'
+                              : '$completedTasks of 3 daily tasks completed',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isGoalAchieved
+                                ? rustAccent
+                                : inkColor.withValues(alpha: 0.7),
+                            fontWeight: isGoalAchieved ? FontWeight.w600 : FontWeight.normal,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-
-                    // Task 1: SRS Vocabulary Warm-up
-                    GestureDetector(
-                      onTap: () {
-                        profileService.recordActivityToday(review: true);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
-                        );
-                      },
-                      child: _buildSessionItem(
-                        context,
-                        iconWidget: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: warmUpDone ? const Color(0xFF22C55E) : colorScheme.surfaceContainerHighest,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            warmUpDone ? Icons.check : Icons.school_rounded,
-                            color: warmUpDone ? Colors.white : colorScheme.primary,
-                            size: 14,
-                          ),
-                        ),
-                        title: warmUpDone
-                            ? 'Warm-up: Vocabulary (Completed)'
-                            : 'Warm-up: $dueCount words due for review',
-                        isCompleted: warmUpDone,
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: inkColor.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: inkColor.withValues(alpha: 0.25)),
                       ),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Task 2: German Reading Lesson
-                    GestureDetector(
-                      onTap: () {
-                        profileService.recordActivityToday(story: true);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => StoryReaderScreen(
-                              article: _dailyLessonArticle,
-                            ),
+                      child: Center(
+                        child: Text(
+                          '$completedTasks/3',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isGoalAchieved ? rustAccent : inkColor,
                           ),
-                        );
-                      },
-                      child: _buildSessionItem(
-                        context,
-                        iconWidget: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: storyDone ? const Color(0xFF22C55E) : colorScheme.primary.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                            border: storyDone
-                                ? null
-                                : Border.all(color: colorScheme.primary, width: 2),
-                          ),
-                          child: Icon(
-                            storyDone ? Icons.check : Icons.menu_book_rounded,
-                            color: storyDone ? Colors.white : colorScheme.primary,
-                            size: 14,
-                          ),
-                        ),
-                        title: storyDone
-                            ? 'Lesson: Die Sahara (Read Today)'
-                            : 'Lesson: Die Sahara (Tap to Read)',
-                        isCompleted: storyDone,
-                      ),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Task 3: Discovery Word Capture
-                    _buildSessionItem(
-                      context,
-                      iconWidget: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: saveDone ? const Color(0xFF22C55E) : colorScheme.surfaceContainerHighest,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          saveDone ? Icons.check : Icons.bookmark_add_rounded,
-                          color: saveDone ? Colors.white : colorScheme.primary,
-                          size: 14,
-                        ),
-                      ),
-                      title: saveDone
-                          ? 'Challenge: Captured 1 word today!'
-                          : 'Challenge: Save 1 word from Discover/Dictionary',
-                      isCompleted: saveDone,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Daily Review Item (Dynamic SRS Unlock)
-                    InkWell(
-                      onTap: () {
-                        if (isUnlocked) {
-                          profileService.recordActivityToday(review: true);
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
-                          );
-                        } else {
-                          showDialog(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              title: const Row(
-                                children: [
-                                  Icon(Icons.lock_outline_rounded, color: Colors.orange),
-                                  SizedBox(width: 10),
-                                  Text('Daily Review Locked'),
-                                ],
-                              ),
-                              content: Text(
-                                'Daily review unlocks after saving 5 words to your dictionary.\n\n'
-                                'You currently have $savedCount / 5 words saved. Visit the Learn tab or Dictionary to save more words!',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Got it'),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(4),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isUnlocked
-                              ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-                              : colorScheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: isUnlocked
-                                ? colorScheme.primary.withValues(alpha: 0.3)
-                                : colorScheme.outlineVariant,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              isUnlocked ? Icons.style_rounded : Icons.lock_outline_rounded,
-                              color: isUnlocked ? colorScheme.primary : Colors.orange,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    isUnlocked
-                                        ? 'Daily Review: $dueCount Due Now'
-                                        : 'Daily Review (Unlock at 5 words)',
-                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    isUnlocked
-                                        ? 'Review your personalized vocabulary deck'
-                                        : '$savedCount of 5 words saved so far',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 16,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 20),
+
+                // Task 1: SRS Vocabulary Warm-up
+                GestureDetector(
+                  onTap: () {
+                    profileService.recordActivityToday(review: true);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
+                    );
+                  },
+                  child: _buildSessionItem(
+                    context,
+                    iconWidget: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: warmUpDone ? inkColor : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: inkColor, width: 1.5),
+                      ),
+                      child: Icon(
+                        warmUpDone ? Icons.check : Icons.school_rounded,
+                        color: warmUpDone ? cardBg : inkColor,
+                        size: 14,
+                      ),
+                    ),
+                    title: warmUpDone
+                        ? 'Warm-up: Vocabulary (Completed)'
+                        : 'Warm-up: $dueCount words due for review',
+                    isCompleted: warmUpDone,
+                    inkColor: inkColor,
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Task 2: German Reading Lesson
+                GestureDetector(
+                  onTap: () {
+                    profileService.recordActivityToday(story: true);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => StoryReaderScreen(
+                          article: _dailyLessonArticle,
+                        ),
+                      ),
+                    );
+                  },
+                  child: _buildSessionItem(
+                    context,
+                    iconWidget: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: storyDone ? inkColor : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: inkColor, width: 1.5),
+                      ),
+                      child: Icon(
+                        storyDone ? Icons.check : Icons.menu_book_rounded,
+                        color: storyDone ? cardBg : inkColor,
+                        size: 14,
+                      ),
+                    ),
+                    title: storyDone
+                        ? 'Lesson: Die Sahara (Read Today)'
+                        : 'Lesson: Die Sahara (Tap to Read)',
+                    isCompleted: storyDone,
+                    inkColor: inkColor,
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Task 3: Discovery Word Capture
+                _buildSessionItem(
+                  context,
+                  iconWidget: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: saveDone ? inkColor : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: inkColor, width: 1.5),
+                    ),
+                    child: Icon(
+                      saveDone ? Icons.check : Icons.bookmark_add_rounded,
+                      color: saveDone ? cardBg : inkColor,
+                      size: 14,
+                    ),
+                  ),
+                  title: saveDone
+                      ? 'Challenge: Captured 1 word today!'
+                      : 'Challenge: Save 1 word from Discover/Dictionary',
+                  isCompleted: saveDone,
+                  inkColor: inkColor,
+                ),
+
+                const SizedBox(height: 20),
+
+                // Daily Review Item (Dynamic SRS Unlock)
+                InkWell(
+                  onTap: () {
+                    if (isUnlocked) {
+                      profileService.recordActivityToday(review: true);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
+                      );
+                    } else {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          backgroundColor: cardBg,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(3),
+                            side: BorderSide(color: inkColor),
+                          ),
+                          title: Row(
+                            children: [
+                              Icon(Icons.lock_outline_rounded, color: rustAccent),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Daily Review Locked',
+                                style: TextStyle(color: inkColor),
+                              ),
+                            ],
+                          ),
+                          content: Text(
+                            'Daily review unlocks after saving 5 words to your dictionary.\n\n'
+                            'You currently have $savedCount / 5 words saved. Visit the Learn tab or Dictionary to save more words!',
+                            style: TextStyle(color: inkColor),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(
+                                'Got it',
+                                style: TextStyle(color: rustAccent, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(3),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isUnlocked
+                          ? inkColor.withValues(alpha: 0.08)
+                          : inkColor.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        color: isUnlocked
+                            ? inkColor.withValues(alpha: 0.4)
+                            : inkColor.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isUnlocked ? Icons.style_rounded : Icons.lock_outline_rounded,
+                          color: isUnlocked ? rustAccent : inkColor.withValues(alpha: 0.5),
+                          size: 24,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isUnlocked
+                                    ? 'Daily Review: $dueCount Due Now'
+                                    : 'Daily Review (Unlock at 5 words)',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: inkColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isUnlocked
+                                    ? 'Review your personalized vocabulary deck'
+                                    : '$savedCount of 5 words saved so far',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: inkColor.withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 16,
+                          color: inkColor.withValues(alpha: 0.6),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
-      }
+      },
+    );
+  }
 
   Widget _buildSessionItem(
     BuildContext context, {
     required Widget iconWidget,
     required String title,
     bool isCompleted = false,
-    bool isLocked = false,
+    required Color inkColor,
   }) {
     return Row(
       children: [
@@ -605,10 +645,12 @@ class HomeScreen extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: isLocked
-                  ? Theme.of(context).colorScheme.onSurfaceVariant
-                  : Theme.of(context).colorScheme.onSurface,
+            style: TextStyle(
+              fontSize: 13,
+              color: isCompleted
+                  ? inkColor.withValues(alpha: 0.6)
+                  : inkColor,
+              fontWeight: isCompleted ? FontWeight.w600 : FontWeight.normal,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -853,12 +895,17 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildSrsPracticeCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = const Color(0xFF8C2D19);
+
     return Card(
       elevation: 0,
-      color: BooksModernist.surface,
+      color: cardBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: BorderSide(color: BooksModernist.dividerThin),
+        borderRadius: BorderRadius.circular(3),
+        side: BorderSide(color: inkColor.withValues(alpha: 0.35)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -874,13 +921,13 @@ class HomeScreen extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: BooksModernist.accent100,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: BooksModernist.accent200),
+                  color: rustAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.style_rounded,
-                  color: BooksModernist.accent,
+                  color: rustAccent,
                   size: 20,
                 ),
               ),
@@ -891,21 +938,25 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Text(
                       'Vocabulary Flashcard Practice',
-                      style: BooksModernist.heading(size: 14, context: context),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: inkColor,
+                      ),
                     ),
                     Text(
                       'Review your saved vocabulary cards',
-                      style: BooksModernist.body(
-                        size: 11.5,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: BooksModernist.accentDark,
+                color: rustAccent,
                 size: 24,
               ),
             ],
@@ -916,12 +967,17 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildCompoundPracticeCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = const Color(0xFF8C2D19);
+
     return Card(
       elevation: 0,
-      color: BooksModernist.surface,
+      color: cardBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: BorderSide(color: BooksModernist.dividerThin),
+        borderRadius: BorderRadius.circular(3),
+        side: BorderSide(color: inkColor.withValues(alpha: 0.35)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -937,13 +993,13 @@ class HomeScreen extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: BooksModernist.accent100,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: BooksModernist.accent200),
+                  color: rustAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.extension_rounded,
-                  color: BooksModernist.accent,
+                  color: rustAccent,
                   size: 20,
                 ),
               ),
@@ -954,21 +1010,25 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Text(
                       'Compound Puzzle',
-                      style: BooksModernist.heading(size: 14, context: context),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: inkColor,
+                      ),
                     ),
                     Text(
                       'Build massive words',
-                      style: BooksModernist.body(
-                        size: 11.5,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: BooksModernist.accentDark,
+                color: rustAccent,
                 size: 24,
               ),
             ],
@@ -979,12 +1039,17 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildSpeakingPracticeCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = const Color(0xFF8C2D19);
+
     return Card(
       elevation: 0,
-      color: BooksModernist.surface,
+      color: cardBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: BorderSide(color: BooksModernist.dividerThin),
+        borderRadius: BorderRadius.circular(3),
+        side: BorderSide(color: inkColor.withValues(alpha: 0.35)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -1000,13 +1065,13 @@ class HomeScreen extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: BooksModernist.accent100,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: BooksModernist.accent200),
+                  color: rustAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.mic_rounded,
-                  color: BooksModernist.accent,
+                  color: rustAccent,
                   size: 20,
                 ),
               ),
@@ -1017,21 +1082,25 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Text(
                       'Sprechen',
-                      style: BooksModernist.heading(size: 14, context: context),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: inkColor,
+                      ),
                     ),
                     Text(
                       'Shadow a sentence and get pronunciation feedback',
-                      style: BooksModernist.body(
-                        size: 11.5,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: BooksModernist.accentDark,
+                color: rustAccent,
                 size: 24,
               ),
             ],
@@ -1049,12 +1118,17 @@ class HomeScreen extends StatelessWidget {
     required Widget child,
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = const Color(0xFF8C2D19);
+
     return Card(
       elevation: 0,
-      color: BooksModernist.surface,
+      color: cardBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        side: BorderSide(color: BooksModernist.dividerThin),
+        borderRadius: BorderRadius.circular(3),
+        side: BorderSide(color: inkColor.withValues(alpha: 0.35)),
       ),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
@@ -1075,23 +1149,27 @@ class HomeScreen extends StatelessWidget {
                       height: 36,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: BooksModernist.accent100,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: BooksModernist.accent200),
+                        color: rustAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
                       ),
-                      child: Icon(icon, color: BooksModernist.accent, size: 18),
+                      child: Icon(icon, color: rustAccent, size: 18),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       title,
-                      style: BooksModernist.heading(size: 14, context: context),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: inkColor,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: BooksModernist.body(
-                        size: 11.5,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
                   ],
@@ -1106,11 +1184,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-/// The "Kursbücher" entry point, restyled to the Books feature's fixed
-/// Modernist identity (see lib/theme/books_modernist_style.dart) — plus a
-/// "Weiterlesen" resume banner once TextbookUnitScreen has persisted a last
-/// read position. Kept as its own small StatefulWidget so HomeScreen itself
-/// doesn't need to become stateful just for this one section's async load.
 class _CourseBooksSection extends StatefulWidget {
   const _CourseBooksSection();
 
@@ -1121,92 +1194,64 @@ class _CourseBooksSection extends StatefulWidget {
 class _CourseBooksSectionState extends State<_CourseBooksSection> {
   String? _resumeBookTitle;
   ChapterSummary? _resumeChapter;
-  String? _resumePageLabel;
   int _resumeDone = 0;
   int _resumeTotal = 0;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadResume();
+  void initState() {
+    super.initState();
+    _loadResumePoint();
   }
 
-  Future<void> _loadResume() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bookTitle = prefs.getString('books_last_read_book_title');
-    final chapterNumber = prefs.getInt('books_last_read_chapter_number');
-    final pageIndex = prefs.getInt('books_last_read_page_index') ?? 0;
-    if (bookTitle == null || chapterNumber == null || !mounted) return;
-
-    final service = Provider.of<BookGuideService>(context, listen: false);
-    BookGuide? book;
-    try {
-      book = service.books.firstWhere((b) => b.title == bookTitle);
-    } catch (_) {
-      return;
-    }
-    ChapterSummary? chapter;
-    try {
-      chapter =
-          book.chapters.firstWhere((c) => c.chapterNumber == chapterNumber);
-    } catch (_) {
-      return;
-    }
-
-    final unit = await service.loadTextbookUnit(chapter.jsonAssetPath);
-    if (unit == null || !mounted) return;
-    final allIds = unit.pages.expand((p) => p.sections.map((s) => s.id)).toSet();
-    final completed = (prefs.getStringList(
-              'completed_sections_unit_${unit.unitNumber}',
-            ) ??
-            [])
-        .where(allIds.contains)
-        .length;
-    final page = pageIndex < unit.pages.length ? unit.pages[pageIndex] : null;
-
-    if (mounted) {
-      setState(() {
-        _resumeBookTitle = bookTitle;
-        _resumeChapter = chapter;
-        _resumePageLabel = page != null ? 'Seite ${page.pageNumber}' : null;
-        _resumeDone = completed;
-        _resumeTotal = allIds.length;
-      });
+  Future<void> _loadResumePoint() async {
+    final books =
+        Provider.of<BookGuideService>(context, listen: false).books;
+    final prefVal = await SharedPreferences.getInstance();
+    for (final b in books) {
+      for (final ch in b.chapters) {
+        final key = 'progress_${b.title}_${ch.chapterNumber}';
+        final done = prefVal.getInt(key);
+        if (done != null && done > 0) {
+          if (mounted) {
+            setState(() {
+              _resumeBookTitle = b.title;
+              _resumeChapter = ch;
+              _resumeDone = done;
+              _resumeTotal = ch.wordCount;
+            });
+          }
+          return;
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bookService = Provider.of<BookGuideService>(context);
-    final books = bookService.books;
-    if (books.isEmpty) return const SizedBox.shrink();
+    final books = Provider.of<BookGuideService>(context).books;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
 
-    return Container(
-      width: double.infinity,
-      color: BooksModernist.bg,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Curriculum & Guides', style: BooksModernist.heading(size: 15)),
-              const ModernistTag('CEFR-PFADE'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_resumeChapter != null) _buildResumeBanner(context),
-          ...books.map((book) => _buildBookRow(context, book)),
-        ],
-      ),
+    return Column(
+      children: [
+        if (_resumeChapter != null && _resumeBookTitle != null)
+          _buildResumeBanner(context),
+        ...books.map((book) => _buildBookRow(context, book, inkColor)),
+      ],
     );
   }
 
   Widget _buildResumeBanner(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final bannerBg = isDark ? const Color(0xFF2B2622) : const Color(0xFF1E1B18);
+    final bannerText = const Color(0xFFFAF6F0);
+    final rustAccent = const Color(0xFF8C2D19);
+
     final book = Provider.of<BookGuideService>(context, listen: false)
         .books
         .firstWhere((b) => b.title == _resumeBookTitle);
+
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -1222,7 +1267,11 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(14),
-        color: BooksModernist.text,
+        decoration: BoxDecoration(
+          color: bannerBg,
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(color: inkColor.withValues(alpha: 0.4)),
+        ),
         child: Row(
           children: [
             GrayscaleCover(
@@ -1237,36 +1286,43 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
                 children: [
                   Text(
                     'WEITERLESEN',
-                    style: BooksModernist.body(
-                      size: 10,
-                      weight: FontWeight.w700,
-                      color: BooksModernist.accent200,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                      color: rustAccent,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Kapitel ${_resumeChapter!.chapterNumber}${_resumePageLabel != null ? ' · $_resumePageLabel' : ''}',
-                    style: BooksModernist.heading(size: 15, color: BooksModernist.bg),
+                    'Kapitel ${_resumeChapter!.chapterNumber}',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: bannerText,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${_resumeChapter!.title} — $_resumeDone / $_resumeTotal Abschnitte',
-                    style: BooksModernist.body(
-                      size: 12,
-                      color: BooksModernist.bg.withValues(alpha: 0.7),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: bannerText.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, size: 18, color: BooksModernist.bg),
+            Icon(Icons.chevron_right_rounded, size: 18, color: bannerText),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBookRow(BuildContext context, BookGuide book) {
+  Widget _buildBookRow(BuildContext context, BookGuide book, Color inkColor) {
+    final rustAccent = const Color(0xFF8C2D19);
+
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -1277,7 +1333,7 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: BooksModernist.dividerThin)),
+          border: Border(bottom: BorderSide(color: inkColor.withValues(alpha: 0.18))),
         ),
         child: Row(
           children: [
@@ -1285,7 +1341,7 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
               assetPath: book.coverImage,
               width: 52,
               height: 68,
-              border: Border.all(color: BooksModernist.divider),
+              border: Border.all(color: inkColor.withValues(alpha: 0.4)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1294,12 +1350,31 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
                 children: [
                   Row(
                     children: [
-                      ModernistTag(book.cefrLevel),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: inkColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(2),
+                          border: Border.all(color: inkColor.withValues(alpha: 0.25)),
+                        ),
+                        child: Text(
+                          book.cefrLevel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: inkColor,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           book.title,
-                          style: BooksModernist.heading(size: 16),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: inkColor,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1309,9 +1384,9 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
                   const SizedBox(height: 4),
                   Text(
                     book.subtitle,
-                    style: BooksModernist.body(
-                      size: 12,
-                      color: BooksModernist.text.withValues(alpha: 0.65),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: inkColor.withValues(alpha: 0.65),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1319,10 +1394,10 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
                   const SizedBox(height: 8),
                   Text(
                     '${book.totalChapters} Kapitel · Wortschatz, Audio & Übungen',
-                    style: BooksModernist.body(
-                      size: 11,
-                      weight: FontWeight.w600,
-                      color: BooksModernist.accentDark,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: rustAccent,
                     ),
                   ),
                 ],
@@ -1331,7 +1406,7 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
             Icon(
               Icons.chevron_right_rounded,
               size: 18,
-              color: BooksModernist.text.withValues(alpha: 0.4),
+              color: inkColor.withValues(alpha: 0.4),
             ),
           ],
         ),
