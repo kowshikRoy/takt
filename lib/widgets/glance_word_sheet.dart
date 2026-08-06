@@ -224,6 +224,74 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     }
   }
 
+  Future<void> _toggleCategory(VocabCategory category) async {
+    HapticFeedback.selectionClick();
+    if (_savedWord != null && _savedWord!.category == category) {
+      final wordStr = widget.word.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim().toLowerCase();
+      await _vocabService.removeWord(wordStr);
+      if (mounted) {
+        setState(() {
+          _savedWord = null;
+        });
+      }
+    } else {
+      await _setCategory(category);
+    }
+  }
+
+  Widget _buildCategoryChip({
+    required String label,
+    required IconData icon,
+    required IconData activeIcon,
+    required VocabCategory category,
+  }) {
+    final bool isActive = _savedWord != null && _savedWord!.category == category;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final Color activeBg = category == VocabCategory.mastered
+        ? Colors.green.shade700
+        : (category == VocabCategory.learning
+            ? colorScheme.primary
+            : Colors.amber.shade800);
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _toggleCategory(category),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isActive ? activeBg : colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isActive ? activeBg : colorScheme.outlineVariant.withValues(alpha: 0.5),
+              width: isActive ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isActive ? activeIcon : icon,
+                size: 15,
+                color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Color _getGenderColor(String? gender) {
     if (gender == 'masculine' || gender == 'm') return AppTheme.genderMasc;
     if (gender == 'feminine' || gender == 'f') return AppTheme.genderFem;
@@ -236,6 +304,60 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     if (gender == 'feminine' || gender == 'f') return 'Die';
     if (gender == 'neuter' || gender == 'n') return 'Das';
     return '';
+  }
+
+  Widget _buildContextSentence(BuildContext context, String sentence, String targetWord) {
+    final cleanWord = targetWord.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
+    if (cleanWord.isEmpty || !sentence.toLowerCase().contains(cleanWord.toLowerCase())) {
+      return Text(
+        sentence,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+      );
+    }
+
+    final regExp = RegExp(RegExp.escape(cleanWord), caseSensitive: false);
+    final matches = regExp.allMatches(sentence);
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+
+    for (final match in matches) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: sentence.substring(lastEnd, match.start),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ));
+      }
+      spans.add(TextSpan(
+        text: sentence.substring(match.start, match.end),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ));
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < sentence.length) {
+      spans.add(TextSpan(
+        text: sentence.substring(lastEnd),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+      ));
+    }
+
+    return Text.rich(TextSpan(children: spans));
   }
 
   @override
@@ -255,6 +377,11 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
 
     final genderColor = _getGenderColor(gender);
     final article = _getArticle(gender);
+    final String pluralNounOnly = (_pluralForm != null && _pluralForm!.isNotEmpty)
+        ? (_pluralForm!.toLowerCase().startsWith('die ')
+            ? _pluralForm!.substring(4).trim()
+            : _pluralForm!.trim())
+        : '';
 
     return Container(
       decoration: BoxDecoration(
@@ -313,24 +440,6 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        if (article.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: genderColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: genderColor.withValues(alpha: 0.4)),
-                            ),
-                            child: Text(
-                              article.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: genderColor,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                          ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
@@ -346,33 +455,59 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                             ),
                           ),
                         ),
-                        if (_pluralForm != null && _pluralForm!.isNotEmpty)
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (article.isNotEmpty) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF9844A).withValues(alpha: 0.15),
+                              color: genderColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: const Color(0xFFF9844A).withValues(alpha: 0.4)),
+                              border: Border.all(color: genderColor.withValues(alpha: 0.4)),
                             ),
                             child: Text(
-                              'Pl: $_pluralForm',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFD97706),
+                              article.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                color: genderColor,
+                                letterSpacing: 0.8,
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                        ],
+                        Expanded(
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: word,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    color: article.isNotEmpty ? genderColor : Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                                if (article.isNotEmpty && pluralNounOnly.isNotEmpty) ...[
+                                  TextSpan(
+                                    text: ', die $pluralNounOnly',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w700,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      word,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
                     ),
                     if (ipa != null && ipa.isNotEmpty)
                       Text(
@@ -387,7 +522,17 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
               ),
               IconButton.filledTonal(
                 onPressed: () {
-                  final textToSpeak = article.isNotEmpty ? '$article $word' : word;
+                  String textToSpeak = word;
+                  if (article.isNotEmpty) {
+                    if (_pluralForm != null && _pluralForm!.isNotEmpty) {
+                      final pluralStr = _pluralForm!.toLowerCase().startsWith('die ')
+                          ? _pluralForm!
+                          : 'die $_pluralForm';
+                      textToSpeak = '$article $word, $pluralStr';
+                    } else {
+                      textToSpeak = '$article $word';
+                    }
+                  }
                   _ttsService.speak(textToSpeak, lang: 'de-DE');
                 },
                 icon: const Icon(Icons.volume_up_rounded),
@@ -467,36 +612,50 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    widget.contextSentence!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontStyle: FontStyle.italic,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
+                  _buildContextSentence(context, widget.contextSentence!, word),
                 ],
               ),
             ),
           ],
 
           const SizedBox(height: 16),
-          if (_savedWord == null) ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _setCategory(VocabCategory.learning),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add to Learning Deck'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4)),
-                ),
-              ),
+          // Vocabulary Status Header & Toggle Chips
+          Text(
+            "VOCABULARY STATUS",
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+              color: Theme.of(context).colorScheme.primary,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildCategoryChip(
+                label: 'Save',
+                icon: Icons.bookmark_border_rounded,
+                activeIcon: Icons.bookmark_rounded,
+                category: VocabCategory.reviewLater,
+              ),
+              const SizedBox(width: 8),
+              _buildCategoryChip(
+                label: 'Learning',
+                icon: Icons.psychology_outlined,
+                activeIcon: Icons.psychology_rounded,
+                category: VocabCategory.learning,
+              ),
+              const SizedBox(width: 8),
+              _buildCategoryChip(
+                label: 'Known',
+                icon: Icons.check_circle_outline_rounded,
+                activeIcon: Icons.check_circle_rounded,
+                category: VocabCategory.mastered,
+              ),
+            ],
+          ),
+          if (_savedWord != null) ...[
             const SizedBox(height: 10),
-          ] else ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -506,26 +665,26 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                     padding: const EdgeInsets.symmetric(horizontal: 2),
                     child: Icon(
                       isEarned ? Icons.star_rounded : Icons.star_border_rounded,
-                      size: 16,
+                      size: 15,
                       color: isEarned
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(context).colorScheme.outlineVariant,
                     ),
                   );
                 }),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
                   'Mastery Level ${_savedWord!.masteryLevel} / 4',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
           ],
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(

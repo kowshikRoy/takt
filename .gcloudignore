@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules/
+android/
+ios/
+macos/
+windows/
+linux/
+backend/venv/
+backend/__pycache__/
+backend/cache/

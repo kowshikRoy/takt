@@ -432,8 +432,8 @@ class NounQuestion {
     }
   }
 
-  static String normalizeGender(String? raw) {
-    if (raw == null) return 'm';
+  static String? normalizeGender(String? raw) {
+    if (raw == null) return null;
     final g = raw.trim().toLowerCase();
     if (g == 'm' ||
         g == 'der' ||
@@ -457,7 +457,7 @@ class NounQuestion {
         g == 's') {
       return 'n';
     }
-    return 'm';
+    return null;
   }
 }
 
@@ -522,7 +522,9 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           );
           for (var dw in dueWords) {
             final gRaw = dw.gender ?? genderMap[dw.germanWord];
+            if (gRaw == null) continue;
             final code = NounQuestion.normalizeGender(gRaw);
+            if (code == null) continue;
             loaded.add(
               NounQuestion(
                 word: dw.germanWord,
@@ -555,13 +557,14 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
             final ipa = row['ipa'] as String?;
             final rank = row['freq_rank'] as int?;
 
+            final code = NounQuestion.normalizeGender(gRaw);
             if (word != null &&
                 gRaw != null &&
+                code != null &&
                 !_dictionaryService.isGrammaticalJargon(def) &&
                 !loaded.any(
                   (q) => q.word.toLowerCase() == word.toLowerCase(),
                 )) {
-              final code = NounQuestion.normalizeGender(gRaw);
               final wordId = row['id'] as int?;
               String? pluralForm;
               if (wordId != null) {
@@ -632,11 +635,12 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
         final ipa = row['ipa'] as String?;
         final rank = row['freq_rank'] as int?;
 
+        final code = NounQuestion.normalizeGender(gRaw);
         if (word != null &&
             gRaw != null &&
+            code != null &&
             !_dictionaryService.isGrammaticalJargon(def) &&
             !list.any((q) => q.word.toLowerCase() == word.toLowerCase())) {
-          final code = NounQuestion.normalizeGender(gRaw);
           final wordId = row['id'] as int?;
           String? pluralForm;
           if (wordId != null) {
@@ -672,11 +676,12 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
         );
         for (var sw in savedWords) {
           final gRaw = sw.gender ?? genderMap[sw.germanWord];
-          if (gRaw != null &&
-              !list.any(
+          if (gRaw == null) continue;
+          final code = NounQuestion.normalizeGender(gRaw);
+          if (code == null) continue;
+          if (!list.any(
                 (q) => q.word.toLowerCase() == sw.germanWord.toLowerCase(),
               )) {
-            final code = NounQuestion.normalizeGender(gRaw);
             list.add(
               NounQuestion(
                 word: sw.germanWord,
@@ -858,49 +863,44 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Choose noun level or SRS deck for practice',
+                'Choose noun level or deck for practice',
                 style: Theme.of(ctx).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
               _buildModeOption(
                 ctx,
                 mode: GenderQuizDeckMode.adaptiveSrs,
-                title: '⚡ Adaptive SRS Deck',
-                subtitle: 'Due SRS words + frequency-ranked dictionary nouns',
+                title: 'Adaptive Deck',
+                subtitle: 'Due words + frequency-ranked dictionary nouns',
                 icon: Icons.auto_awesome_rounded,
-                color: Colors.amber,
               ),
               _buildModeOption(
                 ctx,
                 mode: GenderQuizDeckMode.levelA1,
-                title: '🟢 Beginner (A1) - Top 500',
+                title: 'Beginner (A1) - Top 500',
                 subtitle: 'Essential everyday German nouns (Haus, Tag, Frau)',
                 icon: Icons.filter_1_rounded,
-                color: Colors.green,
               ),
               _buildModeOption(
                 ctx,
                 mode: GenderQuizDeckMode.levelA2,
-                title: '🔵 Core (A2) - Top 1500',
+                title: 'Core (A2) - Top 1500',
                 subtitle: 'Core practical vocabulary (Wohnung, Schlüssel)',
                 icon: Icons.filter_2_rounded,
-                color: Colors.blue,
               ),
               _buildModeOption(
                 ctx,
                 mode: GenderQuizDeckMode.levelB1,
-                title: '🟣 Intermediate (B1/B2) - Top 5000',
+                title: 'Intermediate (B1/B2) - Top 5000',
                 subtitle: 'Advanced topics & abstract concepts',
                 icon: Icons.filter_3_rounded,
-                color: Colors.purple,
               ),
               _buildModeOption(
                 ctx,
                 mode: GenderQuizDeckMode.mySavedDeck,
-                title: '🏆 My Saved Vocabulary',
+                title: 'My Saved Vocabulary',
                 subtitle: 'Practice words you have saved while reading',
                 icon: Icons.bookmark_rounded,
-                color: Colors.orange,
               ),
               const SizedBox(height: 12),
             ],
@@ -916,21 +916,23 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
     required String title,
     required String subtitle,
     required IconData icon,
-    required Color color,
   }) {
     final bool isSelected = _selectedDeckMode == mode;
+    final colorScheme = Theme.of(ctx).colorScheme;
+    final activeColor = colorScheme.primary;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isSelected
-            ? color.withValues(alpha: 0.12)
+            ? activeColor.withValues(alpha: 0.08)
             : Theme.of(ctx).cardColor,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: isSelected
-              ? color
-              : Theme.of(ctx).dividerColor.withValues(alpha: 0.5),
-          width: isSelected ? 2 : 1,
+              ? activeColor
+              : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: isSelected ? 1.5 : 1.0,
         ),
       ),
       child: ListTile(
@@ -944,26 +946,32 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           }
         },
         leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.2),
-          child: Icon(icon, color: color, size: 22),
+          backgroundColor: isSelected
+              ? activeColor.withValues(alpha: 0.15)
+              : colorScheme.surfaceContainerHighest,
+          child: Icon(
+            icon,
+            color: isSelected ? activeColor : colorScheme.onSurfaceVariant,
+            size: 20,
+          ),
         ),
         title: Text(
           title,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
-            color: Theme.of(ctx).colorScheme.onSurface,
+            color: colorScheme.onSurface,
           ),
         ),
         subtitle: Text(
           subtitle,
           style: TextStyle(
             fontSize: 12,
-            color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         trailing: isSelected
-            ? Icon(Icons.check_circle_rounded, color: color)
+            ? Icon(Icons.check_circle_rounded, color: activeColor)
             : null,
       ),
     );
@@ -994,10 +1002,10 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.help_outline_rounded,
               size: 64,
-              color: Colors.grey,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
             Text(
@@ -1028,7 +1036,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
         ? GermanGenderRules.getRule(current.word, current.genderCode)
         : null;
 
-    String modeLabel = 'Adaptive SRS';
+    String modeLabel = 'Adaptive Deck';
     if (_selectedDeckMode == GenderQuizDeckMode.levelA1)
       modeLabel = 'A1 (Top 500)';
     if (_selectedDeckMode == GenderQuizDeckMode.levelA2)
@@ -1046,7 +1054,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close_rounded),
                 tooltip: 'Close',
                 onPressed: () => Navigator.of(context).pop(),
               ),
@@ -1128,22 +1136,22 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.15),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.local_fire_department,
-                      color: Colors.orange,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 16,
                     ),
                     const SizedBox(width: 2),
                     Text(
                       '$_streak',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.orange,
+                        color: Theme.of(context).colorScheme.primary,
                         fontSize: 12,
                       ),
                     ),
@@ -1196,10 +1204,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                   ? _getGenderColor(
                                       current.genderCode,
                                     ).withValues(alpha: 0.25)
-                                  : (_streak > 0
-                                        ? Colors.orange.withValues(alpha: 0.12)
-                                        : Theme.of(context).colorScheme.primary
-                                              .withValues(alpha: 0.1)),
+                                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                               blurRadius: 28,
                               spreadRadius: 2,
                               offset: const Offset(0, 8),
@@ -1220,31 +1225,33 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.amber.withValues(
-                                        alpha: 0.15,
-                                      ),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(4),
                                       border: Border.all(
-                                        color: Colors.amber.withValues(
-                                          alpha: 0.5,
-                                        ),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary
+                                            .withValues(alpha: 0.3),
                                       ),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
-                                      children: const [
+                                      children: [
                                         Icon(
                                           Icons.hourglass_bottom_rounded,
                                           size: 13,
-                                          color: Colors.amber,
+                                          color: Theme.of(context).colorScheme.primary,
                                         ),
-                                        SizedBox(width: 4),
+                                        const SizedBox(width: 4),
                                         Text(
-                                          'Due SRS Review',
+                                          'Due Review',
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.amber,
+                                            color: Theme.of(context).colorScheme.primary,
                                           ),
                                         ),
                                       ],
@@ -1546,19 +1553,15 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                     vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: rule.isException
-                                        ? Colors.orange.withValues(alpha: 0.15)
-                                        : _getGenderColor(
-                                            current.genderCode,
-                                          ).withValues(alpha: 0.12),
+                                    color: _getGenderColor(
+                                      current.genderCode,
+                                    ).withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(4),
                                     border: Border.all(
-                                      color: rule.isException
-                                          ? Colors.orange
-                                          : _getGenderColor(
-                                              current.genderCode,
-                                            ).withValues(alpha: 0.5),
-                                      width: 1.5,
+                                      color: _getGenderColor(
+                                        current.genderCode,
+                                      ).withValues(alpha: 0.4),
+                                      width: 1.0,
                                     ),
                                   ),
                                   child: Row(
@@ -1567,11 +1570,9 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                         rule.isException
                                             ? Icons.warning_amber_rounded
                                             : Icons.lightbulb_rounded,
-                                        color: rule.isException
-                                            ? Colors.orange
-                                            : _getGenderColor(
-                                                current.genderCode,
-                                              ),
+                                        color: _getGenderColor(
+                                          current.genderCode,
+                                        ),
                                         size: 20,
                                       ),
                                       const SizedBox(width: 10),
@@ -1598,11 +1599,9 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w600,
-                                                color: rule.isException
-                                                    ? Colors.orange
-                                                    : _getGenderColor(
-                                                        current.genderCode,
-                                                      ),
+                                                color: _getGenderColor(
+                                                  current.genderCode,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -1611,11 +1610,9 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                       Icon(
                                         Icons.chevron_right_rounded,
                                         size: 20,
-                                        color: rule.isException
-                                            ? Colors.orange
-                                            : _getGenderColor(
-                                                current.genderCode,
-                                              ),
+                                        color: _getGenderColor(
+                                          current.genderCode,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -1857,12 +1854,12 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
               width: 90,
               height: 90,
               decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.15),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.emoji_events_rounded,
-                color: Colors.amber,
+                color: Theme.of(context).colorScheme.primary,
                 size: 54,
               ),
             ),
@@ -1889,13 +1886,13 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                 _buildStatChip(
                   Icons.check_circle_outline,
                   '$_score Correct',
-                  Colors.green,
+                  Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 12),
                 _buildStatChip(
                   Icons.local_fire_department,
                   'Best Streak: $_bestStreak',
-                  Colors.orange,
+                  Theme.of(context).colorScheme.secondary,
                 ),
               ],
             ),
@@ -1960,230 +1957,6 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showGenderRuleModalSheet(
-    BuildContext context,
-    GenderRuleMatch rule,
-    NounQuestion question,
-  ) {
-    final genderColor = _getGenderColor(question.genderCode);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.82,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(ctx).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          padding: EdgeInsets.only(
-            top: 16,
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(ctx).padding.bottom + 24,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Theme.of(ctx).dividerColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: (rule.isException ? Colors.orange : genderColor)
-                            .withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        rule.isException
-                            ? Icons.warning_amber_rounded
-                            : Icons.lightbulb_rounded,
-                        color: rule.isException ? Colors.orange : genderColor,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            rule.title,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Target Word: ${question.article} ${question.word}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: genderColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      tooltip: 'Close',
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 16),
-
-                Text(
-                  'Grammar Rule Breakdown',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(ctx).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(ctx).cardColor,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Theme.of(ctx).dividerColor),
-                  ),
-                  child: Text(
-                    rule.explanation,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.4,
-                      color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Text(
-                  'Common Nouns Following This Rule',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(ctx).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: genderColor.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: genderColor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Text(
-                    rule.example,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(ctx).colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-
-                if (rule.isException || rule.commonExceptions.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Row(
-                    children: const [
-                      Icon(
-                        Icons.report_problem_outlined,
-                        color: Colors.orange,
-                        size: 20,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Exceptions to Watch Out For (The Odd ~10%)',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: Colors.orange.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (rule.exceptionNote != null) ...[
-                          Text(
-                            rule.exceptionNote!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(ctx).colorScheme.onSurface,
-                              height: 1.3,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                        Text(
-                          'Famous Exceptions: ${rule.commonExceptions.join(', ')}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

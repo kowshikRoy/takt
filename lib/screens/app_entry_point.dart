@@ -18,7 +18,7 @@ class AppEntryPoint extends StatefulWidget {
 }
 
 class _AppEntryPointState extends State<AppEntryPoint> {
-  bool? _hasSeenOnboarding;
+  bool _hasSeenOnboarding = true;
 
   @override
   void initState() {
@@ -27,28 +27,22 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   }
 
   Future<void> _checkOnboardingStatus() async {
-    bool seen = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      seen = prefs.getBool(AppEntryPoint.hasSeenOnboardingKey) ?? false;
-    } catch (_) {
-      // If prefs can't be read, don't block a returning user behind onboarding.
-    }
-    if (!seen) {
-      AnalyticsService.logEvent('onboarding_started');
-    }
-    if (mounted) {
-      setState(() => _hasSeenOnboarding = seen);
-    }
+      final seen = prefs.getBool(AppEntryPoint.hasSeenOnboardingKey) ?? false;
+      if (!seen) {
+        AnalyticsService.logEvent('onboarding_started');
+      }
+      if (mounted) {
+        setState(() => _hasSeenOnboarding = seen);
+      }
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_hasSeenOnboarding == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    return _hasSeenOnboarding!
-        ? const MainScaffold(initialIndex: 1)
+    return _hasSeenOnboarding
+        ? const MainScaffold(initialIndex: 0)
         : const WelcomeScreen();
   }
 }

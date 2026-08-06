@@ -82,7 +82,7 @@ void main() {
       }
 
       // Pushing well past the next level boundary should.
-      final needed = service.xpNeededForNextLevel - service.xpIntoCurrentLevel + 50;
+      const needed = 500;
       await service.awardXp(XpSource.streakMilestone, amountOverride: needed);
       expect(service.level, greaterThan(levelBefore));
       expect(service.justLeveledUp, isTrue);

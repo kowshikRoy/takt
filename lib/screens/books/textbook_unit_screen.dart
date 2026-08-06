@@ -6,7 +6,17 @@ import '../../services/book_guide_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/gestures.dart';
 import '../../widgets/glance_word_sheet.dart';
+import '../../widgets/interactive_german_text.dart';
 import '../../theme/books_modernist_style.dart';
+import '../../widgets/books/sections/grammar_callout_card.dart';
+import '../../widgets/books/sections/fill_in_statements_widget.dart';
+import '../../widgets/books/sections/grammar_classification_widget.dart';
+import '../../widgets/books/sections/image_ordering_widget.dart';
+import '../../widgets/books/sections/phonetics_listening_widget.dart';
+import '../../widgets/books/sections/phonetics_categorization_widget.dart';
+import '../../widgets/books/sections/writing_exercise_widget.dart';
+import '../../widgets/books/sections/reading_profiles_widget.dart';
+import '../../widgets/books/sections/reading_matching_widget.dart';
 
 class TextbookUnitScreen extends StatefulWidget {
   final ChapterSummary chapterSummary;
@@ -22,13 +32,12 @@ class TextbookUnitScreen extends StatefulWidget {
   State<TextbookUnitScreen> createState() => _TextbookUnitScreenState();
 }
 
-class _TextbookUnitScreenState extends State<TextbookUnitScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
+  late PageController _pageController;
   TextbookUnit? _unit;
   bool _isLoading = true;
   int _selectedPageIndex = 0;
-  bool _isPracticeMode = true;
+  final bool _isPracticeMode = true;
   final Map<String, String> _userAnswers = {};
   final Map<String, bool> _revealedAnswers = {};
   Set<String> _completedSectionIds = {};
@@ -56,7 +65,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _pageController = PageController(initialPage: _selectedPageIndex);
     _loadUnitData();
   }
 
@@ -73,10 +82,18 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
     final completed = prefs.getStringList(
             'completed_sections_unit_${data?.unitNumber ?? widget.chapterSummary.chapterNumber}') ??
         [];
+    final lastPageIndex = prefs.getInt('books_last_read_page_index') ?? 0;
+
     if (mounted) {
       setState(() {
         _unit = data;
         _completedSectionIds = completed.toSet();
+        if (data != null && lastPageIndex >= 0 && lastPageIndex < data.pages.length) {
+          _selectedPageIndex = lastPageIndex;
+        } else {
+          _selectedPageIndex = 0;
+        }
+        _pageController = PageController(initialPage: _selectedPageIndex);
         _isLoading = false;
       });
       _persistLastRead();
@@ -91,9 +108,23 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
     await prefs.setInt('books_last_read_page_index', _selectedPageIndex);
   }
 
+  void _onPageSelected(int index) {
+    setState(() {
+      _selectedPageIndex = index;
+    });
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+    _persistLastRead();
+  }
+
   @override
   void dispose() {
-    _tabController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -114,19 +145,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
                 : Column(
                     children: [
                       _buildHeader(),
-                      _buildHeroImage(),
-                      _buildProgressAndObjectives(),
-                      _buildTabBar(),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildPagesTab(context),
-                            _buildGrammarTab(context),
-                            _buildRedemittelTab(context),
-                          ],
-                        ),
-                      ),
+                      Expanded(child: _buildPageView()),
                     ],
                   ),
       ),
@@ -134,58 +153,6 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: Row(
-        children: [
-          InkWell(
-            onTap: () => Navigator.of(context).pop(),
-            child: SizedBox(
-              width: 30,
-              height: 30,
-              child: Icon(Icons.chevron_left_rounded, color: BooksModernist.text, size: 26),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Kapitel ${_unit!.unitNumber}: ${_unit!.title}',
-              style: BooksModernist.heading(size: 16.5),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroImage() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GrayscaleCover(
-            assetPath: 'assets/images/netzwerk_a2_kapitel_01.jpg',
-            width: double.infinity,
-            height: 120,
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              'Kapitel ${_unit!.unitNumber} · ${widget.bookTitle}',
-              style: BooksModernist.body(
-                size: 11,
-                color: BooksModernist.text.withValues(alpha: 0.55),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressAndObjectives() {
     final done = _completedSectionIds
         .where((id) => _unit!.pages
             .expand((p) => p.sections)
@@ -193,189 +160,339 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
         .length;
     final total = _totalSectionCount;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$done / $total Abschnitte erledigt',
-            style: BooksModernist.body(
-              size: 11,
-              color: BooksModernist.text.withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 8),
-          ModernistProgressBar(progress: total > 0 ? done / total : 0),
-          const SizedBox(height: 14),
-
-          // Practice / Solutions segmented toggle
-          Container(
-            decoration: BoxDecoration(border: Border.all(color: BooksModernist.divider)),
-            child: Row(
-              children: [
-                Expanded(child: _segButton('Üben', _isPracticeMode, () {
-                  setState(() => _isPracticeMode = true);
-                })),
-                Container(width: 1, height: 32, color: BooksModernist.divider),
-                Expanded(child: _segButton('Lösungen', !_isPracticeMode, () {
-                  setState(() => _isPracticeMode = false);
-                })),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Objectives chips
-          SizedBox(
-            height: 30,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: _unit!.objectives
-                  .map((obj) => Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: Container(
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(horizontal: 9),
-                          decoration: BoxDecoration(
-                              border: Border.all(color: BooksModernist.divider)),
-                          child: Text(
-                            obj,
-                            style: BooksModernist.body(size: 11),
-                          ),
-                        ),
-                      ))
-                  .toList(),
-            ),
-          ),
-          const SizedBox(height: 6),
-        ],
-      ),
-    );
-  }
-
-  Widget _segButton(String label, bool active, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        color: active ? BooksModernist.accent : Colors.transparent,
-        child: Text(
-          label,
-          style: BooksModernist.body(
-            size: 12,
-            weight: FontWeight.w700,
-            color: active ? BooksModernist.bg : BooksModernist.text,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+          child: Row(
+            children: [
+              InkWell(
+                onTap: () => Navigator.of(context).pop(),
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Icon(Icons.chevron_left_rounded, color: BooksModernist.text, size: 28),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Kapitel ${_unit!.unitNumber}: ${_unit!.title}',
+                      style: BooksModernist.heading(size: 15),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$done / $total Abschnitte erledigt',
+                      style: BooksModernist.body(
+                        size: 11,
+                        color: BooksModernist.text.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _buildHeaderActionButton(
+                icon: Icons.menu_book_rounded,
+                label: 'Grammatik',
+                onTap: () => _showSupplementSheet(context, initialTab: 0),
+              ),
+              const SizedBox(width: 6),
+              _buildHeaderActionButton(
+                icon: Icons.chat_bubble_outline_rounded,
+                label: 'Redemittel',
+                onTap: () => _showSupplementSheet(context, initialTab: 1),
+              ),
+            ],
           ),
         ),
-      ),
+        _buildTopPageSlider(),
+        ModernistProgressBar(
+          progress: total > 0 ? done / total : 0,
+          height: 3,
+        ),
+      ],
     );
   }
 
-  Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: BooksModernist.divider, width: 2)),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        labelColor: BooksModernist.accent,
-        unselectedLabelColor: BooksModernist.text,
-        indicatorColor: BooksModernist.accent,
-        indicatorWeight: 2,
-        labelStyle: BooksModernist.body(size: 12.5, weight: FontWeight.w700),
-        unselectedLabelStyle: BooksModernist.body(size: 12.5, weight: FontWeight.w700),
-        tabs: const [
-          Tab(text: 'Kursbuch'),
-          Tab(text: 'Grammatik'),
-          Tab(text: 'Redemittel'),
-        ],
-      ),
-    );
-  }
+  Widget _buildTopPageSlider() {
+    final pages = _unit?.pages ?? [];
+    if (pages.length <= 1) return const SizedBox.shrink();
 
-  Widget _buildPagesTab(BuildContext context) {
-    final pages = _unit!.pages;
-
-    return Column(
-      children: [
-        // Page selector pill bar
-        Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: pages.length,
-            itemBuilder: (context, index) {
-              final page = pages[index];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Page number displayed a few pixels directly above the active tapped bar
+          Row(
+            children: List.generate(pages.length, (index) {
               final isSelected = index == _selectedPageIndex;
-              final doneOnPage = page.sections
-                  .where((s) => _completedSectionIds.contains(s.id))
-                  .length;
-              final totalOnPage = page.sections.length;
+              final pageNum = pages[index].pageNumber;
 
-              return GestureDetector(
-                onTap: () {
-                  setState(() => _selectedPageIndex = index);
-                  _persistLastRead();
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  width: 84,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isSelected ? BooksModernist.accent : Colors.transparent,
-                          border: Border.all(
-                            color: isSelected
-                                ? BooksModernist.accent
-                                : BooksModernist.divider,
-                          ),
-                        ),
-                        child: Text(
-                          'Seite ${page.pageNumber}',
-                          style: BooksModernist.body(
-                            size: 12.5,
-                            weight: FontWeight.w700,
-                            color: isSelected ? BooksModernist.bg : BooksModernist.text,
-                          ),
-                        ),
+              return Expanded(
+                child: Center(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 150),
+                    opacity: isSelected ? 1.0 : 0.0,
+                    child: Text(
+                      'S. $pageNum',
+                      style: BooksModernist.body(
+                        size: 10.5,
+                        weight: FontWeight.w800,
+                        color: BooksModernist.accentDark,
                       ),
-                      const SizedBox(height: 4),
-                      ModernistProgressBar(
-                        progress: totalOnPage > 0 ? doneOnPage / totalOnPage : 0,
-                        height: 3,
-                        trackColor: isSelected
-                            ? BooksModernist.accent700
-                            : BooksModernist.dividerThin,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               );
-            },
+            }),
           ),
-        ),
+          const SizedBox(height: 2),
 
-        // Selected Page Sections
+          // Segmented horizontal bars
+          Row(
+            children: List.generate(pages.length, (index) {
+              final isSelected = index == _selectedPageIndex;
+
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _onPageSelected(index),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: index < pages.length - 1 ? 6.0 : 0.0,
+                      top: 2.0,
+                      bottom: 4.0,
+                    ),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? BooksModernist.accent
+                            : BooksModernist.divider.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: BooksModernist.surface,
+          border: Border.all(color: BooksModernist.divider),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: BooksModernist.accentDark),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: BooksModernist.body(
+                size: 11,
+                weight: FontWeight.w700,
+                color: BooksModernist.accentDark,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPagePillsBar() {
+    final pages = _unit!.pages;
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: pages.length,
+        itemBuilder: (context, index) {
+          final page = pages[index];
+          final isSelected = index == _selectedPageIndex;
+
+          return GestureDetector(
+            onTap: () => _onPageSelected(index),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected ? BooksModernist.accent : BooksModernist.surface,
+                border: Border.all(
+                  color: isSelected ? BooksModernist.accent : BooksModernist.divider,
+                ),
+              ),
+              child: Text(
+                'Seite ${page.pageNumber}',
+                style: BooksModernist.body(
+                  size: 12,
+                  weight: FontWeight.w700,
+                  color: isSelected ? BooksModernist.bg : BooksModernist.text,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPageView() {
+    final pages = _unit!.pages;
+
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: pages.length,
+      onPageChanged: (index) {
+        setState(() {
+          _selectedPageIndex = index;
+        });
+        _persistLastRead();
+      },
+      itemBuilder: (context, index) {
+        final page = pages[index];
+        return _buildPageCard(context, page, index, pages.length);
+      },
+    );
+  }
+
+  Widget _buildPageCard(
+      BuildContext context, PageModel page, int pageIndex, int totalPages) {
+    return Column(
+      children: [
+        // 1. Bordered page content card (sharp corners, no curvature)
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: pages[_selectedPageIndex]
-                  .sections
-                  .map((section) => _buildSectionWidget(context, section))
-                  .toList(),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+            decoration: BoxDecoration(
+              color: BooksModernist.surface,
+              border: Border.all(color: BooksModernist.divider, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: page.sections
+                    .map((section) => _buildSectionWidget(context, section))
+                    .toList(),
+              ),
             ),
           ),
         ),
+
+        // 2. Page navigation bar OUTSIDE of the border
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: BooksModernist.bg,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (pageIndex > 0)
+                InkWell(
+                  onTap: () => _onPageSelected(pageIndex - 1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                    child: Row(
+                      children: [
+                        Icon(Icons.chevron_left_rounded,
+                            size: 18, color: BooksModernist.accentDark),
+                        Text(
+                          'Seite ${_unit!.pages[pageIndex - 1].pageNumber}',
+                          style: BooksModernist.body(
+                            size: 11,
+                            weight: FontWeight.w700,
+                            color: BooksModernist.accentDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                const SizedBox.shrink(),
+
+              Text(
+                '— Seite ${page.pageNumber} —',
+                style: BooksModernist.body(
+                  size: 11,
+                  weight: FontWeight.w600,
+                  color: BooksModernist.text.withValues(alpha: 0.4),
+                ),
+              ),
+
+              if (pageIndex < totalPages - 1)
+                InkWell(
+                  onTap: () => _onPageSelected(pageIndex + 1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Seite ${_unit!.pages[pageIndex + 1].pageNumber}',
+                          style: BooksModernist.body(
+                            size: 11,
+                            weight: FontWeight.w700,
+                            color: BooksModernist.accentDark,
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded,
+                            size: 18, color: BooksModernist.accentDark),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                const SizedBox.shrink(),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  void _showSupplementSheet(BuildContext context, {int initialTab = 0}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _SupplementSheet(
+          unit: _unit!,
+          initialTab: initialTab,
+          buildGrammarTab: _buildGrammarTab,
+          buildRedemittelTab: _buildRedemittelTab,
+        );
+      },
     );
   }
 
@@ -392,12 +509,15 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ModernistTag(section.id.toUpperCase(), accent: true),
-              const SizedBox(width: 10),
+              if (!section.id.contains('_')) ...[
+                ModernistTag(section.id.toUpperCase(), accent: true),
+                const SizedBox(width: 10),
+              ],
               if (section.title != null)
                 Expanded(
-                  child: Text(
+                  child: InteractiveGermanText(
                     section.title!,
+                    sourceTitle: _unit?.title,
                     style: BooksModernist.heading(size: 13.5),
                   ),
                 )
@@ -406,9 +526,9 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
                   child: Text(
                     section.type.replaceAll('_', ' ').toUpperCase(),
                     style: BooksModernist.body(
-                      size: 11,
+                      size: 11.5,
                       weight: FontWeight.w700,
-                      color: BooksModernist.text.withValues(alpha: 0.55),
+                      color: BooksModernist.text.withValues(alpha: 0.6),
                     ),
                   ),
                 ),
@@ -425,22 +545,21 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
                 ),
                 const SizedBox(width: 8),
               ],
-              InkWell(
-                onTap: () => _toggleSectionDone(section.id),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isDone ? BooksModernist.accent : Colors.transparent,
-                    border: Border.all(
-                      color: isDone ? BooksModernist.accent : BooksModernist.divider,
-                    ),
-                  ),
-                  child: Text(
-                    isDone ? 'Erledigt' : 'Erledigen',
-                    style: BooksModernist.body(
-                      size: 11,
-                      weight: FontWeight.w700,
-                      color: isDone ? BooksModernist.bg : BooksModernist.text,
+              Tooltip(
+                message: isDone ? 'Als erledigt markiert' : 'Als erledigt markieren',
+                child: InkWell(
+                  onTap: () => _toggleSectionDone(section.id),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      isDone
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      size: 22,
+                      color: isDone
+                          ? BooksModernist.accent
+                          : BooksModernist.text.withValues(alpha: 0.35),
                     ),
                   ),
                 ),
@@ -451,20 +570,23 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
 
           // Instruction
           if (section.instruction != null) ...[
-            Text(
+            InteractiveGermanText(
               section.instruction!,
-              style: BooksModernist.body(size: 12.5, style: FontStyle.italic)
-                  .copyWith(color: BooksModernist.text.withValues(alpha: 0.75)),
+              sourceTitle: _unit?.title,
+              style: BooksModernist.body(size: 13, weight: FontWeight.w600)
+                  .copyWith(color: BooksModernist.text),
             ),
             const SizedBox(height: 12),
           ],
 
-          // Reading-matching: headings + person texts → interactive matching
-          // when both are present (verified against the design's own
-          // answer key); otherwise fall back to a plain read-only layout.
+          // Reading matching (3a)
           if (json['headings'] is List && json['texts'] is List)
-            _buildHeadingTextMatching(
-                context, section.id, json['headings'] as List, json['texts'] as List)
+            ReadingMatchingWidget(
+              sectionId: section.id,
+              headings: json['headings'] as List,
+              texts: json['texts'] as List,
+              unitTitle: _unit?.title,
+            )
           else ...[
             if (json['headings'] is List)
               _buildHeadingsList(context, json['headings'] as List),
@@ -479,7 +601,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
 
           // Profiles / Reading Profiles
           if (section.profiles != null && section.profiles!.isNotEmpty)
-            _buildProfilesList(context, section.profiles!),
+            ReadingProfilesWidget(profiles: section.profiles, unitTitle: _unit?.title),
 
           // Chat Messages
           if (section.chatMessages != null && section.chatMessages!.isNotEmpty)
@@ -491,22 +613,72 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
           if (section.items != null && section.items!.isNotEmpty)
             _buildExerciseList(context, section.items!),
 
-          // Topics
-          if (json['topics'] is List)
-            _buildTopicsList(context, json['topics'] as List),
+          // Universal Grammar Callout Box
+          if (json['grammar_callout'] is Map && section.type != 'grammar_classification')
+            GrammarCalloutCard(
+              callout: json['grammar_callout'] as Map<String, dynamic>,
+              unitTitle: _unit?.title,
+            ),
+
+          // Speech Prompts
+          if (json['speech_prompts'] is List)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: (json['speech_prompts'] as List)
+                    .map((p) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: BooksModernist.bg,
+                            border: Border(left: BorderSide(color: BooksModernist.accent, width: 2.5)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '💬 „',
+                                style: BooksModernist.body(size: 12, weight: FontWeight.w600),
+                              ),
+                              InteractiveGermanText(
+                                p.toString(),
+                                sourceTitle: _unit?.title,
+                                style: BooksModernist.body(size: 12, weight: FontWeight.w600),
+                              ),
+                              Text(
+                                '"',
+                                style: BooksModernist.body(size: 12, weight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+
+          // Note Taking
+          if (json['note_taking'] is Map)
+            WritingExerciseWidget(
+              sectionId: 'notes_${section.id}',
+              placeholder: (json['note_taking'] as Map)['placeholder']?.toString() ?? 'Stichpunkte notieren...',
+            ),
 
           // Statements (fill in the blank / comprehension)
           if (json['statements'] is List)
-            _buildStatementsList(context, json['statements'] as List),
+            FillInStatementsWidget(
+              sectionId: section.id,
+              statements: json['statements'] as List,
+              optionsList: json['options'] as List?,
+              unitTitle: _unit?.title,
+            ),
 
           // Causal matching (design's m7a) with a verified answer key.
           if (json['left_clauses'] is List && json['right_clauses'] is List)
             _buildCausalMatching(context, section.id,
                 json['left_clauses'] as List, json['right_clauses'] as List),
 
-          // Questions and answers (e.g. FAQ) — no verified answer key exists
-          // for this content, so it stays a plain reveal list rather than a
-          // fabricated matching game.
+          // Questions and answers (e.g. FAQ)
           if (json['questions'] is List && json['answers'] is List)
             _buildQAMatching(
                 context, json['questions'] as List, json['answers'] as List),
@@ -531,6 +703,44 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
               ),
             ),
 
+          // Phonetics listening (5a)
+          if (json['words'] is List && section.type == 'phonetics_listening')
+            PhoneticsListeningWidget(
+              sectionId: section.id,
+              wordsList: json['words'] as List,
+            ),
+
+          // Phonetics categorization (5b)
+          if (json['words_to_sort'] is List && section.type == 'phonetics_categorization')
+            PhoneticsCategorizationWidget(
+              sectionId: section.id,
+              wordsList: json['words_to_sort'] as List,
+              ruleCallout: json['rule_callout'] as Map<String, dynamic>?,
+            ),
+
+          // Listening Image Ordering (4c)
+          if (json['image_items'] is List && section.type == 'listening_ordering')
+            ImageOrderingWidget(
+              sectionId: section.id,
+              imageItems: json['image_items'] as List,
+              speechBubble: json['speech_bubble']?.toString(),
+            ),
+
+          // Grammar Classification / Tables (4a)
+          if (json['tables'] is List && section.type == 'grammar_classification')
+            GrammarClassificationWidget(
+              tablesList: json['tables'] as List,
+              callout: json['grammar_callout'] as Map<String, dynamic>?,
+              unitTitle: _unit?.title,
+            ),
+
+          // Free Writing Exercise (4d / writing)
+          if (section.type == 'writing')
+            WritingExerciseWidget(
+              sectionId: section.id,
+              placeholder: json['placeholder']?.toString() ?? 'Schreiben Sie hier...',
+            ),
+
           // Example Speech
           if (json['example_speech'] != null)
             Container(
@@ -541,7 +751,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
               ),
               child: Text(
                 '„${json['example_speech']}"',
-                style: BooksModernist.body(size: 13, style: FontStyle.italic),
+                style: BooksModernist.body(size: 13, weight: FontWeight.w600),
               ),
             ),
 
@@ -739,7 +949,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
     final leftItems = texts.map((t) {
       final map = t as Map<String, dynamic>;
       final person = map['person']?.toString() ?? '';
-      return (person, person, map['text']?.toString() ?? '');
+      return (person, person, '');
     }).toList();
     final rightItems = headings.map((h) {
       final map = h as Map<String, dynamic>;
@@ -761,12 +971,24 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
       );
     }
 
-    return _buildMatchExercise(
-      context,
-      exKey: sectionId,
-      leftItems: leftItems,
-      rightItems: rightItems,
-      answerKey: answerKey,
+    final hasFullTexts = texts.any(
+        (t) => (t as Map)['text'] != null && (t['text'] as String).isNotEmpty);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildMatchExercise(
+          context,
+          exKey: sectionId,
+          leftItems: leftItems,
+          rightItems: rightItems,
+          answerKey: answerKey,
+        ),
+        if (hasFullTexts) ...[
+          const SizedBox(height: 14),
+          _buildPersonTexts(context, texts),
+        ],
+      ],
     );
   }
 
@@ -1200,42 +1422,340 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
     );
   }
 
-  Widget _buildStatementsList(BuildContext context, List<dynamic> statements) {
+  Widget _buildStatementsList(
+    BuildContext context,
+    String sectionId,
+    List<dynamic> statements,
+    List<dynamic>? optionsList,
+  ) {
+    final stateKey = 'stmt_$sectionId';
+    final userChoices = _userAnswers;
+    final showSolutionKey = 'show_sol_$sectionId';
+    final showSolution = userChoices[showSolutionKey] == 'true';
+
+    final options = optionsList != null
+        ? optionsList.map((e) => e.toString()).toList()
+        : <String>[];
+
     return Column(
-      children: statements.map((st) {
-        final map = st as Map<String, dynamic>;
-        final isCorrect = map['correct'] as bool?;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          color: BooksModernist.surface,
-          child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Word Bank Header (if options provided)
+        if (options.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: BooksModernist.surface,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: BooksModernist.divider),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.style_outlined, size: 16, color: BooksModernist.accentDark),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Auswahl-Pool',
+                      style: BooksModernist.heading(size: 12.5, color: BooksModernist.accentDark),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: options.map((opt) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: BooksModernist.bg,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: BooksModernist.divider),
+                      ),
+                      child: Text(
+                        opt,
+                        style: BooksModernist.body(size: 11.5, weight: FontWeight.w700),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Statements List
+        ...statements.map((st) {
+          final map = st as Map<String, dynamic>;
+          final id = map['id']?.toString() ?? '';
+          final text = map['text']?.toString() ?? '';
+          final correctAns = map['answer']?.toString() ?? '';
+          final itemKey = '${stateKey}_$id';
+          final selected = userChoices[itemKey];
+          final hasSelection = selected != null && selected.isNotEmpty;
+          final isCorrect = hasSelection && selected == correctAns;
+
+          // Clean text removing leading '...' if present for inline blank
+          final cleanText = text.startsWith('...') ? text.substring(3).trim() : text;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: BooksModernist.surface,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: showSolution
+                    ? BooksModernist.accent
+                    : (hasSelection
+                        ? (isCorrect ? BooksModernist.accent : BooksModernist.accent600)
+                        : BooksModernist.divider),
+                width: (hasSelection || showSolution) ? 1.5 : 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$id.',
+                      style: BooksModernist.heading(
+                        size: 13,
+                        color: BooksModernist.text.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Inline Fill-in Slot
+                    if (options.isNotEmpty)
+                      PopupMenuButton<String>(
+                        onSelected: (val) {
+                          setState(() => userChoices[itemKey] = val);
+                        },
+                        itemBuilder: (ctx) => options.map((opt) {
+                          return PopupMenuItem<String>(
+                            value: opt,
+                            child: Text(
+                              opt,
+                              style: BooksModernist.body(
+                                size: 12.5,
+                                weight: opt == selected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: hasSelection
+                                ? BooksModernist.accent100
+                                : BooksModernist.bg,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: hasSelection ? BooksModernist.accent : BooksModernist.divider,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                hasSelection ? selected! : '________',
+                                style: BooksModernist.body(
+                                  size: 12.5,
+                                  weight: FontWeight.w700,
+                                  color: hasSelection
+                                      ? BooksModernist.accentDark
+                                      : BooksModernist.text.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_drop_down_rounded,
+                                size: 18,
+                                color: BooksModernist.accent,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    if (options.isNotEmpty) const SizedBox(width: 8),
+
+                    Expanded(
+                      child: InteractiveGermanText(
+                        cleanText,
+                        sourceTitle: _unit?.title,
+                        style: BooksModernist.body(size: 13),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Validation / Solution message (only when solution is toggled OR when checked)
+                if (showSolution && correctAns.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '✓ Lösung: $correctAns',
+                    style: BooksModernist.body(
+                      size: 11,
+                      weight: FontWeight.w700,
+                      color: BooksModernist.accentDark,
+                    ),
+                  ),
+                ] else if (hasSelection) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                        size: 14,
+                        color: isCorrect ? BooksModernist.accent : BooksModernist.accent600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isCorrect ? 'Richtig!' : 'Falsch. Versuchen Sie es noch einmal.',
+                        style: BooksModernist.body(
+                          size: 10.5,
+                          weight: FontWeight.w600,
+                          color: isCorrect ? BooksModernist.accent : BooksModernist.accent600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          );
+        }),
+
+        // Action Buttons: Reset & Toggle Solution
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  userChoices[showSolutionKey] = showSolution ? 'false' : 'true';
+                });
+              },
+              icon: Icon(
+                showSolution ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                size: 16,
+              ),
+              label: Text(
+                showSolution ? 'Lösung ausblenden' : 'Lösung anzeigen',
+                style: BooksModernist.body(size: 11.5, weight: FontWeight.w700),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: BooksModernist.accentDark,
+                side: BorderSide(color: BooksModernist.accent),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  for (final st in statements) {
+                    final id = (st as Map)['id']?.toString() ?? '';
+                    userChoices.remove('${stateKey}_$id');
+                  }
+                  userChoices.remove(showSolutionKey);
+                });
+              },
+              child: Text(
+                'Zurücksetzen',
+                style: BooksModernist.body(
+                  size: 11.5,
+                  color: BooksModernist.text.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGrammarCalloutBox(BuildContext context, Map<String, dynamic> callout) {
+    final title = callout['title']?.toString() ?? 'G Grammatik';
+    final formula = callout['formula']?.toString();
+    final examples = callout['examples'] is List ? (callout['examples'] as List) : [];
+    final rules = callout['rules'] is List ? (callout['rules'] as List) : [];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: BooksModernist.accent100.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: BooksModernist.accent, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text('${map['id']}.',
-                  style: BooksModernist.heading(size: 12, color: BooksModernist.text.withValues(alpha: 0.5))),
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: BooksModernist.accent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'G',
+                  style: BooksModernist.heading(size: 15, color: BooksModernist.bg),
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(map['text']?.toString() ?? '', style: BooksModernist.body(size: 13)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: BooksModernist.heading(size: 14, color: BooksModernist.accentDark),
+                    ),
+                    if (formula != null)
+                      Text(
+                        formula,
+                        style: BooksModernist.body(size: 12, weight: FontWeight.w700, color: BooksModernist.accentDark),
+                      ),
+                  ],
+                ),
               ),
-              if (map['answer'] != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  color: BooksModernist.accent100,
-                  child: Text(
-                    map['answer'].toString(),
-                    style: BooksModernist.body(size: 12, weight: FontWeight.w700, color: BooksModernist.accentDark),
-                  ),
-                ),
-              if (isCorrect != null)
-                Icon(
-                  isCorrect ? Icons.check_circle : Icons.cancel,
-                  color: isCorrect ? BooksModernist.accent : BooksModernist.accent600,
-                  size: 20,
-                ),
             ],
           ),
-        );
-      }).toList(),
+          if (examples.isNotEmpty || rules.isNotEmpty) const SizedBox(height: 10),
+          ...examples.map((ex) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: InteractiveGermanText(
+                  ex.toString(),
+                  sourceTitle: _unit?.title,
+                  style: BooksModernist.body(size: 12.5, weight: FontWeight.w600),
+                ),
+              )),
+          ...rules.map((r) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  '• ${r.toString()}',
+                  style: BooksModernist.body(size: 11.5),
+                ),
+              )),
+        ],
+      ),
     );
   }
 
@@ -1296,6 +1816,481 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildPhoneticsListening(
+      BuildContext context, String sectionId, List<dynamic> wordsList) {
+    final stateKey = 'phonetics_$sectionId';
+    final userChoices = _userAnswers;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: wordsList.map((item) {
+            final map = item is Map ? item : <String, dynamic>{};
+            final id = map['id']?.toString() ?? (item is String ? item : '');
+            final word = map['word']?.toString() ?? (item is String ? item : '');
+            final correctAns = map['answer']?.toString() ??
+                map['sound']?.toString() ??
+                (RegExp(r'(ach|och|uch|auch)', caseSensitive: false).hasMatch(word) ? 'acht' : 'ich');
+            final itemKey = '${stateKey}_$id';
+            final selected = userChoices[itemKey];
+            final isDone = selected != null;
+            final isCorrect = selected == correctAns;
+
+            return Container(
+              width: (MediaQuery.of(context).size.width - 72) / 2,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: BooksModernist.surface,
+                border: Border.all(
+                  color: isDone
+                      ? (isCorrect ? BooksModernist.accent : BooksModernist.accent600)
+                      : BooksModernist.divider,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    word,
+                    style: BooksModernist.heading(size: 13.5),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _choiceButton(
+                          label: 'wie ich',
+                          active: selected == 'ich',
+                          onTap: () => setState(() => userChoices[itemKey] = 'ich'),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _choiceButton(
+                          label: 'wie acht',
+                          active: selected == 'acht',
+                          onTap: () => setState(() => userChoices[itemKey] = 'acht'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (!_isPracticeMode || isDone) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Richtig: wie $correctAns',
+                      style: BooksModernist.body(
+                        size: 10,
+                        weight: FontWeight.w700,
+                        color: BooksModernist.accentDark,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _choiceButton({
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: active ? BooksModernist.accent : BooksModernist.bg,
+          border: Border.all(
+            color: active ? BooksModernist.accent : BooksModernist.divider,
+          ),
+        ),
+        child: Text(
+          label,
+          style: BooksModernist.body(
+            size: 10.5,
+            weight: FontWeight.w700,
+            color: active ? BooksModernist.bg : BooksModernist.text,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhoneticsCategorization(
+    BuildContext context,
+    String sectionId,
+    List<dynamic> wordsList,
+    Map<String, dynamic>? ruleCallout,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (ruleCallout != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: BooksModernist.accent100,
+              border: Border(left: BorderSide(color: BooksModernist.accent, width: 3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 16, color: BooksModernist.accentDark),
+                    const SizedBox(width: 6),
+                    Text(
+                      ruleCallout['title']?.toString() ?? 'Ausspracheregel: ch',
+                      style: BooksModernist.heading(size: 13, color: BooksModernist.accentDark),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                if (ruleCallout['wie_acht'] != null)
+                  Text(ruleCallout['wie_acht'].toString(),
+                      style: BooksModernist.body(size: 11.5)),
+                if (ruleCallout['wie_ich'] != null)
+                  Text(ruleCallout['wie_ich'].toString(),
+                      style: BooksModernist.body(size: 11.5)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _buildCategorizationColumn(
+                title: 'wie ich',
+                sectionId: sectionId,
+                category: 'ich',
+                wordsList: wordsList,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildCategorizationColumn(
+                title: 'wie acht',
+                sectionId: sectionId,
+                category: 'acht',
+                wordsList: wordsList,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategorizationColumn({
+    required String title,
+    required String sectionId,
+    required String category,
+    required List<dynamic> wordsList,
+  }) {
+    final catWords = wordsList.where((item) {
+      String targetCat = '';
+      if (item is Map) {
+        targetCat = item['category']?.toString() ??
+            item['sound']?.toString() ??
+            item['answer']?.toString() ??
+            '';
+      } else if (item is String) {
+        final lower = item.toLowerCase();
+        if (RegExp(r'(ach|och|uch|auch)').hasMatch(lower)) {
+          targetCat = 'acht';
+        } else {
+          targetCat = 'ich';
+        }
+      }
+      return targetCat == category;
+    }).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: BooksModernist.surface,
+        border: Border.all(color: BooksModernist.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            color: BooksModernist.accent,
+            child: Text(
+              title,
+              style: BooksModernist.body(
+                size: 11.5,
+                weight: FontWeight.w800,
+                color: BooksModernist.bg,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...catWords.map((item) {
+            final word = item is Map
+                ? (item['word']?.toString() ?? '')
+                : item.toString();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              color: BooksModernist.bg,
+              child: Text(
+                word,
+                style: BooksModernist.body(size: 12, weight: FontWeight.w600),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageOrdering(
+    BuildContext context,
+    String sectionId,
+    List<dynamic> imageItems,
+    String? speechBubble,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: imageItems.map((item) {
+            final map = item as Map<String, dynamic>;
+            final id = map['id']?.toString() ?? '';
+            final label = map['label']?.toString() ?? '';
+            final correct = map['correct_order'] as int? ?? 1;
+
+            return Container(
+              width: (MediaQuery.of(context).size.width - 72) / 2,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: BooksModernist.surface,
+                border: Border.all(color: BooksModernist.divider),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 64,
+                    color: BooksModernist.bg,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.image_outlined, size: 28, color: BooksModernist.accent),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Bild $id',
+                          style: BooksModernist.heading(size: 11, color: BooksModernist.accentDark),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(label, style: BooksModernist.body(size: 11.5, weight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Reihenfolge:', style: BooksModernist.body(size: 10.5)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: BooksModernist.accent100,
+                          border: Border.all(color: BooksModernist.accent),
+                        ),
+                        child: Text(
+                          '# $correct',
+                          style: BooksModernist.body(
+                            size: 11,
+                            weight: FontWeight.w800,
+                            color: BooksModernist.accentDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+        if (speechBubble != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: BooksModernist.bg,
+              border: Border(left: BorderSide(color: BooksModernist.accent, width: 2.5)),
+            ),
+            child: Text(
+              '💬 „$speechBubble"',
+              style: BooksModernist.body(size: 12.5, weight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildGrammarClassification(
+    BuildContext context,
+    List<dynamic> tablesList,
+    Map<String, dynamic>? callout,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (callout != null) _buildGrammarCalloutBox(context, callout),
+
+        ...tablesList.map((t) {
+          final tableMap = t as Map<String, dynamic>;
+          final categoryTitle = tableMap['category']?.toString() ?? '';
+          final columns = (tableMap['columns'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+          final rows = (tableMap['rows'] as List<dynamic>? ?? []);
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            color: BooksModernist.surface,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(categoryTitle,
+                    style: BooksModernist.heading(size: 14, color: BooksModernist.accentDark)),
+                const SizedBox(height: 8),
+                Table(
+                  border: TableBorder.all(color: BooksModernist.divider, width: 1),
+                  children: [
+                    TableRow(
+                      decoration: const BoxDecoration(color: BooksModernist.bg),
+                      children: columns
+                          .map((col) => Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: Text(col,
+                                    style: BooksModernist.body(
+                                        size: 11, weight: FontWeight.w700)),
+                              ))
+                          .toList(),
+                    ),
+                    ...rows.map((r) {
+                      final rowMap = r as Map<String, dynamic>;
+                      return TableRow(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Text(rowMap['ohne']?.toString() ?? '—',
+                                style: BooksModernist.body(size: 11)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Text(rowMap['trennbar']?.toString() ?? '—',
+                                style: BooksModernist.body(size: 11)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Text(rowMap['nicht_trennbar']?.toString() ?? '—',
+                                style: BooksModernist.body(size: 11)),
+                          ),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildWritingExercise(
+    BuildContext context,
+    String sectionId,
+    String placeholder,
+  ) {
+    final key = 'writing_$sectionId';
+    final currentText = _userAnswers[key] ?? '';
+    final wordCount = currentText.trim().isEmpty
+        ? 0
+        : currentText.trim().split(RegExp(r'\s+')).length;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      color: BooksModernist.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            maxLines: 5,
+            controller: TextEditingController(text: currentText)
+              ..selection = TextSelection.fromPosition(
+                TextPosition(offset: currentText.length),
+              ),
+            onChanged: (val) {
+              _userAnswers[key] = val;
+              SharedPreferences.getInstance().then((prefs) {
+                prefs.setString('writing_ans_$key', val);
+              });
+              setState(() {});
+            },
+            decoration: InputDecoration(
+              hintText: placeholder,
+              hintStyle: BooksModernist.body(
+                  size: 12.5, color: BooksModernist.text.withValues(alpha: 0.4)),
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: BooksModernist.divider),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: BooksModernist.accent, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.all(12),
+            ),
+            style: BooksModernist.body(size: 13),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '💾 Automatisch gespeichert',
+                style: BooksModernist.body(
+                  size: 10.5,
+                  color: BooksModernist.text.withValues(alpha: 0.5),
+                ),
+              ),
+              Text(
+                '$wordCount Wörter',
+                style: BooksModernist.body(
+                  size: 11,
+                  weight: FontWeight.w700,
+                  color: BooksModernist.accentDark,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1415,93 +2410,120 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen>
   }
 }
 
-class InteractiveGermanText extends StatefulWidget {
-  final String text;
-  final TextStyle? style;
-  final String? sourceTitle;
 
-  const InteractiveGermanText(
-    this.text, {
-    super.key,
-    this.style,
-    this.sourceTitle,
+
+class _SupplementSheet extends StatefulWidget {
+  final TextbookUnit unit;
+  final int initialTab;
+  final Widget Function(BuildContext) buildGrammarTab;
+  final Widget Function(BuildContext) buildRedemittelTab;
+
+  const _SupplementSheet({
+    required this.unit,
+    required this.initialTab,
+    required this.buildGrammarTab,
+    required this.buildRedemittelTab,
   });
 
   @override
-  State<InteractiveGermanText> createState() => _InteractiveGermanTextState();
+  State<_SupplementSheet> createState() => _SupplementSheetState();
 }
 
-class _InteractiveGermanTextState extends State<InteractiveGermanText> {
-  late List<InlineSpan> _spans;
-  final List<TapGestureRecognizer> _recognizers = [];
+class _SupplementSheetState extends State<_SupplementSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _sheetTabController;
 
   @override
   void initState() {
     super.initState();
-    _buildSpans();
-  }
-
-  @override
-  void didUpdateWidget(covariant InteractiveGermanText oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text) {
-      _disposeRecognizers();
-      _buildSpans();
-    }
-  }
-
-  void _disposeRecognizers() {
-    for (final r in _recognizers) {
-      r.dispose();
-    }
-    _recognizers.clear();
+    _sheetTabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
   }
 
   @override
   void dispose() {
-    _disposeRecognizers();
+    _sheetTabController.dispose();
     super.dispose();
-  }
-
-  void _buildSpans() {
-    _spans = [];
-    final regex = RegExp(r'([a-zA-ZäöüÄÖÜß]+)|([^a-zA-ZäöüÄÖÜß]+)');
-    final matches = regex.allMatches(widget.text);
-
-    for (final match in matches) {
-      final word = match.group(1);
-      final nonWord = match.group(2);
-
-      if (word != null && word.length >= 2) {
-        final recognizer = TapGestureRecognizer()
-          ..onTap = () {
-            GlanceWordSheet.show(
-              context,
-              word: word,
-              contextSentence: widget.text,
-              sourceTitle: widget.sourceTitle,
-            );
-          };
-        _recognizers.add(recognizer);
-
-        _spans.add(
-          TextSpan(
-            text: word,
-            recognizer: recognizer,
-            style: widget.style,
-          ),
-        );
-      } else {
-        _spans.add(TextSpan(text: word ?? nonWord, style: widget.style));
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Text.rich(
-      TextSpan(children: _spans),
-      style: widget.style,
+    final height = MediaQuery.of(context).size.height * 0.82;
+    return Container(
+      height: height,
+      decoration: const BoxDecoration(
+        color: BooksModernist.bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+            child: Column(
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: BooksModernist.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Kapitel ${widget.unit.unitNumber}: ${widget.unit.title}',
+                        style: BooksModernist.heading(size: 15),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 22),
+                      color: BooksModernist.text,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: BooksModernist.divider, width: 1.5),
+              ),
+            ),
+            child: TabBar(
+              controller: _sheetTabController,
+              labelColor: BooksModernist.accent,
+              unselectedLabelColor: BooksModernist.text,
+              indicatorColor: BooksModernist.accent,
+              indicatorWeight: 2,
+              labelStyle: BooksModernist.body(size: 13, weight: FontWeight.w700),
+              unselectedLabelStyle: BooksModernist.body(size: 13, weight: FontWeight.w700),
+              tabs: const [
+                Tab(text: 'Grammatik'),
+                Tab(text: 'Redemittel'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _sheetTabController,
+              children: [
+                widget.buildGrammarTab(context),
+                widget.buildRedemittelTab(context),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
+

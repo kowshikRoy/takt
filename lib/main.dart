@@ -17,15 +17,25 @@ import 'services/curriculum_service.dart';
 import 'services/sound_service.dart';
 import 'services/notification_service.dart';
 import 'services/book_guide_service.dart';
+import 'services/discovery_service.dart';
 
 void main() {
   // Catch everything else (async errors outside the widget tree).
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } catch (e, st) {
+        AppLogger.error(
+          'Firebase initialization failed',
+          error: e,
+          stackTrace: st,
+          tag: 'Firebase',
+        );
+      }
 
       // Catch framework-level errors (widget build/layout/paint) that would
       // otherwise only show as a red error screen in debug and vanish silently
@@ -54,6 +64,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => SoundService()),
             ChangeNotifierProvider(create: (_) => NotificationService()),
             ChangeNotifierProvider(create: (_) => BookGuideService()),
+            ChangeNotifierProvider(create: (_) => DiscoveryService()),
           ],
           child: const MyApp(),
         ),

@@ -3,7 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../services/vocabulary_service.dart';
 import '../services/profile_service.dart';
-import '../services/gamification_service.dart';
 import '../models/saved_word.dart';
 import '../widgets/capped_width.dart';
 import 'settings_screen.dart';
@@ -109,8 +108,12 @@ class ProfileScreen extends StatelessWidget {
                     offset: Offset(0, 4),
                   ),
                 ],
-                image: const DecorationImage(
-                  image: AssetImage('assets/images/profile.jpg'),
+                image: DecorationImage(
+                  image: (profileService.photoUrl != null &&
+                          profileService.photoUrl!.trim().isNotEmpty &&
+                          profileService.photoUrl!.startsWith('http'))
+                      ? NetworkImage(profileService.photoUrl!) as ImageProvider
+                      : const AssetImage('assets/images/profile.jpg'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -231,13 +234,8 @@ class ProfileScreen extends StatelessWidget {
               ),
             ],
           ),
-          child: Consumer<GamificationService>(
-            builder: (context, gamification, _) {
-              final totalXp = gamification.totalXp;
-              final level = gamification.level;
-
-              return Column(
-                children: [
+          child: Column(
+            children: [
                   _buildHeatmapCalendar(context, words),
                   const SizedBox(height: 16),
                   Divider(height: 1, color: theme.dividerColor),
@@ -313,7 +311,7 @@ class ProfileScreen extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Total XP',
+                                'Vocab Level',
                                 style: TextStyle(
                                   color: theme.colorScheme.onSurface
                                       .withValues(alpha: 0.6),
@@ -331,7 +329,7 @@ class ProfileScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  'Lv.$level',
+                                  'Lv.${vocabService.vocabLevel}',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -343,9 +341,9 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '$totalXp',
+                            '${vocabService.masteredCount} Mastered',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.onBackground,
                             ),
@@ -355,9 +353,7 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ],
-              );
-            },
-          ),
+              ),
         );
       },
     );

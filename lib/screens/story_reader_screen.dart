@@ -650,8 +650,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               ),
               child: IconButton(
                 padding: EdgeInsets.zero,
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    size: 18, color: Theme.of(context).colorScheme.onSurface),
+                icon: Icon(Icons.arrow_back_rounded,
+                    size: 20, color: Theme.of(context).colorScheme.onSurface),
                 tooltip: 'Back',
                 onPressed: () {
                   _ttsService.stop();

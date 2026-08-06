@@ -8,6 +8,8 @@ import '../services/tts_service.dart';
 import '../models/saved_word.dart';
 import '../theme/breakpoints.dart';
 
+import '../services/discovery_service.dart';
+
 class DictionaryScreen extends StatefulWidget {
   final String? initialSearchQuery;
   final VoidCallback? onBackToHome;
@@ -106,19 +108,17 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadDiscoverWords() async {
+  Future<void> _loadDiscoverWords({bool forceRefresh = false}) async {
     setState(() => _isLoadingDiscover = true);
-    final saved = await _vocabService.getSavedWords();
-    final learnedCount = saved.length;
-
-    final words = await _dictionaryService.getHighFrequencyWords(
-      pos: 'all',
-      limit: 30,
-      learnedCount: learnedCount,
-    );
+    final discovery = DiscoveryService();
+    if (forceRefresh) {
+      await discovery.discoverMore(limit: 20);
+    } else {
+      await discovery.loadPool();
+    }
     if (mounted) {
       setState(() {
-        _masterDiscoverWords = words;
+        _masterDiscoverWords = discovery.pool;
         _isLoadingDiscover = false;
       });
     }
@@ -530,14 +530,6 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
               ],
             ),
           ),
-          IconButton(
-            icon: Icon(
-              Icons.refresh_rounded,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            tooltip: 'Refresh Discover List',
-            onPressed: _loadDiscoverWords,
-          ),
         ],
       ),
     );
@@ -892,7 +884,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close_rounded),
                       tooltip: 'Close',
                       onPressed: () => Navigator.pop(ctx),
                     ),

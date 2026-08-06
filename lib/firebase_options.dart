@@ -69,6 +69,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '184475424927',
     projectId: 'book-search-472921',
     storageBucket: 'book-search-472921.firebasestorage.app',
+    androidClientId: '184475424927-1jetlrmsa5otjfdf8r3qu69d5lnl0c2l.apps.googleusercontent.com',
+    iosClientId: '184475424927-1gpfkbpnfhdp4qvd0bkgo65342m5h74q.apps.googleusercontent.com',
     iosBundleId: 'com.example.takt',
   );
+
 }

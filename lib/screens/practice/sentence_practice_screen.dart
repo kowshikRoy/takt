@@ -101,7 +101,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close_rounded),
                       tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
                     ),

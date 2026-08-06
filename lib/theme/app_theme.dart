@@ -7,6 +7,9 @@ enum AppColorTheme {
   retroBlue,
   retroGold,
   retroRust,
+  modernist,
+  retroPurple,
+  slateGrey,
 }
 
 class AppTheme {
@@ -16,9 +19,15 @@ class AppTheme {
   static const Color _blueSeed = Color(0xFF005F73);    // Retro Blue
   static const Color _goldSeed = Color(0xFFEE9B00);    // Retro Gold
   static const Color _rustSeed = Color(0xFFBB3E03);    // Retro Rust
+  static const Color _modernistSeed = Color(0xFFEC3013); // Modernist Red Accent
+  static const Color _purpleSeed = Color(0xFF7C3AED); // Amethyst Violet (Gender Neutral)
+  static const Color _slateSeed = Color(0xFF64748B);  // Slate Grey Accent
   
   static const Color _classicBg = Color(0xFFFDF8F8);   // Cool White
   static const Color _retroBg = Color(0xFFFFFCF2);     // Warm Vanilla
+  static const Color _modernistBg = Color(0xFFF3F2F2); // Warm Modernist Grey
+  static const Color _purpleBg = Color(0xFFFAF5FF);    // Soft Lavender Accent Background
+  static const Color _slateBg = Color(0xFFF8FAFC);     // Slate White Background
 
   // Custom semantic colors that might not map directly to Scheme
   // Updated to match "Retro Rainbow" palette
@@ -185,10 +194,16 @@ class AppTheme {
       case AppColorTheme.retroBlue: return _blueSeed;
       case AppColorTheme.retroGold: return _goldSeed;
       case AppColorTheme.retroRust: return _rustSeed;
+      case AppColorTheme.modernist: return _modernistSeed;
+      case AppColorTheme.retroPurple: return _purpleSeed;
+      case AppColorTheme.slateGrey: return _slateSeed;
     }
   }
 
   static Color _getBackgroundColor(AppColorTheme theme) {
+    if (theme == AppColorTheme.modernist) return _modernistBg;
+    if (theme == AppColorTheme.retroPurple) return _purpleBg;
+    if (theme == AppColorTheme.slateGrey) return _slateBg;
     return theme == AppColorTheme.classic ? _classicBg : _retroBg;
   }
 
@@ -202,7 +217,7 @@ class AppTheme {
       seedColor: seed,
       brightness: Brightness.light,
       surface: bg, 
-      surfaceContainer: const Color(0xFFFFFFFF),
+      surfaceContainer: theme == AppColorTheme.modernist ? const Color(0xFFEAE9E9) : const Color(0xFFFFFFFF),
     );
 
     // Override primary to match seed exactly

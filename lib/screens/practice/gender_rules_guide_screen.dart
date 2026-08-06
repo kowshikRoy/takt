@@ -53,10 +53,7 @@ class GenderRulesGuideScreen extends StatefulWidget {
 
 class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
   final TtsService _ttsService = TtsService();
-  final TextEditingController _searchController = TextEditingController();
   String _selectedGenderFilter = 'all'; // 'all', 'f', 'n', 'm', 'exceptions'
-  String _searchQuery = '';
-
   final List<GenderSuffixRuleItem> _allRules = [
     // ==================== DIE (Feminine) ====================
     GenderSuffixRuleItem(
@@ -274,27 +271,20 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
     ),
   ];
 
-  List<GenderSuffixRuleItem> get _filteredRules {
-    return _allRules.where((rule) {
-      // Gender filter
-      if (_selectedGenderFilter == 'f' && rule.genderCode != 'f') return false;
-      if (_selectedGenderFilter == 'n' && rule.genderCode != 'n') return false;
-      if (_selectedGenderFilter == 'm' && rule.genderCode != 'm') return false;
-      if (_selectedGenderFilter == 'exceptions' && rule.exceptions.isEmpty) return false;
-
-      // Search query filter
-      if (_searchQuery.isNotEmpty) {
-        final q = _searchQuery.toLowerCase().trim();
-        final matchSuffix = rule.suffix.toLowerCase().contains(q);
-        final matchTitle = rule.title.toLowerCase().contains(q);
-        final matchDesc = rule.description.toLowerCase().contains(q);
-        final matchExamples = rule.examples.any((e) => e.toLowerCase().contains(q));
-        final matchExceptions = rule.exceptions.any((e) => e.toLowerCase().contains(q));
-        return matchSuffix || matchTitle || matchDesc || matchExamples || matchExceptions;
-      }
-
-      return true;
-    }).toList();
+  List<GenderSuffixRuleItem> _getRulesForCategory(String category) {
+    switch (category) {
+      case 'f':
+        return _allRules.where((r) => r.genderCode == 'f').toList();
+      case 'n':
+        return _allRules.where((r) => r.genderCode == 'n').toList();
+      case 'm':
+        return _allRules.where((r) => r.genderCode == 'm').toList();
+      case 'exceptions':
+        return _allRules.where((r) => r.exceptions.isNotEmpty).toList();
+      case 'all':
+      default:
+        return _allRules;
+    }
   }
 
   Color _getGenderColor(String code) {
@@ -312,167 +302,123 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final rules = _filteredRules;
+    final rules = _getRulesForCategory(_selectedGenderFilter);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Gender Rules & Suffix Guide', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Gender Rules & Suffix Guide',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
       body: Column(
         children: [
-          // Banner & Search Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Search suffix (-ung, -heit), word (Käse), or rule...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        tooltip: 'Clear search',
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: Theme.of(context).cardColor,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: Theme.of(context).dividerColor),
-                ),
-              ),
-            ),
-          ),
-
-          // Category Filter Chips
-          SizedBox(
-            height: 48,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                children: [
-                  _buildFilterChip('all', 'All Rules (${_allRules.length})', Icons.grid_view_rounded, Colors.grey),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('f', 'Die / Feminine', Icons.female_rounded, AppTheme.genderFem),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('n', 'Das / Neuter', Icons.trip_origin_rounded, AppTheme.genderNeu),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('m', 'Der / Masculine', Icons.male_rounded, AppTheme.genderMasc),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('exceptions', 'The Odd 10% Exceptions ⚠️', Icons.warning_amber_rounded, Colors.orange),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Target Word Highlight Banner (If opened from quiz)
-          if (widget.targetWord != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.stars_rounded, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Showing rule for target word: "${widget.targetWord}"',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Rule Cards List
+          _buildSingleLinePills(),
           Expanded(
-            child: rules.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.search_off_rounded, size: 48, color: Colors.grey),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No matching gender rules found',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        const Text('Try adjusting your search query or category filter.'),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: rules.length,
-                    itemBuilder: (ctx, idx) {
-                      final rule = rules[idx];
-                      final bool isTarget = widget.targetRuleTitle != null &&
-                          rule.title.toLowerCase().contains(widget.targetRuleTitle!.toLowerCase());
-
-                      return _buildRuleCard(ctx, rule, isTarget);
-                    },
-                  ),
+            child: _buildRulesList(context, rules),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String filterKey, String label, IconData icon, Color color) {
-    final bool isSelected = _selectedGenderFilter == filterKey;
-    return ChoiceChip(
-      selected: isSelected,
-      onSelected: (selected) {
-        if (selected) {
-          setState(() {
-            _selectedGenderFilter = filterKey;
-          });
-        }
-      },
-      avatar: Icon(icon, size: 16, color: isSelected ? Colors.white : color),
-      label: Text(
-        label,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-          color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+  Widget _buildSingleLinePills() {
+    final options = [
+      {'key': 'all', 'label': 'All', 'color': Theme.of(context).colorScheme.primary},
+      {'key': 'f', 'label': 'Die', 'color': AppTheme.genderFem},
+      {'key': 'n', 'label': 'Das', 'color': AppTheme.genderNeu},
+      {'key': 'm', 'label': 'Der', 'color': AppTheme.genderMasc},
+      {'key': 'exceptions', 'label': 'Exceptions', 'color': Theme.of(context).colorScheme.primary},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      child: Row(
+        children: options.map((opt) {
+          final key = opt['key'] as String;
+          final label = opt['label'] as String;
+          final color = opt['color'] as Color;
+          final isSelected = _selectedGenderFilter == key;
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedGenderFilter = key;
+                  });
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? color : Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: isSelected
+                          ? color
+                          : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildRulesList(BuildContext ctx, List<GenderSuffixRuleItem> rules) {
+    if (rules.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.rule_folder_outlined,
+              size: 48,
+              color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No rules in this category',
+              style: Theme.of(ctx).textTheme.titleMedium,
+            ),
+          ],
         ),
-      ),
-      selectedColor: filterKey == 'all' ? Theme.of(context).colorScheme.primary : color,
-      backgroundColor: Theme.of(context).cardColor,
-      side: BorderSide(
-        color: isSelected
-            ? (filterKey == 'all' ? Theme.of(context).colorScheme.primary : color)
-            : Theme.of(context).dividerColor.withValues(alpha: 0.5),
-      ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: rules.length,
+      itemBuilder: (context, idx) {
+        final rule = rules[idx];
+        final bool isTarget = widget.targetRuleTitle != null &&
+            rule.title.toLowerCase().contains(widget.targetRuleTitle!.toLowerCase());
+
+        return _buildRuleCard(context, rule, isTarget);
+      },
     );
   }
 
@@ -490,9 +436,9 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: isTarget ? color.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.04),
-            blurRadius: isTarget ? 16 : 8,
-            offset: const Offset(0, 4),
+            color: isTarget ? color.withValues(alpha: 0.2) : Theme.of(ctx).shadowColor.withValues(alpha: 0.05),
+            blurRadius: isTarget ? 12 : 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -558,15 +504,15 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.15),
+                              color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '${rule.certainty} Certainty',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green,
+                                color: Theme.of(ctx).colorScheme.primary,
                               ),
                             ),
                           ),
@@ -658,20 +604,20 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                  border: Border.all(color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: const [
-                        Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange),
-                        SizedBox(width: 6),
+                      children: [
+                        Icon(Icons.warning_amber_rounded, size: 16, color: Theme.of(ctx).colorScheme.primary),
+                        const SizedBox(width: 6),
                         Text(
                           'Watch Out For Exceptions:',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(ctx).colorScheme.primary),
                         ),
                       ],
                     ),
@@ -681,7 +627,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade900,
+                        color: Theme.of(ctx).colorScheme.onSurface,
                       ),
                     ),
                     if (rule.exceptionNote != null) ...[

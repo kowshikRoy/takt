@@ -51,23 +51,52 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Modernist Header
             _buildHeader(context),
+            ModernistProgressBar(progress: 1.0, height: 2),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Daily Session Card
+            // Daily Session Section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: _buildDailySessionCard(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'DAILY SESSION',
+                    style: BooksModernist.body(
+                      size: 11,
+                      weight: FontWeight.w800,
+                      color: BooksModernist.accentDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildDailySessionCard(context),
+                ],
+              ),
             ),
 
             const SizedBox(height: 24),
 
-            // Today's Words Card
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0),
-              child: TodayWordsCard(),
+            // Today's Words Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "TODAY'S WORDS",
+                    style: BooksModernist.body(
+                      size: 11,
+                      weight: FontWeight.w800,
+                      color: BooksModernist.accentDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const TodayWordsCard(),
+                ],
+              ),
             ),
 
             const SizedBox(height: 24),
@@ -75,7 +104,21 @@ class HomeScreen extends StatelessWidget {
             // Course Books Section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: _buildCourseBooksSection(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'COURSE BOOKS',
+                    style: BooksModernist.body(
+                      size: 11,
+                      weight: FontWeight.w800,
+                      color: BooksModernist.accentDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCourseBooksSection(context),
+                ],
+              ),
             ),
 
             const SizedBox(height: 24),
@@ -83,48 +126,51 @@ class HomeScreen extends StatelessWidget {
             // Practice Tools Section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Practice Tools',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  if (onOpenLearnTab != null)
-                    GestureDetector(
-                      onTap: onOpenLearnTab,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Structured Path',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 14,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'PRACTICE TOOLS',
+                        style: BooksModernist.body(
+                          size: 11,
+                          weight: FontWeight.w800,
+                          color: BooksModernist.accentDark,
+                        ),
                       ),
-                    ),
+                      if (onOpenLearnTab != null)
+                        GestureDetector(
+                          onTap: onOpenLearnTab,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Structured Path',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 14,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _buildPracticeGrid(context),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: _buildPracticeGrid(context),
-            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -137,12 +183,12 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -158,21 +204,30 @@ class HomeScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const ProfileScreen()),
                   );
                 },
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline,
-                      width: 2,
-                    ),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/profile.jpg'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                child: Consumer<ProfileService>(
+                  builder: (context, profileService, _) {
+                    final photoUrl = profileService.photoUrl;
+                    return Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: BooksModernist.accent,
+                          width: 2,
+                        ),
+                        image: DecorationImage(
+                          image: (photoUrl != null &&
+                                  photoUrl.trim().isNotEmpty &&
+                                  photoUrl.startsWith('http'))
+                              ? NetworkImage(photoUrl) as ImageProvider
+                              : const AssetImage('assets/images/profile.jpg'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -180,16 +235,16 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Guten Morgen!',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                    'GUTEN MORGEN!',
+                    style: BooksModernist.heading(size: 15, context: context),
                   ),
                   Consumer<GamificationService>(
                     builder: (context, gamification, _) {
                       return Text(
                         'Level ${gamification.level}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        style: BooksModernist.body(
+                          size: 11.5,
+                          weight: FontWeight.w600,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       );
@@ -222,30 +277,31 @@ class HomeScreen extends StatelessWidget {
                 builder: (context, profileService, _) {
                   return Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 10,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      color: BooksModernist.accent100,
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.outlineVariant,
+                        color: BooksModernist.accent200,
                       ),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.local_fire_department_rounded,
-                          color: Colors.orange,
-                          size: 20,
+                          color: BooksModernist.accent,
+                          size: 18,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '${profileService.currentStreak} Days',
-                          style: Theme.of(context).textTheme.labelLarge
-                              ?.copyWith(
-                                color: const Color(0xFFEA580C), // orange-600
-                              ),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: BooksModernist.accentDark,
+                          ),
                         ),
                       ],
                     ),
@@ -265,7 +321,6 @@ class HomeScreen extends StatelessWidget {
         final dueCount = vocabService.cachedDueCount;
         final savedCount = vocabService.cachedSavedCount;
 
-        final streak = profileService.currentStreak;
         final completedTasks = profileService.dailyTasksCompleted;
         final isGoalAchieved = profileService.isDailyGoalAchieved;
 
@@ -288,72 +343,23 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Stack(
-            children: [
-              Positioned(
-                right: -24,
-                top: -24,
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    color: isGoalAchieved
-                        ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
-                        : colorScheme.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  'Daily Session',
-                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: streak > 0
-                                        ? const Color(0xFFF9844A).withValues(alpha: 0.2)
-                                        : colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        streak > 0 ? Icons.local_fire_department_rounded : Icons.bolt_rounded,
-                                        size: 14,
-                                        color: streak > 0 ? const Color(0xFFD97706) : colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        streak > 0 ? '$streak Day Streak' : 'Start streak!',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: streak > 0 ? const Color(0xFFD97706) : colorScheme.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                        Text(
+                          'Session Tasks',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
                             const SizedBox(height: 6),
                             Text(
                               isGoalAchieved
@@ -507,7 +513,7 @@ class HomeScreen extends StatelessWidget {
                                 ],
                               ),
                               content: Text(
-                                'Daily Spaced Repetition (SRS) review unlocks after saving 5 words to your dictionary.\n\n'
+                                'Daily review unlocks after saving 5 words to your dictionary.\n\n'
                                 'You currently have $savedCount / 5 words saved. Visit the Learn tab or Dictionary to save more words!',
                               ),
                               actions: [
@@ -557,7 +563,7 @@ class HomeScreen extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     isUnlocked
-                                        ? 'Review your personalized SRS vocabulary deck'
+                                        ? 'Review your personalized vocabulary deck'
                                         : '$savedCount of 5 words saved so far',
                                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                           color: colorScheme.onSurfaceVariant,
@@ -578,12 +584,10 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
-      },
-    );
-  }
+      }
 
   Widget _buildSessionItem(
     BuildContext context, {
@@ -596,12 +600,16 @@ class HomeScreen extends StatelessWidget {
       children: [
         iconWidget,
         const SizedBox(width: 12),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: isLocked
-                ? Theme.of(context).colorScheme.onSurfaceVariant
-                : Theme.of(context).colorScheme.onSurface,
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: isLocked
+                  ? Theme.of(context).colorScheme.onSurfaceVariant
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -622,20 +630,6 @@ class HomeScreen extends StatelessWidget {
                       title: 'Der Die Das',
                       subtitle: 'Gender Trainer',
                       icon: Icons.swipe_rounded,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color(0xFFEFF6FF)
-                              : const Color(0xFF1E3A8A).withValues(alpha: 0.3),
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color(0xFFFDF2F8)
-                              : const Color(0xFF831843).withValues(alpha: 0.3),
-                        ],
-                      ),
-                      borderColor: const Color(0xFFDBEAFE),
-                      iconColor: const Color(0xFF3B82F6),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const GenderPracticeScreen(),
@@ -668,20 +662,6 @@ class HomeScreen extends StatelessWidget {
                       title: 'Case Color',
                       subtitle: 'Sentence Builder',
                       icon: Icons.palette_rounded,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color(0xFFFFF7ED)
-                              : const Color(0xFF7C2D12).withValues(alpha: 0.3),
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color(0xFFFEFCE8)
-                              : const Color(0xFF713F12).withValues(alpha: 0.3),
-                        ],
-                      ),
-                      borderColor: const Color(0xFFFFEDD5),
-                      iconColor: const Color(0xFFF97316),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const SentencePracticeScreen(),
@@ -764,20 +744,6 @@ class HomeScreen extends StatelessWidget {
                       title: 'Der Die Das',
                       subtitle: 'Gender Trainer',
                       icon: Icons.swipe_rounded,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color(0xFFEFF6FF)
-                              : const Color(0xFF1E3A8A).withValues(alpha: 0.3),
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color(0xFFFDF2F8)
-                              : const Color(0xFF831843).withValues(alpha: 0.3),
-                        ],
-                      ),
-                      borderColor: const Color(0xFFDBEAFE),
-                      iconColor: const Color(0xFF3B82F6),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const GenderPracticeScreen(),
@@ -810,20 +776,6 @@ class HomeScreen extends StatelessWidget {
                       title: 'Case Color',
                       subtitle: 'Sentence Builder',
                       icon: Icons.palette_rounded,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color(0xFFFFF7ED)
-                              : const Color(0xFF7C2D12).withValues(alpha: 0.3),
-                          Theme.of(context).brightness == Brightness.light
-                              ? const Color(0xFFFEFCE8)
-                              : const Color(0xFF713F12).withValues(alpha: 0.3),
-                        ],
-                      ),
-                      borderColor: const Color(0xFFFFEDD5),
-                      iconColor: const Color(0xFFF97316),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const SentencePracticeScreen(),
@@ -897,71 +849,60 @@ class HomeScreen extends StatelessWidget {
   Widget _buildSrsPracticeCard(BuildContext context) {
     return Card(
       elevation: 0,
+      color: BooksModernist.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-        side: BorderSide(color: Colors.purple.shade100),
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: BooksModernist.dividerThin),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).brightness == Brightness.light
-                  ? const Color(0xFFF3E8FF)
-                  : const Color(0xFF581C87).withValues(alpha: 0.3),
-              Theme.of(context).brightness == Brightness.light
-                  ? const Color(0xFFFCE7F3)
-                  : const Color(0xFF831843).withValues(alpha: 0.3),
-            ],
-          ),
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
         ),
-        child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.purple.shade100),
-                  ),
-                  child: const Icon(
-                    Icons.style_rounded,
-                    color: Colors.purple,
-                    size: 24,
-                  ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: BooksModernist.accent100,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: BooksModernist.accent200),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'SRS Flashcard Practice',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                child: const Icon(
+                  Icons.style_rounded,
+                  color: BooksModernist.accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Vocabulary Flashcard Practice',
+                      style: BooksModernist.heading(size: 14, context: context),
+                    ),
+                    Text(
+                      'Review your saved vocabulary cards',
+                      style: BooksModernist.body(
+                        size: 11.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      Text(
-                        'Review due words with SuperMemo-2',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Colors.purple,
-                  size: 28,
-                ),
-              ],
-            ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: BooksModernist.accentDark,
+                size: 24,
+              ),
+            ],
           ),
         ),
       ),
@@ -971,74 +912,60 @@ class HomeScreen extends StatelessWidget {
   Widget _buildCompoundPracticeCard(BuildContext context) {
     return Card(
       elevation: 0,
+      color: BooksModernist.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-        side: BorderSide(
-          color: const Color(0xFFD1FAE5),
-        ), // Custom color for visual distinctiveness
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: BooksModernist.dividerThin),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).brightness == Brightness.light
-                  ? const Color(0xFFECFDF5)
-                  : const Color(0xFF064E3B).withValues(alpha: 0.3),
-              Theme.of(context).brightness == Brightness.light
-                  ? const Color(0xFFF0FDFA)
-                  : const Color(0xFF134E4A).withValues(alpha: 0.3),
-            ],
-          ),
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const CompoundPracticeScreen()),
         ),
-        child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CompoundPracticeScreen()),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: Colors.black.withValues(alpha: 0.05),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: BooksModernist.accent100,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: BooksModernist.accent200),
+                ),
+                child: const Icon(
+                  Icons.extension_rounded,
+                  color: BooksModernist.accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Compound Puzzle',
+                      style: BooksModernist.heading(size: 14, context: context),
                     ),
-                  ),
-                  child: const Icon(
-                    Icons.extension_rounded,
-                    color: Color(0xFF059669),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Compound Puzzle',
-                        style: Theme.of(context).textTheme.titleMedium,
+                    Text(
+                      'Build massive words',
+                      style: BooksModernist.body(
+                        size: 11.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      Text(
-                        'Build massive words',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFF34D399),
-                  size: 28,
-                ),
-              ],
-            ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: BooksModernist.accentDark,
+                size: 24,
+              ),
+            ],
           ),
         ),
       ),
@@ -1050,26 +977,23 @@ class HomeScreen extends StatelessWidget {
     required String title,
     required String subtitle,
     required IconData icon,
-    required Gradient gradient,
-    required Color borderColor,
-    required Color iconColor,
     required Widget child,
     VoidCallback? onTap,
   }) {
     return Card(
       elevation: 0,
+      color: BooksModernist.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-        side: BorderSide(color: borderColor),
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: BooksModernist.dividerThin),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Container(
-        height: 160,
-        decoration: BoxDecoration(gradient: gradient),
+      child: SizedBox(
+        height: 155,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1078,26 +1002,28 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 36,
+                      height: 36,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
+                        color: BooksModernist.accent100,
                         borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: BooksModernist.accent200),
                       ),
-                      child: Icon(icon, color: iconColor, size: 20),
+                      child: Icon(icon, color: BooksModernist.accent, size: 18),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text(
                       title,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(height: 1.1),
+                      style: BooksModernist.heading(size: 14, context: context),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: BooksModernist.body(
+                        size: 11.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -1196,7 +1122,7 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Kursbücher', style: BooksModernist.heading(size: 18)),
+              Text('Curriculum & Guides', style: BooksModernist.heading(size: 15)),
               const ModernistTag('CEFR-PFADE'),
             ],
           ),

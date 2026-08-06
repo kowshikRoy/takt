@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../models/saved_word.dart';
 import '../../models/xp_event.dart';
 import '../../services/vocabulary_service.dart';
@@ -106,7 +105,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Spaced Repetition & Practice'),
+        title: const Text('Vocabulary Review & Practice'),
         elevation: 0,
       ),
       body: _isLoading
@@ -217,7 +216,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close_rounded),
                       tooltip: 'Close',
                       onPressed: () => Navigator.pop(ctx),
                     ),
@@ -624,7 +623,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back_rounded),
                 label: const Text('Back to Home'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(

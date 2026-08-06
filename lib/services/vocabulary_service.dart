@@ -25,6 +25,35 @@ class VocabularyService extends ChangeNotifier {
   int get cachedSavedCount => _cachedSavedWords.length;
   int get cachedDueCount => _cachedDueWords.length;
 
+  /// Vocabulary Mastery Score calculated from stage of each saved word:
+  /// Level 0 (New): 1 pt
+  /// Level 1 (Apprentice): 2 pts
+  /// Level 2 (Familiar): 3 pts
+  /// Level 3 (Proficient): 4 pts
+  /// Level 4 (Mastered): 5 pts
+  int get vocabMasteryScore {
+    int points = 0;
+    for (final w in _cachedSavedWords) {
+      points += (w.masteryLevel + 1);
+    }
+    return points;
+  }
+
+  /// Calculates user level based on vocabulary mastery points
+  int get vocabLevel {
+    final pts = vocabMasteryScore;
+    if (pts < 15) return 1;
+    if (pts < 35) return 2;
+    if (pts < 70) return 3;
+    if (pts < 120) return 4;
+    if (pts < 200) return 5;
+    return 6 + ((pts - 200) ~/ 100);
+  }
+
+  int get masteredCount {
+    return _cachedSavedWords.where((w) => w.category == VocabCategory.mastered || w.masteryLevel >= 4).length;
+  }
+
   Future<void> refreshCache() async {
     _cachedSavedWords = await getSavedWords();
     _cachedDueWords = await getDueWords();

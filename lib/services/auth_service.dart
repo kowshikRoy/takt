@@ -8,16 +8,54 @@ class AuthService extends ChangeNotifier {
   factory AuthService() => _instance;
 
   AuthService._internal() {
-    fb.FirebaseAuth.instance.authStateChanges().listen((_) => notifyListeners());
+    fb.FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null && (user.displayName == null || user.displayName!.trim().isEmpty)) {
+        final derived = _deriveDisplayNameFromEmail(user.email);
+        if (derived != null) {
+          user.updateDisplayName(derived).catchError((_) {});
+        }
+      }
+      notifyListeners();
+    });
   }
 
   fb.User? get _user => fb.FirebaseAuth.instance.currentUser;
 
-  String? get username => _user?.displayName ?? _user?.email;
+  String? get username {
+    if (_user == null) return null;
+    if (_user!.displayName != null && _user!.displayName!.trim().isNotEmpty) {
+      return _user!.displayName!.trim();
+    }
+    return _deriveDisplayNameFromEmail(_user!.email);
+  }
+
+  static String? _deriveDisplayNameFromEmail(String? email) {
+    if (email == null || !email.contains('@')) return null;
+    final handle = email.split('@').first.trim();
+    if (handle.isEmpty) return null;
+    final formatted = handle
+        .replaceAll(RegExp(r'[._-]'), ' ')
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0].toUpperCase() + w.substring(1))
+        .join(' ');
+    return formatted.isNotEmpty ? formatted : handle;
+  }
+
   String? get email => _user?.email;
   String? get userId => _user?.uid;
+  String? get photoUrl => _user?.photoURL;
 
   bool get isAuthenticated => _user != null;
+
+  Future<void> updateDisplayName(String name) async {
+    final clean = name.trim();
+    if (clean.isEmpty || _user == null) return;
+    try {
+      await _user!.updateDisplayName(clean);
+      notifyListeners();
+    } catch (_) {}
+  }
 
   /// Firebase ID tokens expire hourly, so callers making an authenticated
   /// backend request should fetch a fresh one here rather than caching it.
@@ -27,10 +65,14 @@ class AuthService extends ChangeNotifier {
 
   Future<Map<String, dynamic>> register(String email, String password) async {
     try {
-      await fb.FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final cred = await fb.FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      final derived = _deriveDisplayNameFromEmail(email);
+      if (derived != null && cred.user != null) {
+        await cred.user!.updateDisplayName(derived);
+      }
       AnalyticsService.logEvent('signup');
       return {'success': true, 'message': 'Registered successfully'};
     } on fb.FirebaseAuthException catch (e) {
@@ -42,10 +84,16 @@ class AuthService extends ChangeNotifier {
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      await fb.FirebaseAuth.instance.signInWithEmailAndPassword(
+      final cred = await fb.FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      if (cred.user != null && (cred.user!.displayName == null || cred.user!.displayName!.isEmpty)) {
+        final derived = _deriveDisplayNameFromEmail(email);
+        if (derived != null) {
+          await cred.user!.updateDisplayName(derived);
+        }
+      }
       AnalyticsService.logEvent('login');
       return {'success': true, 'message': 'Logged in successfully'};
     } on fb.FirebaseAuthException catch (e) {

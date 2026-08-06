@@ -201,6 +201,12 @@ class SettingsScreen extends StatelessWidget {
         return 'Retro Gold';
       case AppColorTheme.retroRust:
         return 'Retro Rust';
+      case AppColorTheme.modernist:
+        return 'Modernist (Warm Grey & Red)';
+      case AppColorTheme.retroPurple:
+        return 'Amethyst Violet (Gender Neutral)';
+      case AppColorTheme.slateGrey:
+        return 'Slate Grey (Minimalist Monochrome)';
     }
   }
 
@@ -332,7 +338,12 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(_getColorThemeName(theme)),
+                    Expanded(
+                      child: Text(
+                        _getColorThemeName(theme),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 value: theme,
@@ -369,6 +380,12 @@ class SettingsScreen extends StatelessWidget {
         return const Color(0xFFEE9B00);
       case AppColorTheme.retroRust:
         return const Color(0xFFBB3E03);
+      case AppColorTheme.modernist:
+        return const Color(0xFFEC3013);
+      case AppColorTheme.retroPurple:
+        return const Color(0xFF7C3AED);
+      case AppColorTheme.slateGrey:
+        return const Color(0xFF64748B);
     }
   }
 

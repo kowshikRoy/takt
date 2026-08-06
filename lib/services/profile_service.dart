@@ -13,9 +13,34 @@ class ProfileService extends ChangeNotifier {
 
   ProfileService._internal() {
     _init();
+    AuthService().addListener(_syncAuthDisplayName);
+  }
+
+  void _syncAuthDisplayName() {
+    final authName = AuthService().username;
+    final authPhoto = AuthService().photoUrl;
+    bool updated = false;
+
+    if (authName != null && authName.isNotEmpty && _displayName != authName) {
+      _displayName = authName;
+      updated = true;
+    }
+    if (authPhoto != null && authPhoto.isNotEmpty && _photoUrl != authPhoto) {
+      _photoUrl = authPhoto;
+      updated = true;
+    }
+
+    if (updated) {
+      notifyListeners();
+      SharedPreferences.getInstance().then((prefs) {
+        if (authName != null) prefs.setString(_keyDisplayName, authName);
+        if (authPhoto != null) prefs.setString(_keyPhotoUrl, authPhoto);
+      }).catchError((_) {});
+    }
   }
 
   static const String _keyDisplayName = 'profile_display_name_v1';
+  static const String _keyPhotoUrl = 'profile_photo_url_v1';
   static const String _keyJoinDate = 'profile_join_date_iso_v1';
   static const String _keyActivityDates = 'profile_activity_dates_v1';
   static const String _keyBestStreak = 'profile_best_streak_v1';
@@ -38,7 +63,8 @@ class ProfileService extends ChangeNotifier {
   static const List<int> _streakXpMilestoneDays = [7, 30, 100];
   static const int defaultDailyWordGoalCount = 5;
 
-  String _displayName = 'Alex Deutsch';
+  String _displayName = 'Learner';
+  String? _photoUrl;
   String _joinDateFormatted = 'Joined August 2026';
   Set<String> _activityDates = {};
   int _bestStreak = 0;
@@ -56,6 +82,7 @@ class ProfileService extends ChangeNotifier {
   int _dailyWordGoalCount = defaultDailyWordGoalCount;
 
   String get displayName => _displayName;
+  String? get photoUrl => _photoUrl ?? AuthService().photoUrl;
   String get joinDateFormatted => _joinDateFormatted;
   Set<String> get activityDates => _activityDates;
   int get bestStreak => _bestStreak;
@@ -183,10 +210,16 @@ class ProfileService extends ChangeNotifier {
   Future<void> _init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _displayName =
-          prefs.getString(_keyDisplayName) ??
-          AuthService().username ??
-          'Alex Deutsch';
+      final savedName = prefs.getString(_keyDisplayName);
+      final authName = AuthService().username;
+      if (savedName != null && savedName != 'Alex Deutsch') {
+        _displayName = savedName;
+      } else if (authName != null && authName.isNotEmpty) {
+        _displayName = authName;
+      } else {
+        _displayName = 'Learner';
+      }
+      _photoUrl = prefs.getString(_keyPhotoUrl) ?? AuthService().photoUrl;
 
       final joinIso = prefs.getString(_keyJoinDate);
       if (joinIso == null) {
@@ -370,6 +403,7 @@ class ProfileService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyDisplayName, clean);
+      await AuthService().updateDisplayName(clean);
     } catch (e) {
       AppLogger.error(
         "Error updating display name",

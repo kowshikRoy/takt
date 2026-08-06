@@ -178,11 +178,20 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                           onPressed: syncService.isSyncing
                               ? null
                               : () => syncService.syncNow(),
-                          icon: const Icon(Icons.sync_rounded),
-                          label: const Text("Sync Now"),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                          ),
+                          icon: const Icon(Icons.sync_rounded, size: 18),
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              "Sync Now",
+                              maxLines: 1,
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
@@ -192,9 +201,16 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                             backgroundColor: Colors.red[50],
                             foregroundColor: Colors.red[700],
                             elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
                           ),
-                          icon: const Icon(Icons.logout_rounded),
-                          label: const Text("Log Out"),
+                          icon: const Icon(Icons.logout_rounded, size: 18),
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              "Log Out",
+                              maxLines: 1,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -295,38 +311,57 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleSubmit,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _isSignUp = !_isSignUp;
+                            _errorMessage = null;
+                          });
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _isSignUp ? "Log In instead" : "Create Account",
+                            maxLines: 1,
                           ),
-                        )
-                      : Text(_isSignUp ? "Sign Up & Sync" : "Log In & Sync"),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isSignUp = !_isSignUp;
-                      _errorMessage = null;
-                    });
-                  },
-                  child: Text(
-                    _isSignUp
-                        ? "Already have an account? Log In"
-                        : "Don't have an account? Sign Up",
-                  ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleSubmit,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  _isSignUp ? "Sign Up" : "Log In",
+                                  maxLines: 1,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );

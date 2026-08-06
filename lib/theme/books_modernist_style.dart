@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
-/// Fixed "Modernist" visual identity for the Books (textbook study) feature,
-/// translated from the Claude Design "Books UI redesign" project's design
-/// system tokens. Deliberately independent of the app's user-selectable
-/// theme/color palette (Settings > Appearance) — this feature keeps its own
-/// editorial look regardless of what the rest of the app is themed as.
+/// Visual identity for the Books feature using the user's preferred font family.
 class BooksModernist {
   BooksModernist._();
 
@@ -22,12 +20,59 @@ class BooksModernist {
   static final Color divider = text.withValues(alpha: 0.4);
   static final Color dividerThin = text.withValues(alpha: 0.18);
 
-  static TextStyle heading({double size = 16, Color? color, double? height}) =>
-      GoogleFonts.archivo(
-        fontWeight: FontWeight.w800,
+  static TextStyle font(
+    BuildContext? context, {
+    required double size,
+    Color? color,
+    FontStyle? style,
+    FontWeight? weight,
+    double? height,
+  }) {
+    String fontName = 'Spline Sans';
+    if (context != null) {
+      try {
+        final provider = Provider.of<ThemeProvider>(context, listen: false);
+        fontName = provider.fontFamily;
+      } catch (_) {
+        final themeFont = Theme.of(context).textTheme.bodyMedium?.fontFamily;
+        if (themeFont != null && themeFont.isNotEmpty) {
+          fontName = themeFont;
+        }
+      }
+    }
+    try {
+      return GoogleFonts.getFont(
+        fontName,
         fontSize: size,
         color: color ?? text,
+        fontStyle: style,
+        fontWeight: weight,
         height: height,
+      );
+    } catch (_) {
+      return TextStyle(
+        fontFamily: fontName,
+        fontSize: size,
+        color: color ?? text,
+        fontStyle: style,
+        fontWeight: weight,
+        height: height,
+      );
+    }
+  }
+
+  static TextStyle heading({
+    double size = 16,
+    Color? color,
+    double? height,
+    BuildContext? context,
+  }) =>
+      font(
+        context,
+        size: size,
+        color: color,
+        height: height,
+        weight: FontWeight.w800,
       );
 
   static TextStyle body({
@@ -35,12 +80,15 @@ class BooksModernist {
     Color? color,
     FontStyle? style,
     FontWeight? weight,
-  }) => GoogleFonts.archivo(
-    fontWeight: weight ?? FontWeight.w400,
-    fontSize: size,
-    color: color ?? text,
-    fontStyle: style,
-  );
+    BuildContext? context,
+  }) =>
+      font(
+        context,
+        size: size,
+        color: color,
+        style: style,
+        weight: weight ?? FontWeight.w400,
+      );
 
   static TextStyle mono({double size = 12.5, Color? color}) =>
       GoogleFonts.robotoMono(fontSize: size, color: color ?? text);

@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/xp_event.dart';
 import 'auth_service.dart';
 import 'app_logger.dart';
+
+import 'vocabulary_service.dart';
 
 /// Owns the XP event log and derived totals/level. Kept separate from
 /// ProfileService to avoid overloading it further (see design doc §8).
@@ -12,8 +13,20 @@ class GamificationService extends ChangeNotifier {
   static final GamificationService _instance = GamificationService._internal();
   factory GamificationService() => _instance;
 
+  int _lastVocabLevel = 1;
+
   GamificationService._internal() {
     _init();
+    VocabularyService().addListener(_onVocabChanged);
+  }
+
+  void _onVocabChanged() {
+    final currentLevel = level;
+    if (currentLevel > _lastVocabLevel) {
+      _justLeveledUp = true;
+    }
+    _lastVocabLevel = currentLevel;
+    notifyListeners();
   }
 
   static const String _keyXpEvents = 'gamification_xp_events_v1';
@@ -26,15 +39,11 @@ class GamificationService extends ChangeNotifier {
   List<XpEvent> get events => List.unmodifiable(_events);
   int get totalXp => _totalXp;
 
-  /// level = floor(sqrt(totalXp / 100)), per §3.1.
-  int get level => sqrt(_totalXp / 100).floor();
+  /// User level is based on Vocabulary Mastery (New, Learning, Familiar, Proficient, Mastered)
+  int get level => VocabularyService().vocabLevel;
+  int get vocabMasteryScore => VocabularyService().vocabMasteryScore;
 
-  int get _xpAtLevelStart => level * level * 100;
-  int get _xpAtNextLevel => (level + 1) * (level + 1) * 100;
-  int get xpIntoCurrentLevel => _totalXp - _xpAtLevelStart;
-  int get xpNeededForNextLevel => _xpAtNextLevel - _xpAtLevelStart;
-
-  /// True once, right after totalXp crosses into a new level. Call
+  /// True once, right after level crosses into a new level. Call
   /// [acknowledgeLevelUp] after showing the celebration.
   bool get justLeveledUp => _justLeveledUp;
 

@@ -127,7 +127,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+          icon: Icon(Icons.close_rounded, color: Theme.of(context).colorScheme.onSurface),
           tooltip: 'Close',
           onPressed: () => Navigator.pop(context),
         ),

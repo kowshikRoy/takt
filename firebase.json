@@ -1,1 +1,45 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"book-search-472921","appId":"1:184475424927:android:c8079539a49dcba4d42aaa","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"book-search-472921","appId":"1:184475424927:ios:58036b4e426356e0d42aaa","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"book-search-472921","configurations":{"android":"1:184475424927:android:c8079539a49dcba4d42aaa","ios":"1:184475424927:ios:58036b4e426356e0d42aaa","web":"1:184475424927:web:31ecfc178bc5fdc1d42aaa"}}}}}}
+{
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "book-search-472921",
+          "appId": "1:184475424927:android:c8079539a49dcba4d42aaa",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "book-search-472921",
+          "appId": "1:184475424927:ios:58036b4e426356e0d42aaa",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "book-search-472921",
+          "configurations": {
+            "android": "1:184475424927:android:c8079539a49dcba4d42aaa",
+            "ios": "1:184475424927:ios:58036b4e426356e0d42aaa",
+            "web": "1:184475424927:web:31ecfc178bc5fdc1d42aaa"
+          }
+        }
+      }
+    }
+  }
+}

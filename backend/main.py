@@ -2,6 +2,7 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import yt_dlp
 import asyncio
@@ -725,9 +726,10 @@ def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_sta
 
     return existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum
 
-# Mount static web app if available
-web_build_dir = os.path.join(os.path.dirname(__file__), "web_build")
+# Mount static web app files if available
+web_build_dir = os.path.join(os.path.dirname(__file__), "public_web")
 if os.path.exists(web_build_dir):
+    print(f"Mounting static web app from {web_build_dir}")
     app.mount("/app", StaticFiles(directory=web_build_dir, html=True), name="web_app")
     app.mount("/", StaticFiles(directory=web_build_dir, html=True), name="web_root")
 

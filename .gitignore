@@ -20,6 +20,7 @@
 .swiftpm/
 migrate_working_dir/
 .gemini/
+.firebase/
 .claude/settings.local.json
 
 # IDE & Editor files
@@ -77,6 +78,7 @@ env/
 .env.*
 backend/venv/
 backend/web_build/
+backend/public_web/
 backend/cache/
 backend/assets/
 

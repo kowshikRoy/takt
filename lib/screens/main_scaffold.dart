@@ -12,7 +12,7 @@ import '../widgets/celebration_overlay.dart';
 
 class MainScaffold extends StatefulWidget {
   final int initialIndex;
-  const MainScaffold({super.key, this.initialIndex = 1});
+  const MainScaffold({super.key, this.initialIndex = 0});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
