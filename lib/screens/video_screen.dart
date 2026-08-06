@@ -2291,16 +2291,18 @@ class _VideoScreenState extends State<VideoScreen>
     final originalController = TextEditingController(text: cue.original);
     final translatedController = TextEditingController(text: cue.translated);
 
-    final result = await showModalBottomSheet<SubtitleCue>(
+    final result = await showDialog<SubtitleCue>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (sheetContext) {
+      barrierColor: Colors.black.withValues(alpha: 0.12),
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        Offset offset = Offset.zero;
         bool isTranslating = false;
 
         return StatefulBuilder(
-          builder: (sheetContext, setModalState) {
-            final colorScheme = Theme.of(sheetContext).colorScheme;
+          builder: (dialogContext, setModalState) {
+            final colorScheme = Theme.of(dialogContext).colorScheme;
+            final screenSize = MediaQuery.of(dialogContext).size;
 
             Future<void> generateTranslation() async {
               final originalText = originalController.text.trim();
@@ -2322,140 +2324,166 @@ class _VideoScreenState extends State<VideoScreen>
               }
             }
 
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 32,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: colorScheme.outlineVariant,
-                          borderRadius: BorderRadius.circular(2),
+            final cardWidth = (screenSize.width - 32).clamp(280.0, 390.0);
+            final initialLeft = (screenSize.width - cardWidth) / 2;
+            final initialTop = screenSize.height * 0.42;
+
+            return Stack(
+              children: [
+                Positioned(
+                  left: (initialLeft + offset.dx).clamp(8.0, screenSize.width - cardWidth - 8.0),
+                  top: (initialTop + offset.dy).clamp(32.0, screenSize.height - 220.0),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      width: cardWidth,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.85),
+                          width: 1.2,
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                          tooltip: 'Cancel',
-                          onPressed: () => Navigator.pop(sheetContext),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          AppLocalizations.of(sheetContext)?.actionEdit ?? 'Edit Cue',
-                          style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
-                          child: Text(
-                            '${_formatDuration(Duration(seconds: cue.start.toInt()))} - ${_formatDuration(Duration(seconds: cue.end.toInt()))}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurfaceVariant,
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Draggable Header Bar
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanUpdate: (details) {
+                              setModalState(() {
+                                offset += details.delta;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.drag_indicator_rounded,
+                                    size: 18,
+                                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    AppLocalizations.of(dialogContext)?.actionEdit ?? 'Edit Cue',
+                                    style: Theme.of(dialogContext).textTheme.titleSmall?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.surfaceContainerHighest,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '${_formatDuration(Duration(seconds: cue.start.toInt()))} - ${_formatDuration(Duration(seconds: cue.end.toInt()))}',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    icon: const Icon(Icons.close_rounded, size: 18),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                    tooltip: 'Cancel',
+                                    onPressed: () => Navigator.pop(dialogContext),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  FilledButton(
+                                    key: const Key('save_cue_button'),
+                                    style: FilledButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      backgroundColor: colorScheme.primary,
+                                      foregroundColor: colorScheme.onPrimary,
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(
+                                        dialogContext,
+                                        SubtitleCue(
+                                          start: cue.start,
+                                          end: cue.end,
+                                          original: originalController.text.trim(),
+                                          translated: translatedController.text.trim(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text('Save', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const Spacer(),
-                        FilledButton.icon(
-                          key: const Key('save_cue_button'),
-                          style: FilledButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: colorScheme.onPrimary,
+                          TextField(
+                            key: const Key('edit_cue_original_field'),
+                            controller: originalController,
+                            autofocus: true,
+                            minLines: 1,
+                            maxLines: 2,
+                            style: const TextStyle(fontSize: 13),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              labelText: 'German Subtitle',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                          icon: const Icon(Icons.check_rounded, size: 16),
-                          label: const Text('Save', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          onPressed: () {
-                            Navigator.pop(
-                              sheetContext,
-                              SubtitleCue(
-                                start: cue.start,
-                                end: cue.end,
-                                original: originalController.text.trim(),
-                                translated: translatedController.text.trim(),
+                          const SizedBox(height: 8),
+                          TextField(
+                            key: const Key('edit_cue_translated_field'),
+                            controller: translatedController,
+                            minLines: 1,
+                            maxLines: 2,
+                            style: const TextStyle(fontSize: 13),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              labelText: 'Translation',
+                              border: const OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                key: const Key('generate_translation_button'),
+                                icon: isTranslating
+                                    ? SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: colorScheme.primary,
+                                        ),
+                                      )
+                                    : Icon(Icons.auto_awesome_rounded, color: colorScheme.primary, size: 18),
+                                tooltip: 'Generate Translation',
+                                onPressed: isTranslating ? null : generateTranslation,
                               ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('edit_cue_original_field'),
-                      controller: originalController,
-                      autofocus: true,
-                      minLines: 1,
-                      maxLines: 2,
-                      style: const TextStyle(fontSize: 13),
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        labelText: 'German Subtitle',
-                        border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('edit_cue_translated_field'),
-                      controller: translatedController,
-                      minLines: 1,
-                      maxLines: 2,
-                      style: const TextStyle(fontSize: 13),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        labelText: 'Translation',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          key: const Key('generate_translation_button'),
-                          icon: isTranslating
-                              ? SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: colorScheme.primary,
-                                  ),
-                                )
-                              : Icon(Icons.auto_awesome_rounded, color: colorScheme.primary, size: 18),
-                          tooltip: 'Generate Translation',
-                          onPressed: isTranslating ? null : generateTranslation,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             );
           },
         );
