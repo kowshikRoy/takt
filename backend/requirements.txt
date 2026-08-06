@@ -9,3 +9,6 @@ google-cloud-firestore
 firebase-admin
 youtube-transcript-api
 pytubefix
+beautifulsoup4
+lxml
+langdetect

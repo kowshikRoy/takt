@@ -27,6 +27,16 @@ try:
 except ImportError:
     YouTubeTranscriptApi = None
 try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
+try:
+    from langdetect import detect, detect_langs
+except ImportError:
+    detect = None
+    detect_langs = None
+from urllib.parse import urlparse, urljoin
+try:
     from google.cloud import firestore
     import firebase_admin
     from firebase_admin import auth as firebase_auth
@@ -75,6 +85,9 @@ class TaskStatus(str, Enum):
 tasks = {}
 
 class MediaRequest(BaseModel):
+    url: str
+
+class ImportUrlRequest(BaseModel):
     url: str
 
 class SubmitResponse(BaseModel):
@@ -808,6 +821,136 @@ async def get_status(task_id: str):
         raise HTTPException(status_code=404, detail="Task not found")
     return StatusResponse(**task)
 
+def _extract_article(url: str) -> dict:
+    """Fetches a web page and extracts title/content/description/cover image.
+
+    Ported from the pre-FastAPI Flask backend (backend/app.py's original
+    /import_url) using BeautifulSoup + lxml for real HTML parsing, since the
+    Flutter client's local regex-based fallback scraper doesn't decode HTML
+    entities (mangles German umlauts like &uuml; instead of ü).
+    """
+    if BeautifulSoup is None:
+        raise HTTPException(status_code=500, detail="Article import is unavailable (beautifulsoup4 not installed)")
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=408, detail="Request timeout - the website took too long to respond")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {e}")
+
+    soup = BeautifulSoup(response.content, 'lxml')
+
+    for tag in soup(["script", "style", "nav", "header", "footer", "aside"]):
+        tag.decompose()
+
+    cover_image_url = None
+    og_image = soup.find('meta', property='og:image')
+    if og_image and og_image.get('content'):
+        cover_image_url = og_image['content']
+    if not cover_image_url:
+        twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+        if twitter_image and twitter_image.get('content'):
+            cover_image_url = twitter_image['content']
+
+    title = None
+    if soup.title and soup.title.string:
+        title = soup.title.string
+    elif soup.find('h1'):
+        title = soup.find('h1').get_text()
+
+    main_content = None
+    for selector in ['article', 'main', '.article-content', '.post-content', '.entry-content']:
+        if selector.startswith('.'):
+            main_content = soup.find(class_=selector[1:])
+        else:
+            main_content = soup.find(selector)
+        if main_content:
+            break
+    if not main_content:
+        main_content = soup.find(attrs={'role': 'main'})
+    if not main_content:
+        main_content = soup.find('body')
+    if not main_content:
+        raise HTTPException(status_code=400, detail="Could not extract content from page")
+
+    if not cover_image_url:
+        article_tag = soup.find('article')
+        search_area = article_tag if article_tag else main_content
+        first_img = search_area.find('img')
+        if first_img and first_img.get('src'):
+            img_src = first_img['src']
+            if img_src.startswith('//'):
+                img_src = 'https:' + img_src
+            elif not img_src.startswith('http'):
+                img_src = urljoin(url, img_src)
+            cover_image_url = img_src
+
+    if not cover_image_url:
+        favicon_link = soup.find('link', rel=lambda x: x and 'icon' in x.lower() if x else False)
+        if favicon_link and favicon_link.get('href'):
+            favicon_href = favicon_link['href']
+            if favicon_href.startswith('//'):
+                favicon_href = 'https:' + favicon_href
+            elif not favicon_href.startswith('http'):
+                favicon_href = urljoin(url, favicon_href)
+            cover_image_url = favicon_href
+        else:
+            parsed_url = urlparse(url)
+            cover_image_url = f"{parsed_url.scheme}://{parsed_url.netloc}/favicon.ico"
+
+    paragraphs = main_content.find_all('p')
+    content_parts = [p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 20]
+    if content_parts:
+        content = '\n\n'.join(content_parts)
+    else:
+        content = '\n\n'.join(line.strip() for line in main_content.get_text().split('\n') if line.strip())
+
+    if not content or len(content) < 50:
+        raise HTTPException(status_code=400, detail="Extracted content is too short or empty")
+
+    description = content[:200] + '...' if len(content) > 200 else content
+
+    detected_lang = 'de'
+    if detect_langs is not None:
+        try:
+            detection_text = f"{title}. {content}" if title else content
+            lang_probs = detect_langs(detection_text)
+            if lang_probs:
+                detected_lang = lang_probs[0].lang
+                confidence = lang_probs[0].prob
+                if detected_lang == 'de' and confidence < 0.7:
+                    en_prob = next((p.prob for p in lang_probs if p.lang == 'en'), 0)
+                    if en_prob > 0.3:
+                        detected_lang = 'en'
+        except Exception:
+            pass
+
+    return {
+        'title': title or 'Imported Article',
+        'content': content,
+        'description': description,
+        'url': url,
+        'original_language': detected_lang,
+        'was_translated': False,
+        'cover_image_url': cover_image_url,
+    }
+
+@app.post("/import_url")
+async def import_url(request: ImportUrlRequest):
+    url = request.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="Missing url parameter")
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Invalid URL format")
+
+    return await asyncio.to_thread(_extract_article, url)
+
 @app.post("/api/speaking/score")
 async def score_speaking(target_text: str = Form(...), audio: UploadFile = File(...)):
     """Scores a shadowing recording: transcribes it and diffs against the target sentence."""
@@ -1109,6 +1252,7 @@ def get_current_user_id(authorization: str = Header(None), x_auth_token: str = H
 class SyncPayload(BaseModel):
     vocabulary: list[dict] | None = None
     articles: list[dict] | None = None
+    media: list[dict] | None = None
     stats: dict | None = None
     xp_events: list[dict] | None = None
     streak_freezes: int | None = None
@@ -1134,7 +1278,7 @@ def get_sync(authorization: str = Header(None), x_auth_token: str = Header(None)
     doc = db.collection(SYNC_COLLECTION).document(user_id).get()
     if not doc.exists:
         return {
-            "vocabulary": [], "articles": [], "stats": {},
+            "vocabulary": [], "articles": [], "media": [], "stats": {},
             "xp_events": [], "streak_freezes": 1, "curriculum_progress": [],
             "updated_at": "",
         }
@@ -1142,6 +1286,7 @@ def get_sync(authorization: str = Header(None), x_auth_token: str = Header(None)
     return {
         "vocabulary": data.get("vocabulary", []),
         "articles": data.get("articles", []),
+        "media": data.get("media", []),
         "stats": data.get("stats", {}),
         "xp_events": data.get("xp_events", []),
         "streak_freezes": data.get("streak_freezes", 1),
@@ -1162,17 +1307,18 @@ def post_sync(payload: SyncPayload, authorization: str = Header(None), x_auth_to
 
         existing_vocab = existing.get("vocabulary", [])
         existing_articles = existing.get("articles", [])
+        existing_media = existing.get("media", [])
         existing_stats = existing.get("stats", {})
         existing_xp_events = existing.get("xp_events", [])
         existing_streak_freezes = existing.get("streak_freezes", 1)
         existing_curriculum = existing.get("curriculum_progress", [])
 
-        existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum = _merge_sync_payload(
-            payload, existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum
+        existing_vocab, existing_articles, existing_media, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum = _merge_sync_payload(
+            payload, existing_vocab, existing_articles, existing_media, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum
         )
 
         transaction.set(sync_ref, {
-            "vocabulary": existing_vocab, "articles": existing_articles, "stats": existing_stats,
+            "vocabulary": existing_vocab, "articles": existing_articles, "media": existing_media, "stats": existing_stats,
             "xp_events": existing_xp_events, "streak_freezes": existing_streak_freezes,
             "curriculum_progress": existing_curriculum, "updated_at": now,
         })
@@ -1185,7 +1331,7 @@ def post_sync(payload: SyncPayload, authorization: str = Header(None), x_auth_to
         "count_vocab": len(existing_vocab), "count_xp_events": len(existing_xp_events),
     }
 
-def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum):
+def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_media, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum):
     if payload.vocabulary is not None:
         vocab_map = {item.get('id', item.get('word')): item for item in existing_vocab}
         for item in payload.vocabulary:
@@ -1201,6 +1347,14 @@ def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_sta
             if k:
                 article_map[k] = item
         existing_articles = list(article_map.values())
+
+    if payload.media is not None:
+        media_map = {item.get('id'): item for item in existing_media if item.get('id')}
+        for item in payload.media:
+            k = item.get('id')
+            if k:
+                media_map[k] = item
+        existing_media = list(media_map.values())
 
     if payload.stats is not None:
         existing_stats.update(payload.stats)
@@ -1221,7 +1375,7 @@ def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_sta
     if payload.curriculum_progress is not None:
         existing_curriculum = sorted(set(existing_curriculum) | set(payload.curriculum_progress))
 
-    return existing_vocab, existing_articles, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum
+    return existing_vocab, existing_articles, existing_media, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum
 
 # Mount static web app files if available
 web_build_dir = os.path.join(os.path.dirname(__file__), "public_web")
