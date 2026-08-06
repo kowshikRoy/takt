@@ -17,4 +17,26 @@ class Article {
     required this.imageUrl,
     this.isLiked = false,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'level': level,
+      'date': date.toIso8601String(),
+      'imageUrl': imageUrl,
+    };
+  }
+
+  factory Article.fromJson(Map<String, dynamic> json) {
+    return Article(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      level: json['level'] as String? ?? 'Imported',
+      date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
+      imageUrl: json['imageUrl'] as String? ?? '',
+    );
+  }
 }

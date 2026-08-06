@@ -12,6 +12,9 @@ import 'ondevice_ai_service.dart';
 import 'app_logger.dart';
 
 class MediaLibraryService extends ChangeNotifier {
+  static final MediaLibraryService _instance = MediaLibraryService._internal();
+  factory MediaLibraryService() => _instance;
+
   static const String _importedArticlesKey = 'imported_articles';
   static const String _customContentKeyPrefix = 'custom_content_';
   static const String _processedVideosKey = 'processed_videos';
@@ -25,7 +28,7 @@ class MediaLibraryService extends ChangeNotifier {
   List<Article> get importedArticles => _importedArticles;
   List<ProcessedVideo> get processedVideos => _processedVideos;
 
-  MediaLibraryService() {
+  MediaLibraryService._internal() {
     _loadImportedArticles();
     _loadProcessedVideos();
     clearAllAnalysisCache();
@@ -49,16 +52,9 @@ class MediaLibraryService extends ChangeNotifier {
 
     if (articlesJson != null) {
       final List<dynamic> decodedList = jsonDecode(articlesJson);
-      _importedArticles = decodedList.map((item) {
-        return Article(
-          id: item['id'],
-          title: item['title'],
-          description: item['description'],
-          level: item['level'],
-          date: DateTime.parse(item['date']),
-          imageUrl: item['imageUrl'],
-        );
-      }).toList();
+      _importedArticles = decodedList
+          .map((item) => Article.fromJson(item as Map<String, dynamic>))
+          .toList();
     } else {
       _importedArticles = [
         Article(
@@ -449,13 +445,24 @@ class MediaLibraryService extends ChangeNotifier {
       content = 'Could not extract article content automatically. URL: $url';
     }
 
+    final articleId = 'custom_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Prefer the backend-extracted cover image (og:image/twitter:image/first
+    // <img>/favicon); fall back to a Picsum placeholder seeded by the
+    // article id, mirroring the backend's own get_picsum_thumbnail fallback
+    // used for video thumbnails.
+    final backendCoverImage = result?['cover_image_url'] as String?;
+    final imageUrl = (backendCoverImage != null && backendCoverImage.startsWith('http'))
+        ? backendCoverImage
+        : 'https://picsum.photos/seed/$articleId/400/225';
+
     final newArticle = Article(
-      id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+      id: articleId,
       title: title,
       description: description,
       level: 'Imported',
       date: DateTime.now(),
-      imageUrl: 'assets/images/story_soccer.png',
+      imageUrl: imageUrl,
     );
 
     await addImportedArticle(newArticle, content);
@@ -478,16 +485,8 @@ class MediaLibraryService extends ChangeNotifier {
 
   Future<void> _saveImportedArticles() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedList = jsonEncode(_importedArticles.map((article) {
-      return {
-        'id': article.id,
-        'title': article.title,
-        'description': article.description,
-        'level': article.level,
-        'date': article.date.toIso8601String(),
-        'imageUrl': article.imageUrl,
-      };
-    }).toList());
+    final String encodedList =
+        jsonEncode(_importedArticles.map((article) => article.toJson()).toList());
 
     await prefs.setString(_importedArticlesKey, encodedList);
   }
@@ -538,6 +537,54 @@ class MediaLibraryService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('$_customContentKeyPrefix$articleId');
     await prefs.remove('$_analysisCachePrefix$articleId');
+    notifyListeners();
+  }
+
+  /// Builds the sync payload for imported articles, bundling each article's
+  /// metadata with its full text content (stored separately locally via
+  /// [saveCustomContent]) so other devices can restore both from one item.
+  Future<List<Map<String, dynamic>>> getArticlesForSync() async {
+    final List<Map<String, dynamic>> result = [];
+    for (final article in _importedArticles) {
+      final content = await getCustomContent(article.id) ?? '';
+      result.add({...article.toJson(), 'content': content});
+    }
+    return result;
+  }
+
+  /// Builds the sync payload for processed media — only completed items,
+  /// since in-progress/failed tasks are ephemeral, device-local polling
+  /// state that other devices have no use for.
+  List<Map<String, dynamic>> getMediaForSync() {
+    return _processedVideos
+        .where((v) => v.status == ProcessingStatus.completed)
+        .map((v) => v.toJson())
+        .toList();
+  }
+
+  /// Merges one remote article into local state. Additive-only (matches the
+  /// rest of this app's sync philosophy — see CurriculumService/vocab merge):
+  /// if an article with this id already exists locally, it's left alone.
+  Future<void> mergeArticleFromSync(Map<String, dynamic> json) async {
+    final id = json['id'] as String?;
+    if (id == null || _importedArticles.any((a) => a.id == id)) return;
+
+    final content = json['content'] as String? ?? '';
+    final article = Article.fromJson(json);
+    _importedArticles.insert(0, article);
+    await _saveImportedArticles();
+    await saveCustomContent(article.id, content);
+    notifyListeners();
+  }
+
+  /// Merges one remote processed-media item into local state. Additive-only,
+  /// same rationale as [mergeArticleFromSync].
+  Future<void> mergeMediaFromSync(Map<String, dynamic> json) async {
+    final id = json['id'] as String?;
+    if (id == null || _processedVideos.any((v) => v.id == id)) return;
+
+    _processedVideos.insert(0, ProcessedVideo.fromJson(json));
+    await _saveProcessedVideos();
     notifyListeners();
   }
 

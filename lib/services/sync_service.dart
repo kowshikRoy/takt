@@ -7,6 +7,7 @@ import 'vocabulary_service.dart';
 import 'gamification_service.dart';
 import 'profile_service.dart';
 import 'curriculum_service.dart';
+import 'media_library_service.dart';
 import 'app_logger.dart';
 
 class SyncService extends ChangeNotifier {
@@ -81,10 +82,26 @@ class SyncService extends ChangeNotifier {
           remoteData['curriculum_progress'] as List,
         );
       }
+      if (remoteData['articles'] is List) {
+        for (final item in remoteData['articles'] as List) {
+          if (item is Map<String, dynamic>) {
+            await MediaLibraryService().mergeArticleFromSync(item);
+          }
+        }
+      }
+      if (remoteData['media'] is List) {
+        for (final item in remoteData['media'] as List) {
+          if (item is Map<String, dynamic>) {
+            await MediaLibraryService().mergeMediaFromSync(item);
+          }
+        }
+      }
 
       // 3. Push updated local state to GCP backend
       final updatedLocalWords = await vocabService.getAllSavedWords();
       final vocabPayload = updatedLocalWords.map((w) => w.toJson()).toList();
+      final articlesPayload = await MediaLibraryService().getArticlesForSync();
+      final mediaPayload = MediaLibraryService().getMediaForSync();
 
       final postResponse = await http
           .post(
@@ -92,6 +109,8 @@ class SyncService extends ChangeNotifier {
             headers: headers,
             body: jsonEncode({
               'vocabulary': vocabPayload,
+              'articles': articlesPayload,
+              'media': mediaPayload,
               'xp_events': GamificationService().events
                   .map((e) => e.toJson())
                   .toList(),
