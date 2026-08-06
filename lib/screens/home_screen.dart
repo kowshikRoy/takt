@@ -4,6 +4,7 @@ import 'practice/gender_practice_screen.dart';
 import 'practice/compound_practice_screen.dart';
 import 'practice/sentence_practice_screen.dart';
 import 'practice/vocabulary_practice_screen.dart';
+import 'practice/speaking_practice_screen.dart';
 import '../widgets/auth_sync_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/vocabulary_service.dart';
@@ -733,6 +734,8 @@ class HomeScreen extends StatelessWidget {
                   Expanded(child: _buildSrsPracticeCard(context)),
                 ],
               ),
+              const SizedBox(height: 16),
+              _buildSpeakingPracticeCard(context),
             ],
           )
         : Column(
@@ -843,6 +846,8 @@ class HomeScreen extends StatelessWidget {
               _buildCompoundPracticeCard(context),
               const SizedBox(height: 12),
               _buildSrsPracticeCard(context),
+              const SizedBox(height: 12),
+              _buildSpeakingPracticeCard(context),
             ],
           );
   }
@@ -953,6 +958,69 @@ class HomeScreen extends StatelessWidget {
                     ),
                     Text(
                       'Build massive words',
+                      style: BooksModernist.body(
+                        size: 11.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: BooksModernist.accentDark,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpeakingPracticeCard(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: BooksModernist.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: BooksModernist.dividerThin),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SpeakingPracticeScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: BooksModernist.accent100,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: BooksModernist.accent200),
+                ),
+                child: const Icon(
+                  Icons.mic_rounded,
+                  color: BooksModernist.accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sprechen',
+                      style: BooksModernist.heading(size: 14, context: context),
+                    ),
+                    Text(
+                      'Shadow a sentence and get pronunciation feedback',
                       style: BooksModernist.body(
                         size: 11.5,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,

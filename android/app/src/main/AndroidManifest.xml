@@ -2,6 +2,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Lets a scheduled streak-reminder notification survive a device reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Records the user's voice for the shadowing/speaking-practice exercise. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="takt"
         android:name="${applicationName}"

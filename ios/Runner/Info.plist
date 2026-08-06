@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Takt needs microphone access so you can record yourself for shadowing/pronunciation practice.</string>
 </dict>
 </plist>

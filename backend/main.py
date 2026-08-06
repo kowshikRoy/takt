@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Query, Header
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Query, Header, Form, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -19,6 +19,7 @@ from deep_translator import GoogleTranslator
 
 from magika import Magika
 import re
+import difflib
 import requests
 import urllib.request
 from google.cloud import firestore
@@ -249,6 +250,62 @@ def transcribe_and_translate(audio_path: str):
         
     return subtitles
 
+def transcribe_speech(audio_path: str) -> str:
+    """Transcribes a short spoken-German recording into a plain text string."""
+    model = get_whisper_model()
+    segments, _ = model.transcribe(
+        audio_path,
+        beam_size=1,
+        best_of=1,
+        language="de",
+        vad_filter=True,
+    )
+    return " ".join(segment.text.strip() for segment in segments if segment.text.strip())
+
+_WORD_RE = re.compile(r"[a-zA-ZäöüÄÖÜß]+")
+
+def _normalize_words(text: str) -> list[str]:
+    return _WORD_RE.findall(text.lower())
+
+def score_shadowing(target_text: str, transcript: str) -> dict:
+    """Aligns a spoken transcript against the target sentence and scores it.
+
+    Uses difflib's SequenceMatcher (stdlib) to align normalized word lists,
+    classifying each target word as correct/substituted/missing and
+    collecting any extra words the speaker said that weren't expected.
+    """
+    target_words = _normalize_words(target_text)
+    transcript_words = _normalize_words(transcript)
+
+    matcher = difflib.SequenceMatcher(a=target_words, b=transcript_words, autojunk=False)
+    results = [None] * len(target_words)
+    extra_words = []
+    matched_count = 0
+
+    for tag, a_lo, a_hi, b_lo, b_hi in matcher.get_opcodes():
+        if tag == "equal":
+            for i in range(a_lo, a_hi):
+                results[i] = {"word": target_words[i], "status": "correct"}
+            matched_count += a_hi - a_lo
+        elif tag == "replace":
+            for i in range(a_lo, a_hi):
+                results[i] = {"word": target_words[i], "status": "substituted"}
+            extra_words.extend(transcript_words[b_lo:b_hi])
+        elif tag == "delete":
+            for i in range(a_lo, a_hi):
+                results[i] = {"word": target_words[i], "status": "missing"}
+        elif tag == "insert":
+            extra_words.extend(transcript_words[b_lo:b_hi])
+
+    score = round(100 * matched_count / max(1, len(target_words)))
+
+    return {
+        "transcript": transcript,
+        "score": score,
+        "target_words": results,
+        "extra_words": extra_words,
+    }
+
 def update_task_stage(task_id: str, stage_msg: str, progress_pct: int):
     """Helper to record granular task progress."""
     tasks[task_id] = {
@@ -365,6 +422,25 @@ async def get_status(task_id: str):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return StatusResponse(**task)
+
+@app.post("/api/speaking/score")
+async def score_speaking(target_text: str = Form(...), audio: UploadFile = File(...)):
+    """Scores a shadowing recording: transcribes it and diffs against the target sentence."""
+    suffix = os.path.splitext(audio.filename or "")[1] or ".m4a"
+    temp_path = os.path.join(CACHE_DIR, f"speaking_{uuid.uuid4()}{suffix}")
+    try:
+        contents = await audio.read()
+        with open(temp_path, "wb") as f:
+            f.write(contents)
+
+        def _process():
+            transcript = transcribe_speech(temp_path)
+            return score_shadowing(target_text, transcript)
+
+        return await asyncio.to_thread(_process)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 @app.get("/word-info/{word}")
 async def get_word_info(word: str):
