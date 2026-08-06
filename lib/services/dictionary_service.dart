@@ -7,6 +7,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../config.dart';
 import 'app_logger.dart';
+import 'ondevice_ai_service.dart';
 
 class DictionaryService {
   static final DictionaryService _instance = DictionaryService._internal();
@@ -992,6 +993,53 @@ class DictionaryService {
       AppLogger.error("Direct Google Translate NMT fallback error", error: e, tag: 'DictionaryService');
     }
     return null;
+  }
+
+  /// Translates a full sentence/phrase using On-Device ML Kit with Online NMT Fallback
+  Future<String> translateSentence(
+    String text, {
+    String sourceLang = 'de',
+    String targetLang = 'en',
+  }) async {
+    final cleanText = text.trim();
+    if (cleanText.isEmpty) return '';
+
+    // 1. Try On-Device ML Kit Translator first (fast offline)
+    try {
+      final onDeviceResult = await OnDeviceAIService().translateText(cleanText);
+      if (onDeviceResult.isNotEmpty &&
+          onDeviceResult.trim().toLowerCase() != cleanText.toLowerCase()) {
+        return onDeviceResult.trim();
+      }
+    } catch (_) {}
+
+    // 2. Direct client-side Google Translate NMT (multi-segment capable)
+    try {
+      final uri = Uri.parse(
+        'https://translate.googleapis.com/translate_a/single?client=gtx&sl=$sourceLang&tl=$targetLang&dt=t&q=${Uri.encodeComponent(cleanText)}'
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data.isNotEmpty && data[0] is List) {
+          final segments = data[0] as List;
+          final buffer = StringBuffer();
+          for (final seg in segments) {
+            if (seg is List && seg.isNotEmpty && seg[0] is String) {
+              buffer.write(seg[0]);
+            }
+          }
+          final translated = buffer.toString().trim();
+          if (translated.isNotEmpty) {
+            return translated;
+          }
+        }
+      }
+    } catch (e) {
+      AppLogger.error("translateSentence NMT error", error: e, tag: 'DictionaryService');
+    }
+
+    return cleanText;
   }
 
   Future<Map<String, dynamic>?> lookupWord(String word) async {

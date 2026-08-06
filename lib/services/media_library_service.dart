@@ -365,6 +365,28 @@ class MediaLibraryService extends ChangeNotifier {
     await prefs.setString(_processedVideosKey, encodedList);
   }
 
+  Future<void> updateProcessedVideoSubtitles(String id, List<SubtitleCue> subtitles) async {
+    final index = _processedVideos.indexWhere((v) => v.id == id || v.taskId == id);
+    if (index != -1) {
+      final old = _processedVideos[index];
+      _processedVideos[index] = ProcessedVideo(
+        id: old.id,
+        taskId: old.taskId,
+        url: old.url,
+        status: old.status,
+        stageMessage: old.stageMessage,
+        title: old.title,
+        mediaType: old.mediaType,
+        videoUrl: old.videoUrl,
+        thumbnail: old.thumbnail,
+        subtitles: subtitles,
+        errorMessage: old.errorMessage,
+      );
+      notifyListeners();
+      await _saveProcessedVideos();
+    }
+  }
+
   Future<void> deleteProcessedVideo(String id) async {
     _processedVideos.removeWhere((v) => v.id == id || v.taskId == id);
     _pollingTimers[id]?.cancel();

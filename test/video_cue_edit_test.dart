@@ -97,4 +97,88 @@ void main() {
       expect(find.textContaining('Original'), findsNothing);
     },
   );
+
+  testWidgets(
+    'modifying transcript and tapping generate translation updates translation field',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+
+      final initialCue = SubtitleCue(
+        start: 0.0,
+        end: 5.0,
+        original: 'Guten Tag',
+        translated: 'Good day',
+      );
+
+      final video = ProcessedVideo(
+        id: 'video-2',
+        taskId: 'task-2',
+        url: 'https://example.com/video2',
+        status: ProcessingStatus.completed,
+        subtitles: [initialCue],
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => MediaLibraryService()),
+          ],
+          child: MaterialApp(
+            home: VideoScreen(processedVideo: video),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Switch to Full Transcript view tab
+      final choiceChips = find.byType(ChoiceChip);
+      await tester.tap(choiceChips.at(1));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Long press on the cue card to show action bar
+      final cueWidget = find.textContaining('Guten').first;
+      await tester.longPress(cueWidget);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Tap Edit button
+      final editButton = find.text('Edit');
+      await tester.tap(editButton);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify edit sheet opened with translation action button
+      final originalField = find.byKey(const Key('edit_cue_original_field'));
+      final translatedField = find.byKey(const Key('edit_cue_translated_field'));
+      final generateButton = find.byKey(const Key('generate_translation_button'));
+      final suffixIcon = find.byKey(const Key('translate_suffix_icon'));
+
+      expect(originalField, findsOneWidget);
+      expect(translatedField, findsOneWidget);
+      expect(generateButton, findsOneWidget);
+      expect(suffixIcon, findsOneWidget);
+
+      // Modify the original German transcript
+      await tester.enterText(originalField, 'Auf Wiedersehen');
+      await tester.pump();
+
+      // Tap the generate translation button
+      await tester.tap(generateButton);
+      await tester.pump();
+      // Allow async translation completion
+      await tester.pump(const Duration(seconds: 1));
+
+      // Tap Save button
+      final saveButton = find.byKey(const Key('save_cue_button'));
+      await tester.tap(saveButton);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify updated cue original text is rendered
+      expect(find.textContaining('Wiedersehen'), findsWidgets);
+    },
+  );
 }

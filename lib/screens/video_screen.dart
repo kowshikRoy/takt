@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -1866,85 +1865,156 @@ class _VideoScreenState extends State<VideoScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Theme.of(sheetContext).colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(sheetContext).colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+        bool isTranslating = false;
+
+        return StatefulBuilder(
+          builder: (sheetContext, setModalState) {
+            final colorScheme = Theme.of(sheetContext).colorScheme;
+
+            Future<void> generateTranslation() async {
+              final originalText = originalController.text.trim();
+              if (originalText.isEmpty) return;
+
+              setModalState(() {
+                isTranslating = true;
+              });
+
+              try {
+                final translation = await DictionaryService().translateSentence(originalText);
+                if (translation.isNotEmpty) {
+                  translatedController.text = translation;
+                }
+              } finally {
+                setModalState(() {
+                  isTranslating = false;
+                });
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  AppLocalizations.of(sheetContext)?.actionEdit ?? 'Edit Subtitle Cue',
-                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  key: const Key('edit_cue_original_field'),
-                  controller: originalController,
-                  autofocus: true,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Original Text',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  key: const Key('edit_cue_translated_field'),
-                  controller: translatedController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Translation',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(sheetContext),
-                      child: const Text('Cancel'),
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colorScheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      key: const Key('save_cue_button'),
-                      onPressed: () {
-                        Navigator.pop(
-                          sheetContext,
-                          SubtitleCue(
-                            start: cue.start,
-                            end: cue.end,
-                            original: originalController.text.trim(),
-                            translated: translatedController.text.trim(),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          AppLocalizations.of(sheetContext)?.actionEdit ?? 'Edit Subtitle Cue',
+                          style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        TextButton.icon(
+                          key: const Key('generate_translation_button'),
+                          onPressed: isTranslating ? null : generateTranslation,
+                          style: TextButton.styleFrom(
+                            foregroundColor: colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            visualDensity: VisualDensity.compact,
                           ),
-                        );
-                      },
-                      child: const Text('Save'),
+                          icon: isTranslating
+                              ? SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: colorScheme.primary,
+                                  ),
+                                )
+                              : const Icon(Icons.auto_awesome_rounded, size: 16),
+                          label: Text(
+                            isTranslating ? 'Translating...' : 'Translate',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      key: const Key('edit_cue_original_field'),
+                      controller: originalController,
+                      autofocus: true,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Original Text',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const Key('edit_cue_translated_field'),
+                      controller: translatedController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Translation',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          key: const Key('translate_suffix_icon'),
+                          icon: isTranslating
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: colorScheme.primary,
+                                  ),
+                                )
+                              : Icon(Icons.translate_rounded, color: colorScheme.primary),
+                          tooltip: 'Generate Translation',
+                          onPressed: isTranslating ? null : generateTranslation,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          key: const Key('save_cue_button'),
+                          onPressed: () {
+                            Navigator.pop(
+                              sheetContext,
+                              SubtitleCue(
+                                start: cue.start,
+                                end: cue.end,
+                                original: originalController.text.trim(),
+                                translated: translatedController.text.trim(),
+                              ),
+                            );
+                          },
+                          child: const Text('Save'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -1956,6 +2026,14 @@ class _VideoScreenState extends State<VideoScreen>
         _activeActionCues.remove(index);
       });
       _extractKeyVocabulary();
+      if (widget.processedVideo != null) {
+        try {
+          context.read<MediaLibraryService>().updateProcessedVideoSubtitles(
+                widget.processedVideo!.id,
+                _subtitles,
+              );
+        } catch (_) {}
+      }
     }
   }
 
