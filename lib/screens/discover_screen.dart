@@ -92,7 +92,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             floatingActionButton: AnimatedBuilder(
               animation: tabController,
               builder: (context, _) {
-                if (tabController.index != 1) return const SizedBox.shrink();
+                if (tabController.index != 0) return const SizedBox.shrink();
                 return FloatingActionButton(
                   onPressed: () => _showCreateOptions(context),
                   backgroundColor: Theme.of(context).colorScheme.primary,
@@ -104,7 +104,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               child: Column(
                 children: [
                   TabBar(
-                    tabs: const [Tab(text: 'Path'), Tab(text: 'Library')],
+                    tabs: const [Tab(text: 'Library'), Tab(text: 'Path')],
                     labelColor: Theme.of(context).colorScheme.primary,
                     unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
                     indicatorColor: Theme.of(context).colorScheme.primary,
@@ -112,7 +112,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        const SkillTreeScreen(),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final bool isDesktop = constraints.maxWidth > 700;
@@ -121,6 +120,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                 : _buildMobileLayout(context, mediaLibraryService);
                           },
                         ),
+                        const SkillTreeScreen(),
                       ],
                     ),
                   ),
