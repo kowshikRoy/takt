@@ -199,7 +199,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
           height: MediaQuery.of(ctx).size.height * 0.8,
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
           ),
           child: Column(
             children: [
@@ -313,7 +313,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
         ),
@@ -416,27 +416,22 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 }
               },
               borderRadius: BorderRadius.circular(4),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
+              child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(4),
                   border: Border.all(
                     color: genderColor.withValues(alpha: 0.4),
-                    width: 2,
+                    width: 1.5,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: genderColor.withValues(alpha: 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
+                // Front content (word + IPA) is pinned at the top and never
+                // moves; only the region below it swaps between the hint and
+                // the answer, so flipping the card can't shift the word.
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -474,41 +469,55 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
 
                     const SizedBox(height: 24),
 
-                    if (!_showAnswer) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          "Tap card to flip answer",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: !_showAnswer
+                            ? Center(
+                                key: const ValueKey('hint'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.surfaceContainer,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    "Tap card to flip answer",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : SingleChildScrollView(
+                                key: const ValueKey('answer'),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Divider(),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      word.primaryDefinition,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                    ),
+                                    _buildExampleSentence(word),
+                                  ],
+                                ),
+                              ),
                       ),
-                    ] else ...[
-                      const Divider(),
-                      const SizedBox(height: 12),
-                      Text(
-                        word.primaryDefinition,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      _buildExampleSentence(word),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -517,43 +526,50 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
 
           const SizedBox(height: 16),
 
-          // Rating buttons (Shown when card is flipped)
-          if (_showAnswer)
-            Row(
-              children: [
-                Expanded(
-                  child: _buildRatingButton(
-                    label: "Again",
-                    rating: ReviewRating.again,
-                    color: Colors.red.shade700,
+          // Rating buttons: always present so the layout never resizes when
+          // the card flips — only their opacity/interactivity changes.
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: _showAnswer ? 1.0 : 0.0,
+            child: IgnorePointer(
+              ignoring: !_showAnswer,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildRatingButton(
+                      label: "Again",
+                      rating: ReviewRating.again,
+                      color: Colors.red.shade700,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildRatingButton(
-                    label: "Hard",
-                    rating: ReviewRating.hard,
-                    color: Colors.orange.shade800,
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _buildRatingButton(
+                      label: "Hard",
+                      rating: ReviewRating.hard,
+                      color: Colors.orange.shade800,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildRatingButton(
-                    label: "Good",
-                    rating: ReviewRating.good,
-                    color: Colors.blue.shade700,
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _buildRatingButton(
+                      label: "Good",
+                      rating: ReviewRating.good,
+                      color: Colors.blue.shade700,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildRatingButton(
-                    label: "Easy",
-                    rating: ReviewRating.easy,
-                    color: Colors.green.shade700,
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _buildRatingButton(
+                      label: "Easy",
+                      rating: ReviewRating.easy,
+                      color: Colors.green.shade700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+          ),
         ],
       ),
     );
@@ -570,10 +586,6 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
         backgroundColor: color,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        elevation: 2,
       ),
       child: Text(
         label,
@@ -590,7 +602,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(
               color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
             ),
@@ -629,9 +641,6 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
