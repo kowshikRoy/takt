@@ -801,9 +801,27 @@ class DictionaryService {
           WHERE w.word = ? COLLATE NOCASE
           ORDER BY LENGTH(w.word) ASC, w.id ASC
         ''', [clean]);
+      if (results.isEmpty) {
+        final onlineResult = await translateWordOnline(clean);
+        if (onlineResult != null) {
+          final String def = onlineResult['definition'] ??
+              ((onlineResult['definitions'] as List?)?.firstOrNull?.toString() ?? '');
+          return [
+            {
+              'id': -1,
+              'word': clean,
+              'pos': 'word',
+              'gender': null,
+              'ipa': null,
+              'base_form': clean,
+              'definition': def,
+              'definitions': [def],
+              'isNmtTranslation': true,
+            }
+          ];
+        }
+        return [];
       }
-
-      if (results.isEmpty) return [];
 
       Map<String, Map<String, dynamic>> groupedByPosKey = {};
       Map<String, int> lowestIdForPosKey = {};
