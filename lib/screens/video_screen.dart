@@ -15,6 +15,7 @@ import 'package:takt/services/tts_service.dart';
 import 'package:takt/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:takt/services/media_library_service.dart';
+import 'package:takt/services/profile_service.dart';
 import 'package:takt/config.dart';
 import 'package:takt/widgets/glance_word_sheet.dart';
 import 'package:takt/l10n/app_localizations.dart';
@@ -32,6 +33,8 @@ class KeyMediaVocab {
   final String cueTranslated;
   final int? freqRank;
   final String difficultyLabel;
+  final int occurrences;
+  final int relevanceScore;
 
   KeyMediaVocab({
     required this.word,
@@ -46,6 +49,8 @@ class KeyMediaVocab {
     required this.cueTranslated,
     this.freqRank,
     this.difficultyLabel = 'B1',
+    this.occurrences = 1,
+    this.relevanceScore = 50,
   });
 
   String get article {
@@ -97,6 +102,7 @@ class _VideoScreenState extends State<VideoScreen>
   bool _isLoadingVocab = false;
   int _activeViewIndex = 1; // 0: Key Vocabulary, 1: Full Transcript Cues (default)
   Set<String> _savedVocabIds = {};
+  String _selectedVocabLevelFilter = 'All';
 
   void _startControlsTimer() {
     _controlsTimer?.cancel();
@@ -180,9 +186,10 @@ class _VideoScreenState extends State<VideoScreen>
     final dictService = DictionaryService();
     final savedWords = await _vocabService.getSavedWords();
     final savedSet = savedWords.map((w) => w.word.toLowerCase().trim()).toSet();
+    final targetLevel = ProfileService().targetLevel;
 
-    final Set<String> seenWords = {};
-    final List<KeyMediaVocab> extracted = [];
+    const levelRanks = {'A1': 1, 'A2': 2, 'B1': 3, 'B2': 4, 'C1': 5};
+    final userRank = levelRanks[targetLevel] ?? 3;
 
     // Stop words filter
     final stopWords = {
@@ -198,6 +205,9 @@ class _VideoScreenState extends State<VideoScreen>
       'diese', 'dieser', 'dieses', 'diesen', 'diesem', 'alle', 'alles', 'man'
     };
 
+    final Map<String, int> tokenFrequency = {};
+    final Map<String, ({int cueIdx, double start, String original, String translated, String rawToken})> tokenContext = {};
+
     for (int cueIdx = 0; cueIdx < _subtitles.length; cueIdx++) {
       final cue = _subtitles[cueIdx];
       final tokens = cue.original
@@ -210,58 +220,78 @@ class _VideoScreenState extends State<VideoScreen>
 
         if (cleanToken.length < 3) continue;
         if (stopWords.contains(lower)) continue;
-        if (seenWords.contains(lower)) continue;
 
-        // Perform fast dictionary lookup
-        final matches = await dictService.lookupWordFast(cleanToken);
-        if (matches.isNotEmpty) {
-          final first = matches.first;
-          final defs = (first['definitions'] as List?) ?? [];
-          String def = defs.isNotEmpty ? defs.first.toString() : '';
-          if (def.isEmpty && first['definition'] != null) {
-            def = first['definition'].toString();
-          }
-          if (def.isEmpty) continue;
-
-          seenWords.add(lower);
-
-          final pos = (first['pos'] as String? ?? '').toLowerCase();
-          final gender = first['gender'] as String?;
-          final baseForm = first['base_form'] as String?;
-          final ipa = first['ipa'] as String?;
-          final freqRank = first['freq_rank'] is int ? first['freq_rank'] as int : null;
-
-          String difficulty = 'B1';
-          if (freqRank != null) {
-            if (freqRank <= 300) difficulty = 'A1';
-            else if (freqRank <= 1000) difficulty = 'A2';
-            else if (freqRank <= 3000) difficulty = 'B1';
-            else if (freqRank <= 8000) difficulty = 'B2';
-            else difficulty = 'C1';
-          }
-
-          extracted.add(
-            KeyMediaVocab(
-              word: first['word'] as String? ?? cleanToken,
-              baseForm: baseForm,
-              pos: pos,
-              gender: gender,
-              primaryDefinition: def,
-              ipa: ipa,
-              cueIndex: cueIdx,
-              cueStartTime: cue.start,
-              cueOriginal: cue.original,
-              cueTranslated: cue.translated,
-              freqRank: freqRank,
-              difficultyLabel: difficulty,
-            ),
+        tokenFrequency[lower] = (tokenFrequency[lower] ?? 0) + 1;
+        if (!tokenContext.containsKey(lower)) {
+          tokenContext[lower] = (
+            cueIdx: cueIdx,
+            start: cue.start,
+            original: cue.original,
+            translated: cue.translated,
+            rawToken: cleanToken,
           );
-
-          if (extracted.length >= 25) break;
         }
       }
-      if (extracted.length >= 25) break;
     }
+
+    final List<KeyMediaVocab> extracted = [];
+
+    for (final entry in tokenContext.entries) {
+      final lower = entry.key;
+      final ctx = entry.value;
+      final occurrences = tokenFrequency[lower] ?? 1;
+
+      final matches = await dictService.lookupWordFast(ctx.rawToken);
+      if (matches.isNotEmpty) {
+        final first = matches.first;
+        final defs = (first['definitions'] as List?) ?? [];
+        String def = defs.isNotEmpty ? defs.first.toString() : '';
+        if (def.isEmpty && first['definition'] != null) {
+          def = first['definition'].toString();
+        }
+        if (def.isEmpty) continue;
+
+        final pos = (first['pos'] as String? ?? '').toLowerCase();
+        final gender = first['gender'] as String?;
+        final baseForm = first['base_form'] as String?;
+        final ipa = first['ipa'] as String?;
+        final freqRank = first['freq_rank'] is int ? first['freq_rank'] as int : null;
+
+        String difficulty = 'B1';
+        if (freqRank != null) {
+          if (freqRank <= 300) difficulty = 'A1';
+          else if (freqRank <= 1000) difficulty = 'A2';
+          else if (freqRank <= 3000) difficulty = 'B1';
+          else if (freqRank <= 8000) difficulty = 'B2';
+          else difficulty = 'C1';
+        }
+
+        final wordRank = levelRanks[difficulty] ?? 3;
+        int levelScore = (wordRank == userRank) ? 100 : (wordRank == userRank + 1) ? 90 : (wordRank == userRank - 1) ? 75 : (50 - (wordRank - userRank).abs() * 12);
+        final score = levelScore + (occurrences - 1) * 10;
+
+        extracted.add(
+          KeyMediaVocab(
+            word: first['word'] as String? ?? ctx.rawToken,
+            baseForm: baseForm,
+            pos: pos,
+            gender: gender,
+            primaryDefinition: def,
+            ipa: ipa,
+            cueIndex: ctx.cueIdx,
+            cueStartTime: ctx.start,
+            cueOriginal: ctx.original,
+            cueTranslated: ctx.translated,
+            freqRank: freqRank,
+            difficultyLabel: difficulty,
+            occurrences: occurrences,
+            relevanceScore: score,
+          ),
+        );
+      }
+    }
+
+    extracted.sort((a, b) => b.relevanceScore.compareTo(a.relevanceScore));
 
     if (mounted) {
       setState(() {
@@ -1541,8 +1571,95 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
+  void _showLevelPickerDialog(BuildContext context) {
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final levels = [
+      ('A1', 'Beginner', 'Basic everyday phrases and essential vocabulary'),
+      ('A2', 'Elementary', 'Routine conversations and simple descriptive language'),
+      ('B1', 'Intermediate', 'Connected texts, expressions, and nuanced topics'),
+      ('B2', 'Upper Intermediate', 'Complex texts, abstract ideas, and fluent speech'),
+      ('C1', 'Advanced', 'Specialized domain vocabulary, idioms, and subtle nuance'),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.military_tech_rounded, color: colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Set Your German Level',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Key vocabulary will prioritize words matching your proficiency level.',
+                style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              ...levels.map((lvl) {
+                final isSelected = profileService.targetLevel == lvl.$1;
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  leading: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      lvl.$1,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  title: Text(lvl.$2, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  subtitle: Text(lvl.$3, style: const TextStyle(fontSize: 11)),
+                  trailing: isSelected ? Icon(Icons.check_circle_rounded, color: colorScheme.primary) : null,
+                  onTap: () async {
+                    await profileService.setTargetLevel(lvl.$1);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    _extractKeyVocabulary();
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _startMediaVocabPracticeSheet() {
     if (_keyVocabList.isEmpty) return;
+    final userLevel = ProfileService().targetLevel;
+    final activeDeck = _selectedVocabLevelFilter == 'All'
+        ? _keyVocabList
+        : _selectedVocabLevelFilter == 'My Level'
+            ? _keyVocabList.where((v) => v.difficultyLabel == userLevel).toList()
+            : _keyVocabList.where((v) => v.difficultyLabel == _selectedVocabLevelFilter).toList();
+
+    final practiceList = (activeDeck.isNotEmpty ? activeDeck : _keyVocabList).take(30).toList();
     int practiceIndex = 0;
     bool showAnswer = false;
 
@@ -1553,7 +1670,7 @@ class _VideoScreenState extends State<VideoScreen>
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
           final colorScheme = Theme.of(context).colorScheme;
-          final item = _keyVocabList[practiceIndex];
+          final item = practiceList[practiceIndex];
           final isSaved = _savedVocabIds.contains(item.word.toLowerCase().trim());
 
           Color genderColor = colorScheme.primary;
@@ -1585,14 +1702,14 @@ class _VideoScreenState extends State<VideoScreen>
                       ],
                     ),
                     Text(
-                      '${practiceIndex + 1} of ${_keyVocabList.length}',
+                      '${practiceIndex + 1} of ${practiceList.length}',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: colorScheme.primary),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 LinearProgressIndicator(
-                  value: (practiceIndex + 1) / _keyVocabList.length,
+                  value: (practiceIndex + 1) / practiceList.length,
                   backgroundColor: colorScheme.surfaceContainerHigh,
                   color: colorScheme.primary,
                   borderRadius: BorderRadius.circular(6),
@@ -1683,12 +1800,14 @@ class _VideoScreenState extends State<VideoScreen>
                                   textAlign: TextAlign.center,
                                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.cueTranslated,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
-                                ),
+                                if (item.cueTranslated.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    item.cueTranslated,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -1713,7 +1832,7 @@ class _VideoScreenState extends State<VideoScreen>
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          if (practiceIndex < _keyVocabList.length - 1) {
+                          if (practiceIndex < practiceList.length - 1) {
                             setSheetState(() {
                               practiceIndex++;
                               showAnswer = false;
@@ -1726,7 +1845,7 @@ class _VideoScreenState extends State<VideoScreen>
                           }
                         },
                         icon: const Icon(Icons.arrow_forward_rounded),
-                        label: Text(practiceIndex < _keyVocabList.length - 1 ? 'Next Word' : 'Finish'),
+                        label: Text(practiceIndex < practiceList.length - 1 ? 'Next Word' : 'Finish'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorScheme.primary,
                           foregroundColor: colorScheme.onPrimary,
@@ -1745,6 +1864,7 @@ class _VideoScreenState extends State<VideoScreen>
 
   Widget _buildKeyVocabularyView(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final userLevel = ProfileService().targetLevel;
 
     if (_isLoadingVocab) {
       return Center(
@@ -1754,7 +1874,7 @@ class _VideoScreenState extends State<VideoScreen>
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(
-              'Extracting key vocabulary...',
+              'Extracting key vocabulary for Level $userLevel...',
               style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
             ),
           ],
@@ -1784,10 +1904,18 @@ class _VideoScreenState extends State<VideoScreen>
       );
     }
 
+    final filteredList = _selectedVocabLevelFilter == 'All'
+        ? _keyVocabList
+        : _selectedVocabLevelFilter == 'My Level'
+            ? _keyVocabList.where((v) => v.difficultyLabel == userLevel).toList()
+            : _keyVocabList.where((v) => v.difficultyLabel == _selectedVocabLevelFilter).toList();
+
+    final myLevelCount = _keyVocabList.where((v) => v.difficultyLabel == userLevel).length;
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       children: [
-        // Minimalist Header Card
+        // Minimalist Header Card with CEFR Level Badge
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
@@ -1804,17 +1932,46 @@ class _VideoScreenState extends State<VideoScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocabulary"} (${_keyVocabList.length})',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocabulary"} (${_keyVocabList.length})',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => _showLevelPickerDialog(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.military_tech_rounded, size: 13, color: colorScheme.primary),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      'Target: $userLevel',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Icon(Icons.arrow_drop_down_rounded, size: 14, color: colorScheme.primary),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          AppLocalizations.of(context)?.subtitleKeyVocab ?? 'Important German vocabulary from transcript',
+                          'Prioritizing vocabulary tailored to your $userLevel level',
                           style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
                         ),
                       ],
@@ -1860,10 +2017,55 @@ class _VideoScreenState extends State<VideoScreen>
             ],
           ),
         ),
+        const SizedBox(height: 10),
+
+        // Level Filter Chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              ChoiceChip(
+                showCheckmark: false,
+                selected: _selectedVocabLevelFilter == 'All',
+                label: Text('All (${_keyVocabList.length})'),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                onSelected: (_) => setState(() => _selectedVocabLevelFilter = 'All'),
+              ),
+              const SizedBox(width: 6),
+              ChoiceChip(
+                showCheckmark: false,
+                selected: _selectedVocabLevelFilter == 'My Level',
+                label: Text('🎯 $userLevel ($myLevelCount)'),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                onSelected: (_) => setState(() => _selectedVocabLevelFilter = 'My Level'),
+              ),
+              ...['A1', 'A2', 'B1', 'B2', 'C1'].map((lvl) {
+                final count = _keyVocabList.where((v) => v.difficultyLabel == lvl).length;
+                if (count == 0) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(left: 6.0),
+                  child: ChoiceChip(
+                    showCheckmark: false,
+                    selected: _selectedVocabLevelFilter == lvl,
+                    label: Text('$lvl ($count)'),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    onSelected: (_) => setState(() => _selectedVocabLevelFilter = lvl),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
         const SizedBox(height: 12),
 
         // Vocabulary Cards List
-        ..._keyVocabList.map((vocab) {
+        ...filteredList.map((vocab) {
           Color genderColor = colorScheme.primary;
           if (vocab.gender == 'm' || vocab.gender == 'masculine') genderColor = AppTheme.genderMasc;
           if (vocab.gender == 'f' || vocab.gender == 'feminine') genderColor = AppTheme.genderFem;
@@ -2108,10 +2310,17 @@ class _VideoScreenState extends State<VideoScreen>
             return Padding(
               padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: colorScheme.surface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2119,32 +2328,94 @@ class _VideoScreenState extends State<VideoScreen>
                   children: [
                     Center(
                       child: Container(
-                        width: 40,
-                        height: 4,
+                        width: 32,
+                        height: 3,
                         decoration: BoxDecoration(
                           color: colorScheme.outlineVariant,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          AppLocalizations.of(sheetContext)?.actionEdit ?? 'Edit Subtitle Cue',
-                          style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                          AppLocalizations.of(sheetContext)?.actionEdit ?? 'Edit Cue',
+                          style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                         ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '${_formatDuration(Duration(seconds: cue.start.toInt()))} - ${_formatDuration(Duration(seconds: cue.end.toInt()))}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
                         TextButton.icon(
                           key: const Key('generate_translation_button'),
                           onPressed: isTranslating ? null : generateTranslation,
                           style: TextButton.styleFrom(
                             foregroundColor: colorScheme.primary,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             visualDensity: VisualDensity.compact,
                           ),
+                          icon: isTranslating
+                              ? SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: colorScheme.primary,
+                                  ),
+                                )
+                              : const Icon(Icons.auto_awesome_rounded, size: 14),
+                          label: Text(
+                            isTranslating ? 'Translating...' : 'Translate',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      key: const Key('edit_cue_original_field'),
+                      controller: originalController,
+                      autofocus: true,
+                      minLines: 1,
+                      maxLines: 2,
+                      style: const TextStyle(fontSize: 13),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        labelText: 'German Subtitle',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      key: const Key('edit_cue_translated_field'),
+                      controller: translatedController,
+                      minLines: 1,
+                      maxLines: 2,
+                      style: const TextStyle(fontSize: 13),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        labelText: 'Translation',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          key: const Key('translate_suffix_icon'),
                           icon: isTranslating
                               ? SizedBox(
                                   width: 14,
@@ -2154,61 +2425,33 @@ class _VideoScreenState extends State<VideoScreen>
                                     color: colorScheme.primary,
                                   ),
                                 )
-                              : const Icon(Icons.auto_awesome_rounded, size: 16),
-                          label: Text(
-                            isTranslating ? 'Translating...' : 'Translate',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      key: const Key('edit_cue_original_field'),
-                      controller: originalController,
-                      autofocus: true,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Original Text',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      key: const Key('edit_cue_translated_field'),
-                      controller: translatedController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'Translation',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          key: const Key('translate_suffix_icon'),
-                          icon: isTranslating
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: colorScheme.primary,
-                                  ),
-                                )
-                              : Icon(Icons.translate_rounded, color: colorScheme.primary),
+                              : Icon(Icons.translate_rounded, color: colorScheme.primary, size: 18),
                           tooltip: 'Generate Translation',
                           onPressed: isTranslating ? null : generateTranslation,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
                           onPressed: () => Navigator.pop(sheetContext),
-                          child: const Text('Cancel'),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          ),
+                          child: const Text('Cancel', style: TextStyle(fontSize: 12)),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
                           key: const Key('save_cue_button'),
+                          style: ElevatedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
+                          ),
                           onPressed: () {
                             Navigator.pop(
                               sheetContext,
@@ -2220,7 +2463,7 @@ class _VideoScreenState extends State<VideoScreen>
                               ),
                             );
                           },
-                          child: const Text('Save'),
+                          child: const Text('Save', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),

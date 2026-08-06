@@ -145,14 +145,49 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    profileService.joinDateFormatted,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
+                  Row(
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => _showLevelDialog(context, profileService),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.military_tech_rounded,
+                                size: 14,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Level: ${profileService.targetLevel}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        profileService.joinDateFormatted,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -464,6 +499,49 @@ class ProfileScreen extends StatelessWidget {
         color: color,
         borderRadius: BorderRadius.circular(3),
       ),
+    );
+  }
+
+  void _showLevelDialog(
+    BuildContext context,
+    ProfileService profileService,
+  ) {
+    final levels = [
+      ('A1', 'Beginner', 'Basic everyday phrases and essential vocabulary'),
+      ('A2', 'Elementary', 'Routine conversations and simple descriptive language'),
+      ('B1', 'Intermediate', 'Connected texts, expressions, and nuanced topics'),
+      ('B2', 'Upper Intermediate', 'Complex texts, abstract ideas, and fluent speech'),
+      ('C1', 'Advanced', 'Specialized domain vocabulary, idioms, and subtle nuance'),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('German Proficiency Level'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: levels.map((lvl) {
+                final isSelected = profileService.targetLevel == lvl.$1;
+                return RadioListTile<String>(
+                  value: lvl.$1,
+                  groupValue: profileService.targetLevel,
+                  title: Text('${lvl.$1} · ${lvl.$2}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(lvl.$3, style: const TextStyle(fontSize: 12)),
+                  selected: isSelected,
+                  onChanged: (val) {
+                    if (val != null) {
+                      profileService.setTargetLevel(val);
+                      Navigator.pop(ctx);
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 }

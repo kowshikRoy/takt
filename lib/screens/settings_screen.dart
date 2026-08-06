@@ -71,6 +71,29 @@ class SettingsScreen extends StatelessWidget {
           _buildSectionHeader(context, l10n?.sectionPracticeLearning ?? 'Practice & Learning'),
           Consumer<ProfileService>(
             builder: (context, profileService, _) {
+              final levelNames = {
+                'A1': 'A1 · Beginner (Grundstufe)',
+                'A2': 'A2 · Elementary (Grundstufe)',
+                'B1': 'B1 · Intermediate (Mittelstufe)',
+                'B2': 'B2 · Upper Intermediate (Mittelstufe)',
+                'C1': 'C1 · Advanced (Oberstufe)',
+              };
+              return ListTile(
+                title: const Text('Proficiency Level'),
+                subtitle: Text(
+                  levelNames[profileService.targetLevel] ?? profileService.targetLevel,
+                ),
+                leading: Icon(
+                  Icons.military_tech_rounded,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showProficiencyLevelDialog(context, profileService),
+              );
+            },
+          ),
+          Consumer<ProfileService>(
+            builder: (context, profileService, _) {
               return ListTile(
                 title: Text(l10n?.labelDailyGoal ?? 'Daily Word Goal'),
                 subtitle: Text(
@@ -758,6 +781,49 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
               },
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showProficiencyLevelDialog(
+    BuildContext context,
+    ProfileService profileService,
+  ) {
+    final levels = [
+      ('A1', 'Beginner', 'Basic everyday phrases and essential vocabulary'),
+      ('A2', 'Elementary', 'Routine conversations and simple descriptive language'),
+      ('B1', 'Intermediate', 'Connected texts, expressions, and nuanced everyday topics'),
+      ('B2', 'Upper Intermediate', 'Complex texts, abstract ideas, and fluent conversation'),
+      ('C1', 'Advanced', 'Specialized domain vocabulary, idioms, and subtle nuance'),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Select Proficiency Level'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: levels.map((lvl) {
+                final isSelected = profileService.targetLevel == lvl.$1;
+                return RadioListTile<String>(
+                  value: lvl.$1,
+                  groupValue: profileService.targetLevel,
+                  title: Text('${lvl.$1} · ${lvl.$2}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(lvl.$3, style: const TextStyle(fontSize: 12)),
+                  selected: isSelected,
+                  onChanged: (val) {
+                    if (val != null) {
+                      profileService.setTargetLevel(val);
+                      Navigator.pop(ctx);
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+          ),
         );
       },
     );

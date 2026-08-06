@@ -57,11 +57,14 @@ class ProfileService extends ChangeNotifier {
       'profile_last_daily_goal_award_date_v1';
   static const String _keyDailyWordGoalCount =
       'profile_daily_word_goal_count_v1';
+  static const String _keyTargetLevel = 'profile_target_level_v1';
 
   static const int _maxStreakFreezes = 2;
   static const int _freezeMilestoneIntervalDays = 10;
   static const List<int> _streakXpMilestoneDays = [7, 30, 100];
   static const int defaultDailyWordGoalCount = 5;
+  static const String defaultTargetLevel = 'B1';
+  static const List<String> supportedLevels = ['A1', 'A2', 'B1', 'B2', 'C1'];
 
   String _displayName = 'Learner';
   String? _photoUrl;
@@ -80,6 +83,7 @@ class ProfileService extends ChangeNotifier {
   bool _justUsedStreakFreeze = false;
   bool _justHitStreakXpMilestone = false;
   int _dailyWordGoalCount = defaultDailyWordGoalCount;
+  String _targetLevel = defaultTargetLevel;
 
   String get displayName => _displayName;
   String? get photoUrl => _photoUrl ?? AuthService().photoUrl;
@@ -91,6 +95,7 @@ class ProfileService extends ChangeNotifier {
   int get todayWordsSaved => _todayWordsSaved;
   int get streakFreezes => _streakFreezes;
   int get dailyWordGoalCount => _dailyWordGoalCount;
+  String get targetLevel => _targetLevel;
 
   /// True once, right after a missed day was auto-repaired with a streak
   /// freeze. Call [acknowledgeStreakFreezeUsed] after showing the banner.
@@ -119,6 +124,22 @@ class ProfileService extends ChangeNotifier {
     } catch (e) {
       AppLogger.error(
         "Error saving daily word goal count",
+        error: e,
+        tag: 'ProfileService',
+      );
+    }
+  }
+
+  Future<void> setTargetLevel(String level) async {
+    if (!supportedLevels.contains(level)) return;
+    _targetLevel = level;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyTargetLevel, level);
+    } catch (e) {
+      AppLogger.error(
+        "Error saving target proficiency level",
         error: e,
         tag: 'ProfileService',
       );
@@ -258,6 +279,8 @@ class ProfileService extends ChangeNotifier {
           prefs.getString(_keyLastDailyGoalAwardDate) ?? '';
       _dailyWordGoalCount =
           prefs.getInt(_keyDailyWordGoalCount) ?? defaultDailyWordGoalCount;
+      _targetLevel =
+          prefs.getString(_keyTargetLevel) ?? defaultTargetLevel;
 
       final now = DateTime.now();
       final todayStr = _getIsoDateString(now);

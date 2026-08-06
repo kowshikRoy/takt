@@ -43,6 +43,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     if (!mounted) return;
     final profileService = Provider.of<ProfileService>(context, listen: false);
     await profileService.setDailyWordGoalCount(_selectedDailyGoal);
+    await profileService.setTargetLevel(_selectedLevel);
     await _markOnboardingSeen();
     if (mounted) {
       _enterApp(context);
