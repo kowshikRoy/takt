@@ -105,8 +105,22 @@ class VocabularyService extends ChangeNotifier {
     await refreshCache();
 
     // Auto-sync if user is authenticated
-    if (AuthService().isAuthenticated) {
-      SyncService().syncNow();
+    _triggerCloudSync();
+  }
+
+  /// Kicks off a cloud sync when the user is authenticated. Cloud sync is a
+  /// nice-to-have on top of local persistence, so any failure here (e.g.
+  /// Firebase not initialized, no network, auth plugin not ready yet) must
+  /// never propagate and abort the caller's local save — that would leave
+  /// the review UI stuck without advancing even though the local write
+  /// already succeeded.
+  void _triggerCloudSync() {
+    try {
+      if (AuthService().isAuthenticated) {
+        SyncService().syncNow();
+      }
+    } catch (e) {
+      AppLogger.error("Cloud sync trigger skipped", error: e, tag: 'VocabularyService');
     }
   }
 
@@ -215,8 +229,8 @@ class VocabularyService extends ChangeNotifier {
       await refreshCache();
     }
 
-    if (triggerSync && AuthService().isAuthenticated) {
-      SyncService().syncNow();
+    if (triggerSync) {
+      _triggerCloudSync();
     }
   }
 
@@ -237,9 +251,7 @@ class VocabularyService extends ChangeNotifier {
     }
     await refreshCache();
 
-    if (AuthService().isAuthenticated) {
-      SyncService().syncNow();
-    }
+    _triggerCloudSync();
   }
 
   Future<SavedWord?> getSavedWord(String id) async {
