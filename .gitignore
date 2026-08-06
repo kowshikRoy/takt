@@ -76,10 +76,9 @@ venv/
 env/
 .env
 .env.*
-backend/venv/
-backend/web_build/
 backend/cache/
-!backend/assets/german_dictionary_v16_lite.db
+backend/public_web/
+backend/assets/
 
 # Large data files & temporary databases
 # The app never bundles assets/*.db as a Flutter asset (not listed under
