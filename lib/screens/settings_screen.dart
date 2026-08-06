@@ -485,6 +485,49 @@ class SettingsScreen extends StatelessWidget {
       },
     );
   }
+
+  void _showProficiencyLevelDialog(
+    BuildContext context,
+    ProfileService profileService,
+  ) {
+    final levels = [
+      ('A1', 'Beginner', 'Basic everyday phrases and essential vocabulary'),
+      ('A2', 'Elementary', 'Routine conversations and simple descriptive language'),
+      ('B1', 'Intermediate', 'Connected texts, expressions, and nuanced everyday topics'),
+      ('B2', 'Upper Intermediate', 'Complex texts, abstract ideas, and fluent conversation'),
+      ('C1', 'Advanced', 'Specialized domain vocabulary, idioms, and subtle nuance'),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Select Proficiency Level'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: levels.map((lvl) {
+                final isSelected = profileService.targetLevel == lvl.$1;
+                return RadioListTile<String>(
+                  value: lvl.$1,
+                  groupValue: profileService.targetLevel,
+                  title: Text('${lvl.$1} · ${lvl.$2}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(lvl.$3, style: const TextStyle(fontSize: 12)),
+                  selected: isSelected,
+                  onChanged: (val) {
+                    if (val != null) {
+                      profileService.setTargetLevel(val);
+                      Navigator.pop(ctx);
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _DictionaryDatabaseTile extends StatefulWidget {
@@ -781,49 +824,6 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
               },
             );
           },
-        );
-      },
-    );
-  }
-
-  void _showProficiencyLevelDialog(
-    BuildContext context,
-    ProfileService profileService,
-  ) {
-    final levels = [
-      ('A1', 'Beginner', 'Basic everyday phrases and essential vocabulary'),
-      ('A2', 'Elementary', 'Routine conversations and simple descriptive language'),
-      ('B1', 'Intermediate', 'Connected texts, expressions, and nuanced everyday topics'),
-      ('B2', 'Upper Intermediate', 'Complex texts, abstract ideas, and fluent conversation'),
-      ('C1', 'Advanced', 'Specialized domain vocabulary, idioms, and subtle nuance'),
-    ];
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Select Proficiency Level'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: levels.map((lvl) {
-                final isSelected = profileService.targetLevel == lvl.$1;
-                return RadioListTile<String>(
-                  value: lvl.$1,
-                  groupValue: profileService.targetLevel,
-                  title: Text('${lvl.$1} · ${lvl.$2}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(lvl.$3, style: const TextStyle(fontSize: 12)),
-                  selected: isSelected,
-                  onChanged: (val) {
-                    if (val != null) {
-                      profileService.setTargetLevel(val);
-                      Navigator.pop(ctx);
-                    }
-                  },
-                );
-              }).toList(),
-            ),
-          ),
         );
       },
     );

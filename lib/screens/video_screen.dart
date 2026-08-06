@@ -259,15 +259,30 @@ class _VideoScreenState extends State<VideoScreen>
 
         String difficulty = 'B1';
         if (freqRank != null) {
-          if (freqRank <= 300) difficulty = 'A1';
-          else if (freqRank <= 1000) difficulty = 'A2';
-          else if (freqRank <= 3000) difficulty = 'B1';
-          else if (freqRank <= 8000) difficulty = 'B2';
-          else difficulty = 'C1';
+          if (freqRank <= 300) {
+            difficulty = 'A1';
+          } else if (freqRank <= 1000) {
+            difficulty = 'A2';
+          } else if (freqRank <= 3000) {
+            difficulty = 'B1';
+          } else if (freqRank <= 8000) {
+            difficulty = 'B2';
+          } else {
+            difficulty = 'C1';
+          }
         }
 
         final wordRank = levelRanks[difficulty] ?? 3;
-        int levelScore = (wordRank == userRank) ? 100 : (wordRank == userRank + 1) ? 90 : (wordRank == userRank - 1) ? 75 : (50 - (wordRank - userRank).abs() * 12);
+        int levelScore;
+        if (wordRank == userRank) {
+          levelScore = 100;
+        } else if (wordRank == userRank + 1) {
+          levelScore = 90;
+        } else if (wordRank == userRank - 1) {
+          levelScore = 75;
+        } else {
+          levelScore = 50 - (wordRank - userRank).abs() * 12;
+        }
         final score = levelScore + (occurrences - 1) * 10;
 
         extracted.add(
