@@ -14,6 +14,13 @@ class GamificationService extends ChangeNotifier {
   factory GamificationService() => _instance;
 
   int _lastVocabLevel = 1;
+  // VocabularyService fires its first notifyListeners() once it finishes
+  // loading persisted data from disk on every app start, not just on a
+  // live level-up. That initial notification must only calibrate
+  // _lastVocabLevel to the real current level, not be compared against the
+  // hardcoded default above — otherwise anyone above level 1 sees a false
+  // "level up" celebration on every cold start.
+  bool _hasSyncedInitialVocabLevel = false;
 
   GamificationService._internal() {
     _init();
@@ -22,6 +29,12 @@ class GamificationService extends ChangeNotifier {
 
   void _onVocabChanged() {
     final currentLevel = level;
+    if (!_hasSyncedInitialVocabLevel) {
+      _hasSyncedInitialVocabLevel = true;
+      _lastVocabLevel = currentLevel;
+      notifyListeners();
+      return;
+    }
     if (currentLevel > _lastVocabLevel) {
       _justLeveledUp = true;
     }
