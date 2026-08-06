@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
-import '../theme/theme_provider.dart';
 import '../services/dictionary_service.dart';
 import '../services/vocabulary_service.dart';
 import '../services/media_library_service.dart';
@@ -13,6 +12,7 @@ import '../services/ondevice_ai_service.dart';
 
 import 'package:takt/l10n/app_localizations.dart';
 import '../models/article_model.dart';
+import '../models/saved_word.dart';
 import '../widgets/glance_word_sheet.dart';
 import '../theme/books_modernist_style.dart';
 
@@ -20,6 +20,53 @@ class _TappedWordData {
   final String word;
   final int paragraphIndex;
   _TappedWordData(this.word, this.paragraphIndex);
+}
+
+class KeyStoryVocab {
+  final String word;
+  final String? baseForm;
+  final String? pos;
+  final String? gender;
+  final String primaryDefinition;
+  final String? ipa;
+  final int paragraphIndex;
+  final String paragraphOriginal;
+  final String paragraphTranslated;
+
+  KeyStoryVocab({
+    required this.word,
+    this.baseForm,
+    this.pos,
+    this.gender,
+    required this.primaryDefinition,
+    this.ipa,
+    required this.paragraphIndex,
+    required this.paragraphOriginal,
+    required this.paragraphTranslated,
+  });
+
+  String get fullWordWithArticle {
+    final g = gender?.toLowerCase();
+    if (g == 'm' || g == 'masc' || g == 'masculine' || g == 'der') return 'der $word';
+    if (g == 'f' || g == 'fem' || g == 'feminine' || g == 'die') return 'die $word';
+    if (g == 'n' || g == 'neu' || g == 'neuter' || g == 'das') return 'das $word';
+    return word;
+  }
+
+  String get article {
+    final g = gender?.toLowerCase();
+    if (g == 'm' || g == 'masc' || g == 'masculine' || g == 'der') return 'der';
+    if (g == 'f' || g == 'fem' || g == 'feminine' || g == 'die') return 'die';
+    if (g == 'n' || g == 'neu' || g == 'neuter' || g == 'das') return 'das';
+    return '';
+  }
+
+  String get difficultyLabel {
+    if (word.length > 8) return 'B2';
+    if (word.length > 6) return 'B1';
+    if (word.length > 4) return 'A2';
+    return 'A1';
+  }
 }
 
 class StoryReaderScreen extends StatefulWidget {
@@ -46,8 +93,12 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   TtsProgress? _currentTtsProgress;
   StreamSubscription? _ttsSubscription;
   final Set<int> _visibleParagraphTranslations = {};
-  final Set<int> _completedParagraphIndices = {};
   final Set<int> _activeActionParagraphs = {};
+
+  int _activeViewIndex = 0; // 0: Full Story, 1: Key Vocabulary
+  List<KeyStoryVocab> _keyVocabList = [];
+  Set<String> _savedVocabIds = {};
+  bool _isLoadingVocab = false;
 
   static final RegExp _wordTokenRegex = RegExp(r'^([^\wäöüÄÖÜß]*)([\wäöüÄÖÜß]+)([^\wäöüÄÖÜß]*)$');
 
@@ -203,6 +254,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         _isLoadingAnalysis = false;
       });
       _loadWordGenders();
+      _extractKeyVocabulary();
       return;
     }
 
@@ -239,6 +291,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           _isLoadingAnalysis = false;
         });
         _loadWordGenders(); // Query DB for any newly parsed lemmas
+        _extractKeyVocabulary();
       }
     }
   }
@@ -360,49 +413,51 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           children: [
             _buildHeader(),
             Expanded(
-              child: Column(
-                children: [
-                  // 1. Sharp Bordered Textbook Page Card Container (Identical to TextbookUnitScreen)
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                      decoration: BoxDecoration(
-                        color: _isSepiaMode
-                            ? (isDark ? const Color(0xFF322C28) : const Color(0xFFEBE0D0))
-                            : BooksModernist.surface,
-                        border: Border.all(color: BooksModernist.divider, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onTap: () {
-                          if (_activeActionParagraphs.isNotEmpty) {
-                            setState(() {
-                              _activeActionParagraphs.clear();
-                            });
-                          }
-                        },
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildStoryContent(context),
-                            ],
+              child: _activeViewIndex == 1
+                  ? _buildKeyVocabularyView(context)
+                  : Column(
+                      children: [
+                        // 1. Sharp Bordered Textbook Page Card Container (Identical to TextbookUnitScreen)
+                        Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                            decoration: BoxDecoration(
+                              color: _isSepiaMode
+                                  ? (isDark ? const Color(0xFF322C28) : const Color(0xFFEBE0D0))
+                                  : BooksModernist.surface,
+                              border: Border.all(color: BooksModernist.divider, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onTap: () {
+                                if (_activeActionParagraphs.isNotEmpty) {
+                                  setState(() {
+                                    _activeActionParagraphs.clear();
+                                  });
+                                }
+                              },
+                              child: SingleChildScrollView(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildStoryContent(context),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -585,6 +640,615 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     );
   }
 
+  Future<void> _extractKeyVocabulary() async {
+    if (_paragraphAnalysisData.isEmpty) return;
+
+    setState(() {
+      _isLoadingVocab = true;
+      _keyVocabList.clear();
+    });
+
+    final Map<String, KeyStoryVocab> uniqueMap = {};
+    final paragraphs = _getParagraphList();
+
+    for (int pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+      final pData = _paragraphAnalysisData[pIdx];
+      if (pData == null) continue;
+
+      final tokens = (pData['german_analysis'] as List<dynamic>?) ?? [];
+      final engTranslation = pData['english_translation']?.toString() ?? '';
+
+      for (var token in tokens) {
+        final rawWord = token['word']?.toString().trim() ?? '';
+        final lemma = token['lemma']?.toString().trim();
+        final pos = token['pos']?.toString().trim();
+        final translation = token['translation']?.toString().trim();
+
+        if (rawWord.length < 3) continue;
+
+        final isCapitalized = rawWord[0] == rawWord[0].toUpperCase() && rawWord[0].contains(RegExp(r'[A-ZÄÖÜ]'));
+        final isNoun = isCapitalized || (pos != null && (pos.contains('NOUN') || pos.contains('N') || pos.contains('subst')));
+        final isVerb = pos != null && (pos.contains('VERB') || pos.contains('V'));
+        final isAdj = pos != null && (pos.contains('ADJ') || pos.contains('ADJECTIVE'));
+
+        if (!isNoun && !isVerb && !isAdj) continue;
+
+        final key = (lemma != null && lemma.isNotEmpty) ? lemma : rawWord;
+        final keyLower = key.toLowerCase();
+
+        if (uniqueMap.containsKey(keyLower)) continue;
+
+        final gender = isNoun ? _getNounGender(rawWord, null, lemma) : null;
+        String def = (translation != null && translation.isNotEmpty) ? translation : key;
+
+        if (def == key) {
+          final entryList = await _dictionaryService.lookupWordFast(key);
+          if (entryList.isNotEmpty && entryList.first['translation'] != null) {
+            def = entryList.first['translation'].toString();
+          }
+        }
+
+        uniqueMap[keyLower] = KeyStoryVocab(
+          word: key,
+          baseForm: lemma,
+          pos: isNoun ? 'NOUN' : (isVerb ? 'VERB' : 'ADJ'),
+          gender: gender,
+          primaryDefinition: def,
+          paragraphIndex: pIdx,
+          paragraphOriginal: paragraphs[pIdx],
+          paragraphTranslated: engTranslation,
+        );
+      }
+    }
+
+    final savedWords = await _vocabularyService.getSavedWords();
+    final savedSet = savedWords.map((w) => w.word.toLowerCase().trim()).toSet();
+
+    if (mounted) {
+      setState(() {
+        _keyVocabList = uniqueMap.values.toList();
+        _savedVocabIds = savedSet;
+        _isLoadingVocab = false;
+      });
+    }
+  }
+
+  Future<void> _addAllVocabToLearning() async {
+    if (_keyVocabList.isEmpty) return;
+
+    int addedCount = 0;
+    final storyTitle = widget.article?.title ?? 'Story Lesson';
+
+    for (final vocab in _keyVocabList) {
+      final wordId = vocab.word.toLowerCase().trim();
+      if (!_savedVocabIds.contains(wordId)) {
+        final saved = SavedWord(
+          id: wordId,
+          word: vocab.word,
+          baseForm: vocab.baseForm,
+          pos: vocab.pos,
+          gender: vocab.gender,
+          primaryDefinition: vocab.primaryDefinition,
+          definitions: [vocab.primaryDefinition],
+          ipa: vocab.ipa,
+          contextSentence: vocab.paragraphOriginal,
+          sourceTitle: storyTitle,
+          category: VocabCategory.learning,
+        );
+        await _vocabularyService.upsertWord(saved);
+        _savedVocabIds.add(wordId);
+        addedCount++;
+      }
+    }
+
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added $addedCount German terms to Learning Deck! 🎉'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _startStoryVocabPracticeSheet() {
+    if (_keyVocabList.isEmpty) return;
+    int practiceIndex = 0;
+    bool showAnswer = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final colorScheme = Theme.of(context).colorScheme;
+          final item = _keyVocabList[practiceIndex];
+          final isSaved = _savedVocabIds.contains(item.word.toLowerCase().trim());
+
+          Color genderColor = colorScheme.primary;
+          if (item.gender == 'm' || item.gender == 'masculine') genderColor = AppTheme.genderMasc;
+          if (item.gender == 'f' || item.gender == 'feminine') genderColor = AppTheme.genderFem;
+          if (item.gender == 'n' || item.gender == 'neuter') genderColor = AppTheme.genderNeu;
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(6.0)),
+            ),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2.0),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.psychology_rounded, color: colorScheme.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Practice Story Deck',
+                          style: BooksModernist.heading(size: 18, color: colorScheme.onSurface, context: context),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4.0),
+                  child: LinearProgressIndicator(
+                    value: (practiceIndex + 1) / _keyVocabList.length,
+                    minHeight: 6,
+                    backgroundColor: colorScheme.surfaceContainerHigh,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Word ${practiceIndex + 1} of ${_keyVocabList.length}',
+                  style: BooksModernist.body(size: 12, color: colorScheme.onSurfaceVariant, context: context),
+                ),
+                const Spacer(),
+
+                GestureDetector(
+                  onTap: () => setSheetState(() => showAnswer = !showAnswer),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(6.0),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (item.article.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: genderColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                            child: Text(
+                              item.article,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: genderColor),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        Text(
+                          item.word,
+                          style: BooksModernist.heading(size: 26, color: colorScheme.onSurface, context: context),
+                        ),
+                        const SizedBox(height: 16),
+                        if (!showAnswer)
+                          Text(
+                            'Tap card to reveal definition',
+                            style: BooksModernist.body(size: 13, color: colorScheme.onSurfaceVariant, context: context),
+                          )
+                        else ...[
+                          Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                          const SizedBox(height: 16),
+                          Text(
+                            item.primaryDefinition,
+                            textAlign: TextAlign.center,
+                            style: BooksModernist.body(size: 18, weight: FontWeight.w600, color: colorScheme.primary, context: context),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '"${item.paragraphOriginal}"',
+                            textAlign: TextAlign.center,
+                            style: BooksModernist.body(size: 12, color: colorScheme.onSurfaceVariant, context: context),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+                const Spacer(),
+
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setSheetState(() {
+                          showAnswer = false;
+                          practiceIndex = (practiceIndex - 1 + _keyVocabList.length) % _keyVocabList.length;
+                        });
+                      },
+                      icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                      label: const Text('Prev', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(_savedVocabIds.contains(item.word.toLowerCase().trim()) ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded),
+                      color: colorScheme.primary,
+                      onPressed: () async {
+                        final wordId = item.word.toLowerCase().trim();
+                        if (isSaved) {
+                          await _vocabularyService.removeWord(wordId);
+                          _savedVocabIds.remove(wordId);
+                        } else {
+                          final saved = SavedWord(
+                            id: wordId,
+                            word: item.word,
+                            baseForm: item.baseForm,
+                            pos: item.pos,
+                            gender: item.gender,
+                            primaryDefinition: item.primaryDefinition,
+                            definitions: [item.primaryDefinition],
+                            contextSentence: item.paragraphOriginal,
+                            sourceTitle: widget.article?.title ?? 'Story Lesson',
+                            category: VocabCategory.learning,
+                          );
+                          await _vocabularyService.upsertWord(saved);
+                          _savedVocabIds.add(wordId);
+                        }
+                        setSheetState(() {});
+                        setState(() {});
+                      },
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: () {
+                        setSheetState(() {
+                          showAnswer = false;
+                          if (practiceIndex < _keyVocabList.length - 1) {
+                            practiceIndex++;
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        });
+                      },
+                      icon: Icon(practiceIndex < _keyVocabList.length - 1 ? Icons.arrow_forward_rounded : Icons.check_circle_rounded, size: 16),
+                      label: Text(practiceIndex < _keyVocabList.length - 1 ? 'Next' : 'Finish', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildKeyVocabularyView(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (_isLoadingVocab) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context)?.msgExtractingVocab ?? 'Extracting key vocabulary...',
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_keyVocabList.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.style_outlined, size: 48, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+            const SizedBox(height: 12),
+            Text(
+              AppLocalizations.of(context)?.msgNoVocab ?? 'No key vocabulary extracted yet.',
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _extractKeyVocabulary,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(AppLocalizations.of(context)?.actionRefresh ?? 'Refresh'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      children: [
+        // Header Card
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(6.0),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocabulary"} (${_keyVocabList.length})',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          AppLocalizations.of(context)?.subtitleKeyVocab ?? 'Important German vocabulary from story',
+                          style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _addAllVocabToLearning,
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: Text(
+                        AppLocalizations.of(context)?.actionAddAllToLearning ?? 'Add all to Learning',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                        side: BorderSide(color: colorScheme.primary),
+                        foregroundColor: colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: _startStoryVocabPracticeSheet,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                      side: BorderSide(color: colorScheme.outlineVariant),
+                      foregroundColor: colorScheme.onSurface,
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context)?.actionPractice ?? 'Practice',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Vocab Items
+        ..._keyVocabList.map((vocab) {
+          Color genderColor = colorScheme.primary;
+          if (vocab.gender == 'm' || vocab.gender == 'masculine') genderColor = AppTheme.genderMasc;
+          if (vocab.gender == 'f' || vocab.gender == 'feminine') genderColor = AppTheme.genderFem;
+          if (vocab.gender == 'n' || vocab.gender == 'neuter') genderColor = AppTheme.genderNeu;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12.0),
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(6.0),
+              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    if (vocab.article.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: genderColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: Text(
+                          vocab.article,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: genderColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: Text(
+                        vocab.word,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    if (vocab.pos != null && vocab.pos!.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: Text(
+                          vocab.pos!.toUpperCase(),
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Text(
+                        vocab.difficultyLabel,
+                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  vocab.primaryDefinition,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        vocab.paragraphOriginal,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: colorScheme.onSurface),
+                      ),
+                      if (vocab.paragraphTranslated.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          vocab.paragraphTranslated,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: () => _ttsService.speak(vocab.fullWordWithArticle, lang: 'de-DE'),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.volume_up_rounded, size: 14, color: colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)?.actionListen ?? 'Listen',
+                              style: TextStyle(fontSize: 11, color: colorScheme.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    InkWell(
+                      onTap: () => GlanceWordSheet.show(
+                        context,
+                        word: vocab.word,
+                        contextSentence: vocab.paragraphOriginal,
+                        sourceTitle: widget.article?.title ?? 'Story Lesson',
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.menu_book_rounded, size: 14, color: colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)?.actionGrammarForms ?? 'Grammar & Forms',
+                              style: TextStyle(fontSize: 11, color: colorScheme.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   Widget _buildHeader() {
     List<String> paragraphs = _getParagraphList();
     final isAnyTranslationVisible = _visibleParagraphTranslations.isNotEmpty;
@@ -631,6 +1295,19 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 ),
                 const SizedBox(width: 8),
               ],
+              IconButton(
+                icon: Icon(
+                  _activeViewIndex == 1 ? Icons.menu_book_rounded : Icons.menu_book_outlined,
+                  size: 20,
+                  color: _activeViewIndex == 1 ? BooksModernist.accent : BooksModernist.accentDark,
+                ),
+                tooltip: AppLocalizations.of(context)?.titleKeyVocab ?? 'Key Vocabulary',
+                onPressed: () {
+                  setState(() {
+                    _activeViewIndex = _activeViewIndex == 1 ? 0 : 1;
+                  });
+                },
+              ),
               IconButton(
                 icon: Icon(
                   _isPlayingTts ? Icons.pause_rounded : Icons.mic_rounded,

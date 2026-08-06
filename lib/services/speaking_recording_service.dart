@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../config.dart';
 import 'app_logger.dart';
 
@@ -56,7 +57,15 @@ class ShadowingWordResult {
 class SpeakingRecordingService {
   final AudioRecorder _recorder = AudioRecorder();
 
-  Future<bool> hasPermission() => _recorder.hasPermission();
+  Future<bool> hasPermission() async {
+    if (kIsWeb) {
+      return await _recorder.hasPermission();
+    }
+    final status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+    final result = await Permission.microphone.request();
+    return result.isGranted;
+  }
 
   Future<void> start() async {
     final String path;
@@ -68,7 +77,13 @@ class SpeakingRecordingService {
       final dir = await getTemporaryDirectory();
       path = '${dir.path}/shadowing_${DateTime.now().millisecondsSinceEpoch}.m4a';
     }
-    await _recorder.start(const RecordConfig(), path: path);
+    await _recorder.start(
+      RecordConfig(
+        encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
+        sampleRate: 16000,
+      ),
+      path: path,
+    );
   }
 
   /// Stops recording and returns the raw audio bytes + a filename suitable

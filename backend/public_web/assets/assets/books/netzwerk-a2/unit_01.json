@@ -1,0 +1,547 @@
+{
+  "unit_metadata": {
+    "unit_number": 1,
+    "title": "Und was machst du?",
+    "learning_objectives": [
+      "sich vorstellen",
+      "über Vergangenes berichten",
+      "sich verabreden",
+      "etwas begründen",
+      "Informationen auf einer Homepage verstehen",
+      "ein Restaurant vorstellen",
+      "Wörter mit allen Sinnen lernen"
+    ]
+  },
+  "pages": [
+    {
+      "page_number": 8,
+      "sections": [
+        {
+          "section_id": "1_texts",
+          "type": "reading_profiles",
+          "profiles": [
+            {
+              "id": "A",
+              "name": "Ben",
+              "text": "Meine Eltern sind schon Rentner und leben auf dem Land. Ich habe einen Bruder und eine Schwester. Mein Bruder ist geschieden und hat eine Tochter. Sie ist total süß. Meine Schwester hat noch keine Kinder. Ich auch nicht, aber in ein paar Jahren möchte ich gern Kinder haben."
+            },
+            {
+              "id": "B",
+              "name": "Marie",
+              "text": "Nach der Schule habe ich eine Ausbildung gemacht und jetzt arbeite ich als Bankkauffrau. Ich habe nette Kollegen und meine Arbeit macht mir Spaß. Aber vielleicht studiere ich auch noch an der Uni, mal sehen."
+            }
+          ]
+        },
+        {
+          "section_id": "1a",
+          "type": "speaking",
+          "instruction": "Was machen die Personen auf den Fotos? Wo sind sie? Sprechen Sie zu zweit."
+        },
+        {
+          "section_id": "1b",
+          "type": "matching",
+          "instruction": "Lesen Sie die Texte. Wer spricht über welches Thema? Ordnen Sie zu.",
+          "topics": [
+            {"id": 1, "label": "Sprachen"},
+            {"id": 2, "label": "Beruf"},
+            {"id": 3, "label": "Familie"},
+            {"id": 4, "label": "Freizeit"},
+            {"id": 5, "label": "Wohnen"}
+          ]
+        },
+        {
+          "section_id": "1c",
+          "type": "vocabulary_building",
+          "instruction": "Sammeln Sie zu den Themen in 1b Wörter aus den Texten. Ergänzen Sie zu jedem Thema drei weitere Wörter.",
+          "example": {
+            "topic": "Sprachen",
+            "words": ["Muttersprache", "lernen", "fließend"]
+          }
+        }
+      ]
+    },
+    {
+      "page_number": 9,
+      "sections": [
+        {
+          "section_id": "2_texts",
+          "type": "reading_profiles",
+          "profiles": [
+            {
+              "id": "C",
+              "name": "Matteo",
+              "text": "Meine Mutter kommt aus Österreich und mein Vater ist in Italien geboren. Ich habe also zwei Muttersprachen und spreche Italienisch und Deutsch fließend. Ich habe auch Englisch und Französisch gelernt, aber Französisch spreche ich nur ein bisschen."
+            },
+            {
+              "id": "D",
+              "name": "Jonas",
+              "text": "Ich komme aus Basel und lebe jetzt in Zürich. Meine Freundin und ich haben ein Apartment im Stadtzentrum. Wir haben es zusammen renoviert. Es ist klein, aber schön. Uns gefällt das Leben in der Stadt, aber manchmal ist es auch ein bisschen laut und stressig."
+            },
+            {
+              "id": "E",
+              "name": "Julia",
+              "text": "Ich treffe gern meine Freundinnen und Freunde. Dann kochen wir zusammen oder gehen ins Restaurant. Ich mache auch gern Sport. Ich spiele Basketball und ich reite. Meine Eltern haben ein Pferd. Am Wochenende auf dem Sofa liegen und ein gutes Buch lesen - das finde ich auch toll."
+            }
+          ]
+        },
+        {
+          "section_id": "2a",
+          "type": "listening_note_taking",
+          "audio_id": "1.1",
+          "instruction": "Hören Sie. Welche Informationen bekommen Sie über Marie? Zu welchen Punkten sagt sie nichts? Notieren Sie Stichpunkte und vergleichen Sie zu zweit.",
+          "fields": ["Familie", "Wohnen", "Beruf", "Freizeit", "Sprachen"]
+        },
+        {
+          "section_id": "2b",
+          "type": "speaking_presentation",
+          "instruction": "Und Sie? Wählen Sie drei Themen aus 2a. Gehen Sie durch den Kursraum und stellen Sie sich mehreren Personen vor.",
+          "example_speech": "Ich heiße Natascha. Ich bin verheiratet und habe einen Sohn. Er heißt..."
+        }
+      ]
+    },
+    {
+      "page_number": 10,
+      "sections": [
+        {
+          "section_id": "3a",
+          "type": "reading_matching",
+          "title": "Das letzte Jahr",
+          "instruction": "Arbeiten Sie zu zweit. Jede/r liest einen Text und wählt eine Überschrift. Zwei Überschriften passen nicht.",
+          "headings": [
+            {"id": "A", "title": "Meine Hochzeit in Spanien"},
+            {"id": "B", "title": "Leben und studieren in Zürich"},
+            {"id": "C", "title": "Prüfung, Urlaub und ein Fest"},
+            {"id": "D", "title": "Allein in der Stadt"}
+          ],
+          "texts": [
+            {"person": "Julia", "answer": "C"},
+            {"person": "Jonas", "answer": "B"}
+          ]
+        },
+        {
+          "section_id": "3_texts",
+          "type": "reading_profiles",
+          "profiles": [
+            {
+              "id": "Julia",
+              "name": "Julia",
+              "text": "Das letzte Jahr war echt spannend. Es ist viel passiert. Ich habe meine Ausbildung zur Augenoptikerin beendet. Im Juni habe ich meine Prüfungen geschrieben. Ich habe sehr viel gelernt. Das war natürlich stressig. Zum Glück habe ich gute Noten bekommen. Dann bin ich mit einer Freundin nach Spanien geflogen. Lilly hat früher dort gelebt und spricht perfekt Spanisch. Wir haben ein Auto gemietet und sind drei Wochen lang durch das Land gefahren. Wir haben auch Lillys Freunde in Madrid besucht. Im August hat meine Schwester geheiratet und ich habe mit ihr zusammen das Fest organisiert. Das war viel Arbeit, aber die Hochzeit war wirklich romantisch. Viele Freunde und Verwandte sind gekommen und wir haben zusammen gefeiert."
+            },
+            {
+              "id": "Jonas",
+              "name": "Jonas",
+              "text": "Ich bin letztes Jahr umgezogen, wohne jetzt in Zürich und studiere Biologie. Im Herbst habe ich mein Studium angefangen. Zuerst habe ich keine Wohnung gefunden, aber ich habe immer weitergesucht und jetzt habe ich ein Apartment im Zentrum. Das hat mir gleich gefallen. Meine Freundin ist dann auch nach Zürich gekommen, sie studiert Mathematik. Vorher hat sie in Bern gewohnt, aber jetzt leben wir zusammen. Für zwei Leute ist die Wohnung etwas klein, aber es geht. Wir sind sehr aktiv und haben schon viele Leute kennengelernt, das ist toll. Und ich habe jetzt ein neues Hobby: Ich spiele Tennis. Ich habe an einem Kurs teilgenommen und es macht wirklich Spaß. Vielleicht melde ich mich bald in einem Verein an."
+            }
+          ]
+        },
+        {
+          "section_id": "3b",
+          "type": "reading_comprehension",
+          "instruction": "Was haben Julia und Jonas letztes Jahr gemacht? Lesen Sie noch einmal Ihren Text und notieren Sie wichtige Informationen. Berichten Sie dann Ihrem Partner / Ihrer Partnerin.",
+          "speech_prompts": [
+            "Julia hat ...",
+            "Julias Freundin ..."
+          ],
+          "grammar_callout": {
+            "title": "G Genitiv",
+            "formula": "Genitiv: Name + s",
+            "examples": [
+              "die Schwester von Julia → Julias Schwester",
+              "! die Freundin von Jonas → Jonas' Freundin",
+              "! auch nach -ß, -x, -z: Frau Weiß' Kollegin, Max' Bruder, Liz' Freund"
+            ]
+          },
+          "note_taking": {
+            "placeholder": "Notieren Sie Stichpunkte über Julia und Jonas..."
+          }
+        },
+        {
+          "section_id": "3c",
+          "type": "fill_in_the_blank",
+          "instruction": "Wer hat was gemacht? Ergänzen Sie zu zweit.",
+          "options": ["Jonas", "Julia", "Lilly", "Jonas' Freundin", "Julias Schwester"],
+          "statements": [
+            {"id": 1, "text": "... hat sein Studium begonnen.", "answer": "Jonas"},
+            {"id": 2, "text": "... ist durch Spanien gereist.", "answer": "Julia"},
+            {"id": 3, "text": "... hat eine Wohnung gesucht.", "answer": "Jonas"},
+            {"id": 4, "text": "... hat in Spanien gewohnt.", "answer": "Lilly"},
+            {"id": 5, "text": "... hat ihre Ausbildung abgeschlossen.", "answer": "Julia"},
+            {"id": 6, "text": "... ist von Bern nach Zürich gezogen.", "answer": "Jonas' Freundin"},
+            {"id": 7, "text": "... hat im Sommer geheiratet.", "answer": "Julias Schwester"},
+            {"id": 8, "text": "... hat ein Hobby gefunden.", "answer": "Jonas"}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 11,
+      "sections": [
+        {
+          "section_id": "4a",
+          "type": "grammar_classification",
+          "title": "Perfekt: regelmäßige und unregelmäßige Verben",
+          "instruction": "Lesen Sie die Texte in 3a und die Sätze in 3c und markieren Sie alle Verben im Perfekt. Machen Sie dann eine Tabelle.",
+          "grammar_callout": {
+            "title": "G Perfekt",
+            "examples": [
+              "Jonas hat ein Hobby gefunden.",
+              "Julia ist durch Spanien gereist."
+            ],
+            "formula": "haben / sein + Partizip II",
+            "rules": [
+              "regelmäßige Verben: sie ist gereist",
+              "Verben auf -ieren: es ist passiert",
+              "unregelmäßige Verben: er hat gefunden",
+              "trennbare Verben: er hat weitergesucht",
+              "nicht trennbare Verben: sie hat beendet"
+            ]
+          },
+          "tables": [
+            {
+              "category": "Perfekt: regelmäßige Verben",
+              "columns": ["ohne Präfix", "trennbar", "nicht trennbar"],
+              "rows": [
+                {"ohne": "lernen – hat gelernt", "trennbar": "—", "nicht_trennbar": "passieren – ist passiert"},
+                {"ohne": "reisen – ist gereist", "trennbar": "—", "nicht_trennbar": "beenden – hat beendet"},
+                {"ohne": "mieten – hat gemietet", "trennbar": "—", "nicht_trennbar": "besuchen – hat besucht"},
+                {"ohne": "heiraten – hat geheiratet", "trennbar": "—", "nicht_trennbar": "organisieren – hat organisiert"},
+                {"ohne": "feiern – hat gefeiert", "trennbar": "—", "nicht_trennbar": "—"}
+              ]
+            },
+            {
+              "category": "Perfekt: unregelmäßige Verben",
+              "columns": ["ohne Präfix", "trennbar", "nicht trennbar"],
+              "rows": [
+                {"ohne": "schreiben – hat geschrieben", "trennbar": "anfangen – hat angefangen", "nicht_trennbar": "—"},
+                {"ohne": "kommen – ist gekommen", "trennbar": "umziehen – ist umgezogen", "nicht_trennbar": "—"},
+                {"ohne": "fliegen – ist geflogen", "trennbar": "weitersuchen – hat weitergesucht", "nicht_trennbar": "—"}
+              ]
+            }
+          ]
+        },
+        {
+          "section_id": "4b",
+          "type": "discussion",
+          "instruction": "Wie bildet man das Perfekt in Ihrer Sprache? Vergleichen Sie."
+        },
+        {
+          "section_id": "4c",
+          "type": "listening_ordering",
+          "audio_id": "1.2",
+          "instruction": "Was hat Greta letztes Jahr gemacht? Hören Sie und ordnen Sie die Bilder in die richtige Reihenfolge. Sprechen Sie dann zu zweit.",
+          "speech_bubble": "Letztes Jahr hat Greta ...",
+          "image_items": [
+            {"id": "A", "label": "A · Wandern in den Bergen", "correct_order": 2},
+            {"id": "B", "label": "B · Ausflug nach Berlin", "correct_order": 1},
+            {"id": "C", "label": "C · Party mit Freunden", "correct_order": 4},
+            {"id": "D", "label": "D · Marathon gelaufen", "correct_order": 3}
+          ]
+        },
+        {
+          "section_id": "4d",
+          "type": "writing",
+          "instruction": "Was haben Sie letztes Jahr gemacht? Schreiben Sie einen Text wie in 3a. Sie können auch über ein Fantasie-Jahr schreiben.",
+          "placeholder": "Letztes Jahr habe ich..."
+        },
+        {
+          "section_id": "5a",
+          "type": "phonetics_listening",
+          "audio_id": "1.3",
+          "instruction": "Aussprache: ch. Hören Sie ch wie in 'ich' oder ch wie in 'acht'? Kreuzen Sie an.",
+          "words": [
+            {"id": 1, "word": "Tochter", "answer": "acht"},
+            {"id": 2, "word": "machen", "answer": "acht"},
+            {"id": 3, "word": "echt", "answer": "ich"},
+            {"id": 4, "word": "möchten", "answer": "ich"},
+            {"id": 5, "word": "nach", "answer": "acht"},
+            {"id": 6, "word": "nicht", "answer": "ich"},
+            {"id": 7, "word": "Kirche", "answer": "ich"},
+            {"id": 8, "word": "besuchen", "answer": "acht"}
+          ]
+        },
+        {
+          "section_id": "5b",
+          "type": "phonetics_categorization",
+          "audio_id": "1.4",
+          "instruction": "Ordnen Sie die Wörter in die Tabelle. Hören Sie dann zur Kontrolle.",
+          "rule_callout": {
+            "title": "Ausspracheregel: ch",
+            "wie_acht": "nach a, o, u und au → ch wie in 'acht'",
+            "wie_ich": "nach allen anderen Vokalen und Konsonanten → ch wie in 'ich'"
+          },
+          "words_to_sort": [
+            {"word": "durch", "category": "ich"},
+            {"word": "Wochenende", "category": "ich"},
+            {"word": "sprechen", "category": "ich"},
+            {"word": "manchmal", "category": "ich"},
+            {"word": "Sprache", "category": "acht"},
+            {"word": "Hochzeit", "category": "acht"},
+            {"word": "Buch", "category": "acht"},
+            {"word": "vielleicht", "category": "ich"},
+            {"word": "kochen", "category": "acht"},
+            {"word": "Bücher", "category": "ich"}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 12,
+      "sections": [
+        {
+          "section_id": "6a",
+          "type": "chat_reading",
+          "title": "Wollt ihr kommen?",
+          "instruction": "Sehen Sie die Fotos an. Wo ist Ben? Was macht er? Sprechen Sie im Kurs.",
+          "chat_messages": [
+            {"sender": "Ben", "text": "Es ist so schön in Oberstdorf. Aber morgen fahr ich wieder zurück. 😊", "time": "10:08"},
+            {"sender": "Ben", "text": "Wer kann da Nein sagen? 🧀", "time": "11:39"},
+            {"sender": "Ben", "text": "Wollt ihr morgen Abend kommen? Es gibt Spezialitäten aus dem Allgäu. 😉", "time": "17:53"}
+          ]
+        },
+        {
+          "section_id": "6b",
+          "type": "matching_replies",
+          "instruction": "Lesen Sie die Nachrichten von Bens Freunden. Ordnen Sie Bens Antworten zu.",
+          "incoming_messages": [
+            {"id": "A", "sender": "Felix", "text": "Lang nicht gesehen. Komme gern. Kann ich was mitbringen?"},
+            {"id": "B", "sender": "Marvin", "text": "Ich kann erst später, muss arbeiten. Überstunden! 😫 Ist das auch okay?"},
+            {"id": "C", "sender": "Lea", "text": "Danke für die Einladung. Ich kann leider nicht. Besuche meinen Vater. Er hat die Grippe."}
+          ],
+          "ben_replies": [
+            {"id": 1, "text": "Aber sicher. Kein Problem. Und bring Taiga mit! 🐶"},
+            {"id": 2, "text": "Oh, das ist aber schade. Was ist denn los?"},
+            {"id": 3, "text": "Nein. Alles da. Komm einfach."}
+          ]
+        },
+        {
+          "section_id": "7a",
+          "type": "matching_causal",
+          "instruction": "Was passt zusammen? Ordnen Sie zu.",
+          "left_clauses": [
+            {"id": 1, "text": "Ben schreibt den Freunden,"},
+            {"id": 2, "text": "Felix kommt gern,"},
+            {"id": 3, "text": "Marvin kommt später,"},
+            {"id": 4, "text": "Marvin bringt seinen Hund mit,"},
+            {"id": 5, "text": "Lea kann nicht kommen,"}
+          ],
+          "right_clauses": [
+            {"id": "A", "text": "weil sie ihren Vater besucht."},
+            {"id": "B", "text": "weil Ben ihn gern mag."},
+            {"id": "C", "text": "weil er arbeiten muss."},
+            {"id": "D", "text": "weil er sie zum Essen einladen will."},
+            {"id": "E", "text": "weil er Ben lang nicht gesehen hat."}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 13,
+      "sections": [
+        {
+          "section_id": "7b",
+          "type": "grammar_exercise",
+          "instruction": "Markieren Sie die Verben in 7a und ergänzen Sie dann die Nebensätze mit weil. Wo stehen die Verben im Hauptsatz und im Nebensatz?"
+        },
+        {
+          "section_id": "7c",
+          "type": "sentence_formation",
+          "instruction": "Was passt zusammen? Ordnen Sie zu und schreiben Sie Sätze mit weil.",
+          "fragments": [
+            "A Ben findet ihn süß.",
+            "B Er muss lang im Büro bleiben.",
+            "C Ben hat genug Essen gekauft.",
+            "D Er möchte mit seinen Freunden essen.",
+            "E Er ist wieder da.",
+            "F Ihr Vater ist krank."
+          ],
+          "prompts": [
+            {"id": 1, "text": "Ben lädt seine Freunde ein, ...", "example": "Ben lädt seine Freunde ein, weil er wieder da ist."},
+            {"id": 2, "text": "Ben hat viel eingekauft, ..."},
+            {"id": 3, "text": "Marvin nimmt den Hund mit, ..."},
+            {"id": 4, "text": "Marvin kommt erst um acht, ..."},
+            {"id": 5, "text": "Lea kann leider nicht kommen, ..."},
+            {"id": 6, "text": "Felix bringt nichts mit, ..."}
+          ]
+        },
+        {
+          "section_id": "8a_8b",
+          "type": "listening_dialogue",
+          "audio_id": "1.6",
+          "instruction": "Leas Anruf. Hören Sie. Machen Sie Notizen und kreuzen Sie an, was Lea und Ben sagen."
+        }
+      ]
+    },
+    {
+      "page_number": 14,
+      "sections": [
+        {
+          "section_id": "9a",
+          "type": "listening_comprehension",
+          "audio_id": "1.7",
+          "title": "Essen ohne Licht",
+          "instruction": "Hören Sie das Gespräch von Nele und Gloria. Welche Sätze sind richtig? Kreuzen Sie an.",
+          "statements": [
+            {"id": 1, "text": "Nele möchte gern das Restaurant 'lichtlos' besuchen.", "correct": true},
+            {"id": 2, "text": "Neles Freundin Gloria möchte dort Kaffee trinken.", "correct": false},
+            {"id": 3, "text": "Man geht mit Licht zum Platz, dann wird es dunkel.", "correct": false},
+            {"id": 4, "text": "Im 'lichtlos' bezahlt man nach dem Essen an der Rezeption.", "correct": true},
+            {"id": 5, "text": "Gloria und Nele wollen allein ins Restaurant gehen.", "correct": false}
+          ]
+        },
+        {
+          "section_id": "9c",
+          "type": "reading_faq_matching",
+          "title": "FAQs - Restaurant lichtlos",
+          "questions": [
+            {"id": 1, "question": "Was macht Essen in einem Restaurant ohne Licht so besonders?"},
+            {"id": 2, "question": "Was darf man ins Restaurant mitnehmen?"},
+            {"id": 3, "question": "Wie kann ich mein Essen auswählen? Wie bezahle ich?"},
+            {"id": 4, "question": "Ich brauche etwas, ich suche das WC, mir ist schlecht, ich habe Angst. Was kann ich machen?"},
+            {"id": 5, "question": "Wie bekomme ich einen Platz? Wann muss ich reservieren?"}
+          ],
+          "answers": [
+            {"id": "A", "text": "Wir empfangen Sie am Eingang. An der Rezeption bestellen Sie aus unserer Speisekarte und hier bekommen Sie nach dem Essen auch Ihre Rechnung."},
+            {"id": "B", "text": "Wir sagen Ihnen den Namen vom Kellner / von der Kellnerin. Rufen Sie. Er/Sie kommt sofort und hilft Ihnen weiter."},
+            {"id": "C", "text": "Reservieren Sie Ihre Plätze ca. eine Woche vor Ihrem Besuch (Reservierung). Sie bekommen spätestens drei Tage vor dem Termin eine Nachricht."},
+            {"id": "D", "text": "Sie lernen eine andere Welt kennen. Man kann nichts sehen, dafür sind die anderen Sinne sehr aktiv: Hören, Schmecken, Riechen und Fühlen werden wichtig."},
+            {"id": "E", "text": "Sie können fast alles mitbringen. Handys und Kameras müssen aus sein. Telefonieren und Fotografieren ist bei uns verboten, Zigaretten rauchen wie in allen anderen Restaurants auch."}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 15,
+      "sections": [
+        {
+          "section_id": "10_stations",
+          "type": "interactive_game",
+          "title": "Lernen mit allen Sinnen",
+          "stations": [
+            {"station": "A", "sense": "Sehen (Sight)", "description": "Beschreiben: 'Ich sehe etwas. Das ist rot und klein.'"},
+            {"station": "B", "sense": "Fühlen (Touch)", "description": "Gegenstände in einer Tasche ertasten: 'Was ist das?'"},
+            {"station": "C", "sense": "Hören (Hearing)", "description": "Augen zu. Auf Geräusche hören und beschreiben."},
+            {"station": "D", "sense": "Riechen (Smell)", "description": "Augen zu. An etwas riechen: 'Das riecht wie ein Apfel.'"},
+            {"station": "E", "sense": "Schmecken (Taste)", "description": "Augen zu. Etwas probieren: 'Das schmeckt süß.'"}
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 16,
+      "sections": [
+        {
+          "section_id": "11_netzwerk_wg",
+          "type": "video_character_profiles",
+          "title": "Die Netzwerk-WG",
+          "characters": [
+            {
+              "name": "Bea",
+              "job": "Krankenpfleger",
+              "typical": "oft müde (muss nachts arbeiten)",
+              "hobby": "schwimmen"
+            },
+            {
+              "name": "Max",
+              "job": "Praktikum in Ingenieurbüro",
+              "typical": "fröhlich",
+              "hobby": "schwimmen, wandern"
+            },
+            {
+              "name": "Luca",
+              "job": "Student, jobbt",
+              "typical": "oft unpünktlich",
+              "hobby": "wandern, Computerspiele"
+            },
+            {
+              "name": "Anna",
+              "job": "arbeitet bei Produktionsfirma für Filme",
+              "typical": "mag Bremen",
+              "hobby": "klettern"
+            }
+          ]
+        },
+        {
+          "section_id": "13c_reading",
+          "type": "cultural_reading",
+          "title": "Spezialität: Knipp",
+          "text": "Knipp ist eine Spezialität aus Bremen. Es ist wie eine Wurst aus Schweine- und Rindfleisch. Knipp kann man kalt oder warm auf einem Brot essen. Oder man brät es in der Pfanne und isst dazu Kartoffeln und Gurken oder Apfelmus."
+        }
+      ]
+    }
+  ],
+  "grammar_reference": {
+    "genitiv": {
+      "rule": "Name + s",
+      "examples": [
+        "die Schwester von Julia → Julias Schwester",
+        "die Freunde von Lilly → Lillys Freunde"
+      ],
+      "special_cases": {
+        "rule": "Namen auf -ß, -x, -z bekommen nur einen Apostroph (')",
+        "examples": [
+          "Frau Weiß' Kollegin",
+          "Max' Bruder",
+          "Liz' Freund",
+          "Jonas' Freundin"
+        ]
+      }
+    },
+    "perfekt": {
+      "structure": "Hilfsverb (haben/sein) + Partizip II (Satzklammer)",
+      "partizip_2_formation": [
+        {"type": "regelmäßige Verben", "pattern": "ge...t", "examples": ["gereist", "gelernt", "geheiratet"]},
+        {"type": "Verben auf -ieren", "pattern": "...t", "examples": ["studiert", "organisiert", "passiert"]},
+        {"type": "unregelmäßige Verben", "pattern": "ge...en", "examples": ["gefunden", "geschrieben", "geholfen"]},
+        {"type": "trennbare Verben", "pattern": "...ge...t/en", "examples": ["weitergesucht", "kennengelernt", "umgezogen"]},
+        {"type": "nicht trennbare Verben", "pattern": "...t/en", "examples": ["beendet", "besucht", "gefallen"]}
+      ],
+      "auxiliary_sein_rules": "Ortswechsel / Zustandswechsel (z.B. gereist, geflogen, gekommen, passiert, geblieben)"
+    },
+    "nebensatz_mit_weil": {
+      "rule": "Der Nebensatz beginnt mit 'weil', dann folgt das Subjekt. Das konjugierte Verb steht ganz am Ende.",
+      "structure": "Hauptsatz, weil + Subjekt + ... + Verb am Satzende.",
+      "examples": [
+        "Ben lädt die Freunde ein, weil er im Urlaub war.",
+        "Felix kommt gern, weil er Ben lang nicht gesehen hat.",
+        "Marvin kommt erst später, weil er arbeiten muss."
+      ]
+    }
+  },
+  "redemittel": {
+    "sich_vorstellen": [
+      "Ich komme aus ... / Ich lebe jetzt in ...",
+      "Meine Eltern / Mein Bruder / Meine Schwester ...",
+      "Ich bin verheiratet / geschieden / ledig.",
+      "Ich habe ein Kind / keine / zwei / ... Kinder.",
+      "Ich habe eine Ausbildung zum/zur ... gemacht.",
+      "Ich arbeite als ... / Ich studiere ...",
+      "In der Freizeit mache/gehe/spiele/ ... ich ... / Ich ... gern.",
+      "Ich spreche Deutsch/Englisch/... / Ich habe Deutsch/... gelernt."
+    ],
+    "sich_verabreden": {
+      "vorschlagen": [
+        "Gehen wir zusammen ...?",
+        "Ich möchte ...",
+        "Ich gehe ... Kommst du mit?",
+        "Hast du auch Lust?",
+        "Hast du am/um ... Zeit?"
+      ],
+      "zusagen": [
+        "Das ist eine gute Idee.",
+        "Oh ja, gern.",
+        "Einverstanden."
+      ],
+      "absagen": [
+        "Ich möchte gern, aber ...",
+        "Schade, da geht es leider nicht.",
+        "Da kann ich leider nicht, weil ..."
+      ],
+      "nachfragen": [
+        "Wann möchtest du ...?",
+        "Wann / Um wie viel Uhr geht es los?",
+        "Geht es auch (ein bisschen) früher/später?",
+        "Kann ich ... mitbringen?"
+      ]
+    }
+  }
+}

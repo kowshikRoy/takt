@@ -7,6 +7,7 @@ import '../../services/shadowing_service.dart';
 import '../../services/sound_service.dart';
 import '../../services/speaking_recording_service.dart';
 import '../../services/tts_service.dart';
+import '../../services/app_logger.dart';
 import '../../widgets/capped_width.dart';
 
 enum _RecordingState { idle, recording, uploading, scored }
@@ -121,11 +122,12 @@ class _SpeakingPracticeScreenState extends State<SpeakingPracticeScreen> {
       } else {
         SoundService().playIncorrect();
       }
-    } catch (e) {
+    } catch (e, st) {
+      AppLogger.error('Error scoring shadowing recording', error: e, stackTrace: st, tag: 'SpeakingPractice');
       if (!mounted) return;
       setState(() {
         _state = _RecordingState.idle;
-        _errorMessage = 'Something went wrong scoring your recording. Please try again.';
+        _errorMessage = 'Could not score recording. Please try again.';
       });
     }
   }

@@ -7,6 +7,7 @@ import '../services/vocabulary_service.dart';
 import '../services/tts_service.dart';
 import '../models/saved_word.dart';
 import '../theme/breakpoints.dart';
+import '../theme/books_modernist_style.dart';
 
 import '../services/discovery_service.dart';
 
@@ -31,30 +32,51 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   final TtsService _ttsService = TtsService();
 
   List<Map<String, dynamic>> _searchResults = [];
-  List<Map<String, dynamic>> _masterDiscoverWords = [];
+  List<Map<String, dynamic>> _masterDiscoverWords = DiscoveryService().pool;
   List<Map<String, dynamic>> _recentWords = [];
   Map<String, dynamic>? _selectedWord;
   Future<String?>? _wordImageFuture;
 
   bool _isSearching = false;
-  bool _isLoadingDiscover = true;
-  String _selectedPosFilter = 'all'; // 'all', 'noun', 'verb', 'adj'
+  bool _isLoadingDiscover = DiscoveryService().pool.isEmpty;
+  String _selectedPosFilter = 'all'; // 'all', 'noun', 'verb', 'adj', 'saved'
   int _selectedTabIndex = 0; // 0: Forms/Declension, 1: Examples, 2: Related
   Set<String> _savedWordIds = {};
   Map<String, VocabCategory> _savedWordCategories = {};
+  List<SavedWord> _rawSavedWords = [];
 
   List<Map<String, dynamic>> get _filteredDiscoverWords {
     if (_selectedPosFilter == 'saved') {
-      return _masterDiscoverWords.where((w) {
+      final masterSaved = _masterDiscoverWords.where((w) {
         final wordStr = (w['word']?.toString() ?? '').toLowerCase().trim();
         final idStr = (w['id']?.toString() ?? '').toLowerCase().trim();
-        return _savedWordCategories[wordStr] == VocabCategory.learning ||
-            _savedWordCategories[idStr] == VocabCategory.learning ||
-            (_savedWordIds.contains(wordStr) &&
-                _savedWordCategories[wordStr] == null) ||
-            (_savedWordIds.contains(idStr) &&
-                _savedWordCategories[idStr] == null);
+        return _savedWordIds.contains(wordStr) || _savedWordIds.contains(idStr);
       }).toList();
+
+      final seenWordIds = masterSaved.map((w) {
+        final wordStr = (w['word']?.toString() ?? '').toLowerCase().trim();
+        final idStr = (w['id']?.toString() ?? '').toLowerCase().trim();
+        return idStr.isNotEmpty ? idStr : wordStr;
+      }).toSet();
+
+      final customSaved = <Map<String, dynamic>>[];
+      for (final sw in _rawSavedWords) {
+        final swId = sw.id.toLowerCase().trim();
+        final swWord = sw.word.toLowerCase().trim();
+        if (!seenWordIds.contains(swId) && !seenWordIds.contains(swWord)) {
+          customSaved.add({
+            'id': sw.id,
+            'word': sw.word,
+            'gender': sw.gender,
+            'definition': sw.primaryDefinition,
+            'definitions': sw.definitions.isNotEmpty ? sw.definitions : [sw.primaryDefinition],
+            'pos': sw.pos,
+            'ipa': sw.ipa,
+          });
+        }
+      }
+
+      return [...masterSaved, ...customSaved];
     }
     if (_selectedPosFilter == 'mastered') {
       return _masterDiscoverWords.where((w) {
@@ -99,6 +121,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       final saved = await _vocabService.getSavedWords();
       if (mounted) {
         setState(() {
+          _rawSavedWords = saved;
           _savedWordIds = saved.map((w) => w.id.toLowerCase().trim()).toSet();
           _savedWordCategories = {
             for (var w in saved) w.id.toLowerCase().trim(): w.category,
@@ -109,8 +132,21 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   }
 
   Future<void> _loadDiscoverWords({bool forceRefresh = false}) async {
-    setState(() => _isLoadingDiscover = true);
     final discovery = DiscoveryService();
+    if (discovery.pool.isNotEmpty && !forceRefresh) {
+      if (mounted) {
+        setState(() {
+          _masterDiscoverWords = discovery.pool;
+          _isLoadingDiscover = false;
+        });
+      }
+      return;
+    }
+
+    if (_masterDiscoverWords.isEmpty) {
+      setState(() => _isLoadingDiscover = true);
+    }
+
     if (forceRefresh) {
       await discovery.discoverMore(limit: 20);
     } else {
@@ -138,9 +174,18 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     final results = await _dictionaryService.search(cleanQuery);
 
     if (mounted) {
-      final filtered = _selectedPosFilter == 'all'
-          ? results
-          : results.where((r) => r['pos'] == _selectedPosFilter).toList();
+      List<Map<String, dynamic>> filtered;
+      if (_selectedPosFilter == 'all') {
+        filtered = results;
+      } else if (_selectedPosFilter == 'saved') {
+        filtered = results.where((r) {
+          final wordStr = (r['word']?.toString() ?? '').toLowerCase().trim();
+          final idStr = (r['id']?.toString() ?? '').toLowerCase().trim();
+          return _savedWordIds.contains(wordStr) || _savedWordIds.contains(idStr);
+        }).toList();
+      } else {
+        filtered = results.where((r) => r['pos'] == _selectedPosFilter).toList();
+      }
       setState(() {
         _searchResults = filtered;
       });
@@ -148,22 +193,29 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   }
 
   void _onResultSelected(Map<String, dynamic> result) async {
-    final fullWord = await _dictionaryService.getWordDetails(result['id']);
-    if (mounted && fullWord != null) {
+    final rawId = result['id'];
+    final intId = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
+    final resultWord = result['word']?.toString() ?? '';
+    var fullWord = intId != null ? await _dictionaryService.getWordDetails(intId) : null;
+    fullWord ??= await _dictionaryService.lookupWord(resultWord);
+    fullWord ??= result;
+
+    if (mounted) {
+      final selected = fullWord;
       setState(() {
-        _selectedWord = fullWord;
+        _selectedWord = selected;
         _wordImageFuture = _dictionaryService.getWordImageUrl(
-          fullWord['word']?.toString() ?? '',
-          pos: fullWord['pos']?.toString(),
+          selected['word']?.toString() ?? '',
+          pos: selected['pos']?.toString(),
         );
         _isSearching = false;
         _searchResults.clear();
         _searchController.clear();
 
         // Track in Recently Viewed Stack
-        final wordId = fullWord['id'] ?? fullWord['word'];
+        final wordId = selected['id'] ?? selected['word'];
         _recentWords.removeWhere((w) => (w['id'] ?? w['word']) == wordId);
-        _recentWords.insert(0, fullWord);
+        _recentWords.insert(0, selected);
         if (_recentWords.length > 10) {
           _recentWords.removeLast();
         }
@@ -211,6 +263,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       setState(() {
         _savedWordIds.remove(wordId);
         _savedWordCategories.remove(wordId);
+        _rawSavedWords.removeWhere((w) => w.id.toLowerCase().trim() == wordId || w.word.toLowerCase().trim() == wordId);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -242,6 +295,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     setState(() {
       _savedWordIds.add(wordId);
       _savedWordCategories[wordId] = targetCategory;
+      _rawSavedWords.removeWhere((w) => w.id.toLowerCase().trim() == wordId || w.word.toLowerCase().trim() == wordId);
+      _rawSavedWords.add(saved);
     });
     if (mounted) {
       final label =
@@ -727,15 +782,11 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(6.0),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 0.8,
+        ),
       ),
       child: TextField(
         controller: _searchController,
@@ -780,77 +831,81 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   }
 
   Widget _buildFilterPills(BuildContext context) {
-    final learningCount = _savedWordCategories.values
-        .where((c) => c == VocabCategory.learning)
-        .length;
-    final masteredCount = _savedWordCategories.values
-        .where((c) => c == VocabCategory.mastered)
-        .length;
-
     final filters = [
-      {'id': 'all', 'label': 'All Words'},
-      {'id': 'saved', 'label': '⭐️ Learning ($learningCount)'},
-      {'id': 'mastered', 'label': '🏆 Mastered ($masteredCount)'},
+      {'id': 'all', 'label': 'All'},
       {'id': 'noun', 'label': 'Nouns'},
       {'id': 'verb', 'label': 'Verbs'},
       {'id': 'adj', 'label': 'Adjectives'},
+      {'id': 'saved', 'label': 'Saved (${_savedWordIds.length})'},
     ];
 
     final colorScheme = Theme.of(context).colorScheme;
 
     return SizedBox(
-      height: 40,
+      height: 36,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
             ...filters.map((f) {
               final isSelected = _selectedPosFilter == f['id'];
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(
-                      f['label']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: isSelected
-                            ? Colors.white
-                            : colorScheme.onSurfaceVariant,
-                      ),
+              final isSavedChip = f['id'] == 'saved';
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ChoiceChip(
+                  showCheckmark: false,
+                  avatar: isSavedChip
+                      ? Icon(
+                          Icons.bookmark_rounded,
+                          size: 13,
+                          color: isSelected
+                              ? colorScheme.onPrimary
+                              : colorScheme.primary,
+                        )
+                      : null,
+                  label: Text(
+                    f['label']!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? colorScheme.onPrimary
+                          : (isSavedChip
+                              ? colorScheme.primary
+                              : colorScheme.onSurface),
                     ),
-                    selected: isSelected,
-                    selectedColor: colorScheme.primary,
-                    backgroundColor: colorScheme.surfaceContainerHigh,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedPosFilter = f['id']!;
-                        });
-                        if (_searchController.text.isNotEmpty) {
-                          _onSearchChanged(_searchController.text);
-                        }
-                      }
-                    },
                   ),
-                );
-              }),
-              ActionChip(
-                avatar: const Icon(Icons.menu_book_rounded, size: 14),
-                label: Text('Browse Deck (${_savedWordIds.length})'),
-                backgroundColor: colorScheme.secondaryContainer,
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSecondaryContainer,
+                  selected: isSelected,
+                  selectedColor: colorScheme.primary,
+                  backgroundColor: isSavedChip && !isSelected
+                      ? colorScheme.primaryContainer.withValues(alpha: 0.4)
+                      : colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                  visualDensity: VisualDensity.compact,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4.0),
+                    side: isSavedChip && !isSelected
+                        ? BorderSide(
+                            color: colorScheme.primary.withValues(alpha: 0.5),
+                            width: 0.8,
+                          )
+                        : BorderSide.none,
+                  ),
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _selectedPosFilter = f['id']!;
+                      });
+                      if (_searchController.text.isNotEmpty) {
+                        _onSearchChanged(_searchController.text);
+                      }
+                    }
+                  },
                 ),
-                onPressed: () => _showMyDeckDialog(context),
-              ),
-            ],
-          ),
+              );
+            }),
+          ],
         ),
+      ),
     );
   }
 
@@ -863,129 +918,30 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Container(
-          height: MediaQuery.of(ctx).size.height * 0.8,
-          decoration: BoxDecoration(
-            color: Theme.of(ctx).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'My Saved Vocabulary (${allWords.length} Words)',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      tooltip: 'Close',
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: allWords.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No words saved yet.\nTap the bookmark icon on any word to add it to your deck!',
-                          textAlign: TextAlign.center,
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: allWords.length,
-                        itemBuilder: (ctx, index) {
-                          final w = allWords[index];
-                          Color color = Colors.blue;
-                          if (w.gender == 'masculine' || w.gender == 'm')
-                            color = AppTheme.genderMasc;
-                          if (w.gender == 'feminine' || w.gender == 'f')
-                            color = AppTheme.genderFem;
-                          if (w.gender == 'neuter' || w.gender == 'n')
-                            color = AppTheme.genderNeu;
-
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: color.withValues(alpha: 0.2),
-                              child: Text(
-                                w.word.isNotEmpty
-                                    ? w.word[0].toUpperCase()
-                                    : 'W',
-                                style: TextStyle(
-                                  color: color,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              w.word,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: w.category == VocabCategory.mastered
-                                        ? Colors.amber.withValues(alpha: 0.15)
-                                        : Colors.green.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    w.category == VocabCategory.mastered
-                                        ? 'MASTERED'
-                                        : 'LEARNING',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: w.category == VocabCategory.mastered
-                                          ? Colors.amber.shade700
-                                          : Colors.green,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Interval: ${w.interval}d • Ease: ${w.easeFactor.toStringAsFixed(1)}x',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            trailing: const Icon(Icons.chevron_right_rounded),
-                            onTap: () async {
-                              Navigator.pop(ctx);
-                              final fullWord = await _dictionaryService
-                                  .lookupWord(w.word);
-                              if (mounted && fullWord != null) {
-                                _onResultSelected(fullWord);
-                              } else {
-                                _searchController.text = w.word;
-                                _onSearchChanged(w.word);
-                              }
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
+        return _SavedVocabularySheet(
+          initialWords: allWords,
+          onWordSelected: (savedWord) async {
+            Navigator.pop(ctx);
+            final fullWord = await _dictionaryService.lookupWord(savedWord.word);
+            if (mounted && fullWord != null) {
+              _onResultSelected(fullWord);
+            } else {
+              _searchController.text = savedWord.word;
+              _onSearchChanged(savedWord.word);
+            }
+          },
+          onWordDeleted: (wordId) async {
+            await _vocabService.removeWord(wordId);
+            _loadSavedWordStatus();
+          },
+          onCategoryChanged: (savedWord, newCategory) async {
+            await _setStatus({
+              'word': savedWord.word,
+              'gender': savedWord.gender,
+              'definitions': [savedWord.primaryDefinition],
+            }, newCategory);
+            _loadSavedWordStatus();
+          },
         );
       },
     );
@@ -1007,10 +963,23 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         padding: const EdgeInsets.all(24),
         alignment: Alignment.center,
         child: Text(
-          'No matching vocabulary entries found.',
+          _selectedPosFilter == 'saved'
+              ? 'No saved words yet.'
+              : 'No matching vocabulary entries found.',
           style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
       );
+    }
+
+    String sectionTitle = 'Explore Top Frequency Words';
+    if (_selectedPosFilter == 'saved') {
+      sectionTitle = 'Saved Vocabulary Words';
+    } else if (_selectedPosFilter == 'noun') {
+      sectionTitle = 'Explore Top Nouns';
+    } else if (_selectedPosFilter == 'verb') {
+      sectionTitle = 'Explore Top Verbs';
+    } else if (_selectedPosFilter == 'adj') {
+      sectionTitle = 'Explore Top Adjectives';
     }
 
     return Column(
@@ -1021,12 +990,24 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           children: [
             Expanded(
               child: Text(
-                'Explore Top Frequency Words',
+                sectionTitle,
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
+            if (_selectedPosFilter == 'saved' && displayWords.isNotEmpty) ...[
+              TextButton.icon(
+                onPressed: () => _showMyDeckDialog(context),
+                icon: const Icon(Icons.style_rounded, size: 16),
+                label: const Text('Practice', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             Text(
               '${displayWords.length} Words',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1055,29 +1036,36 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 _savedWordCategories[wordStr] ?? _savedWordCategories[wordId];
             final gender = item['gender']?.toString();
             final def = item['definition']?.toString() ?? '';
-            final freq = item['freq_rank'];
-
+            String article = '';
             Color genderColor = colorScheme.primary;
-            if (gender == 'm' || gender == 'masculine')
+            final g = gender?.toLowerCase();
+            if (g == 'm' || g == 'masc' || g == 'masculine') {
+              article = 'der';
               genderColor = AppTheme.genderMasc;
-            if (gender == 'f' || gender == 'feminine')
+            } else if (g == 'f' || g == 'fem' || g == 'feminine') {
+              article = 'die';
               genderColor = AppTheme.genderFem;
-            if (gender == 'n' || gender == 'neuter')
+            } else if (g == 'n' || g == 'neu' || g == 'neuter') {
+              article = 'das';
               genderColor = AppTheme.genderNeu;
+            }
+
+            final isSaved = category == VocabCategory.learning ||
+                category == VocabCategory.mastered ||
+                _savedWordIds.contains(wordStr) ||
+                _savedWordIds.contains(wordId);
 
             return InkWell(
               onTap: () => _onResultSelected(item),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6.0),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6.0),
                   border: Border.all(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    width: 0.8,
                   ),
                 ),
                 child: Column(
@@ -1086,43 +1074,46 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   children: [
                     Row(
                       children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: genderColor,
-                            shape: BoxShape.circle,
+                        if (article.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: genderColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                            child: Text(
+                              article,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: genderColor,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
+                          const SizedBox(width: 6),
+                        ],
                         Expanded(
                           child: Text(
                             word,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                        if (category == VocabCategory.mastered) ...[
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.verified_rounded,
-                            size: 16,
-                            color: Colors.amber.shade700,
+                        InkWell(
+                          onTap: () => _setStatus(item, isSaved ? VocabCategory.learning : VocabCategory.learning),
+                          child: Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: Icon(
+                              isSaved ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+                              size: 18,
+                              color: isSaved ? colorScheme.primary : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                            ),
                           ),
-                        ] else if (category == VocabCategory.learning ||
-                            _savedWordIds.contains(wordStr) ||
-                            _savedWordIds.contains(wordId)) ...[
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.school_rounded,
-                            size: 16,
-                            color: Colors.green,
-                          ),
-                        ],
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -1227,15 +1218,11 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(6.0),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 0.8,
+        ),
       ),
       child: Stack(
         children: [
@@ -1489,14 +1476,17 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     final tabs = [
       isVerbWord ? 'Verb Conjugation' : 'Forms & Declension',
       'Examples',
-      'Related Words',
     ];
+
+    if (_selectedTabIndex >= tabs.length) {
+      _selectedTabIndex = 0;
+    }
 
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(4.0),
       ),
       child: Row(
         children: tabs.asMap().entries.map((entry) {
@@ -1515,15 +1505,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   color: isActive
                       ? Theme.of(context).cardColor
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: isActive
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
+                  borderRadius: BorderRadius.circular(4.0),
+                  border: isActive
+                      ? Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8)
                       : null,
                 ),
                 child: Text(
@@ -1545,13 +1529,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   }
 
   Widget _buildTabContent(BuildContext context, Map<String, dynamic> wordData) {
-    if (_selectedTabIndex == 0) {
-      return _buildDeclensionTab(context, wordData);
-    } else if (_selectedTabIndex == 1) {
+    if (_selectedTabIndex == 1) {
       return _buildExamplesTab(context, wordData);
-    } else {
-      return _buildRelatedTab(context, wordData);
     }
+    return _buildDeclensionTab(context, wordData);
   }
 
   bool _isVerb(Map<String, dynamic> wordData) {
@@ -1842,222 +1823,83 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const double minPerfectWidth = 110.0;
-              final double perfectWidth = (constraints.maxWidth - 24 - 72 - 85 - 85)
-                  .clamp(minPerfectWidth, double.infinity);
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: colorScheme.outlineVariant.withValues(
-                          alpha: 0.6,
-                        ),
-                      ),
-                    ),
-                    clipBehavior: Clip.hardEdge,
-                    child: Column(
-                      children: [
-                        // Table Header
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          color: colorScheme.primaryContainer.withValues(
-                            alpha: 0.5,
-                          ),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 72,
-                                child: Text(
-                                  'PRONOUN',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 85,
-                                child: Text(
-                                  'PRÄSENS',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 85,
-                                child: Text(
-                                  'PAST',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: perfectWidth,
-                                child: Text(
-                                  'PERFECT',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Table Data Rows
-                        ...List.generate(6, (index) {
-                          final isAlt = index % 2 == 1;
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isAlt
-                                  ? colorScheme.surfaceContainerHigh.withValues(
-                                      alpha: 0.25,
-                                    )
-                                  : Colors.transparent,
-                              border: index > 0
-                                  ? Border(
-                                      top: BorderSide(
-                                        color: colorScheme.outlineVariant
-                                            .withValues(alpha: 0.3),
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: 72,
-                                  child: Text(
-                                    pronouns[index],
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: 85,
-                                  child: Text(
-                                    presentForms[index],
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: 85,
-                                  child: Text(
-                                    pastForms[index],
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: perfectWidth,
-                                  child: Text(
-                                    perfectForms[index],
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          if (forms.length > 15) ...[
-            const SizedBox(height: 20),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-            Text(
-              'All Recorded Inflection Forms (${forms.length})',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurfaceVariant,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4.0),
+            child: Table(
+              border: TableBorder.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                width: 0.8,
               ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: forms.map<Widget>((f) {
-                final formStr = (f['form'] ?? '').toString();
-                final tagStr = (f['tags'] ?? '').toString();
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              columnWidths: const {
+                0: FlexColumnWidth(0.95),
+                1: FlexColumnWidth(1.05),
+                2: FlexColumnWidth(1.05),
+                3: FlexColumnWidth(1.45),
+              },
+              children: [
+                TableRow(
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(4),
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.4),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTableCell('PRONOUN', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PRÄSENS', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PAST', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PERFECT', isHeader: true, colorScheme: colorScheme),
+                  ],
+                ),
+                ...List.generate(6, (index) {
+                  final isAlt = index % 2 == 1;
+                  return TableRow(
+                    decoration: BoxDecoration(
+                      color: isAlt
+                          ? colorScheme.surfaceContainerHigh.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                    ),
                     children: [
-                      Text(
-                        formStr,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                      if (tagStr.isNotEmpty)
-                        Text(
-                          tagStr
-                              .replaceAll('[', '')
-                              .replaceAll(']', '')
-                              .replaceAll('"', ''),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                      _buildTableCell(pronouns[index], isBold: true, colorScheme: colorScheme),
+                      _buildTableCell(presentForms[index], isSemiBold: true, colorScheme: colorScheme),
+                      _buildTableCell(pastForms[index], isSemiBold: true, colorScheme: colorScheme),
+                      _buildTableCell(perfectForms[index], isMuted: true, colorScheme: colorScheme),
                     ],
-                  ),
-                );
-              }).toList(),
+                  );
+                }),
+              ],
             ),
-          ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTableCell(
+    String text, {
+    bool isHeader = false,
+    bool isBold = false,
+    bool isSemiBold = false,
+    bool isMuted = false,
+    required ColorScheme colorScheme,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
+      child: Text(
+        text,
+        maxLines: 2,
+        softWrap: true,
+        style: TextStyle(
+          fontSize: isHeader ? 9.5 : 11.5,
+          fontWeight: isHeader
+              ? FontWeight.bold
+              : (isBold
+                  ? FontWeight.bold
+                  : (isSemiBold ? FontWeight.w600 : FontWeight.normal)),
+          color: isHeader
+              ? colorScheme.primary
+              : (isMuted
+                  ? colorScheme.onSurfaceVariant
+                  : colorScheme.onSurface),
+        ),
       ),
     );
   }
@@ -2265,56 +2107,569 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     );
   }
 
-  Widget _buildRelatedTab(BuildContext context, Map<String, dynamic> wordData) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final relations = (wordData['relations'] as List?) ?? [];
+}
 
-    if (relations.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        alignment: Alignment.center,
-        child: Text(
-          'No related words found.',
-          style: TextStyle(color: colorScheme.onSurfaceVariant),
-        ),
-      );
-    }
+class _SavedVocabularySheet extends StatefulWidget {
+  final List<SavedWord> initialWords;
+  final Function(SavedWord) onWordSelected;
+  final Function(String) onWordDeleted;
+  final Function(SavedWord, VocabCategory) onCategoryChanged;
+
+  const _SavedVocabularySheet({
+    required this.initialWords,
+    required this.onWordSelected,
+    required this.onWordDeleted,
+    required this.onCategoryChanged,
+  });
+
+  @override
+  State<_SavedVocabularySheet> createState() => _SavedVocabularySheetState();
+}
+
+class _SavedVocabularySheetState extends State<_SavedVocabularySheet> {
+  final TextEditingController _searchController = TextEditingController();
+  final TtsService _ttsService = TtsService();
+  late List<SavedWord> _words;
+  String _selectedCategory = 'all';
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _words = List.from(widget.initialWords);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<SavedWord> get _filteredWords {
+    return _words.where((w) {
+      final matchesCategory = _selectedCategory == 'all' ||
+          (_selectedCategory == 'learning' && w.category == VocabCategory.learning) ||
+          (_selectedCategory == 'mastered' && w.category == VocabCategory.mastered);
+
+      if (!matchesCategory) return false;
+
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      final wordMatch = w.word.toLowerCase().contains(q);
+      final defMatch = w.primaryDefinition.toLowerCase().contains(q);
+      return wordMatch || defMatch;
+    }).toList();
+  }
+
+  int get _learningCount => _words.where((w) => w.category == VocabCategory.learning).length;
+  int get _masteredCount => _words.where((w) => w.category == VocabCategory.mastered).length;
+
+  void _startPracticeSession() {
+    final filtered = _filteredWords;
+    if (filtered.isEmpty) return;
+
+    int practiceIndex = 0;
+    bool showAnswer = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final colorScheme = Theme.of(context).colorScheme;
+          final item = filtered[practiceIndex];
+
+          Color genderColor = colorScheme.primary;
+          if (item.gender == 'm' || item.gender == 'masculine') genderColor = AppTheme.genderMasc;
+          if (item.gender == 'f' || item.gender == 'feminine') genderColor = AppTheme.genderFem;
+          if (item.gender == 'n' || item.gender == 'neuter') genderColor = AppTheme.genderNeu;
+
+          String article = '';
+          final g = item.gender?.toLowerCase();
+          if (g == 'm' || g == 'masc' || g == 'masculine') article = 'der';
+          if (g == 'f' || g == 'fem' || g == 'feminine') article = 'die';
+          if (g == 'n' || g == 'neu' || g == 'neuter') article = 'das';
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(6.0)),
+            ),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2.0),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.psychology_rounded, color: colorScheme.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Practice Saved Deck',
+                          style: BooksModernist.heading(size: 18, color: colorScheme.onSurface, context: context),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4.0),
+                  child: LinearProgressIndicator(
+                    value: (practiceIndex + 1) / filtered.length,
+                    minHeight: 6,
+                    backgroundColor: colorScheme.surfaceContainerHigh,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Word ${practiceIndex + 1} of ${filtered.length}',
+                  style: BooksModernist.body(size: 12, color: colorScheme.onSurfaceVariant, context: context),
+                ),
+                const Spacer(),
+
+                GestureDetector(
+                  onTap: () => setSheetState(() => showAnswer = !showAnswer),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(6.0),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (article.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: genderColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                            child: Text(
+                              article,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: genderColor),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        Text(
+                          item.word,
+                          style: BooksModernist.heading(size: 26, color: colorScheme.onSurface, context: context),
+                        ),
+                        const SizedBox(height: 16),
+                        if (!showAnswer)
+                          Text(
+                            'Tap card to reveal definition',
+                            style: BooksModernist.body(size: 13, color: colorScheme.onSurfaceVariant, context: context),
+                          )
+                        else ...[
+                          Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                          const SizedBox(height: 16),
+                          Text(
+                            item.primaryDefinition,
+                            textAlign: TextAlign.center,
+                            style: BooksModernist.body(size: 18, weight: FontWeight.w600, color: colorScheme.primary, context: context),
+                          ),
+                          if (item.contextSentence != null && item.contextSentence!.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              '"${item.contextSentence}"',
+                              textAlign: TextAlign.center,
+                              style: BooksModernist.body(size: 12, color: colorScheme.onSurfaceVariant, context: context),
+                            ),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+                const Spacer(),
+
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setSheetState(() {
+                          showAnswer = false;
+                          practiceIndex = (practiceIndex - 1 + filtered.length) % filtered.length;
+                        });
+                      },
+                      icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                      label: const Text('Prev', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                      ),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: () {
+                        setSheetState(() {
+                          showAnswer = false;
+                          if (practiceIndex < filtered.length - 1) {
+                            practiceIndex++;
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        });
+                      },
+                      icon: Icon(practiceIndex < filtered.length - 1 ? Icons.arrow_forward_rounded : Icons.check_circle_rounded, size: 16),
+                      label: Text(practiceIndex < filtered.length - 1 ? 'Next' : 'Finish', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final displayList = _filteredWords;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: colorScheme.outlineVariant),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(6.0)),
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: relations.map<Widget>((r) {
-          final relWord = r['related_word'] ?? '';
-          final relType = r['relation_type'] ?? 'related';
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: colorScheme.outlineVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 10),
 
-          Color chipColor = colorScheme.primaryContainer;
-          if (relType == 'synonym')
-            chipColor = Colors.green.withValues(alpha: 0.15);
-          if (relType == 'antonym')
-            chipColor = Colors.red.withValues(alpha: 0.15);
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'My Saved Vocabulary (${_words.length})',
+                        style: BooksModernist.heading(size: 17),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Manage, search and practice your saved German deck',
+                        style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_words.isNotEmpty) ...[
+                  OutlinedButton.icon(
+                    onPressed: _startPracticeSession,
+                    icon: const Icon(Icons.psychology_rounded, size: 16),
+                    label: const Text('Üben', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                      side: BorderSide(color: colorScheme.primary),
+                      foregroundColor: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
 
-          return ActionChip(
-            label: Text('$relWord ($relType)'),
-            backgroundColor: chipColor,
-            onPressed: () async {
-              final fullWord = await _dictionaryService.lookupWord(relWord);
-              if (mounted && fullWord != null) {
-                _onResultSelected(fullWord);
-              } else {
-                _searchController.text = relWord;
-                _onSearchChanged(relWord);
-              }
-            },
-          );
-        }).toList(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) => setState(() => _searchQuery = val.trim()),
+              decoration: InputDecoration(
+                hintText: 'Search saved terms or definitions...',
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                filled: true,
+                fillColor: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6.0),
+                  borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6.0),
+                  borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                _buildFilterChip('all', 'All (${_words.length})'),
+                const SizedBox(width: 8),
+                _buildFilterChip('learning', 'Learning ($_learningCount)'),
+                const SizedBox(width: 8),
+                _buildFilterChip('mastered', 'Mastered ($_masteredCount)'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+
+          Expanded(
+            child: displayList.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bookmark_outline_rounded, size: 48, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                        const SizedBox(height: 12),
+                        Text(
+                          _searchQuery.isNotEmpty
+                              ? 'No saved words match "$_searchQuery"'
+                              : 'No words saved in this category yet.',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    itemCount: displayList.length,
+                    itemBuilder: (context, index) {
+                      final item = displayList[index];
+
+                      Color genderColor = colorScheme.primary;
+                      if (item.gender == 'm' || item.gender == 'masculine') genderColor = AppTheme.genderMasc;
+                      if (item.gender == 'f' || item.gender == 'feminine') genderColor = AppTheme.genderFem;
+                      if (item.gender == 'n' || item.gender == 'neuter') genderColor = AppTheme.genderNeu;
+
+                      String article = '';
+                      final g = item.gender?.toLowerCase();
+                      if (g == 'm' || g == 'masc' || g == 'masculine') article = 'der';
+                      if (g == 'f' || g == 'fem' || g == 'feminine') article = 'die';
+                      if (g == 'n' || g == 'neu' || g == 'neuter') article = 'das';
+
+                      final isMastered = item.category == VocabCategory.mastered;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10.0),
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                if (article.isNotEmpty) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: genderColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4.0),
+                                    ),
+                                    child: Text(
+                                      article,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: genderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => widget.onWordSelected(item),
+                                    child: Text(
+                                      item.word,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isMastered
+                                        ? Colors.amber.withValues(alpha: 0.15)
+                                        : Colors.green.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4.0),
+                                  ),
+                                  child: Text(
+                                    isMastered ? 'MASTERED' : 'LEARNING',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: isMastered ? Colors.amber.shade800 : Colors.green.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.primaryDefinition,
+                              style: TextStyle(fontSize: 13, color: colorScheme.primary, fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Text(
+                                  'SRS: ${item.interval}d • Ease: ${item.easeFactor.toStringAsFixed(1)}x',
+                                  style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                                ),
+                                const Spacer(),
+                                InkWell(
+                                  onTap: () => _ttsService.speak(item.word, lang: 'de-DE'),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    child: Icon(Icons.volume_up_rounded, size: 16, color: colorScheme.primary),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () {
+                                    final newCategory = isMastered ? VocabCategory.learning : VocabCategory.mastered;
+                                    widget.onCategoryChanged(item, newCategory);
+                                    setState(() {
+                                      final idx = _words.indexWhere((w) => w.id == item.id);
+                                      if (idx != -1) {
+                                        _words[idx] = SavedWord(
+                                          id: item.id,
+                                          word: item.word,
+                                          gender: item.gender,
+                                          ipa: item.ipa,
+                                          primaryDefinition: item.primaryDefinition,
+                                          category: newCategory,
+                                          interval: item.interval,
+                                          easeFactor: item.easeFactor,
+                                          repetitions: item.repetitions,
+                                          dueDate: item.dueDate,
+                                          createdAt: item.createdAt,
+                                        );
+                                      }
+                                    });
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    child: Icon(
+                                      isMastered ? Icons.undo_rounded : Icons.check_circle_outline_rounded,
+                                      size: 16,
+                                      color: isMastered ? colorScheme.onSurfaceVariant : Colors.green,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () {
+                                    widget.onWordDeleted(item.id);
+                                    setState(() {
+                                      _words.removeWhere((w) => w.id == item.id);
+                                    });
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    child: Icon(Icons.delete_outline_rounded, size: 16, color: colorScheme.error),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildFilterChip(String categoryId, String label) {
+    final isSelected = _selectedCategory == categoryId;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ChoiceChip(
+      selected: isSelected,
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+        ),
+      ),
+      selectedColor: colorScheme.primary,
+      backgroundColor: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+      visualDensity: VisualDensity.compact,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+      onSelected: (_) => setState(() => _selectedCategory = categoryId),
     );
   }
 }

@@ -352,10 +352,17 @@ class DictionaryService {
       final res = await http.get(uri).timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
-        return List<Map<String, dynamic>>.from(data['results'] ?? []);
+        final results = List<Map<String, dynamic>>.from(data['results'] ?? []);
+        if (results.isNotEmpty) return results;
       }
     } catch (e) {
       AppLogger.error("OmniScribe dictionary API search error", error: e, tag: 'DictionaryService');
+    }
+
+    // Direct Google Translate NMT Fallback for missing DB words (e.g. Gesellschaft)
+    final onlineResult = await translateWordOnline(query);
+    if (onlineResult != null) {
+      return [onlineResult];
     }
 
     return [];

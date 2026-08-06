@@ -252,15 +252,19 @@ def transcribe_and_translate(audio_path: str):
 
 def transcribe_speech(audio_path: str) -> str:
     """Transcribes a short spoken-German recording into a plain text string."""
-    model = get_whisper_model()
-    segments, _ = model.transcribe(
-        audio_path,
-        beam_size=1,
-        best_of=1,
-        language="de",
-        vad_filter=True,
-    )
-    return " ".join(segment.text.strip() for segment in segments if segment.text.strip())
+    try:
+        model = get_whisper_model()
+        segments, _ = model.transcribe(
+            audio_path,
+            beam_size=1,
+            best_of=1,
+            language="de",
+            vad_filter=False,
+        )
+        return " ".join(segment.text.strip() for segment in segments if segment.text.strip())
+    except Exception as e:
+        print(f"Error transcribing speech audio {audio_path}: {e}")
+        return ""
 
 _WORD_RE = re.compile(r"[a-zA-ZäöüÄÖÜß]+")
 
@@ -489,9 +493,13 @@ async def get_word_info(word: str):
 # German Dictionary Database endpoints
 DICT_DB_PATHS = [
     os.path.join(os.path.dirname(__file__), "assets", "german_dictionary_v17_lite.db"),
+    os.path.join(os.path.dirname(__file__), "assets", "german_dictionary_v16_lite.db"),
     os.path.join(os.path.dirname(__file__), "german_dictionary_v17_lite.db"),
+    os.path.join(os.path.dirname(__file__), "german_dictionary_v16_lite.db"),
     os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "german_dictionary_v17_lite.db"),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "german_dictionary_v16_lite.db"),
     os.path.join(CACHE_DIR, "german_dictionary_v17_lite.db"),
+    os.path.join(CACHE_DIR, "german_dictionary_v16_lite.db"),
 ]
 
 def get_dict_db_path():
@@ -500,111 +508,126 @@ def get_dict_db_path():
             return p
     return None
 
+def translate_german_to_english(word: str) -> str | None:
+    try:
+        translator = GoogleTranslator(source='de', target='en')
+        res = translator.translate(word)
+        if res and res.lower() != word.lower():
+            return res
+    except Exception:
+        pass
+
+    try:
+        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=de&tl=en&dt=t&q={urllib.parse.quote(word)}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'TaktApp/1.0'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            if data and data[0] and data[0][0]:
+                res = data[0][0][0]
+                if res and res.lower() != word.lower():
+                    return res
+    except Exception:
+        pass
+
+    return None
+
 @app.get("/api/dictionary/search")
 def dictionary_search(q: str = Query(...)):
-    db_path = get_dict_db_path()
-    if not db_path:
-        raise HTTPException(status_code=533, detail="Dictionary database unavailable on server")
-    
     query_str = q.strip()
     if not query_str:
         return {"results": []}
-    
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    
-    sql_like = f"{query_str}%"
-    try:
-        rows = cursor.execute("""
-            SELECT w.id, w.word, w.pos, w.gender, w.ipa, w.base_form,
-                   COALESCE(d.definition, d_base.definition) as definition 
-            FROM words w
-            LEFT JOIN definitions d ON w.id = d.word_id
-            LEFT JOIN words w_base ON w.base_form = w_base.word
-            LEFT JOIN definitions d_base ON w_base.id = d_base.word_id
-            WHERE w.word LIKE ?
-            ORDER BY LENGTH(w.word) ASC, w.word ASC, w.id ASC
-        """, (sql_like,)).fetchall()
 
-        grouped = {}
-        lowest_id_for_key = {}
+    db_path = get_dict_db_path()
+    if db_path:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        sql_like = f"{query_str}%"
+        try:
+            rows = cursor.execute("""
+                SELECT w.id, w.word, w.pos, w.gender, w.ipa, w.base_form,
+                       COALESCE(d.definition, d_base.definition) as definition 
+                FROM words w
+                LEFT JOIN definitions d ON w.id = d.word_id
+                LEFT JOIN words w_base ON w.base_form = w_base.word
+                LEFT JOIN definitions d_base ON w_base.id = d_base.word_id
+                WHERE w.word LIKE ?
+                ORDER BY LENGTH(w.word) ASC, w.word ASC, w.id ASC
+            """, (sql_like,)).fetchall()
 
-        for r in rows:
-            w_id = r["id"]
-            w_str = (r["word"] or "").lower()
-            pos_str = (r["pos"] or "").lower()
-            key = f"{w_str}_{pos_str}"
+            grouped = {}
+            lowest_id_for_key = {}
 
-            if key not in lowest_id_for_key:
-                lowest_id_for_key[key] = w_id
-                grouped[key] = dict(r)
+            for r in rows:
+                w_id = r["id"]
+                w_str = (r["word"] or "").lower()
+                pos_str = (r["pos"] or "").lower()
+                key = f"{w_str}_{pos_str}"
 
-        results = list(grouped.values())[:20]
-        conn.close()
-        return {"results": results}
-    except Exception as e:
-        conn.close()
-        raise HTTPException(status_code=500, detail=f"Dictionary search error: {e}")
+                if key not in lowest_id_for_key:
+                    lowest_id_for_key[key] = w_id
+                    grouped[key] = dict(r)
+
+            results = list(grouped.values())[:20]
+            conn.close()
+            if results:
+                return {"results": results}
+        except Exception:
+            conn.close()
+
+    # Online Translation Fallback if DB is missing or word not in DB
+    translated = translate_german_to_english(query_str)
+    if translated:
+        return {
+            "results": [
+                {
+                    "id": -1,
+                    "word": query_str,
+                    "pos": "word",
+                    "gender": None,
+                    "ipa": None,
+                    "base_form": query_str,
+                    "definition": translated,
+                }
+            ]
+        }
+
+    return {"results": []}
 
 @app.get("/api/dictionary/word/{word_id}")
 def dictionary_word_details(word_id: int):
     db_path = get_dict_db_path()
-    if not db_path:
-        raise HTTPException(status_code=533, detail="Dictionary database unavailable on server")
-    
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    if db_path:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
 
-    try:
-        w_row = cursor.execute("SELECT * FROM words WHERE id = ?", (word_id,)).fetchone()
-        if not w_row:
+        try:
+            w_row = cursor.execute("SELECT * FROM words WHERE id = ?", (word_id,)).fetchone()
+            if w_row:
+                word_data = dict(w_row)
+                def_rows = cursor.execute("SELECT definition FROM definitions WHERE word_id = ?", (word_id,)).fetchall()
+                defs = [r["definition"] for r in def_rows if r["definition"]]
+                word_data["definitions"] = defs
+
+                try:
+                    form_rows = cursor.execute("SELECT form FROM forms WHERE word_id = ?", (word_id,)).fetchall()
+                    word_data["forms"] = [{"form": r["form"]} for r in form_rows if r["form"]]
+                except Exception:
+                    word_data["forms"] = []
+
+                word_data["examples"] = []
+                word_data["synonyms"] = []
+                word_data["antonyms"] = []
+                word_data["related"] = []
+                conn.close()
+                return word_data
             conn.close()
-            raise HTTPException(status_code=404, detail="Word not found")
-        
-        word_data = dict(w_row)
-
-        def_rows = cursor.execute("SELECT definition FROM definitions WHERE word_id = ?", (word_id,)).fetchall()
-        defs = [r["definition"] for r in def_rows if r["definition"]]
-        word_data["definitions"] = defs
-
-        try:
-            form_rows = cursor.execute("SELECT form FROM forms WHERE word_id = ?", (word_id,)).fetchall()
-            word_data["forms"] = [{"form": r["form"]} for r in form_rows if r["form"]]
         except Exception:
-            word_data["forms"] = []
+            conn.close()
 
-        # Real example sentences (sourced from Wiktionary/Kaikki at DB-build
-        # time). Older bundled DBs without this table just return [].
-        try:
-            ex_rows = cursor.execute("SELECT de, en FROM examples WHERE word_id = ?", (word_id,)).fetchall()
-            examples = [{"de": r["de"], "en": r["en"]} for r in ex_rows if r["de"]]
-            if not examples and word_data.get("base_form"):
-                base_row = cursor.execute(
-                    "SELECT id FROM words WHERE word = ? COLLATE NOCASE LIMIT 1",
-                    (word_data["base_form"],),
-                ).fetchone()
-                if base_row:
-                    ex_rows = cursor.execute(
-                        "SELECT de, en FROM examples WHERE word_id = ?", (base_row["id"],)
-                    ).fetchall()
-                    examples = [{"de": r["de"], "en": r["en"]} for r in ex_rows if r["de"]]
-            word_data["examples"] = examples
-        except Exception:
-            word_data["examples"] = []
-
-        word_data["synonyms"] = []
-        word_data["antonyms"] = []
-        word_data["related"] = []
-
-        conn.close()
-        return word_data
-    except HTTPException:
-        raise
-    except Exception as e:
-        conn.close()
-        raise HTTPException(status_code=500, detail=f"Word detail error: {e}")
+    raise HTTPException(status_code=404, detail="Word not found")
 
 @app.get("/api/dictionary/frequency")
 def dictionary_frequency(
@@ -614,51 +637,61 @@ def dictionary_frequency(
     random: bool = True
 ):
     db_path = get_dict_db_path()
-    if not db_path:
-        raise HTTPException(status_code=533, detail="Dictionary database unavailable on server")
+    if db_path:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
 
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    try:
-        has_pos = False
         try:
-            cols = [info[1] for info in cursor.execute("PRAGMA table_info(words)").fetchall()]
-            if "pos" in cols:
-                has_pos = True
+            has_pos = False
+            try:
+                cols = [info[1] for info in cursor.execute("PRAGMA table_info(words)").fetchall()]
+                if "pos" in cols:
+                    has_pos = True
+            except Exception:
+                pass
+
+            pos_filter = ""
+            max_rank = 500 + (learned_count * 50)
+            params = [max_rank]
+
+            if pos != "all" and pos and has_pos:
+                pos_filter = "AND w.pos LIKE ?"
+                params.append(f"%{pos}%")
+
+            params.append(limit)
+            order_clause = "RANDOM()" if random else "w.freq_rank ASC"
+            pos_column = "w.pos" if has_pos else "'' as pos"
+
+            rows = cursor.execute(f"""
+                SELECT w.id, w.word, {pos_column}, w.gender, w.ipa, d.definition, w.freq_rank
+                FROM words w
+                JOIN definitions d ON w.id = d.word_id
+                WHERE w.freq_rank IS NOT NULL AND w.freq_rank <= ? {pos_filter} AND d.definition IS NOT NULL
+                GROUP BY w.id
+                ORDER BY {order_clause}
+                LIMIT ?
+            """, params).fetchall()
+
+            results = [dict(r) for r in rows]
+            conn.close()
+            if results:
+                return {"results": results}
         except Exception:
-            pass
+            conn.close()
 
-        pos_filter = ""
-        max_rank = 500 + (learned_count * 50)
-        params = [max_rank]
-
-        if pos != "all" and pos and has_pos:
-            pos_filter = "AND w.pos LIKE ?"
-            params.append(f"%{pos}%")
-
-        params.append(limit)
-
-        order_clause = "RANDOM()" if random else "w.freq_rank ASC"
-        pos_column = "w.pos" if has_pos else "'' as pos"
-
-        rows = cursor.execute(f"""
-            SELECT w.id, w.word, {pos_column}, w.gender, w.ipa, d.definition, w.freq_rank
-            FROM words w
-            JOIN definitions d ON w.id = d.word_id
-            WHERE w.freq_rank IS NOT NULL AND w.freq_rank <= ? {pos_filter} AND d.definition IS NOT NULL
-            GROUP BY w.id
-            ORDER BY {order_clause}
-            LIMIT ?
-        """, params).fetchall()
-
-        results = [dict(r) for r in rows]
-        conn.close()
-        return {"results": results}
-    except Exception as e:
-        conn.close()
-        raise HTTPException(status_code=500, detail=f"Frequency error: {e}")
+    # Fallback curated frequency words if DB is not on server
+    fallback_words = [
+        {"id": 1, "word": "die Gesellschaft", "pos": "noun", "gender": "f", "ipa": "/ɡəˈzɛlʃaft/", "definition": "society, company, corporation", "freq_rank": 150},
+        {"id": 2, "word": "das Haus", "pos": "noun", "gender": "n", "ipa": "/haʊ̯s/", "definition": "house, building, home", "freq_rank": 10},
+        {"id": 3, "word": "der Mensch", "pos": "noun", "gender": "m", "ipa": "/mɛnʃ/", "definition": "person, human being", "freq_rank": 20},
+        {"id": 4, "word": "die Zeit", "pos": "noun", "gender": "f", "ipa": "/t͡saɪ̯t/", "definition": "time, period", "freq_rank": 15},
+        {"id": 5, "word": "das Leben", "pos": "noun", "gender": "n", "ipa": "/ˈleːbn̩/", "definition": "life, living", "freq_rank": 25},
+        {"id": 6, "word": "die Welt", "pos": "noun", "gender": "f", "ipa": "/vɛlt/", "definition": "world, earth", "freq_rank": 30},
+        {"id": 7, "word": "die Arbeit", "pos": "noun", "gender": "f", "ipa": "/ˈaʁbaɪ̯t/", "definition": "work, job, labor", "freq_rank": 35},
+        {"id": 8, "word": "die Kultur", "pos": "noun", "gender": "f", "ipa": "/kʊlˈtuːɐ̯/", "definition": "culture, civilization", "freq_rank": 40},
+    ]
+    return {"results": fallback_words[:limit]}
 
 # Auth & User Sync
 #
@@ -804,8 +837,9 @@ def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_sta
 
 # Mount static web app files if available
 web_build_dir = os.path.join(os.path.dirname(__file__), "public_web")
+print(f"Checking web_build_dir: {web_build_dir}, exists: {os.path.exists(web_build_dir)}")
 if os.path.exists(web_build_dir):
-    print(f"Mounting static web app from {web_build_dir}")
+    print(f"Contents of {web_build_dir}: {os.listdir(web_build_dir)}")
     app.mount("/app", StaticFiles(directory=web_build_dir, html=True), name="web_app")
     app.mount("/", StaticFiles(directory=web_build_dir, html=True), name="web_root")
 

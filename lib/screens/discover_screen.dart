@@ -6,13 +6,13 @@ import '../models/article_model.dart';
 import '../models/processed_video.dart';
 import '../models/processing_status.dart';
 import '../widgets/article_card.dart';
-import '../widgets/section_header.dart';
 import '../widgets/compact_article_card.dart';
 import 'story_reader_screen.dart';
 import 'video_screen.dart';
 import 'create/text_input_screen.dart';
 import 'create/url_import_screen.dart';
 import 'skill_tree_screen.dart';
+import '../theme/books_modernist_style.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -191,53 +191,59 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Quick Action Banner
-                Card(
-                  elevation: 0,
-                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.add_link_rounded, size: 28, color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Import Any Content',
-                                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                'YouTube, Web articles, or custom text',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _showCreateOptions(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                          child: const Text('Import', style: TextStyle(fontSize: 12)),
-                        ),
-                      ],
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                      width: 0.8,
                     ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.add_link_rounded, size: 28, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Import Any Content',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'YouTube, Web articles, or custom text',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _showCreateOptions(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                        ),
+                        child: const Text('Import', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Continue Learning Section
                 Text(
-                  'Continue Learning',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  'CONTINUE LEARNING',
+                  style: BooksModernist.body(
+                    size: 11,
+                    weight: FontWeight.w800,
+                    color: BooksModernist.accentDark,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ListView.separated(
@@ -247,15 +253,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final article = _continueLearningArticles[index];
-                    return Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          width: 0.8,
+                        ),
                       ),
                       child: ListTile(
                         leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(4.0),
                           child: Image.asset(article.imageUrl, width: 44, height: 44, fit: BoxFit.cover),
                         ),
                         title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -271,8 +280,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 // Imported Articles
                 if (mediaLibraryService.importedArticles.isNotEmpty) ...[
                   Text(
-                    'Your Imports',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    'YOUR IMPORTS',
+                    style: BooksModernist.body(
+                      size: 11,
+                      weight: FontWeight.w800,
+                      color: BooksModernist.accentDark,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   ListView.separated(
@@ -282,11 +295,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final article = mediaLibraryService.importedArticles[index];
-                      return Card(
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            width: 0.8,
+                          ),
                         ),
                         child: ListTile(
                           title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -307,8 +323,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 // Transcribed Media
                 if (mediaLibraryService.processedVideos.isNotEmpty) ...[
                   Text(
-                    'Transcribed Media',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    'TRANSCRIBED MEDIA',
+                    style: BooksModernist.body(
+                      size: 11,
+                      weight: FontWeight.w800,
+                      color: BooksModernist.accentDark,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   ListView.separated(
@@ -319,20 +339,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     itemBuilder: (context, index) {
                       final video = mediaLibraryService.processedVideos[index];
                       final isFailed = video.status == ProcessingStatus.failed;
-                      return Card(
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                          side: BorderSide(
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(
                             color: isFailed
                                 ? Theme.of(context).colorScheme.error.withValues(alpha: 0.5)
-                                : Theme.of(context).colorScheme.outlineVariant,
+                                : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            width: 0.8,
                           ),
                         ),
                         child: ListTile(
                           leading: Icon(
                             isFailed ? Icons.error_outline_rounded : Icons.video_library_rounded,
-                            color: isFailed ? Theme.of(context).colorScheme.error : Colors.teal,
+                            color: isFailed ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
                           ),
                           title: Text(video.effectiveTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                           subtitle: Text(
@@ -375,6 +396,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _buildFilterPills(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -382,20 +404,38 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           final isSelected = _selectedLevel == level;
           return Padding(
             padding: const EdgeInsets.only(right: 6.0),
-            child: FilterChip(
-              label: Text(level),
-              selected: isSelected,
-              onSelected: (selected) {
+            child: InkWell(
+              onTap: () {
                 setState(() {
                   _selectedLevel = level;
                 });
               },
-              selectedColor: Theme.of(context).colorScheme.primaryContainer,
-              checkmarkColor: Theme.of(context).colorScheme.primary,
-              labelStyle: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
+              borderRadius: BorderRadius.circular(4),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? colorScheme.primaryContainer
+                      : Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: isSelected
+                        ? colorScheme.primary
+                        : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    width: isSelected ? 1.2 : 0.8,
+                  ),
+                ),
+                child: Text(
+                  level,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ),
           );
@@ -412,7 +452,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           const SizedBox(height: 16),
 
           // Continue Learning Section
-          SectionHeader(title: 'Continue Learning'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+            child: Text(
+              'CONTINUE LEARNING',
+              style: BooksModernist.body(
+                size: 11,
+                weight: FontWeight.w800,
+                color: BooksModernist.accentDark,
+              ),
+            ),
+          ),
           SizedBox(
             height: 150,
             child: ListView.builder(
@@ -430,7 +480,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
           // Transcribed Media Section
           if (mediaLibraryService.processedVideos.isNotEmpty) ...[
-            SectionHeader(title: 'Transcribed Media'),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+              child: Text(
+                'TRANSCRIBED MEDIA',
+                style: BooksModernist.body(
+                  size: 11,
+                  weight: FontWeight.w800,
+                  color: BooksModernist.accentDark,
+                ),
+              ),
+            ),
             SizedBox(
               height: 220,
               child: ListView.builder(
@@ -448,7 +509,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
           // Imported Section
           if (mediaLibraryService.importedArticles.isNotEmpty) ...[
-            SectionHeader(title: 'Imported'),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+              child: Text(
+                'IMPORTED',
+                style: BooksModernist.body(
+                  size: 11,
+                  weight: FontWeight.w800,
+                  color: BooksModernist.accentDark,
+                ),
+              ),
+            ),
             SizedBox(
               height: 150,
               child: ListView.builder(
@@ -472,12 +544,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ],
 
           // New Stories Section Header & Filters
+          const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('New Stories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  'EXPLORE STORIES',
+                  style: BooksModernist.body(
+                    size: 11,
+                    weight: FontWeight.w800,
+                    color: BooksModernist.accentDark,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(child: _buildFilterPills(context)),
               ],
@@ -507,6 +587,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _buildVideoCard(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isCompleted = video.status == ProcessingStatus.completed;
     final isFailed = video.status == ProcessingStatus.failed;
     final isProcessing = !isCompleted && !isFailed;
@@ -516,19 +597,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(6.0),
+        border: Border.all(
+          color: isFailed
+              ? colorScheme.error.withValues(alpha: 0.5)
+              : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 0.8,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6.0),
           onTap: () {
             if (isCompleted) {
               Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
@@ -542,7 +622,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   fit: StackFit.expand,
                   children: [
                     ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6.0)),
                       child: CachedNetworkImage(
                         imageUrl: video.thumbnailUrl,
                         fit: BoxFit.cover,
@@ -643,9 +723,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             TextButton(
-              child: const TextStyle(color: Colors.red) != null
-                  ? const Text('Delete', style: TextStyle(color: Colors.red))
-                  : const Text('Delete'),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
               onPressed: () {
                 mediaLibraryService.deleteImportedArticle(article.id);
                 Navigator.of(dialogContext).pop();
@@ -662,43 +740,84 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   void _showCreateOptions(BuildContext context) {
     if (_isShowingSheet) return;
     _isShowingSheet = true;
+    final colorScheme = Theme.of(context).colorScheme;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(6.0)),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
               'Create & Import',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: BooksModernist.heading(size: 18, context: context),
             ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.link_rounded, color: Colors.blue),
-              title: const Text('Import Web Article or YouTube Video'),
-              subtitle: const Text('Enter a URL to process and auto-generate transcript'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const UrlImportScreen()));
-              },
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Icon(Icons.link_rounded, color: colorScheme.primary, size: 20),
+                ),
+                title: const Text('Import Web Article or YouTube Video', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Enter a URL to process and auto-generate transcript', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const UrlImportScreen()));
+                },
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.edit_note_rounded, color: Colors.green),
-              title: const Text('Paste Custom Text'),
-              subtitle: const Text('Add your own German text to practice'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const TextInputScreen()));
-              },
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6.0),
+                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Icon(Icons.edit_note_rounded, color: colorScheme.secondary, size: 20),
+                ),
+                title: const Text('Paste Custom Text', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Add your own German text to practice', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const TextInputScreen()));
+                },
+              ),
             ),
+            const SizedBox(height: 12),
           ],
         ),
       ),

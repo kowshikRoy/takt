@@ -18,11 +18,19 @@ class ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0, // Flat card style, or low elevation if desired. Using 0 to match 'outlined' feel or just relying on color.
-      // Actually standard M3 card has some elevation or outline. Let's stick to theme default which we set to 0 with outline in AppTheme.
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(6.0),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 0.8,
+        ),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        borderRadius: BorderRadius.circular(6.0),
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
