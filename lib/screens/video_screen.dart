@@ -95,7 +95,7 @@ class _VideoScreenState extends State<VideoScreen>
   // Key Vocabulary Extraction State
   List<KeyMediaVocab> _keyVocabList = [];
   bool _isLoadingVocab = false;
-  int _activeViewIndex = 0; // 0: Key Vocabulary, 1: Full Transcript Cues
+  int _activeViewIndex = 1; // 0: Key Vocabulary, 1: Full Transcript Cues (default)
   Set<String> _savedVocabIds = {};
 
   void _startControlsTimer() {
@@ -1059,111 +1059,56 @@ class _VideoScreenState extends State<VideoScreen>
 
           const SizedBox(height: 6),
 
-          // Row 2: Subtitle Tools & Navigation (Key Vocabulary, Full Cues, Translation Toggle, Replay 5s)
+          // Row 2: Subtitle Tools & Navigation (Key Vocabulary Toggle, Replay 5s, Translation Toggle)
           Row(
             children: [
-              Expanded(
-                child: Container(
-                  height: 38,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          showCheckmark: false,
-                          avatar: Icon(
-                            Icons.key_rounded,
-                            size: 14,
-                            color: _activeViewIndex == 0
-                                ? colorScheme.onPrimary
-                                : colorScheme.primary,
-                          ),
-                          label: Center(
-                            child: Text(
-                              '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocab"} (${_keyVocabList.length})',
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                          labelStyle: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11.5,
-                            color: _activeViewIndex == 0
-                                ? colorScheme.onPrimary
-                                : colorScheme.onSurface,
-                          ),
-                          selected: _activeViewIndex == 0,
-                          selectedColor: colorScheme.primary,
-                          backgroundColor: Colors.transparent,
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                          onSelected: (_) => setState(() => _activeViewIndex = 0),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: ChoiceChip(
-                          showCheckmark: false,
-                          avatar: Icon(
-                            Icons.subtitles_rounded,
-                            size: 14,
-                            color: _activeViewIndex == 1
-                                ? colorScheme.onPrimary
-                                : colorScheme.primary,
-                          ),
-                          label: Center(
-                            child: Text(
-                              '${AppLocalizations.of(context)?.titleFullCues ?? "Full Cues"} (${_subtitles.length})',
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                          labelStyle: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11.5,
-                            color: _activeViewIndex == 1
-                                ? colorScheme.onPrimary
-                                : colorScheme.onSurface,
-                          ),
-                          selected: _activeViewIndex == 1,
-                          selectedColor: colorScheme.primary,
-                          backgroundColor: Colors.transparent,
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                          onSelected: (_) => setState(() => _activeViewIndex = 1),
-                        ),
-                      ),
-                    ],
+              ChoiceChip(
+                showCheckmark: false,
+                avatar: Icon(
+                  Icons.key_rounded,
+                  size: 15,
+                  color: _activeViewIndex == 0
+                      ? colorScheme.onPrimary
+                      : colorScheme.primary,
+                ),
+                label: Text(
+                  '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocabulary"} (${_keyVocabList.length})',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: _activeViewIndex == 0
+                        ? colorScheme.onPrimary
+                        : colorScheme.onSurface,
                   ),
                 ),
+                selected: _activeViewIndex == 0,
+                selectedColor: colorScheme.primary,
+                backgroundColor: Theme.of(context).cardColor,
+                side: BorderSide(
+                  color: _activeViewIndex == 0
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant.withValues(alpha: 0.7),
+                  width: 1.0,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                onSelected: (selected) {
+                  setState(() {
+                    _activeViewIndex = selected ? 0 : 1;
+                  });
+                },
               ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                style: IconButton.styleFrom(
-                  backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  minimumSize: const Size(36, 36),
-                  padding: EdgeInsets.zero,
-                ),
+              const Spacer(),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                 icon: Icon(
                   Icons.replay_5_rounded,
-                  size: 18,
+                  size: 20,
                   color: colorScheme.onSurfaceVariant,
                 ),
                 tooltip: 'Replay 5s',
@@ -1174,20 +1119,14 @@ class _VideoScreenState extends State<VideoScreen>
                   await _videoPlayerController!.seekTo(target < Duration.zero ? Duration.zero : target);
                 },
               ),
-              const SizedBox(width: 4),
-              IconButton.filledTonal(
-                style: IconButton.styleFrom(
-                  backgroundColor: !_hideTranslations
-                      ? colorScheme.primaryContainer
-                      : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  minimumSize: const Size(36, 36),
-                  padding: EdgeInsets.zero,
-                ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                 icon: Icon(
                   _hideTranslations
                       ? Icons.g_translate_rounded
                       : Icons.translate_rounded,
-                  size: 18,
+                  size: 20,
                   color: !_hideTranslations
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,
@@ -2473,7 +2412,7 @@ class _VideoScreenState extends State<VideoScreen>
         children: [
           // Mode Switcher Header Bar for Minimized / Standalone mode
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
               border: Border(
@@ -2484,119 +2423,60 @@ class _VideoScreenState extends State<VideoScreen>
             ),
             child: Row(
               children: [
-                Expanded(
-                  child: Container(
-                    height: 38,
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ChoiceChip(
-                            showCheckmark: false,
-                            avatar: Icon(
-                              Icons.key_rounded,
-                              size: 14,
-                              color: _activeViewIndex == 0
-                                  ? colorScheme.onPrimary
-                                  : colorScheme.primary,
-                            ),
-                            label: Center(
-                              child: Text(
-                                '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocab"} (${_keyVocabList.length})',
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            labelStyle: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11.5,
-                              color: _activeViewIndex == 0
-                                  ? colorScheme.onPrimary
-                                  : colorScheme.onSurface,
-                            ),
-                            selected: _activeViewIndex == 0,
-                            selectedColor: colorScheme.primary,
-                            backgroundColor: Colors.transparent,
-                            side: BorderSide.none,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            onSelected: (_) => setState(() => _activeViewIndex = 0),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: ChoiceChip(
-                            showCheckmark: false,
-                            avatar: Icon(
-                              Icons.subtitles_rounded,
-                              size: 14,
-                              color: _activeViewIndex == 1
-                                  ? colorScheme.onPrimary
-                                  : colorScheme.primary,
-                            ),
-                            label: Center(
-                              child: Text(
-                                '${AppLocalizations.of(context)?.titleFullCues ?? "Full Cues"} (${_subtitles.length})',
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            labelStyle: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11.5,
-                              color: _activeViewIndex == 1
-                                  ? colorScheme.onPrimary
-                                  : colorScheme.onSurface,
-                            ),
-                            selected: _activeViewIndex == 1,
-                            selectedColor: colorScheme.primary,
-                            backgroundColor: Colors.transparent,
-                            side: BorderSide.none,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            onSelected: (_) => setState(() => _activeViewIndex = 1),
-                          ),
-                        ),
-                      ],
+                ChoiceChip(
+                  showCheckmark: false,
+                  avatar: Icon(
+                    Icons.key_rounded,
+                    size: 15,
+                    color: _activeViewIndex == 0
+                        ? colorScheme.onPrimary
+                        : colorScheme.primary,
+                  ),
+                  label: Text(
+                    '${AppLocalizations.of(context)?.titleKeyVocab ?? "Key Vocabulary"} (${_keyVocabList.length})',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: _activeViewIndex == 0
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurface,
                     ),
                   ),
+                  selected: _activeViewIndex == 0,
+                  selectedColor: colorScheme.primary,
+                  backgroundColor: Theme.of(context).cardColor,
+                  side: BorderSide(
+                    color: _activeViewIndex == 0
+                        ? colorScheme.primary
+                        : colorScheme.outlineVariant.withValues(alpha: 0.7),
+                    width: 1.0,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  onSelected: (selected) {
+                    setState(() {
+                      _activeViewIndex = selected ? 0 : 1;
+                    });
+                  },
                 ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  style: IconButton.styleFrom(
-                    backgroundColor: !_hideTranslations
-                        ? colorScheme.primaryContainer
-                        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    minimumSize: const Size(36, 36),
-                    padding: EdgeInsets.zero,
-                  ),
+                const Spacer(),
+                IconButton(
                   icon: Icon(
                     _hideTranslations
                         ? Icons.g_translate_rounded
                         : Icons.translate_rounded,
-                    size: 18,
+                    size: 20,
                     color: !_hideTranslations
                         ? colorScheme.primary
                         : colorScheme.onSurfaceVariant,
                   ),
                   tooltip: _hideTranslations
-                      ? (AppLocalizations.of(context)?.actionShowTranslation ?? 'Show Translations')
-                      : (AppLocalizations.of(context)?.actionHideTranslation ?? 'Hide Translations'),
+                    ? (AppLocalizations.of(context)?.actionShowTranslation ?? 'Show Translations')
+                    : (AppLocalizations.of(context)?.actionHideTranslation ?? 'Hide Translations'),
                   onPressed: () {
                     setState(() {
                       _hideTranslations = !_hideTranslations;

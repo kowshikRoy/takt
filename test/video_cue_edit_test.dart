@@ -51,14 +51,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Switch to Full Transcript view tab (ChoiceChip 1)
-      final choiceChips = find.byType(ChoiceChip);
-      expect(choiceChips, findsNWidgets(2));
-      await tester.tap(choiceChips.at(1));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      // Verify initial cue original word is rendered
+      // Verify initial cue original word is rendered in default full transcript view
       expect(find.textContaining('Original'), findsWidgets);
 
       // Long press on the cue card to show action bar
@@ -132,12 +125,6 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Switch to Full Transcript view tab
-      final choiceChips = find.byType(ChoiceChip);
-      await tester.tap(choiceChips.at(1));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
       // Long press on the cue card to show action bar
       final cueWidget = find.textContaining('Guten').first;
       await tester.longPress(cueWidget);
@@ -183,7 +170,7 @@ void main() {
   );
 
   testWidgets(
-    'external media control bar renders below video with keywords, subtitles, and translation toggle',
+    'external media control bar renders below video with rectangular key vocabulary chip and translation toggle',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
 
@@ -216,9 +203,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Verify keywords and full subtitles chips exist
+      // Verify key vocabulary rectangular chip exists
       final choiceChips = find.byType(ChoiceChip);
-      expect(choiceChips, findsNWidgets(2));
+      expect(choiceChips, findsOneWidget);
 
       // Verify translation toggle icon button exists (defaults to hidden translations with g_translate)
       final translateToggle = find.byIcon(Icons.g_translate_rounded);
