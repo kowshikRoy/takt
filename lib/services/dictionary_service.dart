@@ -801,6 +801,7 @@ class DictionaryService {
           WHERE w.word = ? COLLATE NOCASE
           ORDER BY LENGTH(w.word) ASC, w.id ASC
         ''', [clean]);
+      }
       if (results.isEmpty) {
         final onlineResult = await translateWordOnline(clean);
         if (onlineResult != null) {
