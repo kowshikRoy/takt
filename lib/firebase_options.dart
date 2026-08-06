@@ -25,10 +25,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
@@ -62,7 +59,6 @@ class DefaultFirebaseOptions {
     projectId: 'book-search-472921',
     storageBucket: 'book-search-472921.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyC8DtEAEcGIE-DrP6kFbV08wbOb3P_Z1To',
     appId: '1:184475424927:ios:58036b4e426356e0d42aaa',
@@ -73,5 +69,14 @@ class DefaultFirebaseOptions {
     iosClientId: '184475424927-1gpfkbpnfhdp4qvd0bkgo65342m5h74q.apps.googleusercontent.com',
     iosBundleId: 'com.example.takt',
   );
-
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyC8DtEAEcGIE-DrP6kFbV08wbOb3P_Z1To',
+    appId: '1:184475424927:ios:58036b4e426356e0d42aaa',
+    messagingSenderId: '184475424927',
+    projectId: 'book-search-472921',
+    storageBucket: 'book-search-472921.firebasestorage.app',
+    androidClientId: '184475424927-1jetlrmsa5otjfdf8r3qu69d5lnl0c2l.apps.googleusercontent.com',
+    iosClientId: '184475424927-1gpfkbpnfhdp4qvd0bkgo65342m5h74q.apps.googleusercontent.com',
+    iosBundleId: 'com.example.takt',
+  );
 }

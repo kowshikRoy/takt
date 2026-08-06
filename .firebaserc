@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "book-search-472921"
+  },
+  "targets": {
+    "book-search-472921": {
+      "hosting": {
+        "takt-web": [
+          "deutschapp-takt"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
