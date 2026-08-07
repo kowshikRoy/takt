@@ -883,7 +883,10 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> tuple[list[
     return [], None
 
 def generate_dialogue_audio_with_gemini(dialogue_lines: list[str], output_wav_path: str, api_key: str = None) -> bool:
-    """Generates studio German audio for the dialogue script using Gemini 2.5 Flash TTS in 1 or 2 batch calls (strictly respecting 3 RPM limit)."""
+    """
+    Generates studio German audio for the dialogue script using Gemini 3.1 / 2.5 Flash TTS 
+    with expressive voice acting directives in 1 or 2 batch calls (strictly respecting 3 RPM limit).
+    """
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key or not dialogue_lines:
         return False
@@ -894,58 +897,71 @@ def generate_dialogue_audio_with_gemini(dialogue_lines: list[str], output_wav_pa
     chunk_size = 20
     chunks = [lines_to_speak[i:i + chunk_size] for i in range(0, len(lines_to_speak), chunk_size)]
 
-    all_pcm_bytes = bytearray()
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={key}"
+    models_to_try = [
+        "gemini-3.1-flash-tts-preview",
+        "gemini-2.5-flash-preview-tts",
+        "gemini-2.5-flash-tts"
+    ]
 
-    for chunk_idx, chunk in enumerate(chunks):
-        full_dialogue_text = "\n".join(chunk)
-        prompt = (
-            "Sprich den folgenden deutschen Dialog mit lebendiger, muttersprachlicher Aussprache und natürlicher Sprachmelodie. "
-            "Mache eine kurze, natürliche Sprechpause zwischen den einzelnen Sätzen:\n\n"
-            f"{full_dialogue_text}"
-        )
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "text": prompt
-                        }
-                    ]
+    for model_name in models_to_try:
+        all_pcm_bytes = bytearray()
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        success = True
+
+        for chunk_idx, chunk in enumerate(chunks):
+            full_dialogue_text = "\n".join(chunk)
+            prompt = (
+                "You are a professional native German voice actor. "
+                "Perform the following German conversation with authentic native pronunciation, lively conversational cadence, "
+                "expressive intonation, natural breathing pauses between sentences, and engaging warmth:\n\n"
+                f"{full_dialogue_text}"
+            )
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "responseModalities": ["AUDIO"]
                 }
-            ],
-            "generationConfig": {
-                "responseModalities": ["AUDIO"]
             }
-        }
 
-        try:
-            print(f"Calling Gemini Studio TTS (batch {chunk_idx+1}/{len(chunks)}, {len(chunk)} lines)...")
-            res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=240)
-            if res.status_code == 200:
-                res_json = res.json()
-                candidates = res_json.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    for part in parts:
-                        inline_data = part.get("inlineData", {})
-                        if inline_data.get("data"):
-                            pcm_chunk = base64.b64decode(inline_data["data"])
-                            all_pcm_bytes.extend(pcm_chunk)
-            else:
-                print(f"Gemini TTS returned status {res.status_code}: {res.text}")
-        except Exception as e:
-            print(f"Gemini TTS generation error on batch {chunk_idx+1}: {e}")
+            try:
+                print(f"Calling Gemini Studio TTS ({model_name}, batch {chunk_idx+1}/{len(chunks)}, {len(chunk)} lines)...")
+                res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=240)
+                if res.status_code == 200:
+                    res_json = res.json()
+                    candidates = res_json.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        for part in parts:
+                            inline_data = part.get("inlineData", {})
+                            if inline_data.get("data"):
+                                pcm_chunk = base64.b64decode(inline_data["data"])
+                                all_pcm_bytes.extend(pcm_chunk)
+                else:
+                    print(f"Gemini TTS ({model_name}) returned status {res.status_code}: {res.text[:200]}")
+                    success = False
+                    break
+            except Exception as e:
+                print(f"Gemini TTS generation error with {model_name} on batch {chunk_idx+1}: {e}")
+                success = False
+                break
 
-    if all_pcm_bytes:
-        # Write 24kHz 16-bit Mono WAV file
-        with wave.open(output_wav_path, "wb") as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(24000)
-            wav_file.writeframes(bytes(all_pcm_bytes))
-        print(f"Successfully generated Gemini Studio WAV audio ({len(all_pcm_bytes)} bytes) at {output_wav_path}")
-        return True
+        if success and all_pcm_bytes:
+            # Write 24kHz 16-bit Mono WAV file
+            with wave.open(output_wav_path, "wb") as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(24000)
+                wav_file.writeframes(bytes(all_pcm_bytes))
+            print(f"Successfully generated Gemini Studio WAV audio using {model_name} ({len(all_pcm_bytes)} bytes) at {output_wav_path}")
+            return True
 
     return False
 
@@ -1134,11 +1150,18 @@ async def process_media_task(task_id: str, url: str):
 
     job_id = f"/tmp/{uuid.uuid4()}"
     media_filename = f"{job_id}.media"
+    title: str | None = None
+    thumbnail: str | None = None
+    media_url: str | None = None
+    subtitles: list[SubtitleCue] = []
+    audio_stream_url: str | None = None
+    media_info: dict = {}
+    yt_meta: dict = {}
+
     try:
         update_task_stage(task_id, "Checking for official subtitles...", 20)
         
         # 0. Quick YouTube metadata extraction for title, channel author, and high-res thumbnail
-        yt_meta = {}
         if 'youtube.com' in url or 'youtu.be' in url:
             yt_meta = await asyncio.to_thread(fetch_youtube_metadata_fast, url)
             if yt_meta.get('title') and yt_meta['title'] not in ['German Lesson', 'Media']:
@@ -1348,21 +1371,20 @@ async def get_audio_file(filename: str):
     return FileResponse(file_path, media_type="audio/wav")
 
 @app.get("/status/{task_id}", response_model=StatusResponse)
-async def get_status(task_id: str, wait_seconds: int = 5):
-    """Returns task status, holding the connection open up to wait_seconds while PROCESSING to ensure unthrottled Cloud Run CPU allocation."""
-    start_time = asyncio.get_event_loop().time()
-    while True:
-        task = tasks.get(task_id)
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
+async def get_status(task_id: str, wait_seconds: int = 1):
+    """Returns task status immediately if completed/failed, or holds for up to 1 second during active processing for CPU keep-alive."""
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    if task.get("status") in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+        return StatusResponse(**task)
+    
+    if wait_seconds > 0:
+        await asyncio.sleep(min(wait_seconds, 1))
+        task = tasks.get(task_id, task)
         
-        if task.get("status") in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
-            return StatusResponse(**task)
-        
-        if (asyncio.get_event_loop().time() - start_time) >= wait_seconds:
-            return StatusResponse(**task)
-        
-        await asyncio.sleep(0.5)
+    return StatusResponse(**task)
 
 @app.get("/health")
 def health_check():
