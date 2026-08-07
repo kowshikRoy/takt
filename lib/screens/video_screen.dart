@@ -835,7 +835,11 @@ class _VideoScreenState extends State<VideoScreen>
     double playerHeight;
     bool isPortraitVideo = false;
 
-    if (_videoPlayerController?.value.isInitialized ?? false) {
+    final hasVideoTrack = (_videoPlayerController?.value.isInitialized ?? false) &&
+                          (_videoPlayerController?.value.size.width ?? 0) > 0 &&
+                          (_videoPlayerController?.value.size.height ?? 0) > 0;
+
+    if (hasVideoTrack) {
       final videoAspectRatio = _videoPlayerController!.value.aspectRatio;
       isPortraitVideo = videoAspectRatio < 1.0;
 
@@ -846,8 +850,8 @@ class _VideoScreenState extends State<VideoScreen>
         if (playerHeight > 320) playerHeight = 320;
       }
     } else {
-      playerHeight = screenWidth * 9 / 16;
-      if (playerHeight > 320) playerHeight = 320;
+      // Concise compact height for audio & dialogue mode to maximize transcript view
+      playerHeight = 144.0;
     }
 
     return Container(
@@ -875,8 +879,6 @@ class _VideoScreenState extends State<VideoScreen>
                       ),
                     Builder(
                       builder: (context) {
-                        final hasVideoTrack = (_videoPlayerController?.value.size.width ?? 0) > 0 &&
-                                              (_videoPlayerController?.value.size.height ?? 0) > 0;
                         if (hasVideoTrack) {
                           return Center(
                             child: AspectRatio(
@@ -887,39 +889,83 @@ class _VideoScreenState extends State<VideoScreen>
                             ),
                           );
                         } else {
+                          final isGeminiAudio = widget.processedVideo?.videoUrl?.contains('_dialogue.wav') == true ||
+                                                widget.processedVideo?.videoUrl?.contains('/audio/') == true ||
+                                                widget.processedVideo?.mediaType == 'audio';
                           return Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Theme.of(context).colorScheme.primaryContainer,
-                                  Theme.of(context).colorScheme.surfaceContainerHigh,
+                                  Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.8),
+                                  const Color(0xFF14161B),
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            child: Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(20),
+                                  padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                    color: isGeminiAudio 
+                                        ? const Color(0xFF7C3AED).withValues(alpha: 0.25)
+                                        : Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
-                                    Icons.graphic_eq_rounded,
-                                    size: 48,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    isGeminiAudio ? Icons.auto_awesome : Icons.graphic_eq_rounded,
+                                    size: 24,
+                                    color: isGeminiAudio ? const Color(0xFFA78BFA) : Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Audio Media Stream',
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: isGeminiAudio 
+                                                  ? const Color(0xFF7C3AED).withValues(alpha: 0.25)
+                                                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: isGeminiAudio 
+                                                    ? const Color(0xFFA78BFA).withValues(alpha: 0.6)
+                                                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'AUDIO STREAM',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: 0.5,
+                                                color: isGeminiAudio ? const Color(0xFFA78BFA) : Theme.of(context).colorScheme.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        widget.processedVideo?.title ?? 'German Audio Stream',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -947,37 +993,32 @@ class _VideoScreenState extends State<VideoScreen>
   Widget _buildErrorOrRefreshBox(BuildContext context) {
     return Container(
       color: const Color(0xFF1A1D24),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.orangeAccent, size: 44),
-          const SizedBox(height: 10),
+          const Icon(Icons.error_outline_rounded, color: Colors.orangeAccent, size: 36),
+          const SizedBox(height: 6),
           const Text(
             'Media Stream Link Expired',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'YouTube/Media direct streams expire after a few hours.\nRefresh link to stream video again.',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           if (widget.processedVideo != null)
             ElevatedButton.icon(
               icon: _isLoading
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
+                      width: 14,
+                      height: 14,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Icon(Icons.refresh_rounded, size: 18),
-              label: Text(_isLoading ? 'Refreshing Link...' : 'Refresh Stream Link'),
+                  : const Icon(Icons.refresh_rounded, size: 16),
+              label: Text(_isLoading ? 'Refreshing...' : 'Refresh Stream Link'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               ),
               onPressed: _isLoading
                   ? null
@@ -1024,6 +1065,9 @@ class _VideoScreenState extends State<VideoScreen>
     final video = widget.processedVideo;
     final title = video?.title ?? 'German Dialogue';
     final thumbnail = video?.thumbnail;
+    final isGeminiAudio = video?.videoUrl?.contains('_dialogue.wav') == true ||
+                          video?.videoUrl?.contains('/audio/') == true ||
+                          video?.mediaType == 'audio';
 
     return Container(
       decoration: BoxDecoration(
@@ -1040,7 +1084,7 @@ class _VideoScreenState extends State<VideoScreen>
         children: [
           if (thumbnail != null && thumbnail.isNotEmpty)
             Opacity(
-              opacity: 0.20,
+              opacity: 0.18,
               child: Image.network(
                 thumbnail,
                 fit: BoxFit.cover,
@@ -1053,47 +1097,58 @@ class _VideoScreenState extends State<VideoScreen>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: 0.3),
+                  Colors.black.withValues(alpha: 0.2),
                   const Color(0xFF14161B),
                 ],
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.2),
+                        color: isGeminiAudio 
+                            ? const Color(0xFF7C3AED).withValues(alpha: 0.25)
+                            : colorScheme.primary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.5), width: 0.8),
+                        border: Border.all(
+                          color: isGeminiAudio 
+                              ? const Color(0xFFA78BFA).withValues(alpha: 0.6)
+                              : colorScheme.primary.withValues(alpha: 0.5),
+                          width: 0.8,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.mic_none_rounded, size: 12, color: colorScheme.primary),
+                          Icon(
+                            isGeminiAudio ? Icons.auto_awesome : Icons.mic_none_rounded,
+                            size: 11,
+                            color: isGeminiAudio ? const Color(0xFFA78BFA) : colorScheme.primary,
+                          ),
                           const SizedBox(width: 4),
                           Text(
-                            'GERMAN DIALOGUE',
+                            isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'GERMAN DIALOGUE',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9.5,
                               fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
-                              color: colorScheme.primary,
+                              letterSpacing: 0.5,
+                              color: isGeminiAudio ? const Color(0xFFA78BFA) : colorScheme.primary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(4),
@@ -1101,7 +1156,7 @@ class _VideoScreenState extends State<VideoScreen>
                       child: Text(
                         '${_subtitles.length} Sentences',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withValues(alpha: 0.7),
                         ),
@@ -1109,55 +1164,65 @@ class _VideoScreenState extends State<VideoScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
-                    height: 1.25,
+                    height: 1.2,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
                 Row(
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: _isPlayingDialogueTts
-                          ? _stopSequentialTts
-                          : () => _startSequentialTts(),
-                      icon: Icon(
-                        _isPlayingDialogueTts ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                        size: 18,
-                      ),
-                      label: Text(_isPlayingDialogueTts ? 'Pause Audio' : 'Play Dialogue'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    SizedBox(
+                      height: 32,
+                      child: ElevatedButton.icon(
+                        onPressed: _isPlayingDialogueTts
+                            ? _stopSequentialTts
+                            : () => _startSequentialTts(),
+                        icon: Icon(
+                          _isPlayingDialogueTts ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          size: 16,
+                        ),
+                        label: Text(
+                          _isPlayingDialogueTts ? 'Pause' : 'Play Audio',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isGeminiAudio ? const Color(0xFF7C3AED) : colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _hideTranslations = !_hideTranslations;
-                        });
-                      },
-                      icon: Icon(
-                        _hideTranslations ? Icons.translate_rounded : Icons.visibility_off_outlined,
-                        size: 16,
-                      ),
-                      label: Text(_hideTranslations ? 'Show English' : 'Hide English'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 32,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _hideTranslations = !_hideTranslations;
+                          });
+                        },
+                        icon: Icon(
+                          _hideTranslations ? Icons.translate_rounded : Icons.visibility_off_outlined,
+                          size: 14,
+                        ),
+                        label: Text(
+                          _hideTranslations ? 'Show English' : 'Hide English',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        ),
                       ),
                     ),
                   ],
