@@ -124,22 +124,20 @@ class ProfileScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (Navigator.canPop(context)) ...[
-            IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: inkColor),
-              tooltip: 'Back',
-              onPressed: () => Navigator.pop(context),
-            ),
-            const SizedBox(width: 4),
-          ],
-
-          // Avatar with modernist square frame
+          // Circular Avatar Badge
           Container(
-            width: 58,
-            height: 58,
+            width: 62,
+            height: 62,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: rustAccent, width: 1.5),
+              shape: BoxShape.circle,
+              border: Border.all(color: rustAccent, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
               image: DecorationImage(
                 image: (photoUrl != null &&
                         photoUrl.trim().isNotEmpty &&
@@ -152,21 +150,21 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(width: 14),
 
-          // User Info & Badges
+          // User Info & Level Badge
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Top row: Level Badge + CEFR Badge + Display Name
+                // Top row: Level Badge + Display Name
                 Wrap(
-                  spacing: 6,
+                  spacing: 8,
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     // Level Modernist Badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 7.5, vertical: 2.5),
                       decoration: BoxDecoration(
                         color: rustAccent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(3),
@@ -179,28 +177,6 @@ class ProfileScreen extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           color: rustAccent,
                           letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-
-                    // CEFR Modernist Badge
-                    InkWell(
-                      borderRadius: BorderRadius.circular(3),
-                      onTap: () => _showLevelDialog(context, profileService),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                        decoration: BoxDecoration(
-                          color: rustAccent,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Text(
-                          'CEFR ${profileService.targetLevel}',
-                          style: const TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
                         ),
                       ),
                     ),
@@ -436,50 +412,6 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _showLevelDialog(
-    BuildContext context,
-    ProfileService profileService,
-  ) {
-    final levels = [
-      ('A1', 'Beginner', 'Basic everyday phrases and essential vocabulary'),
-      ('A2', 'Elementary', 'Routine conversations and simple descriptive language'),
-      ('B1', 'Intermediate', 'Connected texts, expressions, and nuanced topics'),
-      ('B2', 'Upper Intermediate', 'Complex texts, abstract ideas, and fluent speech'),
-      ('C1', 'Advanced', 'Specialized domain vocabulary, idioms, and subtle nuance'),
-    ];
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          title: const Text('German Proficiency Level'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: levels.map((lvl) {
-                final isSelected = profileService.targetLevel == lvl.$1;
-                return RadioListTile<String>(
-                  value: lvl.$1,
-                  groupValue: profileService.targetLevel,
-                  title: Text('${lvl.$1} · ${lvl.$2}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(lvl.$3, style: const TextStyle(fontSize: 12)),
-                  selected: isSelected,
-                  onChanged: (val) {
-                    if (val != null) {
-                      profileService.setTargetLevel(val);
-                      Navigator.pop(ctx);
-                    }
-                  },
-                );
-              }).toList(),
-            ),
-          ),
-        );
-      },
     );
   }
 }
