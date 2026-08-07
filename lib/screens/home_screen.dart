@@ -58,7 +58,6 @@ class HomeScreen extends StatelessWidget {
             children: [
               // Header
               _buildHeader(context),
-              ModernistProgressBar(progress: 1.0, height: 2),
 
               const SizedBox(height: 20),
 
@@ -198,18 +197,20 @@ class HomeScreen extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
-    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final headerBg = Theme.of(context).cardColor;
     final rustAccent = const Color(0xFF8C2D19);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
       decoration: BoxDecoration(
-        color: cardBg,
-        border: Border(
-          bottom: BorderSide(
-            color: inkColor.withValues(alpha: 0.3),
+        color: headerBg,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-        ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
