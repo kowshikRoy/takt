@@ -106,7 +106,7 @@ class DictionaryService {
     try {
       final List<Map<String, dynamic>> columns = await db.rawQuery("PRAGMA table_info(words);");
       final colNames = columns.map((c) => c['name'].toString()).toSet();
-      
+
       _supportsBaseForm = colNames.contains('base_form');
       _supportsFreqRank = colNames.contains('freq_rank');
 
@@ -120,6 +120,16 @@ class DictionaryService {
         try {
           await db.execute("ALTER TABLE words ADD COLUMN freq_rank INTEGER;");
           _supportsFreqRank = true;
+        } catch (_) {}
+      }
+      if (!colNames.contains('custom_image_url')) {
+        try {
+          await db.execute("ALTER TABLE words ADD COLUMN custom_image_url TEXT;");
+        } catch (_) {}
+      }
+      if (!colNames.contains('is_user_created')) {
+        try {
+          await db.execute("ALTER TABLE words ADD COLUMN is_user_created INTEGER DEFAULT 0;");
         } catch (_) {}
       }
       _hasCheckedColumns = true;
@@ -583,13 +593,19 @@ class DictionaryService {
   /// which would show a misleading image — better to show none than a
   /// wrong one, same reasoning as the example-sentence fix.
   Future<String?> getWordImageUrl(String word, {String? pos}) async {
+    final cleanWord = word.trim();
+    if (cleanWord.isEmpty) return null;
+
+    // A user-set custom image always wins, regardless of the POS
+    // restriction below — that restriction only exists to keep the
+    // *automatic* Wikipedia lookup from guessing wrong.
+    final customUrl = await _getCustomImageUrl(cleanWord);
+    if (customUrl != null && customUrl.isNotEmpty) return customUrl;
+
     final posLower = pos?.toLowerCase().trim() ?? '';
     if (posLower != 'noun' && posLower != 'n' && posLower != 'n.') {
       return null;
     }
-
-    final cleanWord = word.trim();
-    if (cleanWord.isEmpty) return null;
 
     if (_imageUrlCache.containsKey(cleanWord)) {
       return _imageUrlCache[cleanWord];
@@ -800,6 +816,124 @@ class DictionaryService {
       return wordId;
     } catch (e) {
       AppLogger.error("Failed to cache dynamic word in DB", error: e, tag: 'DictionaryService');
+      return null;
+    }
+  }
+
+  Future<String?> _getCustomImageUrl(String word) async {
+    if (kIsWeb) return null;
+    try {
+      final db = await database;
+      if (db == null) return null;
+      final res = await db.query(
+        'words',
+        columns: ['custom_image_url'],
+        where: 'word = ? COLLATE NOCASE',
+        whereArgs: [word],
+        limit: 1,
+      );
+      if (res.isNotEmpty) {
+        return res.first['custom_image_url'] as String?;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Saves a user's manual edits to a dictionary entry, or creates a brand
+  /// new one if [word] doesn't exist yet (case-insensitive match). This is
+  /// a "full replace" for definitions/examples — whatever list the edit
+  /// form currently holds becomes the entry's complete list, rather than
+  /// merging with what was there before, matching the edit UI's model of
+  /// "this is the whole entry now."
+  Future<int?> saveUserWordEdit({
+    required String word,
+    String? pos,
+    String? gender,
+    String? ipa,
+    required List<String> definitions,
+    List<Map<String, String?>> examples = const [],
+    String? customImageUrl,
+  }) async {
+    if (kIsWeb) return null;
+    final cleanWord = word.trim();
+    if (cleanWord.isEmpty) return null;
+
+    try {
+      final db = await database;
+      if (db == null) return null;
+
+      final existing = await db.query(
+        'words',
+        columns: ['id'],
+        where: 'word = ? COLLATE NOCASE',
+        whereArgs: [cleanWord],
+        limit: 1,
+      );
+
+      int wordId;
+      if (existing.isNotEmpty) {
+        wordId = existing.first['id'] as int;
+        await db.update(
+          'words',
+          {
+            'pos': pos,
+            'gender': gender,
+            'ipa': ipa,
+            'custom_image_url': customImageUrl,
+          },
+          where: 'id = ?',
+          whereArgs: [wordId],
+        );
+      } else {
+        wordId = await db.insert('words', {
+          'word': cleanWord,
+          'pos': pos,
+          'gender': gender,
+          'ipa': ipa,
+          'custom_image_url': customImageUrl,
+          'is_user_created': 1,
+        });
+      }
+
+      await db.delete(
+        'definitions',
+        where: 'word_id = ?',
+        whereArgs: [wordId],
+      );
+      for (final def in definitions) {
+        final trimmed = def.trim();
+        if (trimmed.isNotEmpty) {
+          await db.insert('definitions', {
+            'word_id': wordId,
+            'definition': trimmed,
+          });
+        }
+      }
+
+      await db.delete('examples', where: 'word_id = ?', whereArgs: [wordId]);
+      for (final ex in examples) {
+        final de = ex['de']?.trim();
+        if (de != null && de.isNotEmpty) {
+          await db.insert('examples', {
+            'word_id': wordId,
+            'de': de,
+            'en': ex['en']?.trim(),
+          });
+        }
+      }
+
+      _imageUrlCache.remove(cleanWord);
+      AppLogger.info(
+        "Saved user edit for word '$cleanWord' (id $wordId)",
+        tag: 'DictionaryService',
+      );
+      return wordId;
+    } catch (e) {
+      AppLogger.error(
+        "Failed to save user word edit",
+        error: e,
+        tag: 'DictionaryService',
+      );
       return null;
     }
   }
@@ -1284,6 +1418,37 @@ class DictionaryService {
     'an', 'auf', 'aus', 'bei', 'ein', 'mit', 'nach', 'vor', 'zu', 'zurück', 'ab', 'durch', 'über', 'um', 'unter', 'weg', 'weiter'
   };
 
+  static const Set<String> _copulaVerbs = {
+    'bin', 'bist', 'ist', 'sind', 'seid', 'war', 'warst', 'waren', 'wart', 'sei',
+    'wird', 'wirst', 'werden', 'werdet', 'wurde', 'wurdest', 'wurden', 'wurdet',
+  };
+
+  /// Guesses whether [cleanWord] is used as an adjective at its position in
+  /// [contextSentence]: attributive (directly before a capitalized noun) or
+  /// predicate (after a copula verb, at the end of its clause).
+  String? _guessAdjOrVerbPos(String cleanWord, String contextSentence) {
+    final rawTokens = contextSentence.trim().split(RegExp(r'\s+'));
+    final lowerTokens = rawTokens
+        .map((t) => t.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').toLowerCase())
+        .toList();
+    final idx = lowerTokens.indexOf(cleanWord.toLowerCase());
+    if (idx == -1) return null;
+
+    final tappedRaw = rawTokens[idx];
+    final nextRaw = idx + 1 < rawTokens.length ? rawTokens[idx + 1] : '';
+    final nextClean = nextRaw.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '');
+    final prevLower = idx > 0 ? lowerTokens[idx - 1] : '';
+
+    final followedByNoun = nextClean.isNotEmpty && nextClean[0] == nextClean[0].toUpperCase();
+    if (followedByNoun) return 'adj';
+
+    final tappedEndsClause = RegExp(r'[.,!?;]$').hasMatch(tappedRaw.trim());
+    final endsClause = nextClean.isEmpty || RegExp(r'^[.,!?;]').hasMatch(nextRaw.trim()) || tappedEndsClause;
+    if (_copulaVerbs.contains(prevLower) && endsClause) return 'adj';
+
+    return null;
+  }
+
   /// Performs context-aware word lookup with separable verb re-assembly & gender/POS disambiguation
   Future<List<Map<String, dynamic>>> lookupContextualWord(String word, {String? contextSentence}) async {
     final cleanWord = word.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
@@ -1334,8 +1499,10 @@ class DictionaryService {
     final results = await lookupWordAllPOS(cleanWord);
     if (results.isEmpty) return [];
 
+    final List<Map<String, dynamic>> working = List<Map<String, dynamic>>.from(results);
+
     // 3. Gender Disambiguation if sentence contains articles
-    if (contextSentence != null && results.length > 1) {
+    if (contextSentence != null && working.length > 1) {
       final lowerSentence = contextSentence.toLowerCase();
       String? expectedGender;
       if (lowerSentence.contains(RegExp(r'\b(der|den|dem|des)\b'))) {
@@ -1347,19 +1514,35 @@ class DictionaryService {
       }
 
       if (expectedGender != null) {
-        final List<Map<String, dynamic>> sorted = List.from(results);
-        sorted.sort((a, b) {
+        working.sort((a, b) {
           final gA = (a['gender'] as String?)?.toLowerCase();
           final gB = (b['gender'] as String?)?.toLowerCase();
           if (gA == expectedGender || (gA != null && gA.startsWith(expectedGender![0]))) return -1;
           if (gB == expectedGender || (gB != null && gB.startsWith(expectedGender![0]))) return 1;
           return 0;
         });
-        return sorted;
       }
     }
 
-    return results;
+    // 4. Verb vs. Adjective disambiguation via word order context
+    if (contextSentence != null && working.length > 1) {
+      final hasVerb = working.any((r) => (r['pos'] as String?)?.toLowerCase() == 'verb');
+      final hasAdj = working.any((r) => (r['pos'] as String?)?.toLowerCase() == 'adj');
+      if (hasVerb && hasAdj) {
+        final preferredPos = _guessAdjOrVerbPos(cleanWord, contextSentence);
+        if (preferredPos != null) {
+          working.sort((a, b) {
+            final pA = (a['pos'] as String?)?.toLowerCase();
+            final pB = (b['pos'] as String?)?.toLowerCase();
+            if (pA == preferredPos && pB != preferredPos) return -1;
+            if (pB == preferredPos && pA != preferredPos) return 1;
+            return 0;
+          });
+        }
+      }
+    }
+
+    return working;
   }
 
   Future<List<Map<String, dynamic>>> getRandomNouns({int limit = 10}) async {

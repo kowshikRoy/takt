@@ -680,8 +680,8 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           final code = NounQuestion.normalizeGender(gRaw);
           if (code == null) continue;
           if (!list.any(
-                (q) => q.word.toLowerCase() == sw.germanWord.toLowerCase(),
-              )) {
+            (q) => q.word.toLowerCase() == sw.germanWord.toLowerCase(),
+          )) {
             list.add(
               NounQuestion(
                 word: sw.germanWord,
@@ -759,16 +759,34 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
       SoundService().playIncorrect();
     }
 
-    // Speak German article + noun + plural (e.g. "das Haus, die Häuser")
-    _ttsService.speak(_getSpokenText(current), lang: 'de-DE');
-
-    // Auto-advance if correct
+    // Speak German article + noun + plural (e.g. "das Haus, die Häuser"),
+    // then (if correct) auto-advance once that finishes speaking rather
+    // than guessing a fixed delay — a plain delay had no relation to the
+    // actual audio length, so plurals/longer words often got cut off
+    // mid-pronunciation by the auto-advance.
+    final String spokenText = _getSpokenText(current);
     if (isCorrect) {
-      final int delayMs = rule != null ? 2000 : 1000;
-      Future.delayed(Duration(milliseconds: delayMs), () {
-        if (mounted && _isAnswered) _nextQuestion();
-      });
+      final int bufferMs = rule != null ? 1200 : 600;
+      _speakThenAutoAdvance(spokenText, bufferMs);
+    } else {
+      _ttsService.speak(spokenText, lang: 'de-DE');
     }
+  }
+
+  /// Speaks [text] and waits for TtsService to report completion before
+  /// advancing, plus [bufferMs] of extra reaction/reading time on top —
+  /// so the next question never appears before the pronunciation (or, when
+  /// a grammar-rule hint is shown, the hint) has actually been heard/read.
+  /// Falls back to a timeout in case the completion event never fires
+  /// (e.g. TTS unavailable) so auto-advance can't hang indefinitely.
+  Future<void> _speakThenAutoAdvance(String text, int bufferMs) async {
+    final completionSignal = _ttsService.progressStream
+        .firstWhere((event) => event == null)
+        .timeout(const Duration(seconds: 6), onTimeout: () => null);
+    await _ttsService.speak(text, lang: 'de-DE');
+    await completionSignal;
+    await Future.delayed(Duration(milliseconds: bufferMs));
+    if (mounted && _isAnswered) _nextQuestion();
   }
 
   String _getSpokenText(NounQuestion question) {
@@ -965,10 +983,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(
-            fontSize: 12,
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
         ),
         trailing: isSelected
             ? Icon(Icons.check_circle_rounded, color: activeColor)
@@ -1136,7 +1151,9 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
@@ -1162,359 +1179,83 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           ),
         ),
 
-        // Main Noun Card (Centered with constant height hint slot to eliminate empty gap and keep position fixed)
+        // Main Noun Card + Article Buttons — kept in a single top-aligned
+        // scroll flow (rather than the card centered separately from a
+        // bottom-pinned button row) so the buttons sit directly below the
+        // card instead of pinned to the screen's bottom edge with a large
+        // gap in between.
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 8.0,
-            ),
-            child: Center(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Animate(
-                      key: ValueKey(_currentIndex),
-                      effects: const [
-                        FadeEffect(duration: Duration(milliseconds: 300)),
-                        ScaleEffect(begin: Offset(0.95, 0.95)),
-                      ],
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 24,
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Animate(
+                    key: ValueKey(_currentIndex),
+                    effects: const [
+                      FadeEffect(duration: Duration(milliseconds: 300)),
+                      ScaleEffect(begin: Offset(0.95, 0.95)),
+                    ],
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 24,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: _isAnswered
+                              ? _getGenderColor(current.genderCode)
+                              : Theme.of(
+                                  context,
+                                ).dividerColor.withValues(alpha: 0.8),
+                          width: _isAnswered ? 2.5 : 1.5,
                         ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: _isAnswered
-                                ? _getGenderColor(current.genderCode)
-                                : Theme.of(
-                                    context,
-                                  ).dividerColor.withValues(alpha: 0.8),
-                            width: _isAnswered ? 2.5 : 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _isAnswered
-                                  ? _getGenderColor(
-                                      current.genderCode,
-                                    ).withValues(alpha: 0.25)
-                                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-                              blurRadius: 28,
-                              spreadRadius: 2,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Card Header Badge Row (Rank / SRS Badge & TTS Button)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                if (current.isDueForSrs)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Card Header Badge Row (Rank / SRS Badge & TTS Button)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              if (current.isDueForSrs)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
                                       color: Theme.of(context)
                                           .colorScheme
                                           .primary
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary
-                                            .withValues(alpha: 0.3),
-                                      ),
+                                          .withValues(alpha: 0.3),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.hourglass_bottom_rounded,
-                                          size: 13,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Due Review',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: Theme.of(context).colorScheme.primary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                else if (current.freqRank != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'Rank #${current.freqRank}',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.hourglass_bottom_rounded,
+                                        size: 13,
                                         color: Theme.of(
                                           context,
                                         ).colorScheme.primary,
                                       ),
-                                    ),
-                                  )
-                                else
-                                  const SizedBox.shrink(),
-
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary
-                                        .withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: IconButton(
-                                    iconSize: 24,
-                                    icon: Icon(
-                                      Icons.volume_up_rounded,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                    tooltip: 'Play pronunciation',
-                                    onPressed: () => _ttsService.speak(
-                                      _getSpokenText(current),
-                                      lang: 'de-DE',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Word and Article Title
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 250),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _isAnswered
-                                        ? _getGenderColor(
-                                            current.genderCode,
-                                          ).withValues(alpha: 0.15)
-                                        : Theme.of(context).colorScheme.primary
-                                              .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    _isAnswered ? current.article : '?',
-                                    style: TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w800,
-                                      color: _isAnswered
-                                          ? _getGenderColor(current.genderCode)
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      current.word,
-                                      style: TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.3,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurface,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Divider(
-                              color: Theme.of(
-                                context,
-                              ).dividerColor.withValues(alpha: 0.4),
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Primary Definition
-                            Text(
-                              current.translation,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 14),
-
-                            // Categorized Metadata Badges (IPA & Plural)
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                if (current.ipa != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .surfaceContainerHighest
-                                          .withValues(alpha: 0.5),
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: Theme.of(
-                                          context,
-                                        ).dividerColor.withValues(alpha: 0.3),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      current.ipa!,
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                if (_isAnswered && current.plural != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getGenderColor(
-                                        current.genderCode,
-                                      ).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: _getGenderColor(
-                                          current.genderCode,
-                                        ).withValues(alpha: 0.3),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'Plural: ${current.plural}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurface,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Rule & Exception Pill Slot (Constant height before and after answer)
-                    AnimatedCrossFade(
-                      duration: const Duration(milliseconds: 250),
-                      crossFadeState: (rule != null && _isAnswered)
-                          ? CrossFadeState.showSecond
-                          : CrossFadeState.showFirst,
-                      firstChild: Padding(
-                        padding: const EdgeInsets.only(top: 14.0),
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => GenderRulesGuideScreen(
-                                targetWord: current.word,
-                              ),
-                            ),
-                          ),
-                          borderRadius: BorderRadius.circular(4),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.25),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.lightbulb_outline_rounded,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
+                                      const SizedBox(width: 4),
                                       Text(
-                                        'Suffix & Gender Rule Hint',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Tap to explore German gender rules & suffixes →',
+                                        'Due Review',
                                         style: TextStyle(
                                           fontSize: 11,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.bold,
                                           color: Theme.of(
                                             context,
                                           ).colorScheme.primary,
@@ -1522,209 +1263,425 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                       ),
                                     ],
                                   ),
-                                ),
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  size: 20,
+                                )
+                              else if (current.freqRank != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Rank #${current.freqRank}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                                )
+                              else
+                                const SizedBox.shrink(),
+
+                              IconButton(
+                                iconSize: 24,
+                                icon: Icon(
+                                  Icons.volume_up_rounded,
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
-                              ],
-                            ),
+                                tooltip: 'Play pronunciation',
+                                onPressed: () => _ttsService.speak(
+                                  _getSpokenText(current),
+                                  lang: 'de-DE',
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
-                      secondChild: rule != null
-                          ? Padding(
-                              padding: const EdgeInsets.only(top: 14.0),
-                              child: InkWell(
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => GenderRulesGuideScreen(
-                                      targetRuleTitle: rule.title,
-                                      targetWord: current.word,
+                          const SizedBox(height: 8),
+
+                          // Word and Article Title
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _isAnswered
+                                      ? _getGenderColor(
+                                          current.genderCode,
+                                        ).withValues(alpha: 0.15)
+                                      : Theme.of(context).colorScheme.primary
+                                            .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  _isAnswered ? current.article : '?',
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w800,
+                                    color: _isAnswered
+                                        ? _getGenderColor(current.genderCode)
+                                        : Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    current.word,
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.3,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Divider(
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Primary Definition
+                          Text(
+                            current.translation,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Categorized Metadata Badges (IPA & Plural)
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              if (current.ipa != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest
+                                        .withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: Theme.of(
+                                        context,
+                                      ).dividerColor.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    current.ipa!,
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ),
-                                borderRadius: BorderRadius.circular(4),
-                                child: Container(
-                                  width: double.infinity,
+                              if (_isAnswered && current.plural != null)
+                                Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
+                                    horizontal: 10,
+                                    vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
                                     color: _getGenderColor(
                                       current.genderCode,
-                                    ).withValues(alpha: 0.1),
+                                    ).withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(4),
                                     border: Border.all(
                                       color: _getGenderColor(
                                         current.genderCode,
-                                      ).withValues(alpha: 0.4),
-                                      width: 1.0,
+                                      ).withValues(alpha: 0.3),
                                     ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        rule.isException
-                                            ? Icons.warning_amber_rounded
-                                            : Icons.lightbulb_rounded,
-                                        color: _getGenderColor(
-                                          current.genderCode,
-                                        ),
-                                        size: 20,
+                                  child: Text(
+                                    'Plural: ${current.plural}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Rule & Exception Pill Slot (Constant height before and after answer)
+                  AnimatedCrossFade(
+                    duration: const Duration(milliseconds: 250),
+                    crossFadeState: (rule != null && _isAnswered)
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
+                    firstChild: Padding(
+                      padding: const EdgeInsets.only(top: 14.0),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => GenderRulesGuideScreen(
+                              targetWord: current.word,
+                            ),
+                          ),
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.25),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.lightbulb_outline_rounded,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Suffix & Gender Rule Hint',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                       ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              rule.conciseHint,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 13,
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurface,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              rule.isException
-                                                  ? 'Tap to view exception details & rule →'
-                                                  : 'Tap to view full rule & examples →',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: _getGenderColor(
-                                                  current.genderCode,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Tap to explore German gender rules & suffixes →',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                       ),
-                                      Icon(
-                                        Icons.chevron_right_rounded,
-                                        size: 20,
-                                        color: _getGenderColor(
-                                          current.genderCode,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    secondChild: rule != null
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 14.0),
+                            child: InkWell(
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => GenderRulesGuideScreen(
+                                    targetRuleTitle: rule.title,
+                                    targetWord: current.word,
                                   ),
                                 ),
                               ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Action Buttons Zone
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 200),
-                  style: TextStyle(
-                    color: _isAnswered
-                        ? (_selectedGender == current.genderCode
-                              ? Colors.green
-                              : Colors.red)
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    letterSpacing: 1.1,
-                  ),
-                  child: Text(
-                    _isAnswered
-                        ? (_selectedGender == current.genderCode
-                              ? 'CORRECT! 🥳'
-                              : 'INCORRECT 😞 (Added to end of session)')
-                        : 'SELECT THE ARTICLE',
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                SizedBox(
-                  height: 60,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    child: _isAnswered
-                        ? SizedBox(
-                            key: const ValueKey('next_button'),
-                            width: double.infinity,
-                            height: 60,
-                            child: FilledButton.icon(
-                              onPressed: _nextQuestion,
-                              style: FilledButton.styleFrom(
-                                backgroundColor:
-                                    _selectedGender == current.genderCode
-                                    ? Colors.green
-                                    : Theme.of(context).colorScheme.primary,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(4),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
                                 ),
-                              ),
-                              icon: const Icon(
-                                Icons.arrow_forward_rounded,
-                                size: 22,
-                              ),
-                              label: const Text(
-                                'Next Word',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
+                                decoration: BoxDecoration(
+                                  color: _getGenderColor(
+                                    current.genderCode,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: _getGenderColor(
+                                      current.genderCode,
+                                    ).withValues(alpha: 0.4),
+                                    width: 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      rule.isException
+                                          ? Icons.warning_amber_rounded
+                                          : Icons.lightbulb_rounded,
+                                      color: _getGenderColor(
+                                        current.genderCode,
+                                      ),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            rule.conciseHint,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            rule.isException
+                                                ? 'Tap to view exception details & rule →'
+                                                : 'Tap to view full rule & examples →',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: _getGenderColor(
+                                                current.genderCode,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 20,
+                                      color: _getGenderColor(
+                                        current.genderCode,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           )
-                        : Row(
-                            key: const ValueKey('article_buttons'),
-                            children: [
-                              _buildGenderButton(
-                                context,
-                                'Der',
-                                'MASC',
-                                'm',
-                                AppTheme.genderMasc,
-                                current.genderCode,
-                              ),
-                              const SizedBox(width: 12),
-                              _buildGenderButton(
-                                context,
-                                'Die',
-                                'FEM',
-                                'f',
-                                AppTheme.genderFem,
-                                current.genderCode,
-                              ),
-                              const SizedBox(width: 12),
-                              _buildGenderButton(
-                                context,
-                                'Das',
-                                'NEU',
-                                'n',
-                                AppTheme.genderNeu,
-                                current.genderCode,
-                              ),
-                            ],
-                          ),
+                        : const SizedBox.shrink(),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    height: 60,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: _isAnswered
+                          ? SizedBox(
+                              key: const ValueKey('next_button'),
+                              width: double.infinity,
+                              height: 60,
+                              child: FilledButton.icon(
+                                onPressed: _nextQuestion,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor:
+                                      _selectedGender == current.genderCode
+                                      ? Colors.green
+                                      : Theme.of(context).colorScheme.primary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 22,
+                                ),
+                                label: const Text(
+                                  'Next Word',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Row(
+                              key: const ValueKey('article_buttons'),
+                              children: [
+                                _buildGenderButton(
+                                  context,
+                                  'Der',
+                                  'm',
+                                  AppTheme.genderMasc,
+                                  current.genderCode,
+                                ),
+                                const SizedBox(width: 12),
+                                _buildGenderButton(
+                                  context,
+                                  'Die',
+                                  'f',
+                                  AppTheme.genderFem,
+                                  current.genderCode,
+                                ),
+                                const SizedBox(width: 12),
+                                _buildGenderButton(
+                                  context,
+                                  'Das',
+                                  'n',
+                                  AppTheme.genderNeu,
+                                  current.genderCode,
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1745,94 +1702,68 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
     }
   }
 
+  // Same visual language as VocabStatusPills (neutral outline pill at rest,
+  // solid color fill with white text once active) — except each button's
+  // "active" color is its own gender color instead of a fixed per-option
+  // color, so Der/Die/Das still carry their usual color identity once
+  // answered, without three saturated hues competing before that.
   Widget _buildGenderButton(
     BuildContext context,
     String label,
-    String subLabel,
     String code,
-    Color color,
+    Color genderColor,
     String correctCode,
   ) {
     final bool isSelected = _selectedGender == code;
     final bool isCorrectCode = code == correctCode;
+    final bool isActive = _isAnswered && (isCorrectCode || isSelected);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    Color buttonBg = color.withValues(alpha: 0.08);
-    Color borderColor = color;
+    Color buttonBg = colorScheme.surfaceContainerHigh;
+    Color borderColor = colorScheme.outlineVariant.withValues(alpha: 0.5);
+    Color textColor = colorScheme.onSurfaceVariant;
     Widget? iconSuffix;
 
-    if (_isAnswered) {
-      if (isCorrectCode) {
-        buttonBg = Colors.green.withValues(alpha: 0.2);
-        borderColor = Colors.green;
-        iconSuffix = const Icon(
-          Icons.check_circle_rounded,
-          color: Colors.green,
-          size: 20,
-        );
-      } else if (isSelected) {
-        buttonBg = Colors.red.withValues(alpha: 0.2);
-        borderColor = Colors.red;
-        iconSuffix = const Icon(
-          Icons.cancel_rounded,
-          color: Colors.red,
-          size: 20,
-        );
-      } else {
-        buttonBg = Theme.of(context).disabledColor.withValues(alpha: 0.05);
-        borderColor = Theme.of(context).dividerColor.withValues(alpha: 0.3);
-      }
+    if (isActive) {
+      buttonBg = genderColor;
+      borderColor = genderColor;
+      textColor = Colors.white;
+      iconSuffix = Icon(
+        isCorrectCode ? Icons.check_circle_rounded : Icons.cancel_rounded,
+        color: Colors.white,
+        size: 20,
+      );
+    } else if (_isAnswered) {
+      buttonBg = Theme.of(context).disabledColor.withValues(alpha: 0.05);
+      borderColor = Theme.of(context).dividerColor.withValues(alpha: 0.3);
+      textColor = Theme.of(context).disabledColor;
     }
 
     return Expanded(
-      child: OutlinedButton(
-        onPressed: _isAnswered ? null : () => _handleSelectGender(code),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: buttonBg,
-          side: BorderSide(
-            color: borderColor,
-            width: isSelected || (isCorrectCode && _isAnswered) ? 2.5 : 1.5,
+      child: GestureDetector(
+        onTap: _isAnswered ? null : () => _handleSelectGender(code),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: buttonBg,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: borderColor, width: isActive ? 1.5 : 1.0),
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
-          padding: EdgeInsets.zero,
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: _isAnswered && !isCorrectCode && !isSelected
-                        ? Theme.of(context).disabledColor
-                        : color,
-                  ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  color: textColor,
                 ),
-                if (iconSuffix != null) ...[
-                  const SizedBox(width: 4),
-                  iconSuffix,
-                ],
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subLabel,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: _isAnswered && !isCorrectCode && !isSelected
-                    ? Theme.of(context).disabledColor
-                    : color.withValues(alpha: 0.7),
               ),
-            ),
-          ],
+              if (iconSuffix != null) ...[const SizedBox(width: 4), iconSuffix],
+            ],
+          ),
         ),
       ),
     );
@@ -1854,7 +1785,9 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
               width: 90,
               height: 90,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(

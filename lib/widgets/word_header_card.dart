@@ -15,6 +15,8 @@ class WordHeaderCard extends StatelessWidget {
   final ValueChanged<VocabCategory> onCategorySelected;
   final Future<String?>? wordImageFuture;
   final String? contextSentence;
+  final String? ipa;
+  final bool showStatusPills;
 
   WordHeaderCard({
     super.key,
@@ -25,6 +27,8 @@ class WordHeaderCard extends StatelessWidget {
     required this.onCategorySelected,
     this.wordImageFuture,
     this.contextSentence,
+    this.ipa,
+    this.showStatusPills = true,
   });
 
   final TtsService _ttsService = TtsService();
@@ -36,7 +40,8 @@ class WordHeaderCard extends StatelessWidget {
       if (g == 'feminine' || g == 'f') return 'f';
       if (g == 'neuter' || g == 'n') return 'n';
     }
-    final isNoun = pos == null ||
+    final isNoun =
+        pos == null ||
         pos.isEmpty ||
         pos.toLowerCase().contains('noun') ||
         (wordStr.isNotEmpty && wordStr[0] == wordStr[0].toUpperCase());
@@ -118,10 +123,15 @@ class WordHeaderCard extends StatelessWidget {
     return sentences.first.trim();
   }
 
-  Widget _buildContextSentence(BuildContext context, String rawText, String targetWord) {
+  Widget _buildContextSentence(
+    BuildContext context,
+    String rawText,
+    String targetWord,
+  ) {
     final sentence = _extractSingleSentence(rawText, targetWord);
     final cleanWord = targetWord.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
-    if (cleanWord.isEmpty || !sentence.toLowerCase().contains(cleanWord.toLowerCase())) {
+    if (cleanWord.isEmpty ||
+        !sentence.toLowerCase().contains(cleanWord.toLowerCase())) {
       return Text(
         sentence,
         style: TextStyle(
@@ -139,35 +149,41 @@ class WordHeaderCard extends StatelessWidget {
 
     for (final match in matches) {
       if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: sentence.substring(lastEnd, match.start),
+        spans.add(
+          TextSpan(
+            text: sentence.substring(lastEnd, match.start),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        );
+      }
+      spans.add(
+        TextSpan(
+          text: sentence.substring(match.start, match.end),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      );
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < sentence.length) {
+      spans.add(
+        TextSpan(
+          text: sentence.substring(lastEnd),
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w400,
             color: Theme.of(context).colorScheme.onSurface,
           ),
-        ));
-      }
-      spans.add(TextSpan(
-        text: sentence.substring(match.start, match.end),
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.primary,
         ),
-      ));
-      lastEnd = match.end;
-    }
-
-    if (lastEnd < sentence.length) {
-      spans.add(TextSpan(
-        text: sentence.substring(lastEnd),
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-      ));
+      );
     }
 
     return Text.rich(TextSpan(children: spans));
@@ -186,7 +202,8 @@ class WordHeaderCard extends StatelessWidget {
 
     final genderColor = _getGenderColor(gender);
     final article = _getArticle(gender);
-    final resolvedPlural = pluralForm ?? NounHeadwordTitle.extractPluralForm(wordData);
+    final resolvedPlural =
+        pluralForm ?? NounHeadwordTitle.extractPluralForm(wordData);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -229,16 +246,13 @@ class WordHeaderCard extends StatelessWidget {
             IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: Icon(
-                Icons.volume_up_rounded,
-                size: 20,
-                color: genderColor,
-              ),
+              icon: Icon(Icons.volume_up_rounded, size: 20, color: genderColor),
               onPressed: () {
                 String textToSpeak = word;
                 if (article.isNotEmpty) {
                   if (resolvedPlural != null && resolvedPlural.isNotEmpty) {
-                    final pluralStr = resolvedPlural.toLowerCase().startsWith('die ')
+                    final pluralStr =
+                        resolvedPlural.toLowerCase().startsWith('die ')
                         ? resolvedPlural
                         : 'die $resolvedPlural';
                     textToSpeak = '$article $word, $pluralStr';
@@ -268,6 +282,14 @@ class WordHeaderCard extends StatelessWidget {
           ],
         ),
 
+        if (ipa != null && ipa!.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            ipa!,
+            style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
+          ),
+        ],
+
         const SizedBox(height: 16),
 
         // Optional Image
@@ -288,7 +310,10 @@ class WordHeaderCard extends StatelessWidget {
               if ((pos ?? '').isNotEmpty) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1.5,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(3),
@@ -306,33 +331,35 @@ class WordHeaderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          ...defs.map((d) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "→ ",
-                      style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
+          ...defs.map(
+            (d) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "→ ",
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      d,
+                      style: BooksModernist.body(
+                        size: 14.5,
+                        weight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                        context: context,
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        d,
-                        style: BooksModernist.body(
-                          size: 14.5,
-                          weight: FontWeight.w600,
-                          color: colorScheme.onSurface,
-                          context: context,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ] else ...[
           Text(
             "No dictionary definition found.",
@@ -348,14 +375,20 @@ class WordHeaderCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: colorScheme.surface,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.4)),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.4),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.format_quote_rounded, size: 16, color: colorScheme.primary),
+                    Icon(
+                      Icons.format_quote_rounded,
+                      size: 16,
+                      color: colorScheme.primary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       "Context",
@@ -374,25 +407,28 @@ class WordHeaderCard extends StatelessWidget {
           ),
         ],
 
-        const SizedBox(height: 16),
-        // Vocabulary Status Header & Toggle Chips
-        Text(
-          "VOCABULARY STATUS",
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-            color: colorScheme.primary,
+        if (showStatusPills) ...[
+          const SizedBox(height: 16),
+          // Vocabulary Status Header & Toggle Chips
+          Text(
+            "VOCABULARY STATUS",
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+              color: colorScheme.primary,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        VocabStatusPills(
-          currentCategory: savedWordCategories[wordId] ??
-              (savedWordIds.contains(wordId)
-                  ? VocabCategory.reviewLater
-                  : null),
-          onCategorySelected: onCategorySelected,
-        ),
+          const SizedBox(height: 8),
+          VocabStatusPills(
+            currentCategory:
+                savedWordCategories[wordId] ??
+                (savedWordIds.contains(wordId)
+                    ? VocabCategory.reviewLater
+                    : null),
+            onCategorySelected: onCategorySelected,
+          ),
+        ],
       ],
     );
   }
@@ -426,9 +462,8 @@ class WordHeaderCard extends StatelessWidget {
             child: CachedNetworkImage(
               imageUrl: imageUrl,
               fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: colorScheme.surfaceContainerHigh,
-              ),
+              placeholder: (context, url) =>
+                  Container(color: colorScheme.surfaceContainerHigh),
               errorWidget: (context, url, error) => const SizedBox.shrink(),
             ),
           ),

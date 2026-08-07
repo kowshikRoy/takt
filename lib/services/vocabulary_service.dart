@@ -8,6 +8,7 @@ import '../models/saved_word.dart';
 import 'sync_service.dart';
 import 'auth_service.dart';
 import 'app_logger.dart';
+import 'dictionary_service.dart';
 
 class VocabularyService extends ChangeNotifier {
   static final VocabularyService _instance = VocabularyService._internal();
@@ -105,8 +106,22 @@ class VocabularyService extends ChangeNotifier {
     await refreshCache();
 
     // Auto-sync if user is authenticated
-    if (AuthService().isAuthenticated) {
-      SyncService().syncNow();
+    _triggerCloudSync();
+  }
+
+  /// Kicks off a cloud sync when the user is authenticated. Cloud sync is a
+  /// nice-to-have on top of local persistence, so any failure here (e.g.
+  /// Firebase not initialized, no network, auth plugin not ready yet) must
+  /// never propagate and abort the caller's local save — that would leave
+  /// the review UI stuck without advancing even though the local write
+  /// already succeeded.
+  void _triggerCloudSync() {
+    try {
+      if (AuthService().isAuthenticated) {
+        SyncService().syncNow();
+      }
+    } catch (e) {
+      AppLogger.error("Cloud sync trigger skipped", error: e, tag: 'VocabularyService');
     }
   }
 
@@ -254,8 +269,8 @@ class VocabularyService extends ChangeNotifier {
       await refreshCache();
     }
 
-    if (triggerSync && AuthService().isAuthenticated) {
-      SyncService().syncNow();
+    if (triggerSync) {
+      _triggerCloudSync();
     }
   }
 
@@ -291,9 +306,35 @@ class VocabularyService extends ChangeNotifier {
     }
   }
 
+  /// Merges a word coming from the cloud into local storage. Cloud sync can
+  /// lag behind (a previous push failed, another device hasn't synced yet,
+  /// etc.), so a remote copy is not necessarily newer than what's on this
+  /// device. Blindly overwriting local rows with remote ones on every sync
+  /// (which runs automatically on every app launch) would silently revert
+  /// review progress made since the cloud was last updated — keep whichever
+  /// side actually has more review progress instead of trusting remote by
+  /// default.
   Future<void> mergeWordFromSync(Map<String, dynamic> jsonMap) async {
-    final word = SavedWord.fromJson(jsonMap);
-    await upsertWord(word, notify: true, triggerSync: false);
+    final incoming = SavedWord.fromJson(jsonMap);
+    final existing = await getSavedWord(incoming.id);
+    if (existing != null && _isAtLeastAsAdvanced(existing, incoming)) {
+      return;
+    }
+    await upsertWord(incoming, notify: true, triggerSync: false);
+  }
+
+  /// True if [local]'s review progress is at or ahead of [remote]'s, based
+  /// on whichever was reviewed more recently, falling back to repetition
+  /// count when neither side has been reviewed yet.
+  bool _isAtLeastAsAdvanced(SavedWord local, SavedWord remote) {
+    final localReviewed = local.lastReviewed;
+    final remoteReviewed = remote.lastReviewed;
+    if (localReviewed == null && remoteReviewed == null) {
+      return local.repetitions >= remote.repetitions;
+    }
+    if (localReviewed == null) return false;
+    if (remoteReviewed == null) return true;
+    return !localReviewed.isBefore(remoteReviewed);
   }
 
   Future<void> removeWord(String id) async {
@@ -308,9 +349,7 @@ class VocabularyService extends ChangeNotifier {
     }
     await refreshCache();
 
-    if (AuthService().isAuthenticated) {
-      SyncService().syncNow();
-    }
+    _triggerCloudSync();
   }
 
   Future<SavedWord?> getSavedWord(String id) async {
@@ -369,6 +408,84 @@ class VocabularyService extends ChangeNotifier {
       res = await db.query('saved_words', orderBy: 'createdAt DESC');
     }
     return res.map((m) => SavedWord.fromMap(m)).toList();
+  }
+
+  /// Older builds of the Key Vocabulary save flow had a bug where a missing
+  /// dictionary definition fell back to saving the German word itself as
+  /// its own "definition" (see story_reader_screen.dart's fix). Those
+  /// entries are indistinguishable from a legitimately-empty lookup except
+  /// by the fact that the "definition" equals the word — re-resolve those
+  /// through the same fallback chain the Dictionary page uses and persist
+  /// the fix. Cheap to call on every load: only words matching that exact
+  /// signature trigger a re-lookup.
+  Future<int> repairStaleDefinitions() async {
+    final words = await getSavedWords();
+    final dictionaryService = DictionaryService();
+    int fixedCount = 0;
+
+    for (var i = 0; i < words.length; i++) {
+      final word = words[i];
+      final looksStale =
+          word.primaryDefinition.trim().isEmpty ||
+          word.primaryDefinition.trim().toLowerCase() ==
+              word.word.trim().toLowerCase();
+      if (!looksStale) continue;
+
+      String? newDef;
+      try {
+        final fastEntries = await dictionaryService.lookupWordFast(
+          word.word,
+        );
+        if (fastEntries.isNotEmpty) {
+          final defs = (fastEntries.first['definitions'] as List?) ?? [];
+          if (defs.isNotEmpty) newDef = defs.first.toString();
+        }
+        if (newDef == null || newDef.isEmpty) {
+          final fullEntry = await dictionaryService.lookupWord(word.word);
+          final onlineDefs = (fullEntry?['definitions'] as List?) ?? [];
+          if (onlineDefs.isNotEmpty) newDef = onlineDefs.first.toString();
+        }
+      } catch (e) {
+        AppLogger.error(
+          "Failed to repair definition for '${word.word}'",
+          error: e,
+          tag: 'VocabularyService',
+        );
+      }
+
+      if (newDef == null || newDef.isEmpty) continue;
+
+      final repaired = SavedWord(
+        id: word.id,
+        word: word.word,
+        baseForm: word.baseForm,
+        pos: word.pos,
+        gender: word.gender,
+        primaryDefinition: newDef,
+        definitions: [newDef],
+        ipa: word.ipa,
+        contextSentence: word.contextSentence,
+        sourceTitle: word.sourceTitle,
+        category: word.category,
+        interval: word.interval,
+        easeFactor: word.easeFactor,
+        repetitions: word.repetitions,
+        dueDate: word.dueDate,
+        lastReviewed: word.lastReviewed,
+        createdAt: word.createdAt,
+      );
+      await upsertWord(
+        repaired,
+        notify: false,
+        triggerSync: i == words.length - 1,
+      );
+      fixedCount++;
+    }
+
+    if (fixedCount > 0) {
+      await refreshCache();
+    }
+    return fixedCount;
   }
 
   Future<List<SavedWord>> getDueWords() async {
