@@ -231,7 +231,32 @@ class MediaLibraryService extends ChangeNotifier {
   void _startPollingForTask(String taskId, String originalUrl) {
     if (_pollingTimers.containsKey(taskId)) return;
 
+    int pollAttempts = 0;
+    const maxPollAttempts = 80; // 80 * 3s = 4 minutes maximum polling
+
     final timer = Timer.periodic(const Duration(seconds: 3), (t) async {
+      pollAttempts++;
+      if (pollAttempts > maxPollAttempts) {
+        t.cancel();
+        _pollingTimers.remove(taskId);
+        final index = _processedVideos.indexWhere((v) => v.taskId == taskId || v.id == taskId);
+        if (index != -1 && _processedVideos[index].status != ProcessingStatus.completed) {
+          _processedVideos[index] = ProcessedVideo(
+            id: taskId,
+            taskId: taskId,
+            url: originalUrl,
+            status: ProcessingStatus.failed,
+            stageMessage: 'Processing timed out',
+            errorMessage: 'Task exceeded maximum time limit.',
+            progressPercentage: 0,
+            subtitles: [],
+          );
+          notifyListeners();
+          await _saveProcessedVideos();
+        }
+        return;
+      }
+
       final statusResponse = await _backendService.checkMediaStatus(taskId);
       if (statusResponse == null) return;
 
