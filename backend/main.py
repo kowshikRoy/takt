@@ -719,6 +719,96 @@ def get_whisper_model():
         _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8", cpu_threads=2)
     return _whisper_model
 
+def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> list[SubtitleCue]:
+    """Uses Gemini multimodal capabilities to directly transcribe YouTube videos without scraping or bot blocks."""
+    key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not key:
+        print("No GEMINI_API_KEY configured for Gemini YouTube fallback.")
+        return []
+    
+    models_to_try = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-2.5-flash"]
+    for model_name in models_to_try:
+        try:
+            print(f"Calling Gemini ({model_name}) REST API to transcribe YouTube video directly: {url}")
+            prompt = (
+                "You are an expert German language transcription system for language learners. "
+                "Listen to this YouTube video and produce a complete, verbatim timestamped transcription of all spoken German sentences with synchronized English translations.\n"
+                "Respond ONLY with a valid JSON array matching this exact schema:\n"
+                "[\n"
+                "  {\n"
+                "    \"start\": 0.0,\n"
+                "    \"end\": 13.5,\n"
+                "    \"original\": \"Anna, könntest du mir bitte kurz helfen?\",\n"
+                "    \"translated\": \"Anna, could you please help me for a moment?\"\n"
+                "  }\n"
+                "]\n"
+                "Return only the valid JSON array."
+            )
+
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "file_data": {
+                                    "file_uri": url,
+                                    "mime_type": "video/*"
+                                }
+                            },
+                            {
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "responseMimeType": "application/json"
+                }
+            }
+
+            res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=75)
+            if res.status_code != 200:
+                print(f"Gemini ({model_name}) returned status {res.status_code}: {res.text}")
+                continue
+
+            res_json = res.json()
+            candidates = res_json.get("candidates", [])
+            if not candidates:
+                print(f"Gemini ({model_name}) returned no candidates.")
+                continue
+
+            raw_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            if raw_text.startswith("```"):
+                raw_text = raw_text[3:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+            raw_text = raw_text.strip()
+
+            data = json.loads(raw_text)
+            cues = []
+            for item in data:
+                st = float(item.get("start", item.get("start_time", 0.0)))
+                et = float(item.get("end", item.get("end_time", st + 3.0)))
+                de_text = str(item.get("original", item.get("text", item.get("german", "")))).strip()
+                en_text = str(item.get("translated", item.get("translation", item.get("english", "")))).strip()
+                if de_text:
+                    cues.append(SubtitleCue(
+                        start=st,
+                        end=et,
+                        original=de_text,
+                        translated=en_text or None
+                    ))
+            if cues:
+                print(f"Gemini AI successfully extracted {len(cues)} clean subtitle cues for {url}!")
+                return cues
+        except Exception as e:
+            print(f"Gemini ({model_name}) YouTube transcription error: {e}")
+
+    return []
+
 def transcribe_and_translate(audio_path: str):
     """Transcribes German audio stream with Whisper using high-performance settings."""
     model = get_whisper_model()
@@ -918,16 +1008,23 @@ async def process_media_task(task_id: str, url: str):
 
         media_type = 'video'
         if not subtitles:
-            update_task_stage(task_id, "Downloading audio stream...", 55)
-            downloaded_audio_path = await asyncio.to_thread(
-                download_media, url, media_filename, audio_stream_url
-            )
+            # 1. Try Gemini Multimodal AI transcription directly on the YouTube video
+            if 'youtube.com' in url or 'youtu.be' in url:
+                update_task_stage(task_id, "Transcribing with Gemini Multimodal AI...", 80)
+                subtitles = await asyncio.to_thread(transcribe_youtube_with_gemini, url)
 
-            update_task_stage(task_id, "Analyzing media format...", 70)
-            media_type = await asyncio.to_thread(get_media_type, downloaded_audio_path)
+            # 2. Fall back to local audio stream download + Whisper AI
+            if not subtitles:
+                update_task_stage(task_id, "Downloading audio stream...", 55)
+                downloaded_audio_path = await asyncio.to_thread(
+                    download_media, url, media_filename, audio_stream_url
+                )
 
-            update_task_stage(task_id, "Transcribing German speech with Whisper AI...", 85)
-            subtitles = await asyncio.to_thread(transcribe_and_translate, downloaded_audio_path)
+                update_task_stage(task_id, "Analyzing media format...", 70)
+                media_type = await asyncio.to_thread(get_media_type, downloaded_audio_path)
+
+                update_task_stage(task_id, "Transcribing German speech with Whisper AI...", 85)
+                subtitles = await asyncio.to_thread(transcribe_and_translate, downloaded_audio_path)
         
         update_task_stage(task_id, "Finalizing media lesson...", 95)
         response_data = MediaResponse(

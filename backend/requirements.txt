@@ -12,3 +12,4 @@ pytubefix
 beautifulsoup4
 lxml
 langdetect
+google-genai
