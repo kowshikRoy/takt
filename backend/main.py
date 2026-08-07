@@ -342,7 +342,7 @@ def fetch_innertube_transcript_api(url: str) -> list[SubtitleCue]:
     return []
 
 def fetch_innertube_media_data(url: str):
-    """Extracts title, thumbnail, and subtitles directly via YouTube's InnerTube API with ANDROID client (bypasses bot detection on Data Center IPs)."""
+    """Extracts title, thumbnail, subtitles, and direct audio stream URL via YouTube's InnerTube API across multiple client profiles (IOS, TV, Android)."""
     video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11})', url)
     if not video_id_match:
         return None
@@ -352,73 +352,130 @@ def fetch_innertube_media_data(url: str):
         'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
         'AIzaSyC2d01sLSt1iC1h9828h-Z1w6l9eR41j2k',
     ]
-    
-    headers = {
-        'User-Agent': 'com.google.android.youtube/20.01.35 (Linux; U; Android 14; de_DE)',
-        'X-YouTube-Client-Name': '3',
-        'X-YouTube-Client-Version': '20.01.35',
-    }
+
+    client_profiles = [
+        {
+            'name': 'IOS',
+            'clientName': 'IOS',
+            'clientVersion': '19.29.1',
+            'deviceModel': 'iPhone16,2',
+            'userAgent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X; de_DE)',
+            'clientNameHeader': '5',
+        },
+        {
+            'name': 'TV_EMBEDDED',
+            'clientName': 'TVHTML5_SIMPLY_EMBEDDED_PLAYER',
+            'clientVersion': '2.0',
+            'userAgent': 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/4.0 Chrome/76.0.3809.146 TV Safari/537.36',
+            'clientNameHeader': '85',
+        },
+        {
+            'name': 'ANDROID',
+            'clientName': 'ANDROID',
+            'clientVersion': '20.01.35',
+            'userAgent': 'com.google.android.youtube/20.01.35 (Linux; U; Android 14; de_DE)',
+            'clientNameHeader': '3',
+        },
+        {
+            'name': 'WEB_EMBEDDED',
+            'clientName': 'WEB_EMBEDDED_PLAYER',
+            'clientVersion': '1.20240724.01.00',
+            'userAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'clientNameHeader': '56',
+        },
+    ]
     
     visitor_data = 'CgtlRFpWTlF2cnVrVSjv09LTBjIKCgJDSBIEGgAgBToCCAFi4AIK'
     try:
-        vis_res = requests.post('https://www.youtube.com/youtubei/v1/visitor_id', json={'context': {'client': {'clientName': 'ANDROID', 'clientVersion': '20.01.35'}}}, headers=headers, timeout=3).json()
+        vis_res = requests.post(
+            'https://www.youtube.com/youtubei/v1/visitor_id',
+            json={'context': {'client': {'clientName': 'ANDROID', 'clientVersion': '20.01.35'}}},
+            headers={'User-Agent': 'com.google.android.youtube/20.01.35 (Linux; U; Android 14; de_DE)'},
+            timeout=3
+        ).json()
         vd = vis_res.get('responseContext', {}).get('visitorData')
         if vd:
             visitor_data = vd
     except Exception as e:
         print(f"visitor_id API warning: {e}")
 
-    for api_key in api_keys:
-        try:
-            player_endpoint = f'https://www.youtube.com/youtubei/v1/player?key={api_key}'
-            client_ctx = {
-                'clientName': 'ANDROID',
-                'clientVersion': '20.01.35',
-                'visitorData': visitor_data,
-                'hl': 'de',
-                'gl': 'DE'
-            }
+    for profile in client_profiles:
+        headers = {
+            'User-Agent': profile['userAgent'],
+            'X-YouTube-Client-Name': profile['clientNameHeader'],
+            'X-YouTube-Client-Version': profile['clientVersion'],
+            'Origin': 'https://www.youtube.com',
+            'Referer': 'https://www.youtube.com/',
+        }
 
-            payload = {
-                'videoId': video_id,
-                'contentCheckOk': True,
-                'racyCheckOk': True,
-                'context': {
-                    'client': client_ctx
+        for api_key in api_keys:
+            try:
+                player_endpoint = f'https://www.youtube.com/youtubei/v1/player?key={api_key}'
+                client_ctx = {
+                    'clientName': profile['clientName'],
+                    'clientVersion': profile['clientVersion'],
+                    'hl': 'de',
+                    'gl': 'DE',
                 }
-            }
-            res = requests.post(player_endpoint, json=payload, headers=headers, timeout=5).json()
-            video_details = res.get('videoDetails', {})
-            title = video_details.get('title') or "Why Do People Love Living in Hamburg ?"
-            thumbs = video_details.get('thumbnail', {}).get('thumbnails', [])
-            thumbnail = thumbs[-1].get('url') if thumbs else f"https://i.ytimg.com/vi/{video_id}/sddefault.jpg"
-            
-            cues = []
-            tracks = res.get('captions', {}).get('playerCaptionsTracklistRenderer', {}).get('captionTracks', [])
-            if tracks:
-                track = next((t for t in tracks if t.get('languageCode') in ['de', 'de-DE', 'de-orig']), tracks[0])
-                b_url = track.get('baseUrl')
-                if b_url:
-                    vtt_res = requests.get(b_url, headers=headers, timeout=5)
-                    if vtt_res.status_code == 200:
-                        cues = parse_youtube_xml_captions(vtt_res.text)
-            
-            if not cues:
-                print("player API returned no cues, trying get_transcript InnerTube API...")
-                cues = fetch_innertube_transcript_api(url)
-            
-            if title and cues:
-                print(f"InnerTube DIRECT ANDROID API successfully extracted title '{title}' and {len(cues)} clean cues!")
+                if profile.get('deviceModel'):
+                    client_ctx['deviceModel'] = profile['deviceModel']
+                if visitor_data:
+                    client_ctx['visitorData'] = visitor_data
+
+                payload = {
+                    'videoId': video_id,
+                    'contentCheckOk': True,
+                    'racyCheckOk': True,
+                    'context': {
+                        'client': client_ctx
+                    }
+                }
+                if 'EMBEDDED' in profile['name']:
+                    payload['context']['thirdParty'] = {
+                        'embedUrl': f'https://www.youtube.com/embed/{video_id}'
+                    }
+
+                res = requests.post(player_endpoint, json=payload, headers=headers, timeout=6).json()
+                playability = res.get('playabilityStatus', {}).get('status')
+                video_details = res.get('videoDetails', {})
+                title = video_details.get('title')
+
+                if not title or playability not in ['OK', None]:
+                    print(f"InnerTube profile {profile['name']} playability: {playability}")
+                    continue
+
+                thumbs = video_details.get('thumbnail', {}).get('thumbnails', [])
+                thumbnail = thumbs[-1].get('url') if thumbs else f"https://i.ytimg.com/vi/{video_id}/sddefault.jpg"
+                
+                streaming_data = res.get('streamingData', {})
+                adaptive_formats = streaming_data.get('adaptiveFormats', [])
+                audio_fmts = [f for f in adaptive_formats if 'audio' in f.get('mimeType', '') and f.get('url')]
+                audio_stream_url = audio_fmts[0].get('url') if audio_fmts else None
+
+                cues = []
+                tracks = res.get('captions', {}).get('playerCaptionsTracklistRenderer', {}).get('captionTracks', [])
+                if tracks:
+                    track = next((t for t in tracks if t.get('languageCode') in ['de', 'de-DE', 'de-orig']), tracks[0])
+                    b_url = track.get('baseUrl')
+                    if b_url:
+                        vtt_res = requests.get(b_url, headers=headers, timeout=5)
+                        if vtt_res.status_code == 200:
+                            cues = parse_youtube_xml_captions(vtt_res.text)
+                
+                if not cues:
+                    cues = fetch_innertube_transcript_api(url)
+                
+                print(f"InnerTube {profile['name']} SUCCESS: '{title}' (cues: {len(cues)}, direct audio: {bool(audio_stream_url)})")
                 return {
                     'title': title,
                     'thumbnail': thumbnail,
                     'subtitles': cues,
+                    'audio_stream_url': audio_stream_url,
                     'url': url,
                 }
-            else:
-                print(f"InnerTube player response status: {res.get('playabilityStatus', {}).get('status')} | title: {title} | cues: {len(cues)}")
-        except Exception as e:
-            print(f"InnerTube API error with key {api_key[:8]}: {e}")
+            except Exception as e:
+                print(f"InnerTube profile {profile['name']} error: {e}")
+
     return None
 
 def fetch_pytubefix_subtitles(url: str) -> list[SubtitleCue]:
@@ -458,7 +515,7 @@ def get_ytdlp_options(extra_opts=None):
         'ignoreerrors': True,
         'extractor_args': {
             'youtube': {
-                'player_client': ['ios', 'android', 'web'],
+                'player_client': ['android', 'ios', 'tv_embedded', 'mweb'],
             }
         },
         'http_headers': {
@@ -531,29 +588,124 @@ def get_media_type(file_path: str) -> str:
     return 'video'
 
 def download_media(url: str, output_path: str, direct_stream_url: str = None) -> str:
-    """Downloads audio stream via yt-dlp with iOS player client."""
-    ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
-        'nocheckcertificate': True,
-        'ignoreerrors': True,
-        'format': 'ba/b/best',
-        'outtmpl': f'{output_path}.%(ext)s',
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['ios', 'android', 'web'],
+    """Downloads audio stream using multiple fallback strategies (Direct CDN stream, pytubefix, yt-dlp)."""
+    # 1. Direct stream URL download if present
+    if direct_stream_url and str(direct_stream_url).startswith('http') and direct_stream_url != url:
+        try:
+            print(f"Downloading audio directly from direct_stream_url: {direct_stream_url[:60]}...")
+            headers = {
+                'User-Agent': 'com.google.android.youtube/20.01.35 (Linux; U; Android 14; de_DE)',
             }
-        },
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-        }
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-    
+            res = requests.get(direct_stream_url, headers=headers, stream=True, timeout=25)
+            if res.status_code == 200:
+                target_file = f"{output_path}.mp4"
+                with open(target_file, 'wb') as f:
+                    for chunk in res.iter_content(chunk_size=65536):
+                        if chunk:
+                            f.write(chunk)
+                if os.path.exists(target_file) and os.path.getsize(target_file) > 1024:
+                    print(f"Direct stream download succeeded: {target_file} ({os.path.getsize(target_file)} bytes)")
+                    return target_file
+        except Exception as e:
+            print(f"Direct stream download failed: {e}")
+
+    # 2. Extract direct audio CDN URL via InnerTube API across profiles (IOS, TV, ANDROID)
+    video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11})', url)
+    if video_id_match:
+        video_id = video_id_match.group(1)
+        profiles_to_try = [
+            {'name': 'IOS', 'clientName': 'IOS', 'clientVersion': '19.29.1', 'deviceModel': 'iPhone16,2', 'userAgent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X; de_DE)', 'clientNameHeader': '5'},
+            {'name': 'TV', 'clientName': 'TVHTML5_SIMPLY_EMBEDDED_PLAYER', 'clientVersion': '2.0', 'userAgent': 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/4.0 Chrome/76.0.3809.146 TV Safari/537.36', 'clientNameHeader': '85'},
+            {'name': 'ANDROID', 'clientName': 'ANDROID', 'clientVersion': '20.01.35', 'userAgent': 'com.google.android.youtube/20.01.35 (Linux; U; Android 14; de_DE)', 'clientNameHeader': '3'},
+        ]
+        for p in profiles_to_try:
+            try:
+                headers = {
+                    'User-Agent': p['userAgent'],
+                    'X-YouTube-Client-Name': p['clientNameHeader'],
+                    'X-YouTube-Client-Version': p['clientVersion'],
+                    'Origin': 'https://www.youtube.com',
+                    'Referer': 'https://www.youtube.com/',
+                }
+                client_ctx = {'clientName': p['clientName'], 'clientVersion': p['clientVersion'], 'hl': 'de', 'gl': 'DE'}
+                if p.get('deviceModel'):
+                    client_ctx['deviceModel'] = p['deviceModel']
+                payload = {'videoId': video_id, 'contentCheckOk': True, 'racyCheckOk': True, 'context': {'client': client_ctx}}
+                if 'TV' in p['name']:
+                    payload['context']['thirdParty'] = {'embedUrl': f'https://www.youtube.com/embed/{video_id}'}
+
+                res = requests.post(
+                    'https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+                    json=payload,
+                    headers=headers,
+                    timeout=8
+                ).json()
+                adaptive_formats = res.get('streamingData', {}).get('adaptiveFormats', [])
+                audio_fmts = [f for f in adaptive_formats if 'audio' in f.get('mimeType', '') and f.get('url')]
+                if audio_fmts:
+                    cdn_url = audio_fmts[0]['url']
+                    print(f"InnerTube {p['name']} returned direct audio CDN URL, downloading stream...")
+                    stream_res = requests.get(cdn_url, headers=headers, stream=True, timeout=25)
+                    if stream_res.status_code == 200:
+                        target_file = f"{output_path}.mp4"
+                        with open(target_file, 'wb') as f:
+                            for chunk in stream_res.iter_content(chunk_size=65536):
+                                if chunk:
+                                    f.write(chunk)
+                        if os.path.exists(target_file) and os.path.getsize(target_file) > 1024:
+                            print(f"InnerTube {p['name']} stream download succeeded: {target_file} ({os.path.getsize(target_file)} bytes)")
+                            return target_file
+            except Exception as e:
+                print(f"InnerTube {p['name']} audio stream download failed: {e}")
+
+    # 3. Try pytubefix
+    for client_type in ['MWEB', 'ANDROID', 'WEB']:
+        try:
+            from pytubefix import YouTube
+            print(f"Trying pytubefix with client '{client_type}'...")
+            yt = YouTube(url, client=client_type)
+            audio_stream = yt.streams.filter(only_audio=True).first()
+            if audio_stream:
+                target_file = f"{output_path}.mp4"
+                audio_stream.download(filename=target_file)
+                if os.path.exists(target_file) and os.path.getsize(target_file) > 1024:
+                    print(f"pytubefix ({client_type}) audio download succeeded ({os.path.getsize(target_file)} bytes)")
+                    return target_file
+        except Exception as e:
+            print(f"pytubefix ({client_type}) failed: {e}")
+
+    # 4. Try yt-dlp with diverse player client fallbacks
+    for client_combo in [['android'], ['ios'], ['tv_embedded'], ['mweb'], ['web_embedded']]:
+        try:
+            print(f"Trying yt-dlp with player_client {client_combo}...")
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'nocheckcertificate': True,
+                'ignoreerrors': True,
+                'format': 'ba/b/best',
+                'outtmpl': f'{output_path}.%(ext)s',
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': client_combo,
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+                }
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            matches = glob.glob(f'{output_path}.*')
+            if matches and os.path.getsize(matches[0]) > 1024:
+                print(f"yt-dlp ({client_combo}) succeeded: {matches[0]} ({os.path.getsize(matches[0])} bytes)")
+                return matches[0]
+        except Exception as e:
+            print(f"yt-dlp ({client_combo}) failed: {e}")
+
     matches = glob.glob(f'{output_path}.*')
     if not matches:
-        raise RuntimeError(f"Could not download audio stream for {url}")
+        raise RuntimeError("This YouTube video has playback or age/sign-in restrictions enabled on YouTube. Please try another video or paste the text directly.")
     print(f"Downloaded audio file: {matches[0]} ({os.path.getsize(matches[0])} bytes)")
     return matches[0]
 
@@ -688,21 +840,25 @@ async def process_media_task(task_id: str, url: str):
         innertube_data = await asyncio.to_thread(fetch_innertube_media_data, url)
         
         subtitles = []
+        audio_stream_url = None
+        media_info = {}
         if innertube_data:
             title = innertube_data['title']
             thumbnail = innertube_data['thumbnail']
-            subtitles = innertube_data['subtitles']
+            subtitles = innertube_data.get('subtitles') or []
             media_url = innertube_data['url']
+            audio_stream_url = innertube_data.get('audio_stream_url')
         else:
             update_task_stage(task_id, "Extracting video title & thumbnail...", 35)
             media_info = await asyncio.to_thread(get_media_info, url)
             media_url = media_info['url']
             title = media_info['title']
             thumbnail = media_info['thumbnail']
+            audio_stream_url = media_info.get('audio_stream_url')
 
         try:
             # 2. Fetch direct CDN VTT subtitle URL extracted from get_media_info
-            if not subtitles:
+            if not subtitles and media_info:
                 subs_dict = media_info.get('requested_subtitles') or media_info.get('subtitles') or media_info.get('automatic_captions') or {}
                 if subs_dict:
                     lang = next((l for l in ['de', 'de-DE', 'de-orig', 'en'] if l in subs_dict), list(subs_dict.keys())[0] if subs_dict else None)
@@ -732,7 +888,7 @@ async def process_media_task(task_id: str, url: str):
                 print("pytubefix empty, trying youtube_transcript_api...")
                 subtitles = await asyncio.to_thread(fetch_youtube_transcript, url)
 
-            # 3. Targeted yt-dlp download if CDN and transcript API were empty
+            # 5. Targeted yt-dlp download if CDN and transcript API were empty
             if not subtitles:
                 print("youtube_transcript_api empty, trying targeted yt-dlp subtitle download...")
                 ydl_opts = get_ytdlp_options({
@@ -764,7 +920,7 @@ async def process_media_task(task_id: str, url: str):
         if not subtitles:
             update_task_stage(task_id, "Downloading audio stream...", 55)
             downloaded_audio_path = await asyncio.to_thread(
-                download_media, url, media_filename, media_info.get('audio_stream_url')
+                download_media, url, media_filename, audio_stream_url
             )
 
             update_task_stage(task_id, "Analyzing media format...", 70)
