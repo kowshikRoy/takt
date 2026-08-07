@@ -33,7 +33,7 @@ class ProfileScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: colorScheme.onBackground,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -131,7 +131,7 @@ class ProfileScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onBackground,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -145,7 +145,10 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       InkWell(
                         borderRadius: BorderRadius.circular(12),
@@ -177,7 +180,6 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Text(
                         profileService.joinDateFormatted,
                         style: TextStyle(
@@ -296,7 +298,7 @@ class ProfileScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onBackground,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ],
@@ -380,7 +382,7 @@ class ProfileScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onBackground,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ],

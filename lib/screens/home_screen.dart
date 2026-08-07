@@ -215,69 +215,77 @@ class HomeScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                  );
-                },
-                child: Consumer<ProfileService>(
-                  builder: (context, profileService, _) {
-                    final photoUrl = profileService.photoUrl;
-                    return Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: inkColor.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: rustAccent,
-                          width: 1.5,
-                        ),
-                        image: DecorationImage(
-                          image: (photoUrl != null &&
-                                  photoUrl.trim().isNotEmpty &&
-                                  photoUrl.startsWith('http'))
-                              ? NetworkImage(photoUrl) as ImageProvider
-                              : const AssetImage('assets/images/profile.jpg'),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
                     );
                   },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'GUTEN MORGEN!',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                      color: inkColor,
-                    ),
-                  ),
-                  Consumer<GamificationService>(
-                    builder: (context, gamification, _) {
-                      return Text(
-                        'Level ${gamification.level}',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: inkColor.withValues(alpha: 0.7),
+                  child: Consumer<ProfileService>(
+                    builder: (context, profileService, _) {
+                      final photoUrl = profileService.photoUrl;
+                      return Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: inkColor.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: rustAccent,
+                            width: 1.5,
+                          ),
+                          image: DecorationImage(
+                            image: (photoUrl != null &&
+                                    photoUrl.trim().isNotEmpty &&
+                                    photoUrl.startsWith('http'))
+                                ? NetworkImage(photoUrl) as ImageProvider
+                                : const AssetImage('assets/images/profile.jpg'),
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       );
                     },
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'GUTEN MORGEN!',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: inkColor,
+                        ),
+                      ),
+                      Consumer<GamificationService>(
+                        builder: (context, gamification, _) {
+                          return Text(
+                            'Level ${gamification.level}',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: inkColor.withValues(alpha: 0.7),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           Row(
             children: [

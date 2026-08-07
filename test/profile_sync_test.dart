@@ -137,10 +137,11 @@ void main() {
     test('VocabularyService recordReview updates and preserves SRS fields locally', () async {
       SharedPreferences.setMockInitialValues({});
       final vocab = VocabularyService();
+      await vocab.removeWord('test_haus_srs');
 
       final initialWord = SavedWord(
-        id: 'test_haus',
-        word: 'Haus',
+        id: 'test_haus_srs',
+        word: 'Haus_SRS',
         primaryDefinition: 'house',
         interval: 0,
         repetitions: 0,
@@ -148,14 +149,14 @@ void main() {
       );
 
       await vocab.upsertWord(initialWord);
-      final savedBefore = await vocab.getSavedWord('test_haus');
+      final savedBefore = await vocab.getSavedWord('test_haus_srs');
       expect(savedBefore, isNotNull);
       expect(savedBefore!.repetitions, 0);
 
       // Perform a review rating (good)
-      await vocab.recordReview('test_haus', ReviewRating.good);
+      await vocab.recordReview('test_haus_srs', ReviewRating.good);
 
-      final reviewedWord = await vocab.getSavedWord('test_haus');
+      final reviewedWord = await vocab.getSavedWord('test_haus_srs');
       expect(reviewedWord, isNotNull);
       expect(reviewedWord!.repetitions, 1);
       expect(reviewedWord.interval, 1);
@@ -164,18 +165,21 @@ void main() {
 
       // Re-saving with a new example context sentence does NOT wipe out review progress
       final updatedWithContext = SavedWord(
-        id: 'test_haus',
-        word: 'Haus',
+        id: 'test_haus_srs',
+        word: 'Haus_SRS',
         primaryDefinition: 'house',
         contextSentence: 'Das ist ein schönes Haus.',
       );
       await vocab.upsertWord(updatedWithContext);
 
-      final recheckedWord = await vocab.getSavedWord('test_haus');
+      final recheckedWord = await vocab.getSavedWord('test_haus_srs');
       expect(recheckedWord, isNotNull);
       expect(recheckedWord!.repetitions, 1);
       expect(recheckedWord.interval, 1);
       expect(recheckedWord.lastReviewed, isNotNull);
+
+      // Cleanup
+      await vocab.removeWord('test_haus_srs');
     });
 
     test('DiscoveryService persists savedTodayCount locally and reloads it', () async {
