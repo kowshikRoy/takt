@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
@@ -104,8 +107,47 @@ class _VideoScreenState extends State<VideoScreen>
   Set<String> _savedVocabIds = {};
   String _selectedVocabLevelFilter = 'All';
 
-  // Dialogue Audio Mode & Sequential TTS
+  // Dialogue Audio Mode & Studio Audio Player
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  String? _localAudioFilePath;
+  bool _isPlayingStudioAudio = false;
   bool _isPlayingDialogueTts = false;
+
+  Future<void> _checkAndDownloadStudioAudio() async {
+    final video = widget.processedVideo;
+    final url = _directVideoUrl;
+    if (url == null || url.isEmpty) return;
+
+    final isAudioUrl = url.contains('.wav') || url.contains('/audio/') || url.contains('.mp3') || video?.mediaType == 'audio';
+    if (!isAudioUrl) return;
+
+    try {
+      final docDir = await getApplicationDocumentsDirectory();
+      final localFile = File('${docDir.path}/gemini_audio_${video?.id ?? "cached"}.wav');
+
+      if (await localFile.exists() && (await localFile.length()) > 1000) {
+        if (mounted) {
+          setState(() {
+            _localAudioFilePath = localFile.path;
+          });
+        }
+        return;
+      }
+
+      // Download audio track once for permanent offline playback
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+        await localFile.writeAsBytes(response.bodyBytes);
+        if (mounted) {
+          setState(() {
+            _localAudioFilePath = localFile.path;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error caching local studio audio: $e');
+    }
+  }
 
   Future<void> _startSequentialTts({int startIndex = 0}) async {
     if (_subtitles.isEmpty) return;
@@ -143,6 +185,24 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
+  Future<void> _toggleDialoguePlayback() async {
+    if (_isPlayingStudioAudio) {
+      await _audioPlayer.pause();
+    } else if (_isPlayingDialogueTts) {
+      _stopSequentialTts();
+    } else {
+      // 1. Play real Gemini Studio Audio file if downloaded or available
+      if (_localAudioFilePath != null && File(_localAudioFilePath!).existsSync()) {
+        await _audioPlayer.play(DeviceFileSource(_localAudioFilePath!));
+      } else if (_directVideoUrl != null && (_directVideoUrl!.contains('/audio/') || _directVideoUrl!.contains('.wav'))) {
+        await _audioPlayer.play(UrlSource(_directVideoUrl!));
+      } else {
+        // 2. Fall back to on-device sequential TTS
+        _startSequentialTts();
+      }
+    }
+  }
+
   void _startControlsTimer() {
     _controlsTimer?.cancel();
     _controlsTimer = Timer(const Duration(seconds: 3), () {
@@ -170,6 +230,36 @@ class _VideoScreenState extends State<VideoScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+
+    // Set up AudioPlayer listeners for Gemini Studio Audio
+    _audioPlayer.onPositionChanged.listen((pos) {
+      if (!mounted) return;
+      final currentTime = pos.inMilliseconds / 1000.0;
+
+      int foundIndex = -1;
+      for (int i = 0; i < _subtitles.length; i++) {
+        final cue = _subtitles[i];
+        if (currentTime >= cue.start && currentTime <= cue.end) {
+          foundIndex = i;
+          break;
+        }
+      }
+
+      if (foundIndex != -1 && foundIndex != _currentSubtitleIndex) {
+        setState(() {
+          _currentSubtitleIndex = foundIndex;
+        });
+        _scrollToCurrentSubtitle();
+      }
+    });
+
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+      setState(() {
+        _isPlayingStudioAudio = state == PlayerState.playing;
+      });
+    });
+
     if (widget.processedVideo != null &&
         widget.processedVideo!.status == ProcessingStatus.completed) {
       _loadProcessedVideo();
@@ -186,6 +276,9 @@ class _VideoScreenState extends State<VideoScreen>
 
     // Extract Key Vocabulary from Subtitle Cues
     _extractKeyVocabulary();
+
+    // Check and download Gemini Studio Audio if available
+    _checkAndDownloadStudioAudio();
 
     final isWebPageUrl = _directVideoUrl != null &&
         (_directVideoUrl!.contains('youtube.com/watch') ||
@@ -447,6 +540,7 @@ class _VideoScreenState extends State<VideoScreen>
   void dispose() {
     _isPlayingDialogueTts = false;
     _ttsService.stop();
+    _audioPlayer.dispose();
     _videoPlayerController?.removeListener(_onVideoPlayerUpdate);
     _videoPlayerController?.dispose();
     _urlController.dispose();
@@ -588,12 +682,20 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
-  void _seekToSubtitle(double startTime, {int? index}) {
+  void _seekToSubtitle(double startTime, {int? index}) async {
     if (_videoPlayerController?.value.isInitialized ?? false) {
       _videoPlayerController?.seekTo(
         Duration(milliseconds: (startTime * 1000).toInt()),
       );
       _videoPlayerController?.play();
+    } else if (_localAudioFilePath != null && File(_localAudioFilePath!).existsSync()) {
+      setState(() {
+        _currentSubtitleIndex = index ?? -1;
+      });
+      _scrollToCurrentSubtitle();
+      final seekMs = (startTime * 1000).toInt();
+      await _audioPlayer.seek(Duration(milliseconds: seekMs));
+      await _audioPlayer.resume();
     } else if (index != null && index >= 0 && index < _subtitles.length) {
       setState(() {
         _currentSubtitleIndex = index;
@@ -1187,15 +1289,13 @@ class _VideoScreenState extends State<VideoScreen>
                     SizedBox(
                       height: 32,
                       child: ElevatedButton.icon(
-                        onPressed: _isPlayingDialogueTts
-                            ? _stopSequentialTts
-                            : () => _startSequentialTts(),
+                        onPressed: _toggleDialoguePlayback,
                         icon: Icon(
-                          _isPlayingDialogueTts ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          (_isPlayingStudioAudio || _isPlayingDialogueTts) ? Icons.pause_rounded : Icons.play_arrow_rounded,
                           size: 16,
                         ),
                         label: Text(
-                          _isPlayingDialogueTts ? 'Pause' : 'Play Audio',
+                          (_isPlayingStudioAudio || _isPlayingDialogueTts) ? 'Pause' : 'Play Audio',
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                         style: ElevatedButton.styleFrom(
