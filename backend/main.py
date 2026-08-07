@@ -933,6 +933,72 @@ def generate_dialogue_audio_with_gemini(dialogue_lines: list[str], output_wav_pa
         print(f"Gemini TTS generation error: {e}")
     return False
 
+def align_subtitles_to_audio(subtitles: list[SubtitleCue], audio_path: str) -> list[SubtitleCue]:
+    """
+    Re-aligns subtitle cue start and end timestamps against the synthesized Gemini Studio audio track
+    using in-memory Whisper audio inference (<1.0s).
+    Preserves all original German text and synchronized English translations.
+    """
+    if not subtitles or not os.path.exists(audio_path):
+        return subtitles
+
+    try:
+        model = get_whisper_model()
+        segments, _ = model.transcribe(
+            audio_path,
+            language="de",
+            beam_size=1,
+            best_of=1,
+            vad_filter=True
+        )
+        whisper_cues = []
+        for s in segments:
+            txt = s.text.strip()
+            if txt:
+                whisper_cues.append({'start': round(s.start, 2), 'end': round(s.end, 2), 'text': txt})
+
+        if not whisper_cues:
+            return subtitles
+
+        print(f"Aligning {len(subtitles)} subtitle cues with {len(whisper_cues)} audio segments...")
+
+        # Case 1: Exact 1-to-1 segment count match
+        if len(whisper_cues) == len(subtitles):
+            aligned = []
+            for cue, w_cue in zip(subtitles, whisper_cues):
+                aligned.append(SubtitleCue(
+                    start=w_cue['start'],
+                    end=max(round(w_cue['start'] + 0.5, 2), w_cue['end']),
+                    original=cue.original,
+                    translated=cue.translated
+                ))
+            print(f"Direct 1-to-1 audio alignment completed ({len(aligned)} cues)!")
+            return aligned
+
+        # Case 2: Proportional text length distribution across real audio duration
+        total_audio_duration = max(whisper_cues[-1]['end'], 1.0)
+        total_char_count = max(sum(len(c.original) for c in subtitles), 1)
+
+        aligned = []
+        current_time = whisper_cues[0]['start']
+        for cue in subtitles:
+            cue_len = max(len(cue.original), 1)
+            duration_share = (cue_len / total_char_count) * (total_audio_duration - whisper_cues[0]['start'])
+            end_time = round(min(current_time + duration_share, total_audio_duration), 2)
+            aligned.append(SubtitleCue(
+                start=round(current_time, 2),
+                end=max(round(current_time + 0.5, 2), end_time),
+                original=cue.original,
+                translated=cue.translated
+            ))
+            current_time = end_time
+
+        print(f"Proportional audio alignment completed ({len(aligned)} cues over {total_audio_duration}s)!")
+        return aligned
+    except Exception as e:
+        print(f"Audio subtitle alignment error: {e}")
+        return subtitles
+
 def transcribe_and_translate(audio_path: str):
     """Transcribes German audio stream with Whisper using high-performance settings."""
     model = get_whisper_model()
@@ -1177,6 +1243,10 @@ async def process_media_task(task_id: str, url: str):
                     app_url = os.environ.get("SERVICE_URL") or "https://omniscribe-184475424927.europe-west4.run.app"
                     media_url = f"{app_url}/audio/{audio_filename}"
                     media_type = "audio"
+
+                    # Re-align subtitle timestamps with the synthesized studio audio track
+                    update_task_stage(task_id, "Synchronizing subtitles with studio audio...", 94)
+                    subtitles = await asyncio.to_thread(align_subtitles_to_audio, subtitles, audio_path)
             except Exception as tts_err:
                 print(f"Gemini Studio TTS synthesis skipped: {tts_err}")
 
