@@ -528,8 +528,47 @@ def get_ytdlp_options(extra_opts=None):
         opts.update(extra_opts)
     return opts
 
+def fetch_youtube_metadata_fast(url: str) -> dict:
+    """
+    Extracts YouTube video ID, official title, channel name, and high-resolution thumbnail URL
+    using YouTube's official oEmbed API (100% reliable across Cloud Run IPs without bot blocks).
+    """
+    video_id_match = re.search(r'(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})', url)
+    video_id = video_id_match.group(1) if video_id_match else None
+    
+    title = 'German Lesson'
+    thumbnail = None
+    author_name = None
+    
+    if video_id:
+        thumbnail = f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg"
+        try:
+            oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            r = requests.get(oembed_url, headers=headers, timeout=5)
+            if r.status_code == 200:
+                data = r.json()
+                if data.get('title'):
+                    title = data['title']
+                if data.get('author_name'):
+                    author_name = data['author_name']
+                if data.get('thumbnail_url'):
+                    thumbnail = data['thumbnail_url']
+        except Exception as e:
+            print(f"oEmbed fetch error for {video_id}: {e}")
+            
+        if not thumbnail:
+            thumbnail = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+            
+    return {
+        'video_id': video_id,
+        'title': title,
+        'thumbnail': thumbnail,
+        'author_name': author_name
+    }
+
 def get_media_info(url: str):
-    """Extracts direct media stream URL, video title, thumbnail URL, and captions dict via yt-dlp."""
+    """Extracts direct media stream URL, video title, thumbnail URL, and captions dict via yt-dlp and oEmbed."""
     ydl_opts = get_ytdlp_options({
         'skip_download': True,
         'writesubtitles': True,
@@ -542,13 +581,24 @@ def get_media_info(url: str):
     subs_dict = {}
     auto_subs_dict = {}
     requested_subs = {}
+
+    # Fast oEmbed YouTube metadata fallback
+    if 'youtube.com' in url or 'youtu.be' in url:
+        yt_meta = fetch_youtube_metadata_fast(url)
+        if yt_meta.get('title') and yt_meta['title'] != 'German Lesson':
+            title = yt_meta['title']
+        if yt_meta.get('thumbnail'):
+            thumbnail = yt_meta['thumbnail']
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             if info:
                 direct_url = info.get('url', url)
-                title = info.get('title', 'Media')
-                thumbnail = info.get('thumbnail')
+                if info.get('title'):
+                    title = info.get('title')
+                if info.get('thumbnail'):
+                    thumbnail = info.get('thumbnail')
                 subs_dict = info.get('subtitles') or {}
                 auto_subs_dict = info.get('automatic_captions') or {}
                 requested_subs = info.get('requested_subtitles') or {}
@@ -721,12 +771,12 @@ def get_whisper_model():
         _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8", cpu_threads=2)
     return _whisper_model
 
-def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> list[SubtitleCue]:
-    """Uses Gemini multimodal capabilities to directly transcribe YouTube videos without scraping or bot blocks."""
+def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> tuple[list[SubtitleCue], str | None]:
+    """Uses Gemini multimodal capabilities to directly transcribe YouTube videos and extract descriptive titles without scraping or bot blocks."""
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key:
         print("No GEMINI_API_KEY configured for Gemini YouTube fallback.")
-        return []
+        return [], None
     
     # Normalize short youtu.be URLs to standard YouTube format
     if 'youtu.be/' in url:
@@ -738,18 +788,23 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> list[Subtit
         try:
             print(f"Calling Gemini ({model_name}) REST API to transcribe YouTube video directly: {url}")
             prompt = (
-                "You are an expert German language transcription system for language learners. "
-                "Listen to this YouTube video and produce a complete, verbatim timestamped transcription of all spoken German sentences with synchronized English translations.\n"
-                "Respond ONLY with a valid JSON array matching this exact schema:\n"
-                "[\n"
-                "  {\n"
-                "    \"start\": 0.0,\n"
-                "    \"end\": 13.5,\n"
-                "    \"original\": \"Anna, könntest du mir bitte kurz helfen?\",\n"
-                "    \"translated\": \"Anna, could you please help me for a moment?\"\n"
-                "  }\n"
-                "]\n"
-                "Return only the valid JSON array."
+                "You are an expert German language transcription and learning system. "
+                "Listen to this YouTube video and produce:\n"
+                "1. A clear, descriptive title for this German lesson/video/conversation.\n"
+                "2. A complete, verbatim timestamped transcription of all spoken German sentences with synchronized English translations.\n"
+                "Respond ONLY with a valid JSON object matching this exact schema:\n"
+                "{\n"
+                '  "title": "Anna helps with German Homework",\n'
+                '  "subtitles": [\n'
+                "    {\n"
+                '      "start": 0.0,\n'
+                '      "end": 13.5,\n'
+                '      "original": "Anna, könntest du mir bitte kurz helfen?",\n'
+                '      "translated": "Anna, could you please help me for a moment?"\n'
+                "    }\n"
+                "  ]\n"
+                "}\n"
+                "Return only the valid JSON."
             )
 
             endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
@@ -795,8 +850,16 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> list[Subtit
             raw_text = raw_text.strip()
 
             data = json.loads(raw_text)
+            extracted_title = None
+            raw_cues = []
+            if isinstance(data, dict):
+                extracted_title = data.get("title")
+                raw_cues = data.get("subtitles") or data.get("cues") or []
+            elif isinstance(data, list):
+                raw_cues = data
+
             cues = []
-            for item in data:
+            for item in raw_cues:
                 st = float(item.get("start", item.get("start_time", 0.0)))
                 et = float(item.get("end", item.get("end_time", st + 3.0)))
                 de_text = str(item.get("original", item.get("text", item.get("german", "")))).strip()
@@ -809,10 +872,11 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> list[Subtit
                         translated=en_text or None
                     ))
             if cues:
-                print(f"Gemini AI successfully extracted {len(cues)} clean subtitle cues for {url}!")
-                return cues
+                print(f"Gemini AI successfully extracted {len(cues)} clean subtitle cues for {url} with title: '{extracted_title}'!")
+                return cues, extracted_title
         except Exception as e:
             print(f"Gemini ({model_name}) YouTube transcription error: {e}")
+    return [], None
 
 def generate_dialogue_audio_with_gemini(dialogue_lines: list[str], output_wav_path: str, api_key: str = None) -> bool:
     """Generates studio German audio for the entire dialogue in ONE single Gemini 2.5 Flash TTS API call (respecting 3 RPM limit)."""
@@ -986,6 +1050,15 @@ async def process_media_task(task_id: str, url: str):
     try:
         update_task_stage(task_id, "Checking for official subtitles...", 20)
         
+        # 0. Quick YouTube metadata extraction for title, channel author, and high-res thumbnail
+        yt_meta = {}
+        if 'youtube.com' in url or 'youtu.be' in url:
+            yt_meta = await asyncio.to_thread(fetch_youtube_metadata_fast, url)
+            if yt_meta.get('title') and yt_meta['title'] not in ['German Lesson', 'Media']:
+                title = yt_meta['title']
+            if yt_meta.get('thumbnail'):
+                thumbnail = yt_meta['thumbnail']
+
         # 1. Try InnerTube DIRECT ANDROID API (Zero watchpage requests, zero bot block, extracts title, thumbnail & 388 cues in 0.2s)
         innertube_data = await asyncio.to_thread(fetch_innertube_media_data, url)
         
@@ -993,8 +1066,10 @@ async def process_media_task(task_id: str, url: str):
         audio_stream_url = None
         media_info = {}
         if innertube_data:
-            title = innertube_data['title']
-            thumbnail = innertube_data['thumbnail']
+            if innertube_data.get('title') and innertube_data['title'] not in ['German Lesson', 'Media']:
+                title = innertube_data['title']
+            if innertube_data.get('thumbnail'):
+                thumbnail = innertube_data['thumbnail']
             subtitles = innertube_data.get('subtitles') or []
             media_url = innertube_data['url']
             audio_stream_url = innertube_data.get('audio_stream_url')
@@ -1002,8 +1077,10 @@ async def process_media_task(task_id: str, url: str):
             update_task_stage(task_id, "Extracting video title & thumbnail...", 35)
             media_info = await asyncio.to_thread(get_media_info, url)
             media_url = media_info['url']
-            title = media_info['title']
-            thumbnail = media_info['thumbnail']
+            if media_info.get('title') and media_info['title'] not in ['German Lesson', 'Media']:
+                title = media_info['title']
+            if media_info.get('thumbnail'):
+                thumbnail = media_info['thumbnail']
             audio_stream_url = media_info.get('audio_stream_url')
 
         try:
@@ -1071,7 +1148,10 @@ async def process_media_task(task_id: str, url: str):
             # 1. Try Gemini Multimodal AI transcription directly on the YouTube video
             if 'youtube.com' in url or 'youtu.be' in url:
                 update_task_stage(task_id, "Transcribing with Gemini Multimodal AI...", 80)
-                subtitles = await asyncio.to_thread(transcribe_youtube_with_gemini, url)
+                gemini_subtitles, gemini_title = await asyncio.to_thread(transcribe_youtube_with_gemini, url)
+                subtitles = gemini_subtitles
+                if gemini_title and (not title or title in ['Media', 'German Lesson']):
+                    title = gemini_title
 
             # 2. Fall back to local audio stream download + Whisper AI
             if not subtitles:
@@ -1100,12 +1180,21 @@ async def process_media_task(task_id: str, url: str):
             except Exception as tts_err:
                 print(f"Gemini Studio TTS synthesis skipped: {tts_err}")
 
+        # Ensure thumbnail is high quality YouTube thumbnail if available
+        if not thumbnail or 'picsum.photos' in str(thumbnail):
+            if yt_meta.get('thumbnail'):
+                thumbnail = yt_meta['thumbnail']
+            elif 'youtube.com' in url or 'youtu.be' in url:
+                vid_match = re.search(r'(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})', url)
+                if vid_match:
+                    thumbnail = f"https://i.ytimg.com/vi/{vid_match.group(1)}/hqdefault.jpg"
+
         update_task_stage(task_id, "Finalizing media lesson...", 95)
         response_data = MediaResponse(
             video_url=media_url,
             media_type=media_type,
             subtitles=subtitles,
-            title=title,
+            title=title or "German Dialogue Lesson",
             thumbnail=thumbnail,
         )
         await asyncio.to_thread(write_to_cache, cache_key, response_data)
