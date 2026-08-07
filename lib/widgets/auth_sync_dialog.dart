@@ -125,14 +125,14 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primaryContainer,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: Icon(
                       Icons.cloud_done_rounded,
-                      size: 40,
+                      size: 36,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
@@ -180,6 +180,9 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                               : () => syncService.syncNow(),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
                           icon: const Icon(Icons.sync_rounded, size: 18),
                           label: const FittedBox(
@@ -202,6 +205,9 @@ class _AuthSyncDialogState extends State<AuthSyncDialog> {
                             foregroundColor: Colors.red[700],
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
                           icon: const Icon(Icons.logout_rounded, size: 18),
                           label: const FittedBox(

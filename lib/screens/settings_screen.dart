@@ -167,12 +167,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: auth.isAuthenticated
                       ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
                       : inkColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(3),
                   border: Border.all(
                     color: auth.isAuthenticated
                         ? const Color(0xFF2C5E3B).withValues(alpha: 0.4)
@@ -184,15 +184,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Icon(
                       auth.isAuthenticated ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-                      size: 14,
+                      size: 13,
                       color: auth.isAuthenticated ? const Color(0xFF2C5E3B) : inkColor.withValues(alpha: 0.6),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       auth.isAuthenticated ? 'Connected' : 'Offline',
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
                         color: auth.isAuthenticated ? const Color(0xFF2C5E3B) : inkColor.withValues(alpha: 0.6),
                       ),
                     ),
@@ -221,6 +222,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: () => AuthSyncDialog.show(context),
                       style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                       ),
                       child: const Text('Sign In'),
@@ -294,7 +298,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   margin: const EdgeInsets.only(right: 6),
                   decoration: BoxDecoration(
                     color: _getThemeColorPreview(themeProvider.colorTheme),
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(2.5),
                   ),
                 ),
                 Text(_getColorThemeName(themeProvider.colorTheme)),
@@ -529,6 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: const Text('Select Theme'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -559,6 +564,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
             child: const Text('Close'),
           ),
         ],
@@ -570,6 +578,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: const Text('Sound Style'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -595,6 +604,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
             child: const Text('Close'),
           ),
         ],
@@ -609,6 +621,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: const Text('Daily Word Goal'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -625,6 +638,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
             child: const Text('Close'),
           ),
         ],
@@ -636,6 +652,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: const Text('Select Palette'),
         content: SingleChildScrollView(
           child: Column(
@@ -645,11 +662,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: Row(
                   children: [
                     Container(
-                      width: 16,
-                      height: 16,
+                      width: 14,
+                      height: 14,
                       decoration: BoxDecoration(
                         color: _getThemeColorPreview(theme),
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(2.5),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -676,6 +693,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
             child: const Text('Close'),
           ),
         ],
@@ -698,6 +718,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: const Text('Select Typography'),
         content: SizedBox(
           width: double.maxFinite,
@@ -730,6 +751,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
             child: const Text('Cancel'),
           ),
         ],
@@ -771,6 +795,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           title: const Text('Select Proficiency Level'),
           content: SingleChildScrollView(
             child: Column(
@@ -905,11 +930,11 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                           Row(
                             children: [
                               Container(
-                                width: 40,
-                                height: 40,
+                                width: 38,
+                                height: 38,
                                 decoration: BoxDecoration(
                                   color: rustAccent.withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Icon(
                                   Icons.storage_rounded,

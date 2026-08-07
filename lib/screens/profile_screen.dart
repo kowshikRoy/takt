@@ -133,20 +133,13 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(width: 4),
           ],
 
-          // Avatar with ring
+          // Avatar with modernist square frame
           Container(
-            width: 64,
-            height: 64,
+            width: 58,
+            height: 58,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: rustAccent, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: rustAccent, width: 1.5),
               image: DecorationImage(
                 image: (photoUrl != null &&
                         photoUrl.trim().isNotEmpty &&
@@ -171,12 +164,12 @@ class ProfileScreen extends StatelessWidget {
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    // Level Circle Badge
+                    // Level Modernist Badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
                         color: rustAccent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(3),
                         border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
                       ),
                       child: Text(
@@ -190,15 +183,15 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
 
-                    // CEFR Badge
+                    // CEFR Modernist Badge
                     InkWell(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(3),
                       onTap: () => _showLevelDialog(context, profileService),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                         decoration: BoxDecoration(
                           color: rustAccent,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(3),
                         ),
                         child: Text(
                           'CEFR ${profileService.targetLevel}',
@@ -413,18 +406,22 @@ class ProfileScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: const Text('Edit Display Name'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Your Name',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
           ),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
             child: const Text('Cancel'),
           ),
           FilledButton(
@@ -432,6 +429,9 @@ class ProfileScreen extends StatelessWidget {
               profileService.updateDisplayName(controller.text);
               Navigator.pop(ctx);
             },
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
             child: const Text('Save'),
           ),
         ],
@@ -455,6 +455,7 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       builder: (ctx) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           title: const Text('German Proficiency Level'),
           content: SingleChildScrollView(
             child: Column(
