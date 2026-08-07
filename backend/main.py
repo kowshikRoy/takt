@@ -726,7 +726,12 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> list[Subtit
         print("No GEMINI_API_KEY configured for Gemini YouTube fallback.")
         return []
     
-    models_to_try = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-2.5-flash"]
+    # Normalize short youtu.be URLs to standard YouTube format
+    if 'youtu.be/' in url:
+        vid = url.split('youtu.be/')[1].split('?')[0].split('&')[0]
+        url = f"https://www.youtube.com/watch?v={vid}"
+
+    models_to_try = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash"]
     for model_name in models_to_try:
         try:
             print(f"Calling Gemini ({model_name}) REST API to transcribe YouTube video directly: {url}")
@@ -767,7 +772,7 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> list[Subtit
                 }
             }
 
-            res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=75)
+            res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=240)
             if res.status_code != 200:
                 print(f"Gemini ({model_name}) returned status {res.status_code}: {res.text}")
                 continue
