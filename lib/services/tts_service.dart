@@ -55,6 +55,9 @@ class TtsService {
       await _flutterTts.setSpeechRate(kIsWeb ? 0.9 : 0.5);
       await _flutterTts.setVolume(1.0);
       await _flutterTts.setPitch(1.0);
+      if (!kIsWeb) {
+        await _flutterTts.awaitSpeakCompletion(true);
+      }
     } catch (_) {}
 
     _flutterTts.setProgressHandler((text, start, end, word) {
@@ -79,6 +82,15 @@ class TtsService {
     // browser hasn't finished loading its voice list yet.
     await _ensureWebVoicesLoaded();
     await _flutterTts.setLanguage(lang);
+    await _flutterTts.speak(text);
+  }
+
+  Future<void> speakAndWait(String text, {String lang = "de-DE"}) async {
+    await _ensureWebVoicesLoaded();
+    await _flutterTts.setLanguage(lang);
+    if (!kIsWeb) {
+      await _flutterTts.awaitSpeakCompletion(true);
+    }
     await _flutterTts.speak(text);
   }
 

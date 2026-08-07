@@ -120,11 +120,11 @@ class _VideoScreenState extends State<VideoScreen>
       });
       _scrollToCurrentSubtitle();
 
-      await _ttsService.speak(_subtitles[i].original, lang: 'de-DE');
+      await _ttsService.speakAndWait(_subtitles[i].original, lang: 'de-DE');
 
-      final wordCount = _subtitles[i].original.split(RegExp(r'\s+')).length;
-      final durationMs = (wordCount * 360).clamp(1200, 6500);
-      await Future.delayed(Duration(milliseconds: durationMs));
+      if (!_isPlayingDialogueTts || !mounted) break;
+      // Brief natural pause between dialogue turns
+      await Future.delayed(const Duration(milliseconds: 250));
     }
 
     if (mounted) {
