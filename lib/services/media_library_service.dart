@@ -91,7 +91,13 @@ class MediaLibraryService extends ChangeNotifier {
   }
 
   Future<void> submitMediaProcessingTaskInBackground(String originalUrl) async {
-    final tempId = 'task_${DateTime.now().millisecondsSinceEpoch}';
+    // Check if video with this URL already exists (especially if failed or retrying)
+    final existingIndex = _processedVideos.indexWhere((v) => v.url.trim().toLowerCase() == originalUrl.trim().toLowerCase());
+    
+    final tempId = existingIndex != -1 ? _processedVideos[existingIndex].id : 'task_${DateTime.now().millisecondsSinceEpoch}';
+    final existingTitle = existingIndex != -1 ? _processedVideos[existingIndex].title : null;
+    final existingThumbnail = existingIndex != -1 ? _processedVideos[existingIndex].thumbnail : null;
+
     final newVideo = ProcessedVideo(
       id: tempId,
       taskId: tempId,
@@ -99,21 +105,27 @@ class MediaLibraryService extends ChangeNotifier {
       status: ProcessingStatus.downloading,
       stageMessage: 'Connecting to server...',
       progressPercentage: 5,
-      subtitles: [],
+      subtitles: existingIndex != -1 ? _processedVideos[existingIndex].subtitles : [],
+      title: existingTitle,
+      thumbnail: existingThumbnail,
     );
 
-    _processedVideos.insert(0, newVideo);
+    if (existingIndex != -1) {
+      _processedVideos[existingIndex] = newVideo;
+    } else {
+      _processedVideos.insert(0, newVideo);
+    }
     notifyListeners();
     await _saveProcessedVideos();
 
     try {
       final submitResponse = await _backendService.submitMediaUrl(originalUrl);
-      final index = _processedVideos.indexWhere((v) => v.id == tempId);
+      final index = _processedVideos.indexWhere((v) => v.id == tempId || v.taskId == tempId);
 
       if (submitResponse != null && submitResponse.containsKey('task_id')) {
         final realTaskId = submitResponse['task_id'] as String;
-        final initialTitle = submitResponse['title'] as String?;
-        final initialThumbnail = submitResponse['thumbnail'] as String?;
+        final initialTitle = (submitResponse['title'] as String?) ?? existingTitle;
+        final initialThumbnail = (submitResponse['thumbnail'] as String?) ?? existingThumbnail;
         if (index != -1) {
           _processedVideos[index] = ProcessedVideo(
             id: realTaskId,
@@ -141,13 +153,15 @@ class MediaLibraryService extends ChangeNotifier {
             errorMessage: submitResponse?['error'] ?? 'Connection timed out',
             progressPercentage: 0,
             subtitles: [],
+            title: existingTitle,
+            thumbnail: existingThumbnail,
           );
           notifyListeners();
           await _saveProcessedVideos();
         }
       }
     } catch (e) {
-      final index = _processedVideos.indexWhere((v) => v.id == tempId);
+      final index = _processedVideos.indexWhere((v) => v.id == tempId || v.taskId == tempId);
       if (index != -1) {
         _processedVideos[index] = ProcessedVideo(
           id: tempId,
@@ -158,6 +172,8 @@ class MediaLibraryService extends ChangeNotifier {
           errorMessage: e.toString(),
           progressPercentage: 0,
           subtitles: [],
+          title: existingTitle,
+          thumbnail: existingThumbnail,
         );
         notifyListeners();
         await _saveProcessedVideos();

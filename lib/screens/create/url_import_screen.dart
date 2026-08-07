@@ -1,13 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/article_model.dart';
-import '../../models/processed_video.dart';
 import '../../models/processing_status.dart';
-import '../../models/subtitle_cue.dart';
-import '../../services/backend_service.dart';
 import '../../services/media_library_service.dart';
-import '../video_screen.dart';
 
 class UrlImportScreen extends StatefulWidget {
   const UrlImportScreen({super.key});
@@ -18,7 +13,6 @@ class UrlImportScreen extends StatefulWidget {
 
 class _UrlImportScreenState extends State<UrlImportScreen> {
   final TextEditingController _urlController = TextEditingController();
-  final BackendService _backendService = BackendService();
   bool _isLoading = false;
   String? _errorMessage;
   String _statusMessage = 'Processing URL...';
@@ -211,10 +205,144 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
               ),
             ),
             const SizedBox(height: 24),
+            Consumer<MediaLibraryService>(
+              builder: (context, mediaService, _) {
+                final recentVideos = mediaService.processedVideos.take(4).toList();
+                if (recentVideos.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'RECENT & FAILED IMPORTS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: recentVideos.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, idx) {
+                        final video = recentVideos[idx];
+                        final isFailed = video.status == ProcessingStatus.failed;
+                        final isCompleted = video.status == ProcessingStatus.completed;
+                        final isProcessing = !isFailed && !isCompleted;
+                        final colorScheme = Theme.of(context).colorScheme;
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: isFailed
+                                  ? colorScheme.error.withValues(alpha: 0.4)
+                                  : isProcessing
+                                      ? colorScheme.primary.withValues(alpha: 0.3)
+                                      : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: SizedBox(
+                                width: 44,
+                                height: 32,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    if (video.thumbnail != null && video.thumbnail!.isNotEmpty)
+                                      Image.network(
+                                        video.thumbnail!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade800),
+                                      )
+                                    else
+                                      Container(
+                                        color: isFailed
+                                            ? colorScheme.error.withValues(alpha: 0.12)
+                                            : colorScheme.primary.withValues(alpha: 0.12),
+                                      ),
+                                    if (isProcessing)
+                                      Container(
+                                        color: Colors.black45,
+                                        child: const Center(
+                                          child: SizedBox(
+                                            width: 12,
+                                            height: 12,
+                                            child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              video.effectiveTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            subtitle: Text(
+                              isFailed
+                                  ? (video.errorMessage ?? 'Failed · Tap Retry')
+                                  : isProcessing
+                                      ? '${video.statusShortLabel} · ${video.effectiveProgress}%'
+                                      : 'Ready to learn',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isFailed ? colorScheme.error : colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            trailing: isFailed
+                                ? FilledButton.tonalIcon(
+                                    onPressed: () {
+                                      _urlController.text = video.url;
+                                      mediaService.retryProcessingTask(video.taskId ?? video.id, video.url);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Retrying media transcription...'),
+                                          duration: Duration(seconds: 3),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.refresh_rounded, size: 14),
+                                    label: const Text('Retry', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    style: FilledButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  )
+                                : isCompleted
+                                    ? const Icon(Icons.check_circle_outline_rounded, size: 18, color: Color(0xFF2C5E3B))
+                                    : null,
+                            onTap: () {
+                              _urlController.text = video.url;
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                );
+              },
+            ),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Column(
