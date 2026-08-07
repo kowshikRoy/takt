@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../models/compound_word.dart';
-import '../../models/xp_event.dart';
 import '../../services/compound_service.dart';
-import '../../services/gamification_service.dart';
 import '../../services/sound_service.dart';
 import '../../widgets/capped_width.dart';
 
@@ -92,13 +90,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
     });
 
     if (_isCorrect) {
-      GamificationService().awardXp(XpSource.exerciseCorrect).then((_) {
-        if (GamificationService().justLeveledUp) {
-          SoundService().playLevelUp();
-        } else {
-          SoundService().playCorrect();
-        }
-      });
+      SoundService().playCorrect();
     } else {
       SoundService().playIncorrect();
     }
@@ -387,31 +379,6 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Accuracy',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    width: 1,
-                    height: 40,
-                    color: Theme.of(context).dividerColor,
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        '+${_score * 10}',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.tertiary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'XP Earned',
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,

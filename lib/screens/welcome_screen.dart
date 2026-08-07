@@ -652,7 +652,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Create an account to sync your streaks, XP, saved vocabulary, and study progress across devices.',
+            'Create an account to sync your streaks, saved vocabulary, and study progress across devices.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -667,7 +667,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           const SizedBox(height: 16),
           _buildBenefitRow(context, Icons.local_fire_department_rounded, 'Streak Protection', 'Never lose your daily learning streak'),
           const SizedBox(height: 16),
-          _buildBenefitRow(context, Icons.emoji_events_rounded, 'XP & Leaderboards', 'Earn achievements as you master words'),
+          _buildBenefitRow(context, Icons.military_tech_rounded, 'Mastery Milestones', 'Track your CEFR proficiency as you master words'),
         ],
       ),
     );

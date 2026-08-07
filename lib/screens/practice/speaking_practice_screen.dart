@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/shadowing_sentence.dart';
-import '../../models/xp_event.dart';
 import '../../services/analytics_service.dart';
-import '../../services/gamification_service.dart';
 import '../../services/shadowing_service.dart';
 import '../../services/sound_service.dart';
 import '../../services/speaking_recording_service.dart';
@@ -112,13 +110,7 @@ class _SpeakingPracticeScreenState extends State<SpeakingPracticeScreen> {
       });
 
       if (result.score >= _passingScore) {
-        GamificationService().awardXp(XpSource.exerciseCorrect).then((_) {
-          if (GamificationService().justLeveledUp) {
-            SoundService().playLevelUp();
-          } else {
-            SoundService().playCorrect();
-          }
-        });
+        SoundService().playCorrect();
       } else {
         SoundService().playIncorrect();
       }

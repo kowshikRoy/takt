@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/saved_word.dart';
-import '../../models/xp_event.dart';
 import '../../services/vocabulary_service.dart';
 import '../../services/dictionary_service.dart';
 import '../../services/tts_service.dart';
-import '../../services/gamification_service.dart';
 import '../../services/sound_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/capped_width.dart';
@@ -73,16 +71,11 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   Future<void> _rateCard(ReviewRating rating) async {
     if (_dueWords.isEmpty || _currentIndex >= _dueWords.length) return;
     final currentWord = _dueWords[_currentIndex];
-    await _vocabService.recordReview(currentWord.id, rating);
-    GamificationService().awardXp(XpSource.reviewCompleted).then((_) {
-      if (GamificationService().justLeveledUp) {
-        SoundService().playLevelUp();
-      } else if (rating == ReviewRating.again) {
-        SoundService().playIncorrect();
-      } else {
-        SoundService().playCorrect();
-      }
-    });
+    if (rating == ReviewRating.again) {
+      SoundService().playIncorrect();
+    } else {
+      SoundService().playCorrect();
+    }
 
     setState(() {
       _showAnswer = false;

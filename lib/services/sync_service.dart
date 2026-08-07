@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import '../config.dart';
 import 'auth_service.dart';
 import 'vocabulary_service.dart';
-import 'gamification_service.dart';
 import 'profile_service.dart';
 import 'curriculum_service.dart';
 import 'media_library_service.dart';
@@ -67,11 +66,6 @@ class SyncService extends ChangeNotifier {
         }
       }
 
-      if (remoteData['xp_events'] is List) {
-        await GamificationService().mergeRemoteEvents(
-          remoteData['xp_events'] as List,
-        );
-      }
       if (remoteData['streak_freezes'] is int) {
         await ProfileService().mergeRemoteStreakFreezes(
           remoteData['streak_freezes'] as int,
@@ -117,9 +111,6 @@ class SyncService extends ChangeNotifier {
               'vocabulary': vocabPayload,
               'articles': articlesPayload,
               'media': mediaPayload,
-              'xp_events': GamificationService().events
-                  .map((e) => e.toJson())
-                  .toList(),
               'streak_freezes': ProfileService().streakFreezes,
               'curriculum_progress': CurriculumService().completedNodeIds
                   .toList(),

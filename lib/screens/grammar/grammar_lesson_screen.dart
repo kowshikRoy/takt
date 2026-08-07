@@ -47,12 +47,12 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.stars_rounded, color: Colors.amber, size: 24),
+              const Icon(Icons.check_circle_rounded, color: Colors.green, size: 24),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   l10n?.msgLessonCompletedXp ??
-                      '🎉 Lektion abgeschlossen! +25 XP gutgeschrieben.',
+                      '🎉 Lektion erfolgreich abgeschlossen!',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -288,7 +288,7 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
                 ),
                 label: Text(
                   _isCompleted
-                      ? '${AppLocalizations.of(context)?.labelLessonCompletedStatus ?? 'Abgeschlossen'} (+25 XP)'
+                      ? (AppLocalizations.of(context)?.labelLessonCompletedStatus ?? 'Abgeschlossen')
                       : (AppLocalizations.of(context)?.actionCompleteLesson ??
                           'Lektion verstanden & abschließen'),
                   style: const TextStyle(

@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/xp_event.dart';
 import 'auth_service.dart';
-import 'gamification_service.dart';
 import 'analytics_service.dart';
 import 'app_logger.dart';
 
@@ -379,8 +377,7 @@ class ProfileService extends ChangeNotifier {
   }
 
   /// Earns a streak freeze every [_freezeMilestoneIntervalDays] (capped at
-  /// [_maxStreakFreezes]) and awards streak_milestone XP at 7/30/100 days,
-  /// each exactly once. Called after any change that could move the streak.
+  /// [_maxStreakFreezes]) and celebrates milestones at 7/30/100 days.
   Future<void> _checkStreakMilestones(SharedPreferences prefs) async {
     final streak = currentStreak;
     if (streak <= 0) return;
@@ -402,19 +399,16 @@ class ProfileService extends ChangeNotifier {
         _streakXpMilestonesAwarded.map((e) => e.toString()).toList(),
       );
       _justHitStreakXpMilestone = true;
-      unawaited(GamificationService().awardXp(XpSource.streakMilestone));
       AnalyticsService.logEvent('streak_milestone', params: {'days': streak});
     }
   }
 
-  /// Awards daily_goal_met XP the first time the daily goal is reached on a
-  /// given day. Called after any change that could complete the daily goal.
+  /// Logs daily goal achievement the first time it is reached on a given day.
   Future<void> _checkDailyGoalXp(SharedPreferences prefs) async {
     final todayStr = _getIsoDateString(DateTime.now());
     if (isDailyGoalAchieved && _lastDailyGoalAwardDate != todayStr) {
       _lastDailyGoalAwardDate = todayStr;
       await prefs.setString(_keyLastDailyGoalAwardDate, todayStr);
-      unawaited(GamificationService().awardXp(XpSource.dailyGoalMet));
       AnalyticsService.logEvent('daily_goal_met');
     }
   }

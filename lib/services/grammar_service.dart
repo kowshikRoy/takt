@@ -3,8 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/grammar_lesson.dart';
-import '../models/xp_event.dart';
-import 'gamification_service.dart';
 import 'app_logger.dart';
 
 class GrammarService extends ChangeNotifier {
@@ -86,11 +84,6 @@ class GrammarService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_completedLessonsKey, _completedLessonIds.toList());
-      
-      // Award XP for grammar lesson completion
-      await GamificationService().awardXp(
-        XpSource.lessonComplete,
-      );
     } catch (e) {
       AppLogger.error(
         "Failed to save completed grammar lesson",

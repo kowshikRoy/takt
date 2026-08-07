@@ -821,6 +821,35 @@ async def get_status(task_id: str):
         raise HTTPException(status_code=404, detail="Task not found")
     return StatusResponse(**task)
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring and warm pings."""
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+def _start_self_ping_thread():
+    """Starts a background daemon thread that calls the public /health endpoint every 9 minutes."""
+    import threading
+    import time
+
+    def _ping_loop():
+        app_url = os.environ.get("SERVICE_URL") or "https://omniscribe-184475424927.europe-west4.run.app"
+        health_url = f"{app_url}/health"
+        time.sleep(20)  # Initial grace period after startup
+        while True:
+            try:
+                time.sleep(540)  # Ping every 9 minutes
+                res = requests.get(health_url, timeout=15)
+                print(f"Self-ping keep-alive to {health_url} - Status: {res.status_code}", flush=True)
+            except Exception as e:
+                print(f"Self-ping error: {e}", flush=True)
+
+    thread = threading.Thread(target=_ping_loop, daemon=True, name="keep-alive-pinger")
+    thread.start()
+
+@app.on_event("startup")
+async def startup_event():
+    _start_self_ping_thread()
+
 def _extract_article(url: str) -> dict:
     """Fetches a web page and extracts title/content/description/cover image.
 

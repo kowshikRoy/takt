@@ -70,8 +70,8 @@ class ProfileScreen extends StatelessWidget {
                     _buildHeroHeader(context, profileService, gamification, inkColor, cardBg, rustAccent),
                     const SizedBox(height: 16),
 
-                    // 2. 4 Quick Stat Metric Cards
-                    _buildStatGrid(context, profileService, vocabService, gamification, inkColor, cardBg, rustAccent),
+                    // 2. 3 Quick Stat Metric Cards (Streak, Words Saved, Mastered)
+                    _buildStatGrid(context, profileService, vocabService, inkColor, cardBg, rustAccent),
                     const SizedBox(height: 16),
 
                     // 3. Vocabulary Growth Interactive Graph
@@ -85,10 +85,10 @@ class ProfileScreen extends StatelessWidget {
                     SrsRetentionMatrixCard(savedWords: words),
                     const SizedBox(height: 16),
 
-                    // 5. 12-Week Activity Heatmap (Full width & Interactive)
+                    // 5. 12-Week Activity Heatmap (GitHub Green Style & Full Width)
                     ModernistActivityHeatmap(
                       words: words,
-                      accentColor: rustAccent,
+                      activityDates: profileService.activityDates,
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -270,7 +270,6 @@ class ProfileScreen extends StatelessWidget {
     BuildContext context,
     ProfileService profileService,
     VocabularyService vocabService,
-    GamificationService gamification,
     Color inkColor,
     Color cardBg,
     Color rustAccent,
@@ -279,62 +278,51 @@ class ProfileScreen extends StatelessWidget {
     final curStreak = profileService.currentStreak;
     final savedCount = vocabService.cachedSavedCount;
     final masteredCount = vocabService.masteredCount;
-    final totalXp = gamification.totalXp;
 
-    return Row(
-      children: [
-        // 1. Streak Card
-        Expanded(
-          child: _buildMetricCard(
-            context,
-            value: '$curStreak',
-            suffix: profileService.streakFreezes > 0 ? ' ❄️' : '',
-            label: l10n?.labelStreak.toUpperCase() ?? 'STREAK',
-            color: const Color(0xFFD97706),
-            cardBg: cardBg,
-            inkColor: inkColor,
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Streak Card
+          Expanded(
+            child: _buildMetricCard(
+              context,
+              value: '$curStreak',
+              suffix: profileService.streakFreezes > 0 ? ' ❄️' : '',
+              label: l10n?.labelStreak.toUpperCase() ?? 'STREAK',
+              color: const Color(0xFFD97706),
+              cardBg: cardBg,
+              inkColor: inkColor,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
+          const SizedBox(width: 8),
 
-        // 2. Words Saved
-        Expanded(
-          child: _buildMetricCard(
-            context,
-            value: '$savedCount',
-            label: l10n?.labelWordsSaved.toUpperCase() ?? 'WORDS SAVED',
-            color: rustAccent,
-            cardBg: cardBg,
-            inkColor: inkColor,
+          // 2. Words Saved
+          Expanded(
+            child: _buildMetricCard(
+              context,
+              value: '$savedCount',
+              label: l10n?.labelWordsSaved.toUpperCase() ?? 'WORDS SAVED',
+              color: rustAccent,
+              cardBg: cardBg,
+              inkColor: inkColor,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
+          const SizedBox(width: 8),
 
-        // 3. Mastered
-        Expanded(
-          child: _buildMetricCard(
-            context,
-            value: '$masteredCount',
-            label: l10n?.labelMastered.toUpperCase() ?? 'MASTERED',
-            color: const Color(0xFF2C5E3B),
-            cardBg: cardBg,
-            inkColor: inkColor,
+          // 3. Mastered
+          Expanded(
+            child: _buildMetricCard(
+              context,
+              value: '$masteredCount',
+              label: l10n?.labelMastered.toUpperCase() ?? 'MASTERED',
+              color: const Color(0xFF2C5E3B),
+              cardBg: cardBg,
+              inkColor: inkColor,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-
-        // 4. XP
-        Expanded(
-          child: _buildMetricCard(
-            context,
-            value: '$totalXp',
-            label: l10n?.labelTotalXp.toUpperCase() ?? 'XP',
-            color: inkColor,
-            cardBg: cardBg,
-            inkColor: inkColor,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -348,7 +336,7 @@ class ProfileScreen extends StatelessWidget {
     required Color inkColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(4),
@@ -358,43 +346,56 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: color,
+          SizedBox(
+            height: 26,
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: color,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (suffix.isNotEmpty)
+                    Text(
+                      suffix,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                ],
               ),
-              if (suffix.isNotEmpty)
-                Text(
-                  suffix,
-                  style: const TextStyle(fontSize: 12),
-                ),
-            ],
+            ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: inkColor.withValues(alpha: 0.6),
+          SizedBox(
+            height: 24,
+            child: Center(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  height: 1.15,
+                  color: inkColor.withValues(alpha: 0.6),
+                ),
+              ),
             ),
           ),
         ],

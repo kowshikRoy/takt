@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Maps directly to the four existing practice screens, plus a review node
-/// (SM-2 due-word batch) and a story node (opens the Library). See §4.
+/// (SM-2 due-word batch) and a story node (opens the Library).
 enum LessonNodeType { vocab, gender, compound, sentence, review, story }
 
 extension LessonNodeTypeData on LessonNodeType {
@@ -49,7 +49,6 @@ class LessonNode {
   final int order;
   final LessonNodeType type;
   final String targetId;
-  final int xpReward;
   final bool unlocked;
   final bool completed;
 
@@ -59,7 +58,6 @@ class LessonNode {
     required this.order,
     required this.type,
     required this.targetId,
-    required this.xpReward,
     this.unlocked = false,
     this.completed = false,
   });
@@ -71,7 +69,6 @@ class LessonNode {
       order: order,
       type: type,
       targetId: targetId,
-      xpReward: xpReward,
       unlocked: unlocked ?? this.unlocked,
       completed: completed ?? this.completed,
     );

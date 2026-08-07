@@ -223,7 +223,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionCompleteLesson => 'Mark as Understood & Complete';
 
   @override
-  String get msgLessonCompletedXp => '🎉 Lesson completed! +25 XP credited.';
+  String get msgLessonCompletedXp => '🎉 Lesson completed successfully!';
 
   @override
   String get titleTeacherTip => 'Teacher\'s Tip';
@@ -298,9 +298,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get labelMastered => 'Mastered';
-
-  @override
-  String get labelTotalXp => 'XP';
 
   @override
   String get titleMemoryRetention => 'MEMORY RETENTION (SRS)';

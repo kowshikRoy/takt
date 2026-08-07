@@ -4,9 +4,7 @@ import '../../theme/app_theme.dart';
 import '../../services/dictionary_service.dart';
 import '../../services/vocabulary_service.dart';
 import '../../services/tts_service.dart';
-import '../../services/gamification_service.dart';
 import '../../services/sound_service.dart';
-import '../../models/xp_event.dart';
 import '../../models/saved_word.dart';
 import '../../widgets/capped_width.dart';
 import 'gender_rules_guide_screen.dart';
@@ -748,13 +746,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
     _recordSrsReview(current, isCorrect);
 
     if (isCorrect) {
-      GamificationService().awardXp(XpSource.exerciseCorrect).then((_) {
-        if (GamificationService().justLeveledUp) {
-          SoundService().playLevelUp();
-        } else {
-          SoundService().playCorrect();
-        }
-      });
+      SoundService().playCorrect();
     } else {
       SoundService().playIncorrect();
     }

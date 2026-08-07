@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/curriculum_unit.dart';
 import '../models/lesson_node.dart';
-import '../models/xp_event.dart';
-import 'gamification_service.dart';
 import 'sync_service.dart';
 import 'analytics_service.dart';
 import 'app_logger.dart';
@@ -95,7 +93,6 @@ class CurriculumService extends ChangeNotifier {
               : type == LessonNodeType.story
               ? 'library'
               : '$minRank-$maxRank',
-          xpReward: XpSource.lessonComplete.defaultAmount,
         );
       });
 
@@ -156,11 +153,12 @@ class CurriculumService extends ChangeNotifier {
       );
     }
 
-    await GamificationService().awardXp(XpSource.lessonComplete);
     AnalyticsService.logEvent('lesson_complete', params: {'node_id': nodeId});
 
     // Trigger sync per design doc §6: "after completing a lesson node".
-    SyncService().syncNow();
+    try {
+      SyncService().syncNow().catchError((_) => false);
+    } catch (_) {}
   }
 
   /// Unions remote completed-node ids into the local set — a completed node

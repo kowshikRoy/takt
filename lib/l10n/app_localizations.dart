@@ -515,7 +515,7 @@ abstract class AppLocalizations {
   /// No description provided for @msgLessonCompletedXp.
   ///
   /// In en, this message translates to:
-  /// **'🎉 Lesson completed! +25 XP credited.'**
+  /// **'🎉 Lesson completed successfully!'**
   String get msgLessonCompletedXp;
 
   /// No description provided for @titleTeacherTip.
@@ -661,12 +661,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mastered'**
   String get labelMastered;
-
-  /// No description provided for @labelTotalXp.
-  ///
-  /// In en, this message translates to:
-  /// **'XP'**
-  String get labelTotalXp;
 
   /// No description provided for @titleMemoryRetention.
   ///
