@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../services/discovery_service.dart';
 import '../services/profile_service.dart';
 import '../theme/app_theme.dart';
@@ -63,7 +64,9 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
     final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
-    final goalCount = ProfileService().dailyWordGoalCount;
+    final l10n = AppLocalizations.of(context);
+    final profileService = Provider.of<ProfileService>(context);
+    final goalCount = profileService.dailyWordGoalCount;
 
     return Consumer<DiscoveryService>(
       builder: (context, discoveryService, _) {
@@ -89,7 +92,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "TÄGLICHE ENTDECKUNGEN",
+                    l10n?.titleDailyDiscovery ?? "DAILY DISCOVERY",
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
@@ -105,7 +108,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
                       border: Border.all(color: inkColor.withValues(alpha: 0.3)),
                     ),
                     child: Text(
-                      '$savedToday / $goalCount GESPEICHERT',
+                      l10n?.labelSavedCount(savedToday, goalCount) ?? '$savedToday / $goalCount SAVED',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -118,7 +121,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Tippe auf ein Wort, um es zu deiner Wiederholungsliste hinzuzufügen',
+                l10n?.subtitleDailyDiscovery ?? 'Tap a word to add it to your review list',
                 style: TextStyle(
                   fontSize: 11.5,
                   color: inkColor.withValues(alpha: 0.65),
@@ -133,7 +136,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
                   ),
                 )
               else if (isEmpty)
-                _buildEmptyState(context, discoveryService, inkColor)
+                _buildEmptyState(context, discoveryService, inkColor, l10n)
               else
                 SizedBox(
                   height: 98,
@@ -145,7 +148,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
                       if (index < candidates.length) {
                         return _buildWordTile(context, candidates[index], inkColor, isDark);
                       } else {
-                        return _buildDiscoverMoreTile(context, discoveryService, inkColor, isDark);
+                        return _buildDiscoverMoreTile(context, discoveryService, inkColor, isDark, l10n);
                       }
                     },
                   ),
@@ -157,7 +160,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, DiscoveryService discoveryService, Color inkColor) {
+  Widget _buildEmptyState(BuildContext context, DiscoveryService discoveryService, Color inkColor, AppLocalizations? l10n) {
     return Row(
       children: [
         Image.asset('assets/images/cat.png', width: 40, height: 40)
@@ -169,7 +172,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Alle Wörter in deiner Warteschlange überprüft!",
+                l10n?.msgAllWordsReviewed ?? "All words in your queue reviewed!",
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -181,7 +184,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
                 onPressed: () => discoveryService.discoverMore(limit: 20),
                 icon: Icon(Icons.auto_awesome, size: 14, color: inkColor),
                 label: Text(
-                  '20 WEITERE WÖRTER ENTDECKEN',
+                  l10n?.actionDiscoverMoreWords(20) ?? 'DISCOVER 20 MORE WORDS',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
@@ -281,7 +284,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
     );
   }
 
-  Widget _buildDiscoverMoreTile(BuildContext context, DiscoveryService discoveryService, Color inkColor, bool isDark) {
+  Widget _buildDiscoverMoreTile(BuildContext context, DiscoveryService discoveryService, Color inkColor, bool isDark, AppLocalizations? l10n) {
     final isLoading = discoveryService.isLoading;
     final itemBg = isDark ? const Color(0xFF2B2622) : const Color(0xFFE8E2D7);
 
@@ -318,7 +321,9 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
               ),
             const SizedBox(height: 6),
             Text(
-              isLoading ? 'LADEN...' : 'MEHR\nENTDECKEN',
+              isLoading
+                  ? (l10n?.labelLoadingEllipsis ?? 'LOADING...')
+                  : (l10n?.actionDiscoverMore ?? 'DISCOVER\nMORE'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 10.5,

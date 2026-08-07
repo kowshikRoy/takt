@@ -5,6 +5,7 @@ import 'practice/compound_practice_screen.dart';
 import 'practice/sentence_practice_screen.dart';
 import 'practice/vocabulary_practice_screen.dart';
 import 'practice/speaking_practice_screen.dart';
+import 'grammar/grammar_lessons_list_screen.dart';
 import '../widgets/auth_sync_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/vocabulary_service.dart';
@@ -91,7 +92,8 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "TODAY'S WORDS",
+                      AppLocalizations.of(context)?.sectionTodayWords ??
+                          "TODAY'S WORDS",
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -114,7 +116,8 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'COURSE BOOKS',
+                      AppLocalizations.of(context)?.sectionCourseBooks ??
+                          'COURSE BOOKS',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -141,7 +144,8 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'PRACTICE TOOLS',
+                          AppLocalizations.of(context)?.sectionPracticeTools ??
+                              'PRACTICE TOOLS',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
@@ -156,7 +160,8 @@ class HomeScreen extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Structured Path',
+                                  AppLocalizations.of(context)?.actionStructuredPath ??
+                                      'Structured Path',
                                   style: TextStyle(
                                     color: rustAccent,
                                     fontWeight: FontWeight.bold,
@@ -777,7 +782,13 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              _buildSpeakingPracticeCard(context),
+              Row(
+                children: [
+                  Expanded(child: _buildSpeakingPracticeCard(context)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildGrammarGuideCard(context)),
+                ],
+              ),
             ],
           )
         : Column(
@@ -885,6 +896,8 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
+              _buildGrammarGuideCard(context),
+              const SizedBox(height: 12),
               _buildCompoundPracticeCard(context),
               const SizedBox(height: 12),
               _buildSrsPracticeCard(context),
@@ -892,6 +905,80 @@ class HomeScreen extends StatelessWidget {
               _buildSpeakingPracticeCard(context),
             ],
           );
+  }
+
+  Widget _buildGrammarGuideCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = const Color(0xFF8C2D19);
+
+    return Card(
+      elevation: 0,
+      color: cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(3),
+        side: BorderSide(color: inkColor.withValues(alpha: 0.35)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const GrammarLessonsListScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: rustAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
+                ),
+                child: Icon(
+                  Icons.auto_stories_rounded,
+                  color: rustAccent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)?.titleGrammarLessons ??
+                          'Grammatik-Bausteine',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: inkColor,
+                      ),
+                    ),
+                    Text(
+                      AppLocalizations.of(context)?.subtitleGrammarLessons ??
+                          'Formulas, matrices, and teacher tips',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: inkColor.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: rustAccent,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildSrsPracticeCard(BuildContext context) {
@@ -937,7 +1024,8 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Vocabulary Flashcard Practice',
+                      AppLocalizations.of(context)?.titleVocabFlashcards ??
+                          'Vocabulary Flashcard Practice',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -945,7 +1033,8 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Review your saved vocabulary cards',
+                      AppLocalizations.of(context)?.subtitleVocabFlashcards ??
+                          'Review your saved vocabulary cards',
                       style: TextStyle(
                         fontSize: 11.5,
                         color: inkColor.withValues(alpha: 0.65),
@@ -1009,7 +1098,8 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Compound Puzzle',
+                      AppLocalizations.of(context)?.titleCompoundPuzzle ??
+                          'Compound Puzzle',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -1017,7 +1107,8 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Build massive words',
+                      AppLocalizations.of(context)?.subtitleCompoundPuzzle ??
+                          'Build massive words',
                       style: TextStyle(
                         fontSize: 11.5,
                         color: inkColor.withValues(alpha: 0.65),
@@ -1081,7 +1172,8 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Sprechen',
+                      AppLocalizations.of(context)?.titleSpeakingPracticeCard ??
+                          'Speaking Practice',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -1089,7 +1181,8 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Shadow a sentence and get pronunciation feedback',
+                      AppLocalizations.of(context)?.subtitleSpeakingPracticeCard ??
+                          'Speech Shadowing',
                       style: TextStyle(
                         fontSize: 11.5,
                         color: inkColor.withValues(alpha: 0.65),

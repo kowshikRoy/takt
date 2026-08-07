@@ -9,6 +9,7 @@ import 'sync_service.dart';
 import 'auth_service.dart';
 import 'app_logger.dart';
 import 'dictionary_service.dart';
+import 'profile_service.dart';
 
 class VocabularyService extends ChangeNotifier {
   static final VocabularyService _instance = VocabularyService._internal();
@@ -230,8 +231,13 @@ class VocabularyService extends ChangeNotifier {
           merged.add(newEx);
         }
       }
+      final bool hasReviewUpdate = word.lastReviewed != null &&
+          (existing.lastReviewed == null || !word.lastReviewed!.isBefore(existing.lastReviewed!));
+      final bool hasExplicitSrs = word.repetitions > 0 || word.interval > 0;
+      final bool preserveNewSrs = hasReviewUpdate || hasExplicitSrs;
+
       wordToSave = SavedWord(
-        id: word.id,
+        id: existing.id,
         word: word.word,
         baseForm: word.baseForm ?? existing.baseForm,
         pos: word.pos ?? existing.pos,
@@ -243,11 +249,11 @@ class VocabularyService extends ChangeNotifier {
         sourceTitle: word.sourceTitle ?? existing.sourceTitle,
         contextExamples: merged,
         category: word.category,
-        interval: existing.interval,
-        easeFactor: existing.easeFactor,
-        repetitions: existing.repetitions,
-        dueDate: existing.dueDate,
-        lastReviewed: existing.lastReviewed,
+        interval: preserveNewSrs ? word.interval : existing.interval,
+        easeFactor: preserveNewSrs ? word.easeFactor : existing.easeFactor,
+        repetitions: preserveNewSrs ? word.repetitions : existing.repetitions,
+        dueDate: preserveNewSrs ? word.dueDate : existing.dueDate,
+        lastReviewed: preserveNewSrs ? word.lastReviewed : existing.lastReviewed,
         createdAt: existing.createdAt,
       );
     }
@@ -510,6 +516,7 @@ class VocabularyService extends ChangeNotifier {
     if (word != null) {
       final updated = word.calculateNextReview(rating);
       await upsertWord(updated);
+      await ProfileService().recordActivityToday(review: true);
     }
   }
 

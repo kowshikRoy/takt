@@ -16,6 +16,11 @@ class ProfileService extends ChangeNotifier {
     AuthService().addListener(_syncAuthDisplayName);
   }
 
+  @visibleForTesting
+  Future<void> testReset() async {
+    await _init();
+  }
+
   void _syncAuthDisplayName() {
     final authName = AuthService().username;
     final authPhoto = AuthService().photoUrl;
@@ -32,10 +37,12 @@ class ProfileService extends ChangeNotifier {
 
     if (updated) {
       notifyListeners();
-      SharedPreferences.getInstance().then((prefs) {
-        if (authName != null) prefs.setString(_keyDisplayName, authName);
-        if (authPhoto != null) prefs.setString(_keyPhotoUrl, authPhoto);
-      }).catchError((_) {});
+      SharedPreferences.getInstance()
+          .then((prefs) {
+            if (authName != null) prefs.setString(_keyDisplayName, authName);
+            if (authPhoto != null) prefs.setString(_keyPhotoUrl, authPhoto);
+          })
+          .catchError((_) {});
     }
   }
 
@@ -168,6 +175,40 @@ class ProfileService extends ChangeNotifier {
     }
   }
 
+  /// Merges remote activity dates and best streak into local storage.
+  /// Union of dates is taken so we do not lose local/remote progress.
+  Future<void> mergeRemoteStats(
+    List<dynamic>? remoteDates,
+    int? remoteBestStreak,
+  ) async {
+    bool changed = false;
+    final prefs = await SharedPreferences.getInstance();
+
+    if (remoteDates != null) {
+      final List<String> parsedDates = remoteDates
+          .map((e) => e.toString())
+          .toList();
+      final beforeCount = _activityDates.length;
+      _activityDates.addAll(parsedDates);
+      if (_activityDates.length != beforeCount) {
+        changed = true;
+        await prefs.setStringList(_keyActivityDates, _activityDates.toList());
+      }
+    }
+
+    if (remoteBestStreak != null && remoteBestStreak > _bestStreak) {
+      _bestStreak = remoteBestStreak;
+      changed = true;
+      await prefs.setInt(_keyBestStreak, _bestStreak);
+    }
+
+    if (changed) {
+      _updateBestStreak();
+      await _checkStreakMilestones(prefs);
+      notifyListeners();
+    }
+  }
+
   String _getIsoDateString(DateTime date) {
     final y = date.year.toString().padLeft(4, '0');
     final m = date.month.toString().padLeft(2, '0');
@@ -279,8 +320,7 @@ class ProfileService extends ChangeNotifier {
           prefs.getString(_keyLastDailyGoalAwardDate) ?? '';
       _dailyWordGoalCount =
           prefs.getInt(_keyDailyWordGoalCount) ?? defaultDailyWordGoalCount;
-      _targetLevel =
-          prefs.getString(_keyTargetLevel) ?? defaultTargetLevel;
+      _targetLevel = prefs.getString(_keyTargetLevel) ?? defaultTargetLevel;
 
       final now = DateTime.now();
       final todayStr = _getIsoDateString(now);

@@ -160,4 +160,121 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get titleProfile => 'Profile';
+
+  @override
+  String get titleDailyDiscovery => 'DAILY DISCOVERY';
+
+  @override
+  String get subtitleDailyDiscovery =>
+      'Tap a word to add it to your review list';
+
+  @override
+  String labelSavedCount(int saved, int goal) {
+    return '$saved / $goal SAVED';
+  }
+
+  @override
+  String get msgAllWordsReviewed => 'All words in your queue reviewed!';
+
+  @override
+  String actionDiscoverMoreWords(int count) {
+    return 'DISCOVER $count MORE WORDS';
+  }
+
+  @override
+  String get labelLoadingEllipsis => 'LOADING...';
+
+  @override
+  String get actionDiscoverMore => 'DISCOVER\nMORE';
+
+  @override
+  String get titleGrammarLessons => 'Grammar Guides';
+
+  @override
+  String get subtitleGrammarLessons => 'Formulas, matrices, and teacher tips';
+
+  @override
+  String get sectionStructuredRoadmap => 'STRUCTURED GRAMMAR ROADMAP';
+
+  @override
+  String labelLessonsCompleted(int completed, int total) {
+    return '$completed of $total Lessons Completed';
+  }
+
+  @override
+  String get hintSearchGrammar => 'Search (e.g. Modalverben, weil, Perfekt)...';
+
+  @override
+  String get labelAll => 'All';
+
+  @override
+  String get msgNoLessonsFound => 'No lessons found';
+
+  @override
+  String get msgTryDifferentFilter => 'Try a different filter or search term.';
+
+  @override
+  String get labelLessonDone => 'Done';
+
+  @override
+  String get labelLessonCompletedStatus => 'Completed';
+
+  @override
+  String get actionCompleteLesson => 'Mark as Understood & Complete';
+
+  @override
+  String get msgLessonCompletedXp => '🎉 Lesson completed! +25 XP credited.';
+
+  @override
+  String get titleTeacherTip => 'Teacher\'s Tip';
+
+  @override
+  String get titleStolperfalle => 'Pitfall Trap';
+
+  @override
+  String get titleExceptions => 'Attention: Exceptions!';
+
+  @override
+  String get tooltipListenPronunciation => 'Listen to pronunciation';
+
+  @override
+  String labelGrammarBlocksCount(int count) {
+    return '$count Blocks (Structure, Tables, Rules)';
+  }
+
+  @override
+  String get sectionPracticeTools => 'PRACTICE TOOLS';
+
+  @override
+  String get actionStructuredPath => 'Structured Path';
+
+  @override
+  String get sectionCourseBooks => 'COURSE BOOKS';
+
+  @override
+  String get sectionTodayWords => 'TODAY\'S WORDS';
+
+  @override
+  String get titleGenderTrainer => 'Gender Trainer';
+
+  @override
+  String get titleSentenceBuilder => 'Sentence Builder';
+
+  @override
+  String get titleCompoundPuzzle => 'Compound Puzzle';
+
+  @override
+  String get subtitleCompoundPuzzle => 'Build massive words';
+
+  @override
+  String get titleVocabFlashcards => 'Vocabulary Flashcard Practice';
+
+  @override
+  String get subtitleVocabFlashcards => 'Review your saved vocabulary cards';
+
+  @override
+  String get titleSpeakingPracticeCard => 'Speaking Practice';
+
+  @override
+  String get subtitleSpeakingPracticeCard => 'Speech Shadowing';
 }

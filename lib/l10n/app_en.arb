@@ -56,5 +56,70 @@
   "sectionPracticeLearning": "Practice & Learning",
   "labelDailyGoal": "Daily Word Goal",
   "labelSoundEffects": "Sound Effects",
-  "titleProfile": "Profile"
+  "titleProfile": "Profile",
+
+  "titleDailyDiscovery": "DAILY DISCOVERY",
+  "subtitleDailyDiscovery": "Tap a word to add it to your review list",
+  "labelSavedCount": "{saved} / {goal} SAVED",
+  "@labelSavedCount": {
+    "description": "Progress of saved words today against daily goal",
+    "placeholders": {
+      "saved": { "type": "int" },
+      "goal": { "type": "int" }
+    }
+  },
+  "msgAllWordsReviewed": "All words in your queue reviewed!",
+  "actionDiscoverMoreWords": "DISCOVER {count} MORE WORDS",
+  "@actionDiscoverMoreWords": {
+    "description": "Button label to fetch more words into discovery queue",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "labelLoadingEllipsis": "LOADING...",
+  "actionDiscoverMore": "DISCOVER\nMORE",
+
+  "titleGrammarLessons": "Grammar Guides",
+  "subtitleGrammarLessons": "Formulas, matrices, and teacher tips",
+  "sectionStructuredRoadmap": "STRUCTURED GRAMMAR ROADMAP",
+  "labelLessonsCompleted": "{completed} of {total} Lessons Completed",
+  "@labelLessonsCompleted": {
+    "description": "Progress of completed grammar lessons",
+    "placeholders": {
+      "completed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "hintSearchGrammar": "Search (e.g. Modalverben, weil, Perfekt)...",
+  "labelAll": "All",
+  "msgNoLessonsFound": "No lessons found",
+  "msgTryDifferentFilter": "Try a different filter or search term.",
+  "labelLessonDone": "Done",
+  "labelLessonCompletedStatus": "Completed",
+  "actionCompleteLesson": "Mark as Understood & Complete",
+  "msgLessonCompletedXp": "🎉 Lesson completed! +25 XP credited.",
+  "titleTeacherTip": "Teacher's Tip",
+  "titleStolperfalle": "Pitfall Trap",
+  "titleExceptions": "Attention: Exceptions!",
+  "tooltipListenPronunciation": "Listen to pronunciation",
+  "labelGrammarBlocksCount": "{count} Blocks (Structure, Tables, Rules)",
+  "@labelGrammarBlocksCount": {
+    "description": "Count of grammar blocks in a lesson",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "sectionPracticeTools": "PRACTICE TOOLS",
+  "actionStructuredPath": "Structured Path",
+  "sectionCourseBooks": "COURSE BOOKS",
+  "sectionTodayWords": "TODAY'S WORDS",
+  "titleGenderTrainer": "Gender Trainer",
+  "titleSentenceBuilder": "Sentence Builder",
+  "titleCompoundPuzzle": "Compound Puzzle",
+  "subtitleCompoundPuzzle": "Build massive words",
+  "titleVocabFlashcards": "Vocabulary Flashcard Practice",
+  "subtitleVocabFlashcards": "Review your saved vocabulary cards",
+  "titleSpeakingPracticeCard": "Speaking Practice",
+  "subtitleSpeakingPracticeCard": "Speech Shadowing"
 }

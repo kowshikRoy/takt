@@ -967,7 +967,6 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                         Text(
                           '${_currentWord.gender} ${_currentWord.fullWord}',
                           style: TextStyle(
-                            fontStyle: FontStyle.italic,
                             color: Theme.of(
                               context,
                             ).colorScheme.onSurfaceVariant,

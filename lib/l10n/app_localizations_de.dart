@@ -161,4 +161,125 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get titleProfile => 'Profil';
+
+  @override
+  String get titleDailyDiscovery => 'TÄGLICHE ENTDECKUNGEN';
+
+  @override
+  String get subtitleDailyDiscovery =>
+      'Tippe auf ein Wort, um es zu deiner Wiederholungsliste hinzuzufügen';
+
+  @override
+  String labelSavedCount(int saved, int goal) {
+    return '$saved / $goal GESPEICHERT';
+  }
+
+  @override
+  String get msgAllWordsReviewed =>
+      'Alle Wörter in deiner Warteschlange überprüft!';
+
+  @override
+  String actionDiscoverMoreWords(int count) {
+    return '$count WEITERE WÖRTER ENTDECKEN';
+  }
+
+  @override
+  String get labelLoadingEllipsis => 'LADEN...';
+
+  @override
+  String get actionDiscoverMore => 'MEHR\nENTDECKEN';
+
+  @override
+  String get titleGrammarLessons => 'Grammatik-Bausteine';
+
+  @override
+  String get subtitleGrammarLessons => 'Formeln, Tabellen und Lehrer-Tipps';
+
+  @override
+  String get sectionStructuredRoadmap => 'STRUKTURIERTER GRAMMATIK-PFAD';
+
+  @override
+  String labelLessonsCompleted(int completed, int total) {
+    return '$completed von $total Lektionen abgeschlossen';
+  }
+
+  @override
+  String get hintSearchGrammar => 'Suche (z.B. Modalverben, weil, Perfekt)...';
+
+  @override
+  String get labelAll => 'Alle';
+
+  @override
+  String get msgNoLessonsFound => 'Keine Lektionen gefunden';
+
+  @override
+  String get msgTryDifferentFilter =>
+      'Versuche einen anderen Filter oder Suchbegriff.';
+
+  @override
+  String get labelLessonDone => 'Erledigt';
+
+  @override
+  String get labelLessonCompletedStatus => 'Abgeschlossen';
+
+  @override
+  String get actionCompleteLesson => 'Lektion verstanden & abschließen';
+
+  @override
+  String get msgLessonCompletedXp =>
+      '🎉 Lektion abgeschlossen! +25 XP gutgeschrieben.';
+
+  @override
+  String get titleTeacherTip => 'Lehrer-Tipp';
+
+  @override
+  String get titleStolperfalle => 'Stolperfalle';
+
+  @override
+  String get titleExceptions => 'Achtung: Ausnahmen!';
+
+  @override
+  String get tooltipListenPronunciation => 'Aussprache anhören';
+
+  @override
+  String labelGrammarBlocksCount(int count) {
+    return '$count Bausteine (Struktur, Tabellen, Regeln)';
+  }
+
+  @override
+  String get sectionPracticeTools => 'TRAINING-TOOLS';
+
+  @override
+  String get actionStructuredPath => 'Strukturierter Pfad';
+
+  @override
+  String get sectionCourseBooks => 'LEHRBÜCHER';
+
+  @override
+  String get sectionTodayWords => 'HEUTIGE WÖRTER';
+
+  @override
+  String get titleGenderTrainer => 'Genus-Training';
+
+  @override
+  String get titleSentenceBuilder => 'Satzbau-Training';
+
+  @override
+  String get titleCompoundPuzzle => 'Komposita-Rätsel';
+
+  @override
+  String get subtitleCompoundPuzzle => 'Baue lange Wörter';
+
+  @override
+  String get titleVocabFlashcards => 'Vokabelkarten-Training';
+
+  @override
+  String get subtitleVocabFlashcards =>
+      'Wiederhole deine gespeicherten Vokabelkarten';
+
+  @override
+  String get titleSpeakingPracticeCard => 'Aussprache-Training';
+
+  @override
+  String get subtitleSpeakingPracticeCard => 'Sprech-Shadowing';
 }

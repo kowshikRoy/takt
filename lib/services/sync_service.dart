@@ -77,6 +77,12 @@ class SyncService extends ChangeNotifier {
           remoteData['streak_freezes'] as int,
         );
       }
+      if (remoteData['stats'] is Map<String, dynamic>) {
+        final stats = remoteData['stats'] as Map<String, dynamic>;
+        final remoteDates = stats['activity_dates'] as List<dynamic>?;
+        final remoteBestStreak = stats['best_streak'] as int?;
+        await ProfileService().mergeRemoteStats(remoteDates, remoteBestStreak);
+      }
       if (remoteData['curriculum_progress'] is List) {
         await CurriculumService().mergeRemoteProgress(
           remoteData['curriculum_progress'] as List,
@@ -117,6 +123,10 @@ class SyncService extends ChangeNotifier {
               'streak_freezes': ProfileService().streakFreezes,
               'curriculum_progress': CurriculumService().completedNodeIds
                   .toList(),
+              'stats': {
+                'activity_dates': ProfileService().activityDates.toList(),
+                'best_streak': ProfileService().bestStreak,
+              },
             }),
           )
           .timeout(const Duration(seconds: 15));

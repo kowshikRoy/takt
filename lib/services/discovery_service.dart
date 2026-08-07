@@ -17,6 +17,7 @@ class DiscoveryService extends ChangeNotifier {
 
   static const String _prefKeyPool = 'daily_discovery_pool_v2';
   static const String _prefKeyDate = 'daily_discovery_pool_date_v2';
+  static const String _prefKeySavedToday = 'daily_discovery_saved_today_v2';
 
   List<Map<String, dynamic>> _pool = [];
   bool _isLoading = false;
@@ -45,6 +46,13 @@ class DiscoveryService extends ChangeNotifier {
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
       final savedDate = prefs.getString(_prefKeyDate);
       final savedJson = prefs.getString(_prefKeyPool);
+
+      if (savedDate == todayStr) {
+        _savedTodayCount = prefs.getInt(_prefKeySavedToday) ?? ProfileService().todayWordsSaved;
+      } else {
+        _savedTodayCount = 0;
+        await prefs.setInt(_prefKeySavedToday, 0);
+      }
 
       if (!forceRefresh && savedDate == todayStr && savedJson != null) {
         final List<dynamic> list = jsonDecode(savedJson);
@@ -157,6 +165,7 @@ class DiscoveryService extends ChangeNotifier {
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
       await prefs.setString(_prefKeyDate, todayStr);
       await prefs.setString(_prefKeyPool, jsonEncode(_pool));
+      await prefs.setInt(_prefKeySavedToday, _savedTodayCount);
     } catch (_) {}
   }
 }

@@ -303,7 +303,6 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           fontSize: 12,
-                                          fontStyle: FontStyle.italic,
                                           color: Theme.of(
                                             context,
                                           ).colorScheme.onSurfaceVariant,

@@ -181,7 +181,6 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
                   Text(
                     item.exampleSentence,
                     style: TextStyle(
-                      fontStyle: FontStyle.italic,
                       fontSize: 13,
                       color: colorScheme.onSurfaceVariant,
                     ),

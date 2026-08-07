@@ -488,7 +488,6 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               color: colorScheme.onSurfaceVariant,
-                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         ],

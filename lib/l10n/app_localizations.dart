@@ -403,6 +403,222 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Profile'**
   String get titleProfile;
+
+  /// No description provided for @titleDailyDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'DAILY DISCOVERY'**
+  String get titleDailyDiscovery;
+
+  /// No description provided for @subtitleDailyDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a word to add it to your review list'**
+  String get subtitleDailyDiscovery;
+
+  /// Progress of saved words today against daily goal
+  ///
+  /// In en, this message translates to:
+  /// **'{saved} / {goal} SAVED'**
+  String labelSavedCount(int saved, int goal);
+
+  /// No description provided for @msgAllWordsReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'All words in your queue reviewed!'**
+  String get msgAllWordsReviewed;
+
+  /// Button label to fetch more words into discovery queue
+  ///
+  /// In en, this message translates to:
+  /// **'DISCOVER {count} MORE WORDS'**
+  String actionDiscoverMoreWords(int count);
+
+  /// No description provided for @labelLoadingEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'LOADING...'**
+  String get labelLoadingEllipsis;
+
+  /// No description provided for @actionDiscoverMore.
+  ///
+  /// In en, this message translates to:
+  /// **'DISCOVER\nMORE'**
+  String get actionDiscoverMore;
+
+  /// No description provided for @titleGrammarLessons.
+  ///
+  /// In en, this message translates to:
+  /// **'Grammar Guides'**
+  String get titleGrammarLessons;
+
+  /// No description provided for @subtitleGrammarLessons.
+  ///
+  /// In en, this message translates to:
+  /// **'Formulas, matrices, and teacher tips'**
+  String get subtitleGrammarLessons;
+
+  /// No description provided for @sectionStructuredRoadmap.
+  ///
+  /// In en, this message translates to:
+  /// **'STRUCTURED GRAMMAR ROADMAP'**
+  String get sectionStructuredRoadmap;
+
+  /// Progress of completed grammar lessons
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} of {total} Lessons Completed'**
+  String labelLessonsCompleted(int completed, int total);
+
+  /// No description provided for @hintSearchGrammar.
+  ///
+  /// In en, this message translates to:
+  /// **'Search (e.g. Modalverben, weil, Perfekt)...'**
+  String get hintSearchGrammar;
+
+  /// No description provided for @labelAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get labelAll;
+
+  /// No description provided for @msgNoLessonsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No lessons found'**
+  String get msgNoLessonsFound;
+
+  /// No description provided for @msgTryDifferentFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different filter or search term.'**
+  String get msgTryDifferentFilter;
+
+  /// No description provided for @labelLessonDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get labelLessonDone;
+
+  /// No description provided for @labelLessonCompletedStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get labelLessonCompletedStatus;
+
+  /// No description provided for @actionCompleteLesson.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Understood & Complete'**
+  String get actionCompleteLesson;
+
+  /// No description provided for @msgLessonCompletedXp.
+  ///
+  /// In en, this message translates to:
+  /// **'🎉 Lesson completed! +25 XP credited.'**
+  String get msgLessonCompletedXp;
+
+  /// No description provided for @titleTeacherTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Teacher\'s Tip'**
+  String get titleTeacherTip;
+
+  /// No description provided for @titleStolperfalle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pitfall Trap'**
+  String get titleStolperfalle;
+
+  /// No description provided for @titleExceptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Attention: Exceptions!'**
+  String get titleExceptions;
+
+  /// No description provided for @tooltipListenPronunciation.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen to pronunciation'**
+  String get tooltipListenPronunciation;
+
+  /// Count of grammar blocks in a lesson
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Blocks (Structure, Tables, Rules)'**
+  String labelGrammarBlocksCount(int count);
+
+  /// No description provided for @sectionPracticeTools.
+  ///
+  /// In en, this message translates to:
+  /// **'PRACTICE TOOLS'**
+  String get sectionPracticeTools;
+
+  /// No description provided for @actionStructuredPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Structured Path'**
+  String get actionStructuredPath;
+
+  /// No description provided for @sectionCourseBooks.
+  ///
+  /// In en, this message translates to:
+  /// **'COURSE BOOKS'**
+  String get sectionCourseBooks;
+
+  /// No description provided for @sectionTodayWords.
+  ///
+  /// In en, this message translates to:
+  /// **'TODAY\'S WORDS'**
+  String get sectionTodayWords;
+
+  /// No description provided for @titleGenderTrainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender Trainer'**
+  String get titleGenderTrainer;
+
+  /// No description provided for @titleSentenceBuilder.
+  ///
+  /// In en, this message translates to:
+  /// **'Sentence Builder'**
+  String get titleSentenceBuilder;
+
+  /// No description provided for @titleCompoundPuzzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compound Puzzle'**
+  String get titleCompoundPuzzle;
+
+  /// No description provided for @subtitleCompoundPuzzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Build massive words'**
+  String get subtitleCompoundPuzzle;
+
+  /// No description provided for @titleVocabFlashcards.
+  ///
+  /// In en, this message translates to:
+  /// **'Vocabulary Flashcard Practice'**
+  String get titleVocabFlashcards;
+
+  /// No description provided for @subtitleVocabFlashcards.
+  ///
+  /// In en, this message translates to:
+  /// **'Review your saved vocabulary cards'**
+  String get subtitleVocabFlashcards;
+
+  /// No description provided for @titleSpeakingPracticeCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaking Practice'**
+  String get titleSpeakingPracticeCard;
+
+  /// No description provided for @subtitleSpeakingPracticeCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech Shadowing'**
+  String get subtitleSpeakingPracticeCard;
 }
 
 class _AppLocalizationsDelegate

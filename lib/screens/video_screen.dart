@@ -1423,7 +1423,7 @@ class _VideoScreenState extends State<VideoScreen>
                                   if (item.contextSentence != null && item.contextSentence!.isNotEmpty)
                                     Text(
                                       'Context: "${item.contextSentence}"',
-                                      style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
+                                      style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
                                     ),
                                 ],
                               ),
@@ -1782,7 +1782,7 @@ class _VideoScreenState extends State<VideoScreen>
                           const SizedBox(height: 4),
                           Text(
                             item.ipa!,
-                            style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
+                            style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
                           ),
                         ],
                         const SizedBox(height: 20),

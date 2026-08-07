@@ -1,0 +1,433 @@
+[
+  {
+    "id": "lesson_modalverben_praeteritum",
+    "level": "A2",
+    "title": "Modalverben im Präteritum",
+    "subtitle": "Talking about past obligations, permissions, and wishes",
+    "category": "Verben & Zeiten",
+    "summary": "In spoken and written German, we use the Präteritum (Simple Past) for Modal Verbs instead of the Perfekt. Learn how umlauts disappear and verbs conjugate in the past.",
+    "sections": [
+      {
+        "id": "sec1_explanation",
+        "type": "explanation",
+        "title": "Wann benutzt man das? (When to use it)",
+        "explanation_payload": {
+          "text": "When speaking about the past in German, most verbs use 'Perfekt' (e.g. 'Ich habe gemacht'). However, Modal Verbs are an exception! We almost ALWAYS use Präteritum for Modal Verbs in spoken and written German.",
+          "bullet_points": [
+            "müssen → obligation in the past (had to)",
+            "können → ability / opportunity in the past (could / was able to)",
+            "dürfen → permission in the past (was allowed to)",
+            "wollen → desire / intention in the past (wanted to)",
+            "sollen → recommendation / assignment in the past (was supposed to)",
+            "mögen → liking in the past (liked / cared for)"
+          ]
+        }
+      },
+      {
+        "id": "sec2_formula",
+        "type": "formula",
+        "title": "Satzstruktur (Sentence Structure)",
+        "formula_payload": {
+          "formula_structure": "Subject + Conjugated Modal Verb (Pos 2) + ... + Infinitive Verb (Satzende)",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Subjekt",
+              "example_word": "Ich",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 2",
+              "label": "Modalverb (Präteritum)",
+              "example_word": "musste",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Mittelfeld",
+              "label": "Ergänzung / Objekt",
+              "example_word": "jeden Tag viel",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Satzende",
+              "label": "Vollverb (Infinitiv)",
+              "example_word": "lernen.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "sec3_table",
+        "type": "table",
+        "title": "Konjugationstabelle (Conjugation Table)",
+        "table_payload": {
+          "headers": ["Personalpronomen", "müssen", "können", "wollen", "dürfen", "sollen"],
+          "rows": [
+            ["ich", "musste", "konnte", "wollte", "durfte", "sollte"],
+            ["du", "musstest", "konntest", "wolltest", "durftest", "solltest"],
+            ["er / sie / es", "musste", "konnte", "wollte", "durfte", "sollte"],
+            ["wir", "mussten", "konnten", "wollten", "durften", "sollten"],
+            ["ihr", "musstet", "konntet", "wolltet", "durftet", "solltet"],
+            ["sie / Sie", "mussten", "konnten", "wollten", "durften", "sollten"]
+          ],
+          "footnote": "Notice: 'ich' and 'er/sie/es' forms are ALWAYS identical in Modal Verb Präteritum!"
+        }
+      },
+      {
+        "id": "sec4_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Regel: Umlaut-Verlust (Loss of Umlauts)",
+        "exception_payload": [
+          {
+            "rule_name": "Umlauts Disappear in Past Tense!",
+            "description": "Verbs with umlauts in present tense (müssen, können, dürfen, mögen) LOSE their umlauts in Präteritum.",
+            "example_sentences": [
+              "Präsens: Ich muss heute früh aufstehen. → Präteritum: Ich musste gestern früh aufstehen.",
+              "Präsens: Wir können nicht kommen. → Präteritum: Wir konnten nicht kommen.",
+              "Präsens: Er darf kein Eis essen. → Präteritum: Er durfte kein Eis essen."
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze (Example Sentences)",
+        "example_payload": [
+          {
+            "german": "In der Schule musste ich eine Schuluniform tragen.",
+            "english": "In school, I had to wear a school uniform.",
+            "note": "Modal verb 'musste' at Position 2, Infinitive 'tragen' at the end.",
+            "highlighted_words": ["musste", "tragen"]
+          },
+          {
+            "german": "Früher konnte ich jeden Nachmittag meine Freunde treffen.",
+            "english": "In the past, I was able to meet my friends every afternoon.",
+            "note": "Modal verb 'konnte' conjugated for 'ich'.",
+            "highlighted_words": ["konnte", "treffen"]
+          },
+          {
+            "german": "Am Abend durften wir nicht lange draußen bleiben.",
+            "english": "In the evening, we were not allowed to stay outside for long.",
+            "note": "Modal verb 'durften' conjugated for 'wir'.",
+            "highlighted_words": ["durften", "bleiben"]
+          }
+        ]
+      },
+      {
+        "id": "sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Stolperfalle: 'möchten' vs 'wollten'",
+          "content": "There is no Präteritum form for 'möchten'. 'Möchten' is technically a subjunctive form of 'mögen'. If you want to say 'I wanted to...' in the past, ALWAYS use 'wollte' (from 'wollen'). Never say 'ich mochte...' when you mean 'wanted'!",
+          "is_warning": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_nebensatz_weil",
+    "level": "A2",
+    "title": "Nebensätze mit 'weil'",
+    "subtitle": "Expressing reasons and cause-and-effect in German",
+    "category": "Satzbau",
+    "summary": "The conjunction 'weil' (because) creates a subordinate clause (Nebensatz) and sends the conjugated verb to the absolute end of the sentence.",
+    "sections": [
+      {
+        "id": "sec1_explanation",
+        "type": "explanation",
+        "title": "Wann benutzt man das? (When to use it)",
+        "explanation_payload": {
+          "text": "We use 'weil' to answer questions starting with 'Warum?' (Why?). 'Weil' connects a main clause (Hauptsatz) with a reason clause (Nebensatz).",
+          "bullet_points": [
+            "Hauptsatz: Contains the main statement.",
+            "Weil-Nebensatz: Explains WHY the main statement happens.",
+            "Rule: A comma MUST separate the Hauptsatz and the Nebensatz!"
+          ]
+        }
+      },
+      {
+        "id": "sec2_formula",
+        "type": "formula",
+        "title": "Satzstruktur: Die Verb-Kicker Regel",
+        "formula_payload": {
+          "formula_structure": "Hauptsatz [Verb Pos 2] , + weil + Subjekt + ... + Konjugiertes Verb (SATZENDE)",
+          "blocks": [
+            {
+              "position": "Hauptsatz",
+              "label": "Felix kommt gern,",
+              "example_word": "Felix kommt gern,",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Konnektor",
+              "label": "weil",
+              "example_word": "weil",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Subjekt",
+              "label": "Subjekt im Nebensatz",
+              "example_word": "er",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Mittelfeld",
+              "label": "Angaben / Objekte",
+              "example_word": "Ben lang nicht",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "SATZENDE",
+              "label": "Konjugiertes Verb!",
+              "example_word": "gesehen hat.",
+              "color_tag": "warning"
+            }
+          ]
+        }
+      },
+      {
+        "id": "sec3_examples",
+        "type": "examples",
+        "title": "Beispielsätze (Example Sentences)",
+        "example_payload": [
+          {
+            "german": "Lea kann nicht kommen, weil sie ihren Vater besucht.",
+            "english": "Lea cannot come because she is visiting her father.",
+            "note": "Verb 'besucht' conjugated for 'sie' moves to the end.",
+            "highlighted_words": ["weil", "besucht"]
+          },
+          {
+            "german": "Marvin kommt später, weil er heute arbeiten muss.",
+            "english": "Marvin is coming later because he has to work today.",
+            "note": "With a modal verb, the conjugated modal ('muss') goes to the VERY END after the infinitive ('arbeiten').",
+            "highlighted_words": ["weil", "arbeiten muss"]
+          }
+        ]
+      },
+      {
+        "id": "sec4_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Kurzantwort auf 'Warum?'",
+          "content": "If someone asks 'Warum isst du nichts?' (Why aren't you eating?), you don't need to repeat the main clause. You can answer directly starting with 'weil': 'Weil ich keinen Hunger habe.'",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_perfekt",
+    "level": "A1/A2",
+    "title": "Das Perfekt mit 'haben' und 'sein'",
+    "subtitle": "Speaking about completed actions in the past",
+    "category": "Verben & Zeiten",
+    "summary": "The Perfekt is the primary past tense used in spoken German. It uses a helping verb (haben or sein) at Position 2 and a Partizip II at the end of the sentence.",
+    "sections": [
+      {
+        "id": "sec1_explanation",
+        "type": "explanation",
+        "title": "Wann benutzt man 'haben' und wann 'sein'?",
+        "explanation_payload": {
+          "text": "The choice between 'haben' and 'sein' depends on the nature of the main verb:",
+          "bullet_points": [
+            "SEIN: Used for verbs of MOVEMENT from A to B (fahren, gehen, fliegen, kommen) or CHANGE OF STATE (einschlafen, aufstehen, passieren). Also used with 'sein' and 'bleiben'.",
+            "HABEN: Used for all transitive verbs (verbs taking an object), reflexive verbs, and static actions (arbeiten, lernen, essen, kaufen)."
+          ]
+        }
+      },
+      {
+        "id": "sec2_formula",
+        "type": "formula",
+        "title": "Die Satzklammer (The Sentence Bracket)",
+        "formula_payload": {
+          "formula_structure": "Subject + Hilfsverb (haben/sein) + ... + Partizip II (Satzende)",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Subjekt",
+              "example_word": "Jonas",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 2",
+              "label": "haben / sein",
+              "example_word": "hat",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Mittelfeld",
+              "label": "Angaben / Objekte",
+              "example_word": "ein neues Hobby",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Satzende",
+              "label": "Partizip II",
+              "example_word": "gefunden.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "sec3_table",
+        "type": "table",
+        "title": "Partizip II Bildung (Forming the Participle)",
+        "table_payload": {
+          "headers": ["Verb Type", "Pattern", "Beispiel Infinitiv", "Partizip II"],
+          "rows": [
+            ["Regelmäßig (Regular)", "ge + Stamm + t", "lernen", "gelernt"],
+            ["Unregelmäßig (Irregular)", "ge + Stamm + en", "finden", "gefunden"],
+            ["Trennbare Verben (Separable)", "Präfix + ge + Stamm + t/en", "einkaufen", "eingekauft"],
+            ["Nicht-trennbare Verben", "KEIN ge-! Stamm + t/en", "beenden", "beendet"],
+            ["Verben auf -ieren", "KEIN ge-! Stamm + t", "studieren", "studiert"]
+          ],
+          "footnote": "Remember: Verben ending in '-ieren' NEVER get a 'ge-' prefix!"
+        }
+      },
+      {
+        "id": "sec4_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Ausnahmen: Nicht-trennbare Präfixe",
+        "exception_payload": [
+          {
+            "rule_name": "Prefixes that block 'ge-'",
+            "description": "Verbs starting with be-, ge-, er-, ver-, zer-, ent-, emp-, miss- DO NOT take 'ge-' in Partizip II.",
+            "example_sentences": [
+              "beenden → hat beendet (NOT gebeendet)",
+              "besuchen → hat besucht (NOT gebesucht)",
+              "verstehen → hat verstanden (NOT geverstanden)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze (Example Sentences)",
+        "example_payload": [
+          {
+            "german": "Ich habe heute morgen einen Kaffee getrunken.",
+            "english": "I drank a coffee this morning.",
+            "note": "Static action with direct object → uses 'haben'.",
+            "highlighted_words": ["habe", "getrunken"]
+          },
+          {
+            "german": "Gestern sind wir nach Berlin gefahren.",
+            "english": "Yesterday we drove to Berlin.",
+            "note": "Movement from A to B → uses 'sein' ('sind').",
+            "highlighted_words": ["sind", "gefahren"]
+          },
+          {
+            "german": "Um wie viel Uhr bist du aufgestanden?",
+            "english": "At what time did you get up?",
+            "note": "Change of state ('aufstehen') + separable verb ('auf-ge-standen').",
+            "highlighted_words": ["bist", "aufgestanden"]
+          }
+        ]
+      },
+      {
+        "id": "sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Bewegung von A nach B",
+          "content": "For 'sein', it's not just any movement—it must be a movement from Point A to Point B! 'Ich bin nach Spanien geflogen' (A to B) uses SEIN, but 'Ich habe im Pool geschwommen' (staying in the pool) uses HABEN.",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_wechselpraepositionen",
+    "level": "A2/B1",
+    "title": "Wechselpräpositionen (Two-Way Prepositions)",
+    "subtitle": "Akkusativ vs. Dativ: Wohin? (Movement) vs. Wo? (Location)",
+    "category": "Kasus & Präpositionen",
+    "summary": "Nine prepositions can take either Akkusativ or Dativ depending on whether you express movement toward a destination (Wohin?) or static location (Wo?).",
+    "sections": [
+      {
+        "id": "sec1_explanation",
+        "type": "explanation",
+        "title": "Die 9 Wechselpräpositionen",
+        "explanation_payload": {
+          "text": "The 9 dual-case prepositions are: an, auf, hinter, in, neben, über, unter, vor, zwischen.",
+          "bullet_points": [
+            "WOHIN? (Direction / Movement to target) → AKKUSATIV (den / die / das / die)",
+            "WO? (Location / Static position) → DATIV (dem / der / dem / den + n)"
+          ]
+        }
+      },
+      {
+        "id": "sec2_formula",
+        "type": "formula",
+        "title": "Die Goldene Regel (Action vs Location)",
+        "formula_payload": {
+          "formula_structure": "legen/stellen/setzen + AKKUSATIV  vs.  liegen/stehen/sitzen + DATIV",
+          "blocks": [
+            {
+              "position": "Aktion (Wohin?)",
+              "label": "Subjekt + Verb + Akkusativ",
+              "example_word": "Ich stelle das Buch auf den Tisch.",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Zustand (Wo?)",
+              "label": "Subjekt + Verb + Dativ",
+              "example_word": "Das Buch steht auf dem Tisch.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "sec3_table",
+        "type": "table",
+        "title": "Verb-Paare Matrix",
+        "table_payload": {
+          "headers": ["Aktion (Wohin? + Akk)", "Bedeutung", "Position (Wo? + Dat)", "Bedeutung"],
+          "rows": [
+            ["stellen (regelm.)", "to place upright", "stehen (unregelm.)", "to stand"],
+            ["legen (regelm.)", "to lay down flat", "liegen (unregelm.)", "to lie flat"],
+            ["setzen (regelm.)", "to seat someone", "sitzen (unregelm.)", "to sit"],
+            ["hängen (regelm.)", "to hang up (action)", "hängen (unregelm.)", "to hang (state)"]
+          ],
+          "footnote": "Action verbs (stellen, legen, setzen) are ALWAYS regular! State verbs (stehen, liegen, sitzen) are irregular."
+        }
+      },
+      {
+        "id": "sec4_examples",
+        "type": "examples",
+        "title": "Beispielsätze (Example Sentences)",
+        "example_payload": [
+          {
+            "german": "Ich lege das Handy auf den Tisch.",
+            "english": "I put the mobile phone onto the table.",
+            "note": "Akkusativ ('den Tisch') because it's a movement towards a surface (Wohin?).",
+            "highlighted_words": ["lege", "auf den Tisch"]
+          },
+          {
+            "german": "Das Handy liegt auf dem Tisch.",
+            "english": "The mobile phone is lying on the table.",
+            "note": "Dativ ('dem Tisch') because it describes a static location (Wo?).",
+            "highlighted_words": ["liegt", "auf dem Tisch"]
+          }
+        ]
+      },
+      {
+        "id": "sec5_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Kompakte Verschmelzungen (Contractions)",
+          "content": "In spoken German, we almost always contract: in + das = ins, an + das = ans, in + dem = im, an + dem = am, zu + dem = zum, zu + der = zur.",
+          "is_warning": false
+        }
+      }
+    ]
+  }
+]
