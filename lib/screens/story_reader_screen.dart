@@ -679,14 +679,27 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         if (uniqueMap.containsKey(keyLower)) continue;
 
         final gender = isNoun ? _getNounGender(rawWord, null, lemma) : null;
-        String def = (translation != null && translation.isNotEmpty) ? translation : key;
+        String def = (translation != null && translation.isNotEmpty) ? translation : '';
 
-        if (def == key) {
+        if (def.isEmpty) {
           final entryList = await _dictionaryService.lookupWordFast(key);
-          if (entryList.isNotEmpty && entryList.first['translation'] != null) {
-            def = entryList.first['translation'].toString();
+          if (entryList.isNotEmpty) {
+            final fastDefs = (entryList.first['definitions'] as List?) ?? [];
+            if (fastDefs.isNotEmpty) def = fastDefs.first.toString();
           }
         }
+
+        if (def.isEmpty) {
+          // Local DB missed this word entirely — fall back to the same
+          // Wiktionary API / Google Translate chain the Dictionary page
+          // uses, so saved vocab doesn't end up with the word as its own
+          // "definition" just because the offline DB lacks this entry.
+          final fullEntry = await _dictionaryService.lookupWord(key);
+          final onlineDefs = (fullEntry?['definitions'] as List?) ?? [];
+          if (onlineDefs.isNotEmpty) def = onlineDefs.first.toString();
+        }
+
+        if (def.isEmpty) def = key;
 
         uniqueMap[keyLower] = KeyStoryVocab(
           word: key,

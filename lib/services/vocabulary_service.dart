@@ -8,6 +8,7 @@ import '../models/saved_word.dart';
 import 'sync_service.dart';
 import 'auth_service.dart';
 import 'app_logger.dart';
+import 'dictionary_service.dart';
 
 class VocabularyService extends ChangeNotifier {
   static final VocabularyService _instance = VocabularyService._internal();
@@ -336,6 +337,84 @@ class VocabularyService extends ChangeNotifier {
       res = await db.query('saved_words', orderBy: 'createdAt DESC');
     }
     return res.map((m) => SavedWord.fromMap(m)).toList();
+  }
+
+  /// Older builds of the Key Vocabulary save flow had a bug where a missing
+  /// dictionary definition fell back to saving the German word itself as
+  /// its own "definition" (see story_reader_screen.dart's fix). Those
+  /// entries are indistinguishable from a legitimately-empty lookup except
+  /// by the fact that the "definition" equals the word — re-resolve those
+  /// through the same fallback chain the Dictionary page uses and persist
+  /// the fix. Cheap to call on every load: only words matching that exact
+  /// signature trigger a re-lookup.
+  Future<int> repairStaleDefinitions() async {
+    final words = await getSavedWords();
+    final dictionaryService = DictionaryService();
+    int fixedCount = 0;
+
+    for (var i = 0; i < words.length; i++) {
+      final word = words[i];
+      final looksStale =
+          word.primaryDefinition.trim().isEmpty ||
+          word.primaryDefinition.trim().toLowerCase() ==
+              word.word.trim().toLowerCase();
+      if (!looksStale) continue;
+
+      String? newDef;
+      try {
+        final fastEntries = await dictionaryService.lookupWordFast(
+          word.word,
+        );
+        if (fastEntries.isNotEmpty) {
+          final defs = (fastEntries.first['definitions'] as List?) ?? [];
+          if (defs.isNotEmpty) newDef = defs.first.toString();
+        }
+        if (newDef == null || newDef.isEmpty) {
+          final fullEntry = await dictionaryService.lookupWord(word.word);
+          final onlineDefs = (fullEntry?['definitions'] as List?) ?? [];
+          if (onlineDefs.isNotEmpty) newDef = onlineDefs.first.toString();
+        }
+      } catch (e) {
+        AppLogger.error(
+          "Failed to repair definition for '${word.word}'",
+          error: e,
+          tag: 'VocabularyService',
+        );
+      }
+
+      if (newDef == null || newDef.isEmpty) continue;
+
+      final repaired = SavedWord(
+        id: word.id,
+        word: word.word,
+        baseForm: word.baseForm,
+        pos: word.pos,
+        gender: word.gender,
+        primaryDefinition: newDef,
+        definitions: [newDef],
+        ipa: word.ipa,
+        contextSentence: word.contextSentence,
+        sourceTitle: word.sourceTitle,
+        category: word.category,
+        interval: word.interval,
+        easeFactor: word.easeFactor,
+        repetitions: word.repetitions,
+        dueDate: word.dueDate,
+        lastReviewed: word.lastReviewed,
+        createdAt: word.createdAt,
+      );
+      await upsertWord(
+        repaired,
+        notify: false,
+        triggerSync: i == words.length - 1,
+      );
+      fixedCount++;
+    }
+
+    if (fixedCount > 0) {
+      await refreshCache();
+    }
+    return fixedCount;
   }
 
   Future<List<SavedWord>> getDueWords() async {
