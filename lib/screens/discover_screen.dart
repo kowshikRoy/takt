@@ -331,74 +331,205 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: mediaLibraryService.processedVideos.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final video = mediaLibraryService.processedVideos[index];
-                      final isFailed = video.status == ProcessingStatus.failed;
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(6.0),
-                          border: Border.all(
-                            color: isFailed
-                                ? Theme.of(context).colorScheme.error.withValues(alpha: 0.5)
-                                : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: ListTile(
-                          leading: Icon(
-                            isFailed ? Icons.error_outline_rounded : Icons.video_library_rounded,
-                            color: isFailed ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
-                          ),
-                          title: Text(video.effectiveTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          subtitle: Text(
-                            isFailed
-                                ? (video.errorMessage ?? video.stageMessage ?? 'Transcript fetch failed')
-                                : video.status.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isFailed ? Theme.of(context).colorScheme.error : null,
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: mediaLibraryService.processedVideos.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final video = mediaLibraryService.processedVideos[index];
+                        final isCompleted = video.status == ProcessingStatus.completed;
+                        final isFailed = video.status == ProcessingStatus.failed;
+                        final isProcessing = !isCompleted && !isFailed;
+                        final colorScheme = Theme.of(context).colorScheme;
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(4.0),
+                            border: Border.all(
+                              color: isFailed
+                                  ? colorScheme.error.withValues(alpha: 0.4)
+                                  : isProcessing
+                                      ? colorScheme.primary.withValues(alpha: 0.3)
+                                      : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                              width: isProcessing ? 1.0 : 0.8,
                             ),
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isFailed)
-                                IconButton(
-                                  icon: const Icon(Icons.refresh_rounded, size: 20),
-                                  tooltip: 'Retry',
-                                  onPressed: () => mediaLibraryService.retryProcessingTask(
-                                    video.taskId ?? video.id,
-                                    video.url,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(4.0),
+                            onTap: () {
+                              if (isCompleted) {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      // Status icon container
+                                      Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: isFailed
+                                              ? colorScheme.error.withValues(alpha: 0.12)
+                                              : isCompleted
+                                                  ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
+                                                  : colorScheme.primary.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Icon(
+                                          video.statusIcon,
+                                          size: 18,
+                                          color: isFailed
+                                              ? colorScheme.error
+                                              : isCompleted
+                                                  ? const Color(0xFF2C5E3B)
+                                                  : colorScheme.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+
+                                      // Title and Status Badge
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              video.effectiveTitle,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                // Modernist Status Badge
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: isFailed
+                                                        ? colorScheme.error.withValues(alpha: 0.12)
+                                                        : isCompleted
+                                                            ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
+                                                            : colorScheme.primary.withValues(alpha: 0.12),
+                                                    borderRadius: BorderRadius.circular(3),
+                                                    border: Border.all(
+                                                      color: isFailed
+                                                          ? colorScheme.error.withValues(alpha: 0.3)
+                                                          : isCompleted
+                                                              ? const Color(0xFF2C5E3B).withValues(alpha: 0.3)
+                                                              : colorScheme.primary.withValues(alpha: 0.3),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      if (isProcessing) ...[
+                                                        SizedBox(
+                                                          width: 9,
+                                                          height: 9,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 1.5,
+                                                            color: colorScheme.primary,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                      ],
+                                                      Text(
+                                                        isProcessing
+                                                            ? '${video.statusShortLabel} · ${video.effectiveProgress}%'
+                                                            : video.statusShortLabel,
+                                                        style: TextStyle(
+                                                          fontSize: 10.5,
+                                                          fontWeight: FontWeight.w800,
+                                                          letterSpacing: 0.3,
+                                                          color: isFailed
+                                                              ? colorScheme.error
+                                                              : isCompleted
+                                                                  ? const Color(0xFF2C5E3B)
+                                                                  : colorScheme.primary,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+
+                                                // Descriptive subtitle text
+                                                Expanded(
+                                                  child: Text(
+                                                    isFailed
+                                                        ? (video.errorMessage ?? video.stageMessage ?? 'Processing failed')
+                                                        : (video.stageMessage ?? 'Ready to practice'),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: isFailed
+                                                          ? colorScheme.error
+                                                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      // Actions
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (isFailed)
+                                            IconButton(
+                                              icon: const Icon(Icons.refresh_rounded, size: 20),
+                                              tooltip: 'Retry',
+                                              onPressed: () => mediaLibraryService.retryProcessingTask(
+                                                video.taskId ?? video.id,
+                                                video.url,
+                                              ),
+                                            ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.delete_outline_rounded,
+                                              size: 19,
+                                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                                            ),
+                                            tooltip: 'Delete',
+                                            onPressed: () => _confirmDeleteVideo(context, video, mediaLibraryService),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.delete_outline_rounded,
-                                  size: 20,
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                                tooltip: 'Delete',
-                                onPressed: () => _confirmDeleteVideo(context, video, mediaLibraryService),
+
+                                  // Linear Progress Bar if processing
+                                  if (isProcessing) ...[
+                                    const SizedBox(height: 8),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(2),
+                                      child: LinearProgressIndicator(
+                                        value: video.effectiveProgress / 100.0,
+                                        minHeight: 3,
+                                        backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
+                                        valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                          onTap: () {
-                            if (video.status == ProcessingStatus.completed) {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
-                            }
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
                 ],
               ],
             ),
@@ -610,18 +741,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(6.0),
+        borderRadius: BorderRadius.circular(4.0),
         border: Border.all(
           color: isFailed
-              ? colorScheme.error.withValues(alpha: 0.5)
-              : colorScheme.outlineVariant.withValues(alpha: 0.5),
-          width: 0.8,
+              ? colorScheme.error.withValues(alpha: 0.4)
+              : isProcessing
+                  ? colorScheme.primary.withValues(alpha: 0.3)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: isProcessing ? 1.0 : 0.8,
         ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(6.0),
+          borderRadius: BorderRadius.circular(4.0),
           onTap: () {
             if (isCompleted) {
               Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
@@ -635,59 +768,121 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   fit: StackFit.expand,
                   children: [
                     ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6.0)),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4.0)),
                       child: CachedNetworkImage(
                         imageUrl: video.thumbnailUrl,
                         fit: BoxFit.cover,
                         errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
                       ),
                     ),
+
+                    // Completed overlay
                     if (isCompleted)
                       Center(
                         child: Container(
                           padding: const EdgeInsets.all(10),
-                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
                           child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                         ),
                       ),
+
+                    // Processing overlay with stages & progress
                     if (isProcessing)
                       Container(
-                        color: Colors.black45,
-                        child: const Center(
-                          child: SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
-                          ),
+                        color: Colors.black.withValues(alpha: 0.65),
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
+                              ),
+                              child: Icon(
+                                video.statusIcon,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(
+                                    width: 8,
+                                    height: 8,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${video.statusShortLabel} · ${video.effectiveProgress}%',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              video.stageMessage ?? 'Processing media...',
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white70, fontSize: 10),
+                            ),
+                          ],
                         ),
                       ),
+
+                    // Failed overlay
                     if (isFailed)
                       Container(
-                        color: Colors.black54,
+                        color: Colors.black.withValues(alpha: 0.7),
                         padding: const EdgeInsets.all(10),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 26),
-                            const SizedBox(height: 6),
+                            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 24),
+                            const SizedBox(height: 4),
                             Text(
-                              video.errorMessage ?? video.stageMessage ?? 'Transcript fetch failed',
+                              video.errorMessage ?? video.stageMessage ?? 'Processing failed',
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontSize: 11),
+                              style: const TextStyle(color: Colors.white, fontSize: 10.5),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 6),
                             OutlinedButton.icon(
                               onPressed: () => mediaLibraryService.retryProcessingTask(
                                 video.taskId ?? video.id,
                                 video.url,
                               ),
-                              icon: const Icon(Icons.refresh_rounded, size: 16, color: Colors.white),
-                              label: const Text('Retry', style: TextStyle(color: Colors.white, fontSize: 12)),
+                              icon: const Icon(Icons.refresh_rounded, size: 14, color: Colors.white),
+                              label: const Text('Retry', style: TextStyle(color: Colors.white, fontSize: 11)),
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: Colors.white70),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
@@ -695,6 +890,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           ],
                         ),
                       ),
+
+                    // Top-right delete button
                     Positioned(
                       top: 6,
                       right: 6,
@@ -715,16 +912,54 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         ),
                       ),
                     ),
+
+                    // Bottom progress bar during processing
+                    if (isProcessing)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: LinearProgressIndicator(
+                          value: video.effectiveProgress / 100.0,
+                          minHeight: 3,
+                          backgroundColor: Colors.black26,
+                          valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                        ),
+                      ),
                   ],
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.all(10.0),
-                child: Text(
-                  video.effectiveTitle,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        video.effectiveTitle,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isCompleted) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2C5E3B).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: const Text(
+                          'Ready',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF2C5E3B),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],

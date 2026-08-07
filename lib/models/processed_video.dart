@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'processing_status.dart';
 import 'subtitle_cue.dart';
 
@@ -8,6 +9,7 @@ class ProcessedVideo {
   final ProcessingStatus status;
   final String? stageMessage;
   final String? errorMessage;
+  final int progressPercentage;
   final List<SubtitleCue> subtitles;
   final String? videoUrl;
   final String mediaType;
@@ -36,6 +38,49 @@ class ProcessedVideo {
     return 'Media Lesson';
   }
 
+  int get effectiveProgress {
+    if (status == ProcessingStatus.completed) return 100;
+    if (status == ProcessingStatus.failed) return 0;
+    if (progressPercentage > 0) return progressPercentage;
+    final msg = (stageMessage ?? '').toLowerCase();
+    if (msg.contains('cache')) return 10;
+    if (msg.contains('subtitle') || msg.contains('caption')) return 25;
+    if (msg.contains('title') || msg.contains('thumbnail')) return 40;
+    if (msg.contains('download')) return 55;
+    if (msg.contains('analyz') || msg.contains('format')) return 70;
+    if (msg.contains('whisper') || msg.contains('transcrib')) return 85;
+    if (msg.contains('finaliz')) return 95;
+    return 30;
+  }
+
+  IconData get statusIcon {
+    if (status == ProcessingStatus.completed) return Icons.check_circle_rounded;
+    if (status == ProcessingStatus.failed) return Icons.error_outline_rounded;
+    final msg = (stageMessage ?? '').toLowerCase();
+    if (msg.contains('cache') || msg.contains('connect')) return Icons.link_rounded;
+    if (msg.contains('subtitle') || msg.contains('caption')) return Icons.subtitles_rounded;
+    if (msg.contains('title') || msg.contains('thumbnail')) return Icons.info_outline_rounded;
+    if (msg.contains('download') || msg.contains('audio')) return Icons.cloud_download_rounded;
+    if (msg.contains('analyz') || msg.contains('format')) return Icons.graphic_eq_rounded;
+    if (msg.contains('whisper') || msg.contains('transcrib')) return Icons.auto_awesome_rounded;
+    if (msg.contains('finaliz')) return Icons.check_circle_outline_rounded;
+    return Icons.sync_rounded;
+  }
+
+  String get statusShortLabel {
+    if (status == ProcessingStatus.completed) return 'Ready';
+    if (status == ProcessingStatus.failed) return 'Failed';
+    final msg = (stageMessage ?? '').toLowerCase();
+    if (msg.contains('cache') || msg.contains('connect')) return 'Connecting';
+    if (msg.contains('subtitle') || msg.contains('caption')) return 'Captions';
+    if (msg.contains('title') || msg.contains('thumbnail')) return 'Metadata';
+    if (msg.contains('download') || msg.contains('audio')) return 'Downloading';
+    if (msg.contains('analyz') || msg.contains('format')) return 'Analyzing';
+    if (msg.contains('whisper') || msg.contains('transcrib')) return 'AI Transcribing';
+    if (msg.contains('finaliz')) return 'Finalizing';
+    return 'Processing';
+  }
+
   ProcessedVideo({
     required this.id,
     this.taskId,
@@ -43,6 +88,7 @@ class ProcessedVideo {
     required this.status,
     this.stageMessage,
     this.errorMessage,
+    this.progressPercentage = 0,
     required this.subtitles,
     this.videoUrl,
     this.mediaType = 'video',
@@ -58,6 +104,7 @@ class ProcessedVideo {
       'status': status.name,
       'stageMessage': stageMessage,
       'errorMessage': errorMessage,
+      'progressPercentage': progressPercentage,
       'subtitles': subtitles.map((s) => {
         'start': s.start,
         'end': s.end,
@@ -104,6 +151,7 @@ class ProcessedVideo {
       status: statusEnum,
       stageMessage: json['stageMessage'] as String?,
       errorMessage: json['errorMessage'] as String?,
+      progressPercentage: (json['progressPercentage'] as num?)?.toInt() ?? 0,
       subtitles: subList,
       videoUrl: json['videoUrl'] as String?,
       mediaType: json['mediaType'] as String? ?? 'video',

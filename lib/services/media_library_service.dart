@@ -97,7 +97,8 @@ class MediaLibraryService extends ChangeNotifier {
       taskId: tempId,
       url: originalUrl,
       status: ProcessingStatus.downloading,
-      stageMessage: 'Submitting media task...',
+      stageMessage: 'Connecting to server...',
+      progressPercentage: 5,
       subtitles: [],
     );
 
@@ -117,7 +118,8 @@ class MediaLibraryService extends ChangeNotifier {
             taskId: realTaskId,
             url: originalUrl,
             status: ProcessingStatus.downloading,
-            stageMessage: 'Transcribing speech & subtitles...',
+            stageMessage: 'Checking for subtitles & audio stream...',
+            progressPercentage: 15,
             subtitles: [],
           );
           notifyListeners();
@@ -133,6 +135,7 @@ class MediaLibraryService extends ChangeNotifier {
             status: ProcessingStatus.failed,
             stageMessage: 'Backend server timed out or unreachable',
             errorMessage: submitResponse?['error'] ?? 'Connection timed out',
+            progressPercentage: 0,
             subtitles: [],
           );
           notifyListeners();
@@ -149,6 +152,7 @@ class MediaLibraryService extends ChangeNotifier {
           status: ProcessingStatus.failed,
           stageMessage: 'Connection timed out',
           errorMessage: e.toString(),
+          progressPercentage: 0,
           subtitles: [],
         );
         notifyListeners();
@@ -163,7 +167,8 @@ class MediaLibraryService extends ChangeNotifier {
       taskId: taskId,
       url: originalUrl,
       status: ProcessingStatus.downloading,
-      stageMessage: 'Downloading media stream...',
+      stageMessage: 'Connecting & downloading media...',
+      progressPercentage: 10,
       subtitles: [],
     );
 
@@ -186,10 +191,12 @@ class MediaLibraryService extends ChangeNotifier {
         taskId: newTaskId,
         url: originalUrl,
         status: ProcessingStatus.downloading,
-        stageMessage: 'Retrying task...',
+        stageMessage: 'Connecting to server...',
+        progressPercentage: 5,
         subtitles: [],
       );
       notifyListeners();
+      await _saveProcessedVideos();
       _startPollingForTask(newTaskId, originalUrl);
     }
   }
@@ -231,6 +238,7 @@ class MediaLibraryService extends ChangeNotifier {
       final statusStr = (statusResponse['status'] as String?)?.toLowerCase();
       final stageMsg = statusResponse['stage_message'] as String?;
       final errorMsg = statusResponse['error'] as String?;
+      final progressPct = (statusResponse['progress_percentage'] as num?)?.toInt() ?? 0;
       final statusCode = statusResponse['statusCode'] as int?;
 
       // Auto-recover if server restarted or task 404'd
@@ -245,21 +253,25 @@ class MediaLibraryService extends ChangeNotifier {
       final index = _processedVideos.indexWhere((v) => v.taskId == taskId || v.id == taskId);
 
       if (statusStr == 'processing' || statusStr == 'downloading' || statusStr == 'transcribing' || statusStr == 'pending') {
-        if (index != -1 && stageMsg != null && _processedVideos[index].stageMessage != stageMsg) {
-          _processedVideos[index] = ProcessedVideo(
-            id: taskId,
-            taskId: taskId,
-            url: originalUrl,
-            status: ProcessingStatus.transcribing,
-            stageMessage: stageMsg,
-            subtitles: _processedVideos[index].subtitles,
-            videoUrl: _processedVideos[index].videoUrl,
-            mediaType: _processedVideos[index].mediaType,
-            thumbnail: _processedVideos[index].thumbnail,
-            title: _processedVideos[index].title,
-          );
-          notifyListeners();
-          await _saveProcessedVideos();
+        if (index != -1) {
+          final current = _processedVideos[index];
+          if (current.stageMessage != stageMsg || current.progressPercentage != progressPct) {
+            _processedVideos[index] = ProcessedVideo(
+              id: taskId,
+              taskId: taskId,
+              url: originalUrl,
+              status: ProcessingStatus.transcribing,
+              stageMessage: stageMsg ?? current.stageMessage,
+              progressPercentage: progressPct > 0 ? progressPct : current.progressPercentage,
+              subtitles: current.subtitles,
+              videoUrl: current.videoUrl,
+              mediaType: current.mediaType,
+              thumbnail: current.thumbnail,
+              title: current.title,
+            );
+            notifyListeners();
+            await _saveProcessedVideos();
+          }
         }
       } else if (statusStr == 'completed') {
         t.cancel();
@@ -292,6 +304,7 @@ class MediaLibraryService extends ChangeNotifier {
             url: originalUrl,
             status: ProcessingStatus.completed,
             stageMessage: stageMsg ?? 'Ready 🎬',
+            progressPercentage: 100,
             subtitles: subtitles,
             videoUrl: videoUrl,
             mediaType: mediaTypeStr,
@@ -313,41 +326,11 @@ class MediaLibraryService extends ChangeNotifier {
             status: ProcessingStatus.failed,
             stageMessage: stageMsg ?? 'Processing failed',
             errorMessage: errorMsg,
+            progressPercentage: 0,
             subtitles: [],
           );
           notifyListeners();
           await _saveProcessedVideos();
-        }
-      } else {
-        // Intermediate stages (downloading, transcribing, translating, finalizing)
-        ProcessingStatus newStatus = ProcessingStatus.processing;
-        if (statusStr == 'downloading') {
-          newStatus = ProcessingStatus.downloading;
-        } else if (statusStr == 'transcribing') {
-          newStatus = ProcessingStatus.transcribing;
-        } else if (statusStr == 'translating') {
-          newStatus = ProcessingStatus.translating;
-        } else if (statusStr == 'finalizing') {
-          newStatus = ProcessingStatus.finalizing;
-        }
-
-        if (index != -1) {
-          final current = _processedVideos[index];
-          if (current.status != newStatus || current.stageMessage != stageMsg) {
-            _processedVideos[index] = ProcessedVideo(
-              id: current.id,
-              taskId: current.taskId,
-              url: current.url,
-              status: newStatus,
-              stageMessage: stageMsg,
-              errorMessage: current.errorMessage,
-              subtitles: current.subtitles,
-              videoUrl: current.videoUrl,
-              mediaType: current.mediaType,
-            );
-            notifyListeners();
-            await _saveProcessedVideos();
-          }
         }
       }
     });
