@@ -249,6 +249,22 @@ takt/
    ```
    Verify that FastAPI routes, task submission, and polling respond correctly.
 
+4. **Backend Cloud Run Deployment**:
+   ```bash
+   cd backend
+   gcloud run deploy omniscribe \
+     --project=book-search-472921 \
+     --region=europe-west4 \
+     --source=. \
+     --allow-unauthenticated \
+     --memory=2Gi \
+     --cpu=2 \
+     --cpu-throttling \
+     --min-instances=0 \
+     --timeout=300s
+   ```
+   *(Environment variables like `GEMINI_API_KEY` are persisted automatically across deployments).*
+
 ---
 
 ## ⚠️ Key Gotchas & Domain Know-How
