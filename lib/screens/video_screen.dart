@@ -875,23 +875,65 @@ class _VideoScreenState extends State<VideoScreen>
                       ),
                     Builder(
                       builder: (context) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.3),
-                                Colors.black.withValues(alpha: 0.8),
-                              ],
-                              stops: const [0.0, 0.6, 1.0],
+                        final hasVideoTrack = (_videoPlayerController?.value.size.width ?? 0) > 0 &&
+                                              (_videoPlayerController?.value.size.height ?? 0) > 0;
+                        if (hasVideoTrack) {
+                          return Center(
+                            child: AspectRatio(
+                              aspectRatio: (_videoPlayerController?.value.aspectRatio ?? 0) > 0 
+                                  ? _videoPlayerController!.value.aspectRatio 
+                                  : (16 / 9),
+                              child: VideoPlayer(_videoPlayerController!),
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Theme.of(context).colorScheme.primaryContainer,
+                                  Theme.of(context).colorScheme.surfaceContainerHigh,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.graphic_eq_rounded,
+                                    size: 48,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Audio Media Stream',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
                       },
                     ),
-                    if (_showControls) _buildControlsOverlay(context),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildVideoHeader(context),
+                    ),
                   ],
                 ),
               )
@@ -1124,90 +1166,6 @@ class _VideoScreenState extends State<VideoScreen>
             ),
           ),
         ],
-      ),
-    );
-                ? GestureDetector(
-                    onTap: _toggleControls,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: <Widget>[
-                        if (_videoPlayerController!.value.size.width > 0 && _videoPlayerController!.value.size.height > 0)
-                          FittedBox(
-                            fit: BoxFit.cover,
-                            child: SizedBox(
-                              width: _videoPlayerController!.value.size.width,
-                              height: _videoPlayerController!.value.size.height,
-                              child: Opacity(
-                                opacity: 0.35,
-                                child: VideoPlayer(_videoPlayerController!),
-                              ),
-                            ),
-                          ),
-                        Builder(
-                          builder: (context) {
-                            final hasVideoTrack = (_videoPlayerController?.value.size.width ?? 0) > 0 &&
-                                                  (_videoPlayerController?.value.size.height ?? 0) > 0;
-                            if (hasVideoTrack) {
-                              return Center(
-                                child: AspectRatio(
-                                  aspectRatio: (_videoPlayerController?.value.aspectRatio ?? 0) > 0 
-                                      ? _videoPlayerController!.value.aspectRatio 
-                                      : (16 / 9),
-                                  child: VideoPlayer(_videoPlayerController!),
-                                ),
-                              );
-                            } else {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Theme.of(context).colorScheme.primaryContainer,
-                                      Theme.of(context).colorScheme.surfaceContainerHigh,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.graphic_eq_rounded,
-                                        size: 48,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Audio Media Stream',
-                                      style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurface,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                          },
-                        ),
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: _buildVideoHeader(context),
-                        ),
-                      ],
-                    ),
-                  )
-                : const Center(child: CircularProgressIndicator()),
       ),
     );
   }
