@@ -815,11 +815,21 @@ async def submit_media(request: MediaRequest, background_tasks: BackgroundTasks)
     return SubmitResponse(task_id=task_id)
 
 @app.get("/status/{task_id}", response_model=StatusResponse)
-async def get_status(task_id: str):
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return StatusResponse(**task)
+async def get_status(task_id: str, wait_seconds: int = 5):
+    """Returns task status, holding the connection open up to wait_seconds while PROCESSING to ensure unthrottled Cloud Run CPU allocation."""
+    start_time = asyncio.get_event_loop().time()
+    while True:
+        task = tasks.get(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        if task.get("status") in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+            return StatusResponse(**task)
+        
+        if (asyncio.get_event_loop().time() - start_time) >= wait_seconds:
+            return StatusResponse(**task)
+        
+        await asyncio.sleep(0.5)
 
 @app.get("/health")
 def health_check():
