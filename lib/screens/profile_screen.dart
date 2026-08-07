@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import '../services/vocabulary_service.dart';
 import '../services/profile_service.dart';
 import '../services/gamification_service.dart';
-import '../models/saved_word.dart';
 import '../widgets/capped_width.dart';
 import '../widgets/charts/modernist_vocab_chart.dart';
 import '../widgets/charts/srs_retention_matrix_card.dart';
+import '../widgets/charts/modernist_activity_heatmap.dart';
 import '../l10n/app_localizations.dart';
 import 'settings_screen.dart';
 
@@ -85,8 +85,11 @@ class ProfileScreen extends StatelessWidget {
                     SrsRetentionMatrixCard(savedWords: words),
                     const SizedBox(height: 16),
 
-                    // 5. 12-Week Activity Heatmap
-                    _buildHeatmapCard(context, words, inkColor, cardBg, rustAccent),
+                    // 5. 12-Week Activity Heatmap (Full width & Interactive)
+                    ModernistActivityHeatmap(
+                      words: words,
+                      accentColor: rustAccent,
+                    ),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -399,132 +402,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeatmapCard(
-    BuildContext context,
-    List<SavedWord> words,
-    Color inkColor,
-    Color cardBg,
-    Color rustAccent,
-  ) {
-    final l10n = AppLocalizations.of(context);
 
-    final Map<String, int> dailyCounts = {};
-    for (final w in words) {
-      final key = '${w.createdAt.year}-${w.createdAt.month}-${w.createdAt.day}';
-      dailyCounts[key] = (dailyCounts[key] ?? 0) + 1;
-    }
-
-    final now = DateTime.now();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: inkColor.withValues(alpha: 0.18),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l10n?.title12WeekActivity ?? '12-WEEK ACTIVITY',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.9,
-                  color: inkColor,
-                ),
-              ),
-              Row(
-                children: [
-                  Text(
-                    'Less ',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: inkColor.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  _buildHeatmapSquare(context, 0, rustAccent, inkColor),
-                  const SizedBox(width: 3),
-                  _buildHeatmapSquare(context, 1, rustAccent, inkColor),
-                  const SizedBox(width: 3),
-                  _buildHeatmapSquare(context, 2, rustAccent, inkColor),
-                  const SizedBox(width: 3),
-                  _buildHeatmapSquare(context, 3, rustAccent, inkColor),
-                  Text(
-                    ' More',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: inkColor.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 115,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: 12,
-              itemBuilder: (context, colIndex) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(7, (rowIndex) {
-                      final daysAgo = (11 - colIndex) * 7 + (6 - rowIndex);
-                      final date = now.subtract(Duration(days: daysAgo));
-                      final key = '${date.year}-${date.month}-${date.day}';
-                      final count = dailyCounts[key] ?? 0;
-                      return Tooltip(
-                        message: '$count words on ${date.month}/${date.day}',
-                        child: _buildHeatmapSquare(context, count, rustAccent, inkColor),
-                      );
-                    }),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeatmapSquare(
-    BuildContext context,
-    int count,
-    Color rustAccent,
-    Color inkColor,
-  ) {
-    Color color;
-    if (count == 0) {
-      color = inkColor.withValues(alpha: 0.08);
-    } else if (count == 1) {
-      color = rustAccent.withValues(alpha: 0.35);
-    } else if (count == 2) {
-      color = rustAccent.withValues(alpha: 0.65);
-    } else {
-      color = rustAccent;
-    }
-    return Container(
-      width: 14,
-      height: 14,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(3),
-      ),
-    );
-  }
 
   void _showEditNameDialog(
     BuildContext context,
