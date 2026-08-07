@@ -277,4 +277,96 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subtitleSpeakingPracticeCard => 'Speech Shadowing';
+
+  @override
+  String get titleVocabGrowth => 'VOCABULARY GROWTH';
+
+  @override
+  String get labelTimeframe7D => '7D';
+
+  @override
+  String get labelTimeframe30D => '30D';
+
+  @override
+  String get labelTimeframe12W => '12W';
+
+  @override
+  String get labelTimeframeAll => 'All';
+
+  @override
+  String get labelWordsSaved => 'Words Saved';
+
+  @override
+  String get labelMastered => 'Mastered';
+
+  @override
+  String get labelTotalXp => 'XP';
+
+  @override
+  String get titleMemoryRetention => 'MEMORY RETENTION (SRS)';
+
+  @override
+  String get labelStageLearning => 'Learning';
+
+  @override
+  String get labelStageApprentice => 'Apprentice';
+
+  @override
+  String get labelStageFamiliar => 'Familiar';
+
+  @override
+  String get labelStageProficient => 'Proficient';
+
+  @override
+  String get labelStageMastered => 'Mastered';
+
+  @override
+  String get title12WeekActivity => '12-WEEK ACTIVITY';
+
+  @override
+  String get sectionAccountSync => 'ACCOUNT & SYNC';
+
+  @override
+  String get sectionLearningPreferences => 'LEARNING PREFERENCES';
+
+  @override
+  String get sectionDataStorage => 'DATA & STORAGE';
+
+  @override
+  String get sectionAbout => 'ABOUT';
+
+  @override
+  String get actionSyncNow => 'Sync Now';
+
+  @override
+  String get labelLastSynced => 'Last synced';
+
+  @override
+  String get labelJustNow => 'just now';
+
+  @override
+  String labelMinutesAgo(int minutes) {
+    return '${minutes}m ago';
+  }
+
+  @override
+  String get labelOfflineDictionary => 'Offline Dictionary';
+
+  @override
+  String get labelBackupExport => 'Backup & Export';
+
+  @override
+  String get labelStreakReminders => 'Streak Reminders';
+
+  @override
+  String get labelDailyReminderSubtitle =>
+      'A daily nudge if you haven\'t practiced yet';
+
+  @override
+  String get labelTargetLevel => 'Target Level (CEFR)';
+
+  @override
+  String labelWordsPerDay(int count) {
+    return '$count words/day';
+  }
 }

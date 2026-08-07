@@ -3,8 +3,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../services/vocabulary_service.dart';
 import '../services/profile_service.dart';
+import '../services/gamification_service.dart';
 import '../models/saved_word.dart';
 import '../widgets/capped_width.dart';
+import '../widgets/charts/modernist_vocab_chart.dart';
+import '../widgets/charts/srs_retention_matrix_card.dart';
+import '../l10n/app_localizations.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -13,201 +17,512 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: CappedWidth(
           maxWidth: 700,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                _buildHeader(context),
-                const SizedBox(height: 32),
-                Text(
-                  'Your Growth',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
+          child: Consumer3<ProfileService, VocabularyService, GamificationService>(
+            builder: (context, profileService, vocabService, gamification, _) {
+              final words = vocabService.cachedSavedWords;
+
+              if (profileService.justUsedStreakFreeze) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  profileService.acknowledgeStreakFreezeUsed();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Image.asset(
+                            'assets/images/cat.png',
+                            width: 32,
+                            height: 32,
+                          ).animate().scale(
+                            duration: 350.ms,
+                            curve: Curves.elasticOut,
+                            begin: const Offset(0.4, 0.4),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Streak Freeze used! Your streak is safe. ❄️',
+                            ),
+                          ),
+                        ],
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                });
+              }
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Hero Identity Header
+                    _buildHeroHeader(context, profileService, gamification, inkColor, cardBg, rustAccent),
+                    const SizedBox(height: 16),
+
+                    // 2. 4 Quick Stat Metric Cards
+                    _buildStatGrid(context, profileService, vocabService, gamification, inkColor, cardBg, rustAccent),
+                    const SizedBox(height: 16),
+
+                    // 3. Vocabulary Growth Interactive Graph
+                    ModernistVocabChart(
+                      savedWords: words,
+                      accentColor: rustAccent,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 4. Memory Retention (SRS) Breakdown
+                    SrsRetentionMatrixCard(savedWords: words),
+                    const SizedBox(height: 16),
+
+                    // 5. 12-Week Activity Heatmap
+                    _buildHeatmapCard(context, words, inkColor, cardBg, rustAccent),
+                    const SizedBox(height: 24),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                _buildGrowthCard(context),
-                const SizedBox(height: 32),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Consumer<ProfileService>(
-      builder: (context, profileService, _) {
-        if (profileService.justUsedStreakFreeze) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            profileService.acknowledgeStreakFreezeUsed();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
+  Widget _buildHeroHeader(
+    BuildContext context,
+    ProfileService profileService,
+    GamificationService gamification,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    final photoUrl = profileService.photoUrl;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (Navigator.canPop(context)) ...[
+            IconButton(
+              icon: Icon(Icons.arrow_back_rounded, color: inkColor),
+              tooltip: 'Back',
+              onPressed: () => Navigator.pop(context),
+            ),
+            const SizedBox(width: 4),
+          ],
+
+          // Avatar with ring
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: rustAccent, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+              image: DecorationImage(
+                image: (photoUrl != null &&
+                        photoUrl.trim().isNotEmpty &&
+                        photoUrl.startsWith('http'))
+                    ? NetworkImage(photoUrl) as ImageProvider
+                    : const AssetImage('assets/images/profile.jpg'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // User Info & Badges
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top row: Level Badge + CEFR Badge + Display Name
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Image.asset(
-                      'assets/images/cat.png',
-                      width: 32,
-                      height: 32,
-                    ).animate().scale(
-                      duration: 350.ms,
-                      curve: Curves.elasticOut,
-                      begin: const Offset(0.4, 0.4),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Streak Freeze used! Your streak is safe. ❄️',
+                    // Level Circle Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: rustAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
                       ),
+                      child: Text(
+                        'LEVEL ${gamification.level}',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: rustAccent,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+
+                    // CEFR Badge
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _showLevelDialog(context, profileService),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: rustAccent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'CEFR ${profileService.targetLevel}',
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Display Name
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            profileService.displayName,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: inkColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Edit Name',
+                          onPressed: () => _showEditNameDialog(context, profileService),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          });
-        }
-        return Row(
-          children: [
-            if (Navigator.canPop(context)) ...[
-              IconButton(
-                icon: Icon(
-                  Icons.arrow_back_rounded,
-                  color: Theme.of(context).colorScheme.onSurface,
+                const SizedBox(height: 4),
+
+                // Join date
+                Text(
+                  profileService.joinDateFormatted,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: inkColor.withValues(alpha: 0.6),
+                  ),
                 ),
-                tooltip: 'Back',
-                onPressed: () => Navigator.pop(context),
+              ],
+            ),
+          ),
+
+          // Settings Action Button
+          IconButton(
+            icon: Icon(Icons.settings_outlined, color: inkColor.withValues(alpha: 0.8)),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatGrid(
+    BuildContext context,
+    ProfileService profileService,
+    VocabularyService vocabService,
+    GamificationService gamification,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final curStreak = profileService.currentStreak;
+    final savedCount = vocabService.cachedSavedCount;
+    final masteredCount = vocabService.masteredCount;
+    final totalXp = gamification.totalXp;
+
+    return Row(
+      children: [
+        // 1. Streak Card
+        Expanded(
+          child: _buildMetricCard(
+            context,
+            value: '$curStreak',
+            suffix: profileService.streakFreezes > 0 ? ' ❄️' : '',
+            label: l10n?.labelStreak.toUpperCase() ?? 'STREAK',
+            color: const Color(0xFFD97706),
+            cardBg: cardBg,
+            inkColor: inkColor,
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // 2. Words Saved
+        Expanded(
+          child: _buildMetricCard(
+            context,
+            value: '$savedCount',
+            label: l10n?.labelWordsSaved.toUpperCase() ?? 'WORDS SAVED',
+            color: rustAccent,
+            cardBg: cardBg,
+            inkColor: inkColor,
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // 3. Mastered
+        Expanded(
+          child: _buildMetricCard(
+            context,
+            value: '$masteredCount',
+            label: l10n?.labelMastered.toUpperCase() ?? 'MASTERED',
+            color: const Color(0xFF2C5E3B),
+            cardBg: cardBg,
+            inkColor: inkColor,
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // 4. XP
+        Expanded(
+          child: _buildMetricCard(
+            context,
+            value: '$totalXp',
+            label: l10n?.labelTotalXp.toUpperCase() ?? 'XP',
+            color: inkColor,
+            cardBg: cardBg,
+            inkColor: inkColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard(
+    BuildContext context, {
+    required String value,
+    String suffix = '',
+    required String label,
+    required Color color,
+    required Color cardBg,
+    required Color inkColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 4),
+              if (suffix.isNotEmpty)
+                Text(
+                  suffix,
+                  style: const TextStyle(fontSize: 12),
+                ),
             ],
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Theme.of(context).cardColor,
-                  width: 4,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color.fromRGBO(0, 0, 0, 0.1),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-                image: DecorationImage(
-                  image: (profileService.photoUrl != null &&
-                          profileService.photoUrl!.trim().isNotEmpty &&
-                          profileService.photoUrl!.startsWith('http'))
-                      ? NetworkImage(profileService.photoUrl!) as ImageProvider
-                      : const AssetImage('assets/images/profile.jpg'),
-                  fit: BoxFit.cover,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: inkColor.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeatmapCard(
+    BuildContext context,
+    List<SavedWord> words,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    final l10n = AppLocalizations.of(context);
+
+    final Map<String, int> dailyCounts = {};
+    for (final w in words) {
+      final key = '${w.createdAt.year}-${w.createdAt.month}-${w.createdAt.day}';
+      dailyCounts[key] = (dailyCounts[key] ?? 0) + 1;
+    }
+
+    final now = DateTime.now();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                l10n?.title12WeekActivity ?? '12-WEEK ACTIVITY',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.9,
+                  color: inkColor,
                 ),
               ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          profileService.displayName,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        tooltip: 'Edit Display Name',
-                        onPressed: () =>
-                            _showEditNameDialog(context, profileService),
-                      ),
-                    ],
+                  Text(
+                    'Less ',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: inkColor.withValues(alpha: 0.5),
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => _showLevelDialog(context, profileService),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.military_tech_rounded,
-                                size: 14,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Level: ${profileService.targetLevel}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Text(
-                        profileService.joinDateFormatted,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
+                  _buildHeatmapSquare(context, 0, rustAccent, inkColor),
+                  const SizedBox(width: 3),
+                  _buildHeatmapSquare(context, 1, rustAccent, inkColor),
+                  const SizedBox(width: 3),
+                  _buildHeatmapSquare(context, 2, rustAccent, inkColor),
+                  const SizedBox(width: 3),
+                  _buildHeatmapSquare(context, 3, rustAccent, inkColor),
+                  Text(
+                    ' More',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: inkColor.withValues(alpha: 0.5),
+                    ),
                   ),
                 ],
               ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 115,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: 12,
+              itemBuilder: (context, colIndex) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(7, (rowIndex) {
+                      final daysAgo = (11 - colIndex) * 7 + (6 - rowIndex);
+                      final date = now.subtract(Duration(days: daysAgo));
+                      final key = '${date.year}-${date.month}-${date.day}';
+                      final count = dailyCounts[key] ?? 0;
+                      return Tooltip(
+                        message: '$count words on ${date.month}/${date.day}',
+                        child: _buildHeatmapSquare(context, count, rustAccent, inkColor),
+                      );
+                    }),
+                  ),
+                );
+              },
             ),
-            IconButton(
-              icon: Icon(
-                Icons.settings_outlined,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              tooltip: 'Settings',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeatmapSquare(
+    BuildContext context,
+    int count,
+    Color rustAccent,
+    Color inkColor,
+  ) {
+    Color color;
+    if (count == 0) {
+      color = inkColor.withValues(alpha: 0.08);
+    } else if (count == 1) {
+      color = rustAccent.withValues(alpha: 0.35);
+    } else if (count == 2) {
+      color = rustAccent.withValues(alpha: 0.65);
+    } else {
+      color = rustAccent;
+    }
+    return Container(
+      width: 14,
+      height: 14,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(3),
+      ),
     );
   }
 
@@ -241,265 +556,6 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Save'),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildGrowthCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Consumer2<ProfileService, VocabularyService>(
-      builder: (context, profileService, vocabService, _) {
-        final words = vocabService.cachedSavedWords;
-        final wordsCount = words.length;
-        final curStreak = profileService.currentStreak;
-
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.cardColor,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: theme.dividerColor),
-            boxShadow: [
-              BoxShadow(
-                color: (isDark ? Colors.black : Colors.black).withValues(
-                  alpha: 0.05,
-                ),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-                  _buildHeatmapCalendar(context, words),
-                  const SizedBox(height: 16),
-                  Divider(height: 1, color: theme.dividerColor),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Weekly Words',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.6,
-                              ),
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$wordsCount',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Current Streak',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.6),
-                                  fontSize: 12,
-                                ),
-                              ),
-                              if (profileService.streakFreezes > 0) ...[
-                                const SizedBox(width: 4),
-                                Tooltip(
-                                  message:
-                                      '${profileService.streakFreezes} streak freeze(s) available',
-                                  child: const Text(
-                                    '❄️',
-                                    style: TextStyle(fontSize: 11),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$curStreak Days 🔥',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFD97706),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Vocab Level',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.6),
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 1,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primaryContainer,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'Lv.${vocabService.vocabLevel}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onPrimaryContainer,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${vocabService.masteredCount} Mastered',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHeatmapCalendar(BuildContext context, List<SavedWord> words) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-
-    final Map<String, int> dailyCounts = {};
-    for (final w in words) {
-      final key = '${w.createdAt.year}-${w.createdAt.month}-${w.createdAt.day}';
-      dailyCounts[key] = (dailyCounts[key] ?? 0) + 1;
-    }
-
-    final now = DateTime.now();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '12-Week Activity Heatmap',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            Row(
-              children: [
-                Text(
-                  'Less ',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                _buildHeatmapSquare(context, 0, primaryColor),
-                const SizedBox(width: 3),
-                _buildHeatmapSquare(context, 1, primaryColor),
-                const SizedBox(width: 3),
-                _buildHeatmapSquare(context, 2, primaryColor),
-                const SizedBox(width: 3),
-                _buildHeatmapSquare(context, 3, primaryColor),
-                Text(
-                  ' More',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 115,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: 12,
-            itemBuilder: (context, colIndex) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 6.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(7, (rowIndex) {
-                    final daysAgo = (11 - colIndex) * 7 + (6 - rowIndex);
-                    final date = now.subtract(Duration(days: daysAgo));
-                    final key = '${date.year}-${date.month}-${date.day}';
-                    final count = dailyCounts[key] ?? 0;
-                    return Tooltip(
-                      message: '$count words on ${date.month}/${date.day}',
-                      child: _buildHeatmapSquare(context, count, primaryColor),
-                    );
-                  }),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeatmapSquare(
-    BuildContext context,
-    int count,
-    Color primaryColor,
-  ) {
-    Color color;
-    if (count == 0) {
-      color = Theme.of(context).dividerColor.withValues(alpha: 0.15);
-    } else if (count == 1) {
-      color = primaryColor.withValues(alpha: 0.35);
-    } else if (count == 2) {
-      color = primaryColor.withValues(alpha: 0.65);
-    } else {
-      color = primaryColor;
-    }
-    return Container(
-      width: 14,
-      height: 14,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(3),
       ),
     );
   }

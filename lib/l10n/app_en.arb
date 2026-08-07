@@ -121,5 +121,45 @@
   "titleVocabFlashcards": "Vocabulary Flashcard Practice",
   "subtitleVocabFlashcards": "Review your saved vocabulary cards",
   "titleSpeakingPracticeCard": "Speaking Practice",
-  "subtitleSpeakingPracticeCard": "Speech Shadowing"
+  "subtitleSpeakingPracticeCard": "Speech Shadowing",
+
+  "titleVocabGrowth": "VOCABULARY GROWTH",
+  "labelTimeframe7D": "7D",
+  "labelTimeframe30D": "30D",
+  "labelTimeframe12W": "12W",
+  "labelTimeframeAll": "All",
+  "labelWordsSaved": "Words Saved",
+  "labelMastered": "Mastered",
+  "labelTotalXp": "XP",
+  "titleMemoryRetention": "MEMORY RETENTION (SRS)",
+  "labelStageLearning": "Learning",
+  "labelStageApprentice": "Apprentice",
+  "labelStageFamiliar": "Familiar",
+  "labelStageProficient": "Proficient",
+  "labelStageMastered": "Mastered",
+  "title12WeekActivity": "12-WEEK ACTIVITY",
+  "sectionAccountSync": "ACCOUNT & SYNC",
+  "sectionLearningPreferences": "LEARNING PREFERENCES",
+  "sectionDataStorage": "DATA & STORAGE",
+  "sectionAbout": "ABOUT",
+  "actionSyncNow": "Sync Now",
+  "labelLastSynced": "Last synced",
+  "labelJustNow": "just now",
+  "labelMinutesAgo": "{minutes}m ago",
+  "@labelMinutesAgo": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "labelOfflineDictionary": "Offline Dictionary",
+  "labelBackupExport": "Backup & Export",
+  "labelStreakReminders": "Streak Reminders",
+  "labelDailyReminderSubtitle": "A daily nudge if you haven't practiced yet",
+  "labelTargetLevel": "Target Level (CEFR)",
+  "labelWordsPerDay": "{count} words/day",
+  "@labelWordsPerDay": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

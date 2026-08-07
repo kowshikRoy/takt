@@ -7,151 +7,404 @@ import '../services/dictionary_service.dart';
 import '../services/profile_service.dart';
 import '../services/sound_service.dart';
 import '../services/notification_service.dart';
+import '../services/auth_service.dart';
+import '../services/sync_service.dart';
+import '../widgets/capped_width.dart';
+import '../widgets/auth_sync_dialog.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isSyncing = false;
+
+  Future<void> _handleSync() async {
+    setState(() => _isSyncing = true);
+    await SyncService().syncNow();
+    if (mounted) {
+      setState(() => _isSyncing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Synced with cloud successfully! ☁️'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(l10n?.titleSettings ?? 'Settings'),
-        backgroundColor: colorScheme.surface,
+        title: Text(
+          l10n?.titleSettings.toUpperCase() ?? 'SETTINGS',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
+            letterSpacing: 1.0,
+            color: inkColor,
+          ),
+        ),
+        backgroundColor: cardBg,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: inkColor),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: ListView(
-        children: [
-          const SizedBox(height: 16),
-          _buildSectionHeader(context, l10n?.sectionAppearance ?? 'Appearance'),
+      body: SafeArea(
+        child: CappedWidth(
+          maxWidth: 700,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            children: [
+              // 1. ACCOUNT & CLOUD SYNC CARD
+              _buildSectionTitle(context, l10n?.sectionAccountSync ?? 'ACCOUNT & SYNC', rustAccent),
+              _buildAccountSyncCard(context, inkColor, cardBg, rustAccent),
+              const SizedBox(height: 20),
 
-          // Theme Mode Selector
+              // 2. APPEARANCE CARD
+              _buildSectionTitle(context, l10n?.sectionAppearance.toUpperCase() ?? 'APPEARANCE', rustAccent),
+              _buildAppearanceCard(context, themeProvider, inkColor, cardBg, rustAccent),
+              const SizedBox(height: 20),
+
+              // 3. LEARNING PREFERENCES CARD
+              _buildSectionTitle(context, l10n?.sectionLearningPreferences ?? 'LEARNING PREFERENCES', rustAccent),
+              _buildLearningPreferencesCard(context, l10n, inkColor, cardBg, rustAccent),
+              const SizedBox(height: 20),
+
+              // 4. DATA & STORAGE CARD
+              _buildSectionTitle(context, l10n?.sectionDataStorage ?? 'DATA & STORAGE', rustAccent),
+              _buildDataStorageCard(context, inkColor, cardBg, rustAccent),
+              const SizedBox(height: 20),
+
+              // 5. ABOUT CARD
+              _buildSectionTitle(context, l10n?.sectionAbout ?? 'ABOUT', rustAccent),
+              _buildAboutCard(context, inkColor, cardBg, rustAccent),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title, Color rustAccent) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.0,
+          color: rustAccent,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountSyncCard(
+    BuildContext context,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    final auth = AuthService();
+    final l10n = AppLocalizations.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      auth.username ?? 'Learner',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: inkColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      auth.email ?? 'Offline guest session',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: inkColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: auth.isAuthenticated
+                      ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
+                      : inkColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: auth.isAuthenticated
+                        ? const Color(0xFF2C5E3B).withValues(alpha: 0.4)
+                        : inkColor.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      auth.isAuthenticated ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                      size: 14,
+                      color: auth.isAuthenticated ? const Color(0xFF2C5E3B) : inkColor.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      auth.isAuthenticated ? 'Connected' : 'Offline',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: auth.isAuthenticated ? const Color(0xFF2C5E3B) : inkColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(height: 1, color: inkColor.withValues(alpha: 0.12)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${l10n?.labelLastSynced ?? 'Last synced'}: ${l10n?.labelJustNow ?? 'just now'}',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: inkColor.withValues(alpha: 0.6),
+                ),
+              ),
+              Row(
+                children: [
+                  if (!auth.isAuthenticated)
+                    TextButton(
+                      onPressed: () => AuthSyncDialog.show(context),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      child: const Text('Sign In'),
+                    ),
+                  FilledButton.icon(
+                    onPressed: _isSyncing ? null : _handleSync,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: rustAccent,
+                      foregroundColor: Colors.white,
+                      visualDensity: VisualDensity.compact,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    icon: _isSyncing
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.sync_rounded, size: 16),
+                    label: Text(l10n?.actionSyncNow ?? 'Sync Now'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppearanceCard(
+    BuildContext context,
+    ThemeProvider themeProvider,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    final l10n = AppLocalizations.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Theme Mode
           ListTile(
-            title: Text(l10n?.labelAppTheme ?? 'App Theme'),
+            title: Text(l10n?.labelAppTheme ?? 'App Theme', style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(_getThemeModeName(themeProvider.themeMode)),
-            leading: Icon(
-              Icons.brightness_6_rounded,
-              color: colorScheme.onSurfaceVariant,
-            ),
+            leading: Icon(Icons.brightness_6_rounded, color: rustAccent),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _showThemeDialog(context, themeProvider),
           ),
+          Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
 
-          // Color Theme Selector
+          // Color Palette
           ListTile(
-            title: Text(l10n?.labelColorPalette ?? 'Color Palette'),
-            subtitle: Text(_getColorThemeName(themeProvider.colorTheme)),
-            leading: Icon(
-              Icons.color_lens_rounded,
-              color: colorScheme.onSurfaceVariant,
+            title: Text(l10n?.labelColorPalette ?? 'Color Palette', style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  margin: const EdgeInsets.only(right: 6),
+                  decoration: BoxDecoration(
+                    color: _getThemeColorPreview(themeProvider.colorTheme),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Text(_getColorThemeName(themeProvider.colorTheme)),
+              ],
             ),
+            leading: Icon(Icons.color_lens_rounded, color: rustAccent),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _showColorThemeDialog(context, themeProvider),
           ),
+          Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
 
-          const Divider(indent: 16, endIndent: 16),
-
-          // Font Family Selector
+          // Typography Font
           ListTile(
-            title: Text(l10n?.labelTypography ?? 'Typography'),
+            title: Text(l10n?.labelTypography ?? 'Typography', style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(themeProvider.fontFamily),
-            leading: Icon(
-              Icons.font_download_rounded,
-              color: colorScheme.onSurfaceVariant,
-            ),
+            leading: Icon(Icons.font_download_rounded, color: rustAccent),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _showFontDialog(context, themeProvider),
           ),
+        ],
+      ),
+    );
+  }
 
-          const Divider(indent: 16, endIndent: 16),
-
-          _buildSectionHeader(context, l10n?.sectionPracticeLearning ?? 'Practice & Learning'),
+  Widget _buildLearningPreferencesCard(
+    BuildContext context,
+    AppLocalizations? l10n,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          // CEFR Target Level
           Consumer<ProfileService>(
             builder: (context, profileService, _) {
-              final levelNames = {
-                'A1': 'A1 · Beginner (Grundstufe)',
-                'A2': 'A2 · Elementary (Grundstufe)',
-                'B1': 'B1 · Intermediate (Mittelstufe)',
-                'B2': 'B2 · Upper Intermediate (Mittelstufe)',
-                'C1': 'C1 · Advanced (Oberstufe)',
-              };
               return ListTile(
-                title: const Text('Proficiency Level'),
-                subtitle: Text(
-                  levelNames[profileService.targetLevel] ?? profileService.targetLevel,
-                ),
-                leading: Icon(
-                  Icons.military_tech_rounded,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                title: Text(l10n?.labelTargetLevel ?? 'Target Level (CEFR)', style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text('Level ${profileService.targetLevel}'),
+                leading: Icon(Icons.military_tech_rounded, color: rustAccent),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _showProficiencyLevelDialog(context, profileService),
               );
             },
           ),
+          Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
+
+          // Daily Word Goal
           Consumer<ProfileService>(
             builder: (context, profileService, _) {
               return ListTile(
-                title: Text(l10n?.labelDailyGoal ?? 'Daily Word Goal'),
+                title: Text(l10n?.labelDailyGoal ?? 'Daily Word Goal', style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(
-                  '${profileService.dailyWordGoalCount} new words per day',
+                  l10n?.labelWordsPerDay(profileService.dailyWordGoalCount) ??
+                      '${profileService.dailyWordGoalCount} words/day',
                 ),
-                leading: Icon(
-                  Icons.style_rounded,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                leading: Icon(Icons.style_rounded, color: rustAccent),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _showDailyWordGoalDialog(context, profileService),
               );
             },
           ),
+          Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
+
+          // Sound Effects & Pack
           Consumer<SoundService>(
             builder: (context, soundService, _) {
               return Column(
                 children: [
                   SwitchListTile(
-                    title: Text(l10n?.labelSoundEffects ?? 'Sound Effects'),
-                    subtitle: const Text('Correct/incorrect and level-up cues'),
-                    secondary: Icon(
-                      Icons.volume_up_rounded,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    title: Text(l10n?.labelSoundEffects ?? 'Sound Effects', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Audio cues for correct/incorrect reviews'),
+                    secondary: Icon(Icons.volume_up_rounded, color: rustAccent),
                     value: soundService.enabled,
                     onChanged: (val) => soundService.setEnabled(val),
                   ),
-                  if (soundService.enabled)
+                  if (soundService.enabled) ...[
+                    Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
                     ListTile(
-                      contentPadding: const EdgeInsets.only(left: 32, right: 16),
-                      title: const Text('Sound Style'),
+                      contentPadding: const EdgeInsets.only(left: 56, right: 16),
+                      title: const Text('Sound Style', style: TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text(
-                        SoundService.availablePacks[soundService.soundPack] ??
-                            'Marimba (Duolingo Style)',
-                      ),
-                      leading: Icon(
-                        Icons.music_note_rounded,
-                        color: colorScheme.onSurfaceVariant,
+                        SoundService.availablePacks[soundService.soundPack] ?? 'Marimba (Duolingo Style)',
                       ),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => _showSoundPackDialog(context, soundService),
                     ),
+                  ],
                 ],
               );
             },
           ),
+          Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
+
+          // Streak Reminders Notification
           Consumer<NotificationService>(
             builder: (context, notificationService, _) {
               return SwitchListTile(
-                title: const Text('Streak Reminders'),
-                subtitle: const Text(
-                  'A daily nudge (~8pm) if you haven\'t practiced yet',
-                ),
-                secondary: Icon(
-                  Icons.notifications_active_outlined,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                title: Text(l10n?.labelStreakReminders ?? 'Streak Reminders', style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(l10n?.labelDailyReminderSubtitle ?? 'A daily nudge if you haven\'t practiced yet'),
+                secondary: Icon(Icons.notifications_active_outlined, color: rustAccent),
                 value: notificationService.enabled,
                 onChanged: (val) async {
                   final ok = await notificationService.setEnabled(val);
@@ -168,37 +421,53 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-
-          const Divider(indent: 16, endIndent: 16),
-
-          _buildSectionHeader(context, 'Dictionary & Offline Data'),
-          const _DictionaryDatabaseTile(),
-
-          const SizedBox(height: 32),
-          _buildSectionHeader(context, 'About'),
-
-          ListTile(
-            title: const Text('Version'),
-            subtitle: const Text('1.0.0'),
-            leading: Icon(
-              Icons.info_outline_rounded,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        title.toUpperCase(),
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          letterSpacing: 1.0,
+  Widget _buildDataStorageCard(
+    BuildContext context,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
         ),
+      ),
+      child: const _DictionaryDatabaseTile(),
+    );
+  }
+
+  Widget _buildAboutCard(
+    BuildContext context,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            title: const Text('Version', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('1.0.0 · Bauhaus Modernist Edition'),
+            leading: Icon(Icons.info_outline_rounded, color: rustAccent),
+          ),
+        ],
       ),
     );
   }
@@ -232,6 +501,27 @@ class SettingsScreen extends StatelessWidget {
         return 'Amethyst Violet (Gender Neutral)';
       case AppColorTheme.slateGrey:
         return 'Slate Grey (Minimalist Monochrome)';
+    }
+  }
+
+  Color _getThemeColorPreview(AppColorTheme theme) {
+    switch (theme) {
+      case AppColorTheme.classic:
+        return const Color(0xFFEA2A33);
+      case AppColorTheme.retroTeal:
+        return const Color(0xFF2BBAA5);
+      case AppColorTheme.retroBlue:
+        return const Color(0xFF005F73);
+      case AppColorTheme.retroGold:
+        return const Color(0xFFEE9B00);
+      case AppColorTheme.retroRust:
+        return const Color(0xFFBB3E03);
+      case AppColorTheme.modernist:
+        return const Color(0xFFEC3013);
+      case AppColorTheme.retroPurple:
+        return const Color(0xFF7C3AED);
+      case AppColorTheme.slateGrey:
+        return const Color(0xFF64748B);
     }
   }
 
@@ -393,27 +683,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Color _getThemeColorPreview(AppColorTheme theme) {
-    switch (theme) {
-      case AppColorTheme.classic:
-        return const Color(0xFFEA2A33);
-      case AppColorTheme.retroTeal:
-        return const Color(0xFF2BBAA5);
-      case AppColorTheme.retroBlue:
-        return const Color(0xFF005F73);
-      case AppColorTheme.retroGold:
-        return const Color(0xFFEE9B00);
-      case AppColorTheme.retroRust:
-        return const Color(0xFFBB3E03);
-      case AppColorTheme.modernist:
-        return const Color(0xFFEC3013);
-      case AppColorTheme.retroPurple:
-        return const Color(0xFF7C3AED);
-      case AppColorTheme.slateGrey:
-        return const Color(0xFF64748B);
-    }
-  }
-
   void _showFontDialog(BuildContext context, ThemeProvider provider) {
     final fonts = [
       'Spline Sans',
@@ -534,8 +803,7 @@ class _DictionaryDatabaseTile extends StatefulWidget {
   const _DictionaryDatabaseTile();
 
   @override
-  State<_DictionaryDatabaseTile> createState() =>
-      _DictionaryDatabaseTileState();
+  State<_DictionaryDatabaseTile> createState() => _DictionaryDatabaseTileState();
 }
 
 class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
@@ -612,7 +880,10 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
 
     return ValueListenableBuilder<bool>(
       valueListenable: _dictService.isDownloadingNotifier,
@@ -626,37 +897,24 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                 return ValueListenableBuilder<String?>(
                   valueListenable: _dictService.latestVersionNotifier,
                   builder: (context, latestTag, _) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
+                    return Padding(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: hasUpdate
-                              ? colorScheme.primary.withValues(alpha: 0.3)
-                              : colorScheme.outlineVariant,
-                        ),
-                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
                               Container(
-                                width: 44,
-                                height: 44,
+                                width: 40,
+                                height: 40,
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primaryContainer,
+                                  color: rustAccent.withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   Icons.storage_rounded,
-                                  color: colorScheme.primary,
-                                  size: 22,
+                                  color: rustAccent,
+                                  size: 20,
                                 ),
                               ),
                               const SizedBox(width: 14),
@@ -668,29 +926,27 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                       children: [
                                         Flexible(
                                           child: Text(
-                                            'Offline Dictionary',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
+                                            'Offline German Dictionary',
+                                            style: TextStyle(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: inkColor,
+                                            ),
                                           ),
                                         ),
                                         if (hasUpdate) ...[
                                           const SizedBox(width: 8),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 3,
+                                              horizontal: 6,
+                                              vertical: 2,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: colorScheme.primary,
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
+                                              color: rustAccent,
+                                              borderRadius: BorderRadius.circular(3),
                                             ),
                                             child: const Text(
-                                              'UPDATE AVAILABLE',
+                                              'UPDATE',
                                               style: TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 9,
@@ -702,19 +958,17 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                         ],
                                       ],
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 2),
                                     Text(
                                       isChecking
                                           ? 'Checking for update...'
                                           : hasUpdate && latestTag != null
                                           ? 'Installed: $_version • Latest: $latestTag'
-                                          : 'Installed Version: $_version',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
+                                          : 'Installed: $_version • Size: $_size',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: inkColor.withValues(alpha: 0.6),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -725,44 +979,34 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.folder_zip_rounded,
-                                    size: 16,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Size: $_size',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(fontWeight: FontWeight.w600),
-                                  ),
-                                ],
+                              Text(
+                                'Status: Downloaded & Ready',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: inkColor.withValues(alpha: 0.6),
+                                ),
                               ),
                               if (isDownloading || isChecking)
                                 const SizedBox(
-                                  width: 20,
-                                  height: 20,
+                                  width: 18,
+                                  height: 18,
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
+                                    strokeWidth: 2.0,
                                   ),
                                 )
                               else if (hasUpdate)
                                 FilledButton.icon(
                                   onPressed: _handleUpdateOrRedownload,
                                   style: FilledButton.styleFrom(
+                                    backgroundColor: rustAccent,
+                                    foregroundColor: Colors.white,
                                     visualDensity: VisualDensity.compact,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                   ),
-                                  icon: const Icon(
-                                    Icons.system_update_rounded,
-                                    size: 16,
-                                  ),
+                                  icon: const Icon(Icons.system_update_rounded, size: 14),
                                   label: const Text('Update Now'),
                                 )
                               else
@@ -774,10 +1018,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                   ),
-                                  icon: const Icon(
-                                    Icons.download_rounded,
-                                    size: 16,
-                                  ),
+                                  icon: const Icon(Icons.download_rounded, size: 14),
                                   label: const Text('Re-download'),
                                 ),
                             ],
@@ -785,31 +1026,29 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                           if (isDownloading) ...[
                             const SizedBox(height: 12),
                             ValueListenableBuilder<double>(
-                              valueListenable:
-                                  _dictService.downloadProgressNotifier,
+                              valueListenable: _dictService.downloadProgressNotifier,
                               builder: (context, progress, _) {
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius: BorderRadius.circular(3),
                                       child: LinearProgressIndicator(
                                         value: progress > 0 ? progress : null,
-                                        minHeight: 6,
+                                        minHeight: 5,
+                                        color: rustAccent,
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 4),
                                     Text(
                                       progress > 0
-                                          ? 'Downloading database update... ${(progress * 100).toStringAsFixed(0)}%'
+                                          ? 'Downloading update... ${(progress * 100).toStringAsFixed(0)}%'
                                           : 'Connecting to GitHub...',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: colorScheme.primary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: rustAccent,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ],
                                 );

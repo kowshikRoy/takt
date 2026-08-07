@@ -282,4 +282,95 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get subtitleSpeakingPracticeCard => 'Sprech-Shadowing';
+
+  @override
+  String get titleVocabGrowth => 'WORTSCHATZ-WACHSTUM';
+
+  @override
+  String get labelTimeframe7D => '7T';
+
+  @override
+  String get labelTimeframe30D => '30T';
+
+  @override
+  String get labelTimeframe12W => '12W';
+
+  @override
+  String get labelTimeframeAll => 'Alle';
+
+  @override
+  String get labelWordsSaved => 'Wörter gespeichert';
+
+  @override
+  String get labelMastered => 'Gemeistert';
+
+  @override
+  String get labelTotalXp => 'EP';
+
+  @override
+  String get titleMemoryRetention => 'SPEICHER-RETENTION (SRS)';
+
+  @override
+  String get labelStageLearning => 'Lernend';
+
+  @override
+  String get labelStageApprentice => 'Lehrling';
+
+  @override
+  String get labelStageFamiliar => 'Vertraut';
+
+  @override
+  String get labelStageProficient => 'Profizient';
+
+  @override
+  String get labelStageMastered => 'Gemeistert';
+
+  @override
+  String get title12WeekActivity => '12-WOCHEN-AKTIVITÄT';
+
+  @override
+  String get sectionAccountSync => 'KONTO & SYNCHRONISIERUNG';
+
+  @override
+  String get sectionLearningPreferences => 'LERN-EINSTELLUNGEN';
+
+  @override
+  String get sectionDataStorage => 'DATEN & SPEICHER';
+
+  @override
+  String get sectionAbout => 'ÜBER TAKT';
+
+  @override
+  String get actionSyncNow => 'Jetzt synchronisieren';
+
+  @override
+  String get labelLastSynced => 'Zuletzt synchronisiert';
+
+  @override
+  String get labelJustNow => 'gerade eben';
+
+  @override
+  String labelMinutesAgo(int minutes) {
+    return 'vor $minutes Min.';
+  }
+
+  @override
+  String get labelOfflineDictionary => 'Offline-Wörterbuch';
+
+  @override
+  String get labelBackupExport => 'Backup & Export';
+
+  @override
+  String get labelStreakReminders => 'Streak-Erinnerungen';
+
+  @override
+  String get labelDailyReminderSubtitle => 'Tägliche Erinnerung zum Üben';
+
+  @override
+  String get labelTargetLevel => 'Zielniveau (GER)';
+
+  @override
+  String labelWordsPerDay(int count) {
+    return '$count Wörter/Tag';
+  }
 }

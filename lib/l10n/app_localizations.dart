@@ -619,6 +619,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Speech Shadowing'**
   String get subtitleSpeakingPracticeCard;
+
+  /// No description provided for @titleVocabGrowth.
+  ///
+  /// In en, this message translates to:
+  /// **'VOCABULARY GROWTH'**
+  String get titleVocabGrowth;
+
+  /// No description provided for @labelTimeframe7D.
+  ///
+  /// In en, this message translates to:
+  /// **'7D'**
+  String get labelTimeframe7D;
+
+  /// No description provided for @labelTimeframe30D.
+  ///
+  /// In en, this message translates to:
+  /// **'30D'**
+  String get labelTimeframe30D;
+
+  /// No description provided for @labelTimeframe12W.
+  ///
+  /// In en, this message translates to:
+  /// **'12W'**
+  String get labelTimeframe12W;
+
+  /// No description provided for @labelTimeframeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get labelTimeframeAll;
+
+  /// No description provided for @labelWordsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Words Saved'**
+  String get labelWordsSaved;
+
+  /// No description provided for @labelMastered.
+  ///
+  /// In en, this message translates to:
+  /// **'Mastered'**
+  String get labelMastered;
+
+  /// No description provided for @labelTotalXp.
+  ///
+  /// In en, this message translates to:
+  /// **'XP'**
+  String get labelTotalXp;
+
+  /// No description provided for @titleMemoryRetention.
+  ///
+  /// In en, this message translates to:
+  /// **'MEMORY RETENTION (SRS)'**
+  String get titleMemoryRetention;
+
+  /// No description provided for @labelStageLearning.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning'**
+  String get labelStageLearning;
+
+  /// No description provided for @labelStageApprentice.
+  ///
+  /// In en, this message translates to:
+  /// **'Apprentice'**
+  String get labelStageApprentice;
+
+  /// No description provided for @labelStageFamiliar.
+  ///
+  /// In en, this message translates to:
+  /// **'Familiar'**
+  String get labelStageFamiliar;
+
+  /// No description provided for @labelStageProficient.
+  ///
+  /// In en, this message translates to:
+  /// **'Proficient'**
+  String get labelStageProficient;
+
+  /// No description provided for @labelStageMastered.
+  ///
+  /// In en, this message translates to:
+  /// **'Mastered'**
+  String get labelStageMastered;
+
+  /// No description provided for @title12WeekActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'12-WEEK ACTIVITY'**
+  String get title12WeekActivity;
+
+  /// No description provided for @sectionAccountSync.
+  ///
+  /// In en, this message translates to:
+  /// **'ACCOUNT & SYNC'**
+  String get sectionAccountSync;
+
+  /// No description provided for @sectionLearningPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'LEARNING PREFERENCES'**
+  String get sectionLearningPreferences;
+
+  /// No description provided for @sectionDataStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'DATA & STORAGE'**
+  String get sectionDataStorage;
+
+  /// No description provided for @sectionAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'ABOUT'**
+  String get sectionAbout;
+
+  /// No description provided for @actionSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync Now'**
+  String get actionSyncNow;
+
+  /// No description provided for @labelLastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced'**
+  String get labelLastSynced;
+
+  /// No description provided for @labelJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get labelJustNow;
+
+  /// No description provided for @labelMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m ago'**
+  String labelMinutesAgo(int minutes);
+
+  /// No description provided for @labelOfflineDictionary.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline Dictionary'**
+  String get labelOfflineDictionary;
+
+  /// No description provided for @labelBackupExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup & Export'**
+  String get labelBackupExport;
+
+  /// No description provided for @labelStreakReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak Reminders'**
+  String get labelStreakReminders;
+
+  /// No description provided for @labelDailyReminderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A daily nudge if you haven\'t practiced yet'**
+  String get labelDailyReminderSubtitle;
+
+  /// No description provided for @labelTargetLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target Level (CEFR)'**
+  String get labelTargetLevel;
+
+  /// No description provided for @labelWordsPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} words/day'**
+  String labelWordsPerDay(int count);
 }
 
 class _AppLocalizationsDelegate
