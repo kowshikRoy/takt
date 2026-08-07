@@ -7,6 +7,7 @@ import '../../models/processing_status.dart';
 import '../../services/media_library_service.dart';
 import '../video_screen.dart';
 import '../transcribed_media_grid_screen.dart';
+import '../../widgets/capped_width.dart';
 
 class UrlImportScreen extends StatefulWidget {
   const UrlImportScreen({super.key});
@@ -153,6 +154,8 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
+          child: CappedWidth(
+          maxWidth: 600,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -450,6 +453,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
             ),
           ],
         ),
+          ),
       ),
     ),
   );

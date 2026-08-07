@@ -25,6 +25,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:takt/l10n/app_localizations.dart';
 import 'books/book_detail_screen.dart';
 import 'books/textbook_unit_screen.dart';
+import '../widgets/capped_width.dart';
+import '../theme/breakpoints.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback? onOpenLearnTab;
@@ -62,6 +64,11 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 20),
 
+              CappedWidth(
+                maxWidth: 1000,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               // Daily Session Section
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -184,6 +191,9 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1417,11 +1427,40 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
 
+    // At Medium+, lay book rows out side-by-side instead of one very wide
+    // banner row each. Each row's height is content-driven (truncated
+    // title/subtitle text), so a width-aware Wrap fits better than a
+    // fixed-aspect-ratio GridView here.
+    final windowClass = WindowClass.of(context);
+    final columns = windowClass.isAtLeastLarge
+        ? 3
+        : windowClass.isAtLeastExpanded
+            ? 2
+            : 1;
+
     return Column(
       children: [
         if (_resumeChapter != null && _resumeBookTitle != null)
           _buildResumeBanner(context),
-        ...books.map((book) => _buildBookRow(context, book, inkColor)),
+        if (columns == 1)
+          ...books.map((book) => _buildBookRow(context, book, inkColor))
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 16.0;
+              final itemWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+              return Wrap(
+                spacing: gap,
+                runSpacing: 4,
+                children: books
+                    .map((book) => SizedBox(
+                          width: itemWidth,
+                          child: _buildBookRow(context, book, inkColor),
+                        ))
+                    .toList(),
+              );
+            },
+          ),
       ],
     );
   }

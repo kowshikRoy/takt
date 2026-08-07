@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/book_guide.dart';
 import '../../services/book_guide_service.dart';
 import '../../services/vocabulary_service.dart';
+import '../../widgets/capped_width.dart';
 
 class ChapterStudyScreen extends StatefulWidget {
   final ChapterSummary chapterSummary;
@@ -79,13 +80,16 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
           ? const Center(child: CircularProgressIndicator())
           : _chapter == null
               ? const Center(child: Text('Could not load chapter data.'))
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildVocabularyTab(context),
-                    _buildDialoguesTab(context),
-                    _buildRedemittelTab(context),
-                  ],
+              : CappedWidth(
+                  maxWidth: 800,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildVocabularyTab(context),
+                      _buildDialoguesTab(context),
+                      _buildRedemittelTab(context),
+                    ],
+                  ),
                 ),
     );
   }
