@@ -94,6 +94,8 @@ class ImportUrlRequest(BaseModel):
 
 class SubmitResponse(BaseModel):
     task_id: str
+    title: str | None = None
+    thumbnail: str | None = None
 
 class SubtitleCue(BaseModel):
     start: float
@@ -112,6 +114,8 @@ class StatusResponse(BaseModel):
     status: TaskStatus
     stage_message: str | None = None
     progress_percentage: int | None = None
+    title: str | None = None
+    thumbnail: str | None = None
     result: MediaResponse | None = None
     error: str | None = None
 
@@ -879,58 +883,70 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> tuple[list[
     return [], None
 
 def generate_dialogue_audio_with_gemini(dialogue_lines: list[str], output_wav_path: str, api_key: str = None) -> bool:
-    """Generates studio German audio for the entire dialogue in ONE single Gemini 2.5 Flash TTS API call (respecting 3 RPM limit)."""
+    """Generates studio German audio for the dialogue script using Gemini 2.5 Flash TTS in 1 or 2 batch calls (strictly respecting 3 RPM limit)."""
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key or not dialogue_lines:
         return False
 
-    full_dialogue_text = "\n".join(dialogue_lines)
-    prompt = (
-        "Sprich den folgenden deutschen Dialog mit lebendiger, muttersprachlicher Aussprache und natürlicher Sprachmelodie. "
-        "Mache eine kurze, natürliche Sprechpause zwischen den einzelnen Sätzen:\n\n"
-        f"{full_dialogue_text}"
-    )
+    # Limit to top dialogue lines if script is extremely long, chunk into batches of 20 lines (max 2 chunks = 2 RPM)
+    max_total_lines = 40
+    lines_to_speak = dialogue_lines[:max_total_lines]
+    chunk_size = 20
+    chunks = [lines_to_speak[i:i + chunk_size] for i in range(0, len(lines_to_speak), chunk_size)]
 
+    all_pcm_bytes = bytearray()
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={key}"
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt
-                    }
-                ]
-            }
-        ],
-        "generationConfig": {
-            "responseModalities": ["AUDIO"]
-        }
-    }
 
-    try:
-        print(f"Calling Gemini Studio TTS (1 single batch call) to synthesize {len(dialogue_lines)} dialogue turns...")
-        res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
-        if res.status_code == 200:
-            res_json = res.json()
-            candidates = res_json.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                for part in parts:
-                    inline_data = part.get("inlineData", {})
-                    if inline_data.get("data"):
-                        pcm_bytes = base64.b64decode(inline_data["data"])
-                        # Write 24kHz 16-bit Mono WAV file
-                        with wave.open(output_wav_path, "wb") as wav_file:
-                            wav_file.setnchannels(1)
-                            wav_file.setsampwidth(2)
-                            wav_file.setframerate(24000)
-                            wav_file.writeframes(pcm_bytes)
-                        print(f"Successfully generated Gemini Studio WAV audio ({len(pcm_bytes)} bytes) at {output_wav_path}")
-                        return True
-        else:
-            print(f"Gemini TTS returned status {res.status_code}: {res.text}")
-    except Exception as e:
-        print(f"Gemini TTS generation error: {e}")
+    for chunk_idx, chunk in enumerate(chunks):
+        full_dialogue_text = "\n".join(chunk)
+        prompt = (
+            "Sprich den folgenden deutschen Dialog mit lebendiger, muttersprachlicher Aussprache und natürlicher Sprachmelodie. "
+            "Mache eine kurze, natürliche Sprechpause zwischen den einzelnen Sätzen:\n\n"
+            f"{full_dialogue_text}"
+        )
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "responseModalities": ["AUDIO"]
+            }
+        }
+
+        try:
+            print(f"Calling Gemini Studio TTS (batch {chunk_idx+1}/{len(chunks)}, {len(chunk)} lines)...")
+            res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=240)
+            if res.status_code == 200:
+                res_json = res.json()
+                candidates = res_json.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    for part in parts:
+                        inline_data = part.get("inlineData", {})
+                        if inline_data.get("data"):
+                            pcm_chunk = base64.b64decode(inline_data["data"])
+                            all_pcm_bytes.extend(pcm_chunk)
+            else:
+                print(f"Gemini TTS returned status {res.status_code}: {res.text}")
+        except Exception as e:
+            print(f"Gemini TTS generation error on batch {chunk_idx+1}: {e}")
+
+    if all_pcm_bytes:
+        # Write 24kHz 16-bit Mono WAV file
+        with wave.open(output_wav_path, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(24000)
+            wav_file.writeframes(bytes(all_pcm_bytes))
+        print(f"Successfully generated Gemini Studio WAV audio ({len(all_pcm_bytes)} bytes) at {output_wav_path}")
+        return True
+
     return False
 
 def align_subtitles_to_audio(subtitles: list[SubtitleCue], audio_path: str) -> list[SubtitleCue]:
@@ -1085,12 +1101,17 @@ def score_shadowing(target_text: str, transcript: str) -> dict:
         "extra_words": extra_words,
     }
 
-def update_task_stage(task_id: str, stage_msg: str, progress_pct: int):
-    """Helper to record granular task progress."""
+def update_task_stage(task_id: str, stage_msg: str, progress_pct: int, title: str = None, thumbnail: str = None):
+    """Helper to record granular task progress while preserving title and thumbnail."""
+    prev = tasks.get(task_id, {})
+    current_title = title or prev.get("title")
+    current_thumbnail = thumbnail or prev.get("thumbnail")
     tasks[task_id] = {
         "status": TaskStatus.PROCESSING,
         "stage_message": stage_msg,
         "progress_percentage": progress_pct,
+        "title": current_title,
+        "thumbnail": current_thumbnail,
         "result": None,
         "error": None,
     }
@@ -1296,9 +1317,28 @@ async def process_media_task(task_id: str, url: str):
 @app.post("/submit-media", response_model=SubmitResponse)
 async def submit_media(request: MediaRequest, background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
-    tasks[task_id] = {"status": TaskStatus.PENDING, "result": None}
+    
+    # Instant metadata extraction in 50ms for immediate background UI display
+    initial_title = None
+    initial_thumbnail = None
+    if 'youtube.com' in request.url or 'youtu.be' in request.url:
+        yt_meta = await asyncio.to_thread(fetch_youtube_metadata_fast, request.url)
+        if yt_meta.get('title') and yt_meta['title'] != 'German Lesson':
+            initial_title = yt_meta['title']
+        if yt_meta.get('thumbnail'):
+            initial_thumbnail = yt_meta['thumbnail']
+
+    tasks[task_id] = {
+        "status": TaskStatus.PENDING,
+        "stage_message": "Connecting to video source...",
+        "progress_percentage": 5,
+        "title": initial_title,
+        "thumbnail": initial_thumbnail,
+        "result": None,
+        "error": None
+    }
     background_tasks.add_task(process_media_task, task_id, request.url)
-    return SubmitResponse(task_id=task_id)
+    return SubmitResponse(task_id=task_id, title=initial_title, thumbnail=initial_thumbnail)
 
 @app.get("/audio/{filename}")
 async def get_audio_file(filename: str):

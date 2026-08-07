@@ -112,6 +112,8 @@ class MediaLibraryService extends ChangeNotifier {
 
       if (submitResponse != null && submitResponse.containsKey('task_id')) {
         final realTaskId = submitResponse['task_id'] as String;
+        final initialTitle = submitResponse['title'] as String?;
+        final initialThumbnail = submitResponse['thumbnail'] as String?;
         if (index != -1) {
           _processedVideos[index] = ProcessedVideo(
             id: realTaskId,
@@ -121,6 +123,8 @@ class MediaLibraryService extends ChangeNotifier {
             stageMessage: 'Checking for subtitles & audio stream...',
             progressPercentage: 15,
             subtitles: [],
+            title: initialTitle,
+            thumbnail: initialThumbnail,
           );
           notifyListeners();
           await _saveProcessedVideos();
@@ -280,7 +284,16 @@ class MediaLibraryService extends ChangeNotifier {
       if (statusStr == 'processing' || statusStr == 'downloading' || statusStr == 'transcribing' || statusStr == 'pending') {
         if (index != -1) {
           final current = _processedVideos[index];
-          if (current.stageMessage != stageMsg || current.progressPercentage != progressPct) {
+          final incomingTitle = statusResponse['title'] as String?;
+          final incomingThumbnail = statusResponse['thumbnail'] as String?;
+
+          final updatedTitle = incomingTitle ?? current.title;
+          final updatedThumbnail = incomingThumbnail ?? current.thumbnail;
+
+          if (current.stageMessage != stageMsg || 
+              current.progressPercentage != progressPct ||
+              current.title != updatedTitle ||
+              current.thumbnail != updatedThumbnail) {
             _processedVideos[index] = ProcessedVideo(
               id: taskId,
               taskId: taskId,
@@ -291,8 +304,8 @@ class MediaLibraryService extends ChangeNotifier {
               subtitles: current.subtitles,
               videoUrl: current.videoUrl,
               mediaType: current.mediaType,
-              thumbnail: current.thumbnail,
-              title: current.title,
+              thumbnail: updatedThumbnail,
+              title: updatedTitle,
             );
             notifyListeners();
             await _saveProcessedVideos();

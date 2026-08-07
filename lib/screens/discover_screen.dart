@@ -379,26 +379,60 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      // Status icon container
-                                      Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          color: isFailed
-                                              ? colorScheme.error.withValues(alpha: 0.12)
-                                              : isCompleted
-                                                  ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
-                                                  : colorScheme.primary.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Icon(
-                                          video.statusIcon,
-                                          size: 18,
-                                          color: isFailed
-                                              ? colorScheme.error
-                                              : isCompleted
-                                                  ? const Color(0xFF2C5E3B)
-                                                  : colorScheme.primary,
+                                      // Thumbnail with live processing overlay
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: SizedBox(
+                                          width: 52,
+                                          height: 38,
+                                          child: Stack(
+                                            fit: StackFit.expand,
+                                            children: [
+                                              if (video.thumbnail != null && video.thumbnail!.isNotEmpty)
+                                                Image.network(
+                                                  video.thumbnail!,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) => Container(
+                                                    color: isFailed
+                                                        ? colorScheme.error.withValues(alpha: 0.12)
+                                                        : colorScheme.primary.withValues(alpha: 0.12),
+                                                  ),
+                                                )
+                                              else
+                                                Container(
+                                                  color: isFailed
+                                                      ? colorScheme.error.withValues(alpha: 0.12)
+                                                      : isCompleted
+                                                          ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
+                                                          : colorScheme.primary.withValues(alpha: 0.12),
+                                                ),
+                                              if (isProcessing)
+                                                Container(
+                                                  color: Colors.black45,
+                                                  child: const Center(
+                                                    child: SizedBox(
+                                                      width: 14,
+                                                      height: 14,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                )
+                                              else if (isCompleted)
+                                                Container(
+                                                  color: Colors.black26,
+                                                  child: const Center(
+                                                    child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                                                  ),
+                                                )
+                                              else
+                                                Center(
+                                                  child: Icon(video.statusIcon, size: 18, color: colorScheme.error),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
