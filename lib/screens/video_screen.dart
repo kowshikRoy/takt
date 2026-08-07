@@ -104,6 +104,45 @@ class _VideoScreenState extends State<VideoScreen>
   Set<String> _savedVocabIds = {};
   String _selectedVocabLevelFilter = 'All';
 
+  // Dialogue Audio Mode & Sequential TTS
+  bool _isPlayingDialogueTts = false;
+
+  Future<void> _startSequentialTts({int startIndex = 0}) async {
+    if (_subtitles.isEmpty) return;
+    setState(() {
+      _isPlayingDialogueTts = true;
+    });
+
+    for (int i = startIndex; i < _subtitles.length; i++) {
+      if (!_isPlayingDialogueTts || !mounted) break;
+      setState(() {
+        _currentSubtitleIndex = i;
+      });
+      _scrollToCurrentSubtitle();
+
+      await _ttsService.speak(_subtitles[i].original, lang: 'de-DE');
+
+      final wordCount = _subtitles[i].original.split(RegExp(r'\s+')).length;
+      final durationMs = (wordCount * 360).clamp(1200, 6500);
+      await Future.delayed(Duration(milliseconds: durationMs));
+    }
+
+    if (mounted) {
+      setState(() {
+        _isPlayingDialogueTts = false;
+      });
+    }
+  }
+
+  void _stopSequentialTts() {
+    _ttsService.stop();
+    if (mounted) {
+      setState(() {
+        _isPlayingDialogueTts = false;
+      });
+    }
+  }
+
   void _startControlsTimer() {
     _controlsTimer?.cancel();
     _controlsTimer = Timer(const Duration(seconds: 3), () {
@@ -399,6 +438,8 @@ class _VideoScreenState extends State<VideoScreen>
 
   @override
   void dispose() {
+    _isPlayingDialogueTts = false;
+    _ttsService.stop();
     _videoPlayerController?.removeListener(_onVideoPlayerUpdate);
     _videoPlayerController?.dispose();
     _urlController.dispose();
@@ -540,11 +581,19 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
-  void _seekToSubtitle(double startTime) {
-    _videoPlayerController?.seekTo(
-      Duration(milliseconds: (startTime * 1000).toInt()),
-    );
-    _videoPlayerController?.play();
+  void _seekToSubtitle(double startTime, {int? index}) {
+    if (_videoPlayerController?.value.isInitialized ?? false) {
+      _videoPlayerController?.seekTo(
+        Duration(milliseconds: (startTime * 1000).toInt()),
+      );
+      _videoPlayerController?.play();
+    } else if (index != null && index >= 0 && index < _subtitles.length) {
+      setState(() {
+        _currentSubtitleIndex = index;
+      });
+      _ttsService.speak(_subtitles[index].original, lang: 'de-DE');
+      _scrollToCurrentSubtitle();
+    }
   }
 
   String _formatDuration(Duration duration) {
@@ -806,79 +855,277 @@ class _VideoScreenState extends State<VideoScreen>
       width: screenWidth,
       color: Colors.black,
       child: ClipRect(
-        child: _errorMessage != null
-            ? Container(
-                color: const Color(0xFF1A1D24),
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline_rounded, color: Colors.orangeAccent, size: 44),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Media Stream Link Expired',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'YouTube/Media direct streams expire after a few hours.\nRefresh link to stream video again.',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 14),
-                    if (widget.processedVideo != null)
-                      ElevatedButton.icon(
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.refresh_rounded, size: 18),
-                        label: Text(_isLoading ? 'Refreshing Link...' : 'Refresh Stream Link'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: (_videoPlayerController?.value.isInitialized ?? false)
+            ? GestureDetector(
+                onTap: _toggleControls,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    if (_videoPlayerController!.value.size.width > 0 && _videoPlayerController!.value.size.height > 0)
+                      FittedBox(
+                        fit: BoxFit.cover,
+                        child: SizedBox(
+                          width: _videoPlayerController!.value.size.width,
+                          height: _videoPlayerController!.value.size.height,
+                          child: Opacity(
+                            opacity: 0.35,
+                            child: VideoPlayer(_videoPlayerController!),
+                          ),
                         ),
-                        onPressed: _isLoading
-                            ? null
-                            : () async {
-                                setState(() {
-                                  _isLoading = true;
-                                });
-                                final mediaService = Provider.of<MediaLibraryService>(context, listen: false);
-                                final ok = await mediaService.refreshVideoUrl(
-                                  widget.processedVideo!.id,
-                                  widget.processedVideo!.url,
-                                );
-                                if (ok && mounted) {
-                                  final index = mediaService.processedVideos.indexWhere((v) => v.id == widget.processedVideo!.id);
-                                  if (index != -1) {
-                                    _directVideoUrl = mediaService.processedVideos[index].videoUrl;
-                                    setState(() {
-                                      _isLoading = false;
-                                      _errorMessage = null;
-                                    });
-                                    _videoPlayerController?.dispose();
-                                    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(_directVideoUrl!));
-                                    await _videoPlayerController!.initialize();
-                                    _videoPlayerController!.play();
-                                    return;
-                                  }
-                                }
-                                if (mounted) {
-                                  setState(() {
-                                    _isLoading = false;
-                                    _errorMessage = 'Could not refresh link. Please check network.';
-                                  });
-                                }
-                              },
                       ),
+                    Builder(
+                      builder: (context) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.3),
+                                Colors.black.withValues(alpha: 0.8),
+                              ],
+                              stops: const [0.0, 0.6, 1.0],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    if (_showControls) _buildControlsOverlay(context),
                   ],
                 ),
               )
-            : (_videoPlayerController?.value.isInitialized ?? false)
+            : _subtitles.isNotEmpty
+                ? _buildModernDialogueHeader(context)
+                : _buildErrorOrRefreshBox(context),
+      ),
+    );
+  }
+
+  Widget _buildErrorOrRefreshBox(BuildContext context) {
+    return Container(
+      color: const Color(0xFF1A1D24),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline_rounded, color: Colors.orangeAccent, size: 44),
+          const SizedBox(height: 10),
+          const Text(
+            'Media Stream Link Expired',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'YouTube/Media direct streams expire after a few hours.\nRefresh link to stream video again.',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          if (widget.processedVideo != null)
+            ElevatedButton.icon(
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(_isLoading ? 'Refreshing Link...' : 'Refresh Stream Link'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      setState(() {
+                        _isLoading = true;
+                      });
+                      final mediaService = Provider.of<MediaLibraryService>(context, listen: false);
+                      final ok = await mediaService.refreshVideoUrl(
+                        widget.processedVideo!.id,
+                        widget.processedVideo!.url,
+                      );
+                      if (ok && mounted) {
+                        final index = mediaService.processedVideos.indexWhere((v) => v.id == widget.processedVideo!.id);
+                        if (index != -1) {
+                          _directVideoUrl = mediaService.processedVideos[index].videoUrl;
+                          setState(() {
+                            _isLoading = false;
+                            _errorMessage = null;
+                          });
+                          _videoPlayerController?.dispose();
+                          _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(_directVideoUrl!));
+                          await _videoPlayerController!.initialize();
+                          _videoPlayerController!.play();
+                          return;
+                        }
+                      }
+                      if (mounted) {
+                        setState(() {
+                          _isLoading = false;
+                          _errorMessage = 'Could not refresh link. Please check network.';
+                        });
+                      }
+                    },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernDialogueHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final video = widget.processedVideo;
+    final title = video?.title ?? 'German Dialogue';
+    final thumbnail = video?.thumbnail;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF14161B),
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (thumbnail != null && thumbnail.isNotEmpty)
+            Opacity(
+              opacity: 0.20,
+              child: Image.network(
+                thumbnail,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox(),
+              ),
+            ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.3),
+                  const Color(0xFF14161B),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.5), width: 0.8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.mic_none_rounded, size: 12, color: colorScheme.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            'GERMAN DIALOGUE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${_subtitles.length} Sentences',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _isPlayingDialogueTts
+                          ? _stopSequentialTts
+                          : () => _startSequentialTts(),
+                      icon: Icon(
+                        _isPlayingDialogueTts ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        size: 18,
+                      ),
+                      label: Text(_isPlayingDialogueTts ? 'Pause Audio' : 'Play Dialogue'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _hideTranslations = !_hideTranslations;
+                        });
+                      },
+                      icon: Icon(
+                        _hideTranslations ? Icons.translate_rounded : Icons.visibility_off_outlined,
+                        size: 16,
+                      ),
+                      label: Text(_hideTranslations ? 'Show English' : 'Hide English'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
                 ? GestureDetector(
                     onTap: _toggleControls,
                     child: Stack(
@@ -2502,7 +2749,7 @@ class _VideoScreenState extends State<VideoScreen>
           final bool isActionsVisible = _activeActionCues.contains(index);
 
           return GestureDetector(
-            onTap: () => _seekToSubtitle(cue.start),
+            onTap: () => _seekToSubtitle(cue.start, index: index),
             onLongPress: () {
               setState(() {
                 if (_activeActionCues.contains(index)) {
