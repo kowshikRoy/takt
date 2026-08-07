@@ -187,7 +187,12 @@ class _VideoScreenState extends State<VideoScreen>
     // Extract Key Vocabulary from Subtitle Cues
     _extractKeyVocabulary();
 
-    if (_directVideoUrl != null && _directVideoUrl!.isNotEmpty) {
+    final isWebPageUrl = _directVideoUrl != null &&
+        (_directVideoUrl!.contains('youtube.com/watch') ||
+         _directVideoUrl!.contains('youtu.be/') ||
+         _directVideoUrl!.contains('youtube.com/shorts'));
+
+    if (_directVideoUrl != null && _directVideoUrl!.isNotEmpty && !isWebPageUrl) {
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(_directVideoUrl!),
       );
@@ -205,10 +210,12 @@ class _VideoScreenState extends State<VideoScreen>
           })
           .catchError((error) {
             if (mounted) {
-              setState(() {
-                _errorMessage =
-                    'Media stream expired or invalid format. Tap Refresh Stream to reload.';
-              });
+              if (_subtitles.isEmpty) {
+                setState(() {
+                  _errorMessage =
+                      'Media stream expired or invalid format. Tap Refresh Stream to reload.';
+                });
+              }
             }
           });
       _videoPlayerController?.addListener(_onVideoPlayerUpdate);
@@ -478,7 +485,7 @@ class _VideoScreenState extends State<VideoScreen>
   void _onVideoPlayerUpdate() {
     if (!mounted) return;
     if (_videoPlayerController != null && _videoPlayerController!.value.hasError) {
-      if (_errorMessage == null) {
+      if (_errorMessage == null && _subtitles.isEmpty) {
         setState(() {
           _errorMessage = 'Media stream error or link expired.';
         });
