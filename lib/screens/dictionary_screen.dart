@@ -10,6 +10,7 @@ import '../theme/breakpoints.dart';
 import '../theme/books_modernist_style.dart';
 import '../services/discovery_service.dart';
 import '../widgets/vocab_status_pills.dart';
+import '../widgets/word_edit_sheet.dart';
 import 'word_detail_screen.dart';
 
 class DictionaryScreen extends StatefulWidget {
@@ -378,8 +379,24 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
               ? _buildDesktopMasterDetailLayout(context)
               : _buildMobileLayout(context),
         ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _createNewWord,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Add Word'),
+        ),
       ),
     );
+  }
+
+  Future<void> _createNewWord() async {
+    final savedWord = await WordEditSheet.show(context, isNew: true);
+    if (savedWord != null && mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => WordDetailScreen(word: savedWord),
+        ),
+      );
+    }
   }
 
   Widget _buildDesktopMasterDetailLayout(BuildContext context) {

@@ -5,6 +5,7 @@ import '../services/vocabulary_service.dart';
 import '../services/tts_service.dart';
 import '../models/saved_word.dart';
 import '../widgets/word_header_card.dart';
+import '../widgets/word_edit_sheet.dart';
 
 class WordDetailScreen extends StatefulWidget {
   final String word;
@@ -88,6 +89,18 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
     }
   }
 
+  Future<void> _editWord() async {
+    if (_wordDetails == null) return;
+    final savedWord = await WordEditSheet.show(
+      context,
+      word: _wordDetails!['word']?.toString() ?? widget.word,
+      data: _wordDetails,
+    );
+    if (savedWord != null && mounted) {
+      await _fetchFullDetails();
+    }
+  }
+
   Future<void> _setStatus(
       Map<String, dynamic> wordData, VocabCategory category) async {
     final wordStr = wordData['word']?.toString() ?? widget.word;
@@ -146,6 +159,13 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
           ),
         ),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.edit_outlined, color: colorScheme.onSurface),
+            tooltip: 'Edit word',
+            onPressed: _wordDetails == null ? null : _editWord,
+          ),
+        ],
       ),
       body: SafeArea(
         child: _isLoading && _wordDetails == null
