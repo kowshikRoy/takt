@@ -5,6 +5,7 @@ import '../../models/book_guide.dart';
 import '../../services/book_guide_service.dart';
 import '../../theme/books_modernist_style.dart';
 import 'textbook_unit_screen.dart';
+import '../../widgets/capped_width.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final BookGuide book;
@@ -63,7 +64,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             _buildHeader(context),
             Expanded(
               child: SingleChildScrollView(
-                child: Column(
+                child: CappedWidth(
+                  maxWidth: 800,
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildBookHeader(),
@@ -81,6 +84,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                     ),
                     const SizedBox(height: 24),
                   ],
+                ),
                 ),
               ),
             ),

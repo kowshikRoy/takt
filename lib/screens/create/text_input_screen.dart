@@ -4,6 +4,7 @@ import '../../theme/app_theme.dart';
 import '../../models/article_model.dart';
 import '../story_reader_screen.dart';
 import '../../services/media_library_service.dart';
+import '../../widgets/capped_width.dart';
 
 class TextInputScreen extends StatefulWidget {
   const TextInputScreen({super.key});
@@ -63,6 +64,8 @@ class _TextInputScreenState extends State<TextInputScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
+          child: CappedWidth(
+          maxWidth: 600,
           child: Column(
           children: [
             TextField(
@@ -102,6 +105,7 @@ class _TextInputScreenState extends State<TextInputScreen> {
             ),
           ],
         ),
+          ),
       ),
     ),
   );

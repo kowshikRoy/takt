@@ -7,6 +7,7 @@ import '../services/profile_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/auth_sync_dialog.dart';
+import '../widgets/capped_width.dart';
 import 'app_entry_point.dart';
 import 'main_scaffold.dart';
 
@@ -72,7 +73,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: CappedWidth(
+          maxWidth: 480,
+          child: Column(
           children: [
             // Top Bar with Logo and Skip Button
             Padding(
@@ -300,7 +303,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
           ],
         ),
-      ),
+          ),
+        ),
     );
   }
 

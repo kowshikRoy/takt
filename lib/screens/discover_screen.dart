@@ -13,6 +13,7 @@ import 'create/text_input_screen.dart';
 import 'create/url_import_screen.dart';
 import 'skill_tree_screen.dart';
 import '../theme/books_modernist_style.dart';
+import '../widgets/responsive_grid.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -160,16 +161,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Responsive Grid for Stories
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.85,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
+                // Responsive Grid for Stories — column count scales with
+                // WindowClass instead of a hardcoded 2, so this ~65%-width
+                // pane uses the extra room on Large desktop viewports.
+                ResponsiveGrid(
+                  childAspectRatio: 0.85,
+                  mediumColumns: 2,
+                  expandedColumns: 2,
+                  largeColumns: 3,
                   itemCount: _filteredArticles.length,
                   itemBuilder: (context, index) {
                     final article = _filteredArticles[index];

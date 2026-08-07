@@ -19,6 +19,7 @@ import 'package:takt/services/profile_service.dart';
 import 'package:takt/config.dart';
 import 'package:takt/widgets/glance_word_sheet.dart';
 import 'package:takt/l10n/app_localizations.dart';
+import 'package:takt/theme/breakpoints.dart';
 
 class KeyMediaVocab {
   final String word;
@@ -781,8 +782,15 @@ class _VideoScreenState extends State<VideoScreen>
   }
 
   Widget _buildVideoPlayer(BuildContext context) {
+    // This route is pushed on the root Navigator (no ancestor width cap), so
+    // MediaQuery's width is the real available width — but on a wide desktop
+    // monitor that's still too wide for a single video player: cap it and
+    // center it like a letterboxed player instead of stretching edge-to-edge.
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final bool isWideViewport = WindowClass.of(context).isAtLeastMedium;
+    final double cappedWidth =
+        isWideViewport ? (screenWidth < 960 ? screenWidth : 960) : screenWidth;
     double playerHeight;
     bool isPortraitVideo = false;
 
@@ -792,18 +800,23 @@ class _VideoScreenState extends State<VideoScreen>
 
       if (isPortraitVideo) {
         playerHeight = screenHeight * 0.42;
+        if (playerHeight > 480) playerHeight = 480;
       } else {
-        playerHeight = screenWidth * 9 / 16;
+        playerHeight = cappedWidth * 9 / 16;
         if (playerHeight > 320) playerHeight = 320;
       }
     } else {
-      playerHeight = screenWidth * 9 / 16;
+      playerHeight = cappedWidth * 9 / 16;
       if (playerHeight > 320) playerHeight = 320;
     }
 
     return Container(
-      height: playerHeight,
       width: screenWidth,
+      color: Colors.black,
+      alignment: Alignment.center,
+      child: Container(
+      height: playerHeight,
+      width: cappedWidth,
       color: Colors.black,
       child: ClipRect(
         child: _errorMessage != null
@@ -961,6 +974,7 @@ class _VideoScreenState extends State<VideoScreen>
                     ),
                   )
                 : const Center(child: CircularProgressIndicator()),
+      ),
       ),
     );
   }

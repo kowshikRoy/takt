@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
@@ -26,6 +27,13 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      // Lock native mobile/tablet to portrait — rotation is disabled so
+      // WindowClass width breakpoints stay the only responsive variable
+      // (no-op on web/desktop, where there's no device orientation).
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
       try {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,

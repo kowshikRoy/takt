@@ -15,6 +15,7 @@ import '../models/article_model.dart';
 import '../models/saved_word.dart';
 import '../widgets/glance_word_sheet.dart';
 import '../theme/books_modernist_style.dart';
+import '../widgets/capped_width.dart';
 
 class _TappedWordData {
   final String word;
@@ -419,7 +420,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                       children: [
                         // 1. Sharp Bordered Textbook Page Card Container (Identical to TextbookUnitScreen)
                         Expanded(
-                          child: Container(
+                          child: CappedWidth(
+                            maxWidth: 760,
+                            child: Container(
                             margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
                             decoration: BoxDecoration(
                               color: _isSepiaMode
@@ -453,6 +456,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                   ],
                                 ),
                               ),
+                            ),
                             ),
                           ),
                         ),

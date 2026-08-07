@@ -1147,15 +1147,17 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       color: BooksModernist.surface,
-      child: Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final bubbleMaxWidth = constraints.maxWidth * 0.75;
+          return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: messages.map((m) {
           final isMe = m.sender == 'Ben';
           return Align(
             alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
             child: Container(
-              constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.75),
+              constraints: BoxConstraints(maxWidth: bubbleMaxWidth),
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
@@ -1204,6 +1206,8 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
             ),
           );
         }).toList(),
+          );
+        },
       ),
     );
   }
@@ -1824,7 +1828,10 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
     final stateKey = 'phonetics_$sectionId';
     final userChoices = _userAnswers;
 
-    return Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth = (constraints.maxWidth - 72) / 2;
+        return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
@@ -1843,7 +1850,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
             final isCorrect = selected == correctAns;
 
             return Container(
-              width: (MediaQuery.of(context).size.width - 72) / 2,
+              width: tileWidth,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: BooksModernist.surface,
@@ -1897,6 +1904,8 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
           }).toList(),
         ),
       ],
+        );
+      },
     );
   }
 
@@ -2067,7 +2076,10 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
     List<dynamic> imageItems,
     String? speechBubble,
   ) {
-    return Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth = (constraints.maxWidth - 72) / 2;
+        return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
@@ -2080,7 +2092,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
             final correct = map['correct_order'] as int? ?? 1;
 
             return Container(
-              width: (MediaQuery.of(context).size.width - 72) / 2,
+              width: tileWidth,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: BooksModernist.surface,
@@ -2149,6 +2161,8 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
           ),
         ],
       ],
+        );
+      },
     );
   }
 
