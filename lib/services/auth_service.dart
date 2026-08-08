@@ -8,18 +8,28 @@ class AuthService extends ChangeNotifier {
   factory AuthService() => _instance;
 
   AuthService._internal() {
-    fb.FirebaseAuth.instance.authStateChanges().listen((user) {
-      if (user != null && (user.displayName == null || user.displayName!.trim().isEmpty)) {
-        final derived = _deriveDisplayNameFromEmail(user.email);
-        if (derived != null) {
-          user.updateDisplayName(derived).catchError((_) {});
+    try {
+      fb.FirebaseAuth.instance.authStateChanges().listen((user) {
+        if (user != null && (user.displayName == null || user.displayName!.trim().isEmpty)) {
+          final derived = _deriveDisplayNameFromEmail(user.email);
+          if (derived != null) {
+            user.updateDisplayName(derived).catchError((_) {});
+          }
         }
-      }
-      notifyListeners();
-    });
+        notifyListeners();
+      });
+    } catch (_) {
+      // Firebase not initialized in tests or offline environments
+    }
   }
 
-  fb.User? get _user => fb.FirebaseAuth.instance.currentUser;
+  fb.User? get _user {
+    try {
+      return fb.FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
 
   String? get username {
     if (_user == null) return null;

@@ -78,6 +78,18 @@ class DictionaryService {
   Future<Database> _initDatabase() async {
     final path = await _getDatabasePath();
 
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      final db = await openDatabase(path);
+      await db.execute(
+        'CREATE TABLE IF NOT EXISTS words (id INTEGER PRIMARY KEY, word TEXT, pos TEXT, gender TEXT, ipa TEXT, base_form TEXT, freq_rank INTEGER, custom_image_url TEXT, is_user_created INTEGER, definitions TEXT, examples TEXT);',
+      );
+      await db.execute(
+        'CREATE TABLE IF NOT EXISTS examples (id INTEGER PRIMARY KEY, word_id INTEGER, de TEXT, en TEXT);',
+      );
+      await _ensureSchemaColumns(db);
+      return db;
+    }
+
     if (!File(path).existsSync()) {
       await _downloadDatabaseFile(path);
     }

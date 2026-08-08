@@ -66,11 +66,16 @@ class VocabularyService extends ChangeNotifier {
 
   @visibleForTesting
   static Future<void> resetForTesting() async {
-    if (_db != null && _db!.isOpen) {
-      await _db!.close();
+    if (kIsWeb) {
+      _instance._inMemoryWords.clear();
+    } else {
+      final db = await _instance.database;
+      if (db != null && db.isOpen) {
+        await db.delete('saved_words');
+      }
     }
-    _db = null;
-    _dbCompleter = null;
+    _instance._inMemoryWords.clear();
+    await _instance.refreshCache();
   }
 
   VocabularyService._internal() {
@@ -273,6 +278,10 @@ class VocabularyService extends ChangeNotifier {
     }
     if (notify) {
       await refreshCache();
+    }
+
+    if (existing == null && wordToSave.category != VocabCategory.ignored) {
+      await ProfileService().recordActivityToday(wordSaved: true);
     }
 
     if (triggerSync) {
@@ -512,7 +521,7 @@ class VocabularyService extends ChangeNotifier {
   }
 
   Future<void> recordReview(String id, ReviewRating rating) async {
-    final word = await getSavedWord(id);
+    final word = await getSavedWord(id) ?? await getSavedWordByWord(id);
     if (word != null) {
       final updated = word.calculateNextReview(rating);
       await upsertWord(updated);

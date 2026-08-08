@@ -75,6 +75,21 @@ class BooksModernist {
         weight: FontWeight.w800,
       );
 
+  static TextStyle title({
+    double size = 16,
+    Color? color,
+    FontWeight? weight,
+    double? height,
+    BuildContext? context,
+  }) =>
+      font(
+        context,
+        size: size,
+        color: color,
+        height: height,
+        weight: weight ?? FontWeight.w800,
+      );
+
   static TextStyle body({
     double size = 13,
     Color? color,

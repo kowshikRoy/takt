@@ -355,7 +355,7 @@ class HomeScreen extends StatelessWidget {
         final completedTasks = profileService.dailyTasksCompleted;
         final isGoalAchieved = profileService.isDailyGoalAchieved;
 
-        final bool warmUpDone = profileService.todayReviewsCount > 0 || dueCount == 0;
+        final bool warmUpDone = profileService.todayReviewsCount > 0;
         final bool storyDone = profileService.todayStoryRead;
         final bool saveDone = profileService.todayWordsSaved > 0;
 
@@ -439,7 +439,6 @@ class HomeScreen extends StatelessWidget {
                 // Task 1: SRS Vocabulary Warm-up
                 GestureDetector(
                   onTap: () {
-                    profileService.recordActivityToday(review: true);
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
                     );
@@ -461,8 +460,10 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     title: warmUpDone
-                        ? 'Warm-up: Vocabulary (Completed)'
-                        : 'Warm-up: $dueCount words due for review',
+                        ? 'Warm-up: Vocabulary (${profileService.todayReviewsCount} reviewed today)'
+                        : (dueCount > 0
+                            ? 'Warm-up: $dueCount words due for review'
+                            : 'Warm-up: All caught up! (Tap to practice)'),
                     isCompleted: warmUpDone,
                     inkColor: inkColor,
                   ),
@@ -538,7 +539,6 @@ class HomeScreen extends StatelessWidget {
                 InkWell(
                   onTap: () {
                     if (isUnlocked) {
-                      profileService.recordActivityToday(review: true);
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const VocabularyPracticeScreen()),
                       );

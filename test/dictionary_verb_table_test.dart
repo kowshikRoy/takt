@@ -23,10 +23,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await DictionaryService.resetForTesting();
-    await VocabularyService.resetForTesting();
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    await DictionaryService.resetForTesting();
+    await VocabularyService.resetForTesting();
     final dbDir = await databaseFactory.getDatabasesPath();
     final dbPath = join(dbDir, 'german_dictionary.db');
     if (await File(dbPath).exists()) {
@@ -114,15 +114,15 @@ void main() {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => MediaLibraryService()),
-        ChangeNotifierProvider(create: (_) => VocabularyService()),
-        ChangeNotifierProvider(create: (_) => AuthService()),
-        ChangeNotifierProvider(create: (_) => SyncService()),
-        ChangeNotifierProvider(create: (_) => ProfileService()),
-        ChangeNotifierProvider(create: (_) => GamificationService()),
-        ChangeNotifierProvider(create: (_) => CurriculumService()),
-        ChangeNotifierProvider(create: (_) => SoundService()),
-        ChangeNotifierProvider(create: (_) => NotificationService()),
+        ChangeNotifierProvider.value(value: MediaLibraryService()),
+        ChangeNotifierProvider.value(value: VocabularyService()),
+        ChangeNotifierProvider.value(value: AuthService()),
+        ChangeNotifierProvider.value(value: SyncService()),
+        ChangeNotifierProvider.value(value: ProfileService()),
+        ChangeNotifierProvider.value(value: GamificationService()),
+        ChangeNotifierProvider.value(value: CurriculumService()),
+        ChangeNotifierProvider.value(value: SoundService()),
+        ChangeNotifierProvider.value(value: NotificationService()),
       ],
       child: MaterialApp(home: child),
     );
@@ -152,6 +152,11 @@ void main() {
       await pumpUntilFound(tester, find.text('to learn'));
 
       await tester.tap(find.text('to learn'));
+      await tester.pumpAndSettle();
+
+      await pumpUntilFound(tester, find.text('Verb Conjugation'));
+      await tester.tap(find.text('Verb Conjugation').first);
+      await tester.pumpAndSettle();
 
       await pumpUntilFound(tester, find.text('Verb Conjugation Table'));
 
@@ -171,9 +176,14 @@ void main() {
         createTestApp(const DictionaryScreen(initialSearchQuery: 'lernen')),
       );
 
-      await pumpUntilFound(tester, find.text('to learn'));
+      await pumpUntilFound(tester, find.text('lernen'));
 
-      await tester.tap(find.text('to learn'));
+      await tester.tap(find.text('lernen').first);
+      await tester.pumpAndSettle();
+
+      await pumpUntilFound(tester, find.text('Verb Conjugation'));
+      await tester.tap(find.text('Verb Conjugation').first);
+      await tester.pumpAndSettle();
 
       await pumpUntilFound(tester, find.text('Verb Conjugation Table'));
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/sentence_exercise.dart';
 import '../../services/sentence_practice_service.dart';
 import '../../services/sound_service.dart';
+import '../../services/profile_service.dart';
 import '../../widgets/capped_width.dart';
 
 class SentencePracticeScreen extends StatefulWidget {
@@ -33,6 +34,8 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
       _isChecked = true;
       _isCorrect = _selectedOption == _exercises[_currentIndex].correctAnswer;
     });
+
+    ProfileService().recordActivityToday(review: true);
 
     if (_isCorrect) {
       SoundService().playCorrect();

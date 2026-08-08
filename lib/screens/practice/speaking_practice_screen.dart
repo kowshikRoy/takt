@@ -4,6 +4,7 @@ import '../../services/analytics_service.dart';
 import '../../services/shadowing_service.dart';
 import '../../services/sound_service.dart';
 import '../../services/speaking_recording_service.dart';
+import '../../services/profile_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/app_logger.dart';
 import '../../widgets/capped_width.dart';
@@ -108,6 +109,8 @@ class _SpeakingPracticeScreenState extends State<SpeakingPracticeScreen> {
         'sentence_id': sentence.id,
         'score': result.score,
       });
+
+      ProfileService().recordActivityToday(review: true);
 
       if (result.score >= _passingScore) {
         SoundService().playCorrect();

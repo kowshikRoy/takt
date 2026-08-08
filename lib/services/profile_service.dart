@@ -249,9 +249,8 @@ class ProfileService extends ChangeNotifier {
 
   int get dailyTasksCompleted {
     int count = 0;
-    // Task 1: SRS review or active check
-    if (_todayReviewsCount > 0 ||
-        _activityDates.contains(_getIsoDateString(DateTime.now()))) {
+    // Task 1: SRS review completed today
+    if (_todayReviewsCount > 0) {
       count++;
     }
     // Task 2: Story Read

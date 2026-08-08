@@ -74,19 +74,24 @@ class VocabStatusPills extends StatelessWidget {
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 isActive ? activeIcon : icon,
-                size: 15,
+                size: 14,
                 color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                  color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                    color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],

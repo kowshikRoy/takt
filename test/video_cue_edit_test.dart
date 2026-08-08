@@ -40,7 +40,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => MediaLibraryService()),
+            ChangeNotifierProvider.value(value: MediaLibraryService()),
           ],
           child: MaterialApp(
             home: VideoScreen(processedVideo: video),
@@ -114,7 +114,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => MediaLibraryService()),
+            ChangeNotifierProvider.value(value: MediaLibraryService()),
           ],
           child: MaterialApp(
             home: VideoScreen(processedVideo: video),
@@ -191,7 +191,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => MediaLibraryService()),
+            ChangeNotifierProvider.value(value: MediaLibraryService()),
           ],
           child: MaterialApp(
             home: VideoScreen(processedVideo: video),

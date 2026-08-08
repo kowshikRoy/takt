@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,7 +25,8 @@ class SoundService extends ChangeNotifier {
   static const String _keySoundEnabled = 'sound_enabled_v1';
   static const String _keySoundPack = 'sound_pack_v1';
 
-  final AudioPlayer _player = AudioPlayer();
+  AudioPlayer? _player;
+  AudioPlayer get _audioPlayer => _player ??= AudioPlayer();
   bool _enabled = true;
   String _soundPack = 'marimba';
 
@@ -73,9 +75,10 @@ class SoundService extends ChangeNotifier {
 
   Future<void> _play(String assetPath) async {
     if (!_enabled) return;
+    if (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST')) return;
     try {
-      await _player.stop();
-      await _player.play(AssetSource(assetPath));
+      _audioPlayer.stop().catchError((_) {});
+      _audioPlayer.play(AssetSource(assetPath)).catchError((_) {});
     } catch (e) {
       AppLogger.error("Error playing $assetPath", error: e, tag: 'SoundService');
     }

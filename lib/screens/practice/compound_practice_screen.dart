@@ -4,6 +4,7 @@ import '../../theme/app_theme.dart';
 import '../../models/compound_word.dart';
 import '../../services/compound_service.dart';
 import '../../services/sound_service.dart';
+import '../../services/profile_service.dart';
 import '../../widgets/capped_width.dart';
 
 class CompoundPracticeScreen extends StatefulWidget {
@@ -88,6 +89,8 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
         _score++;
       }
     });
+
+    ProfileService().recordActivityToday(review: true);
 
     if (_isCorrect) {
       SoundService().playCorrect();

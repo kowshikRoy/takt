@@ -9,7 +9,7 @@ import '../services/vocabulary_service.dart';
 import '../services/media_library_service.dart';
 import '../services/tts_service.dart';
 import '../services/ondevice_ai_service.dart';
-
+import '../services/profile_service.dart';
 import 'package:takt/l10n/app_localizations.dart';
 import '../models/article_model.dart';
 import '../models/saved_word.dart';
@@ -122,6 +122,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     super.initState();
     _scrollController.addListener(_updateScrollProgress);
     _loadContent();
+    ProfileService().recordActivityToday(story: true);
   }
 
   void _updateScrollProgress() {
@@ -1617,6 +1618,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     final isActionsVisible = _activeActionParagraphs.contains(index);
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onLongPress: () {
         setState(() {
           if (_activeActionParagraphs.contains(index)) {

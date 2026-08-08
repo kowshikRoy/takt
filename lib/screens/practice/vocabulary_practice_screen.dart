@@ -4,6 +4,8 @@ import '../../services/vocabulary_service.dart';
 import '../../services/dictionary_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/sound_service.dart';
+import '../../services/profile_service.dart';
+import '../../services/gamification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/capped_width.dart';
 import '../../widgets/word_header_card.dart';
@@ -26,6 +28,8 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = true;
+  bool _isPracticingAll = false;
+  int _reviewedThisSession = 0;
   final Map<String, Map<String, String?>> _exampleCache = {};
   final Map<String, Future<String?>> _imageFutureCache = {};
 
@@ -35,13 +39,29 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
     _loadDeck();
   }
 
-  Future<void> _loadDeck() async {
+  Future<void> _loadDeck({bool forceAll = false}) async {
     setState(() => _isLoading = true);
-    await _vocabService.repairStaleDefinitions();
-    final due = await _vocabService.getDueWords();
+    _isPracticingAll = forceAll;
+    _vocabService.repairStaleDefinitions().catchError((_) => 0);
+
+    List<SavedWord> words;
+    if (forceAll) {
+      words = await _vocabService.getSavedWords();
+    } else {
+      words = await _vocabService.getDueWords();
+      // If no words are due, check if user has saved words so they can practice anyway
+      if (words.isEmpty) {
+        final allSaved = await _vocabService.getSavedWords();
+        if (allSaved.isNotEmpty) {
+          _isPracticingAll = true;
+          words = allSaved;
+        }
+      }
+    }
+
     if (mounted) {
       setState(() {
-        _dueWords = due;
+        _dueWords = words;
         _currentIndex = 0;
         _showAnswer = false;
         _isLoading = false;
@@ -71,16 +91,25 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   Future<void> _rateCard(ReviewRating rating) async {
     if (_dueWords.isEmpty || _currentIndex >= _dueWords.length) return;
     final currentWord = _dueWords[_currentIndex];
+
+    // 1. Auditory feedback
     if (rating == ReviewRating.again) {
       SoundService().playIncorrect();
     } else {
       SoundService().playCorrect();
     }
 
-    setState(() {
-      _showAnswer = false;
-      _currentIndex++;
-    });
+    // 2. Persist SRS Review in VocabularyService & ProfileService
+    await _vocabService.recordReview(currentWord.id, rating);
+    _reviewedThisSession++;
+
+    // 3. Move to next card
+    if (mounted) {
+      setState(() {
+        _showAnswer = false;
+        _currentIndex++;
+      });
+    }
   }
 
   Color _getGenderColor(String? gender) {
@@ -92,10 +121,24 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Vocabulary Review & Practice'),
+        title: Text(
+          _isPracticingAll
+              ? 'Vocabulary Practice (All Words)'
+              : 'Daily Review & SRS Practice',
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+            color: inkColor,
+          ),
+        ),
         elevation: 0,
       ),
       body: _isLoading
@@ -145,23 +188,76 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   }
 
   Widget _buildFlashcard(SavedWord word) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
     final genderColor = _getGenderColor(word.gender);
     final example = _exampleFor(word);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       child: Column(
         children: [
+          // Header info: Mode & SRS Mastery badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: inkColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: inkColor.withValues(alpha: 0.18)),
+                ),
+                child: Text(
+                  _isPracticingAll ? 'FREE PRACTICE' : 'SRS DUE REVIEW',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                    color: inkColor,
+                  ),
+                ),
+              ),
+              Text(
+                '${_currentIndex + 1} / ${_dueWords.length}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: inkColor.withValues(alpha: 0.7),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: genderColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: genderColor.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  word.masteryLevelLabel.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: genderColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
           // Progress indicator
           LinearProgressIndicator(
             value: (_currentIndex + 1) / _dueWords.length,
-            backgroundColor: Theme.of(
-              context,
-            ).dividerColor.withValues(alpha: 0.2),
+            backgroundColor: theme.dividerColor.withValues(alpha: 0.2),
             valueColor: AlwaysStoppedAnimation<Color>(genderColor),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(3),
+            minHeight: 4,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // Main Flashcard Box
           Expanded(
@@ -190,38 +286,40 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
               borderRadius: BorderRadius.circular(4),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: genderColor.withValues(alpha: 0.4),
+                    color: genderColor.withValues(alpha: 0.45),
                     width: 1.5,
                   ),
                 ),
-                // Front content (word + IPA) is pinned at the top and never
-                // moves; only the region below it swaps between the hint and
-                // the answer, so flipping the card can't shift the word.
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          word.word,
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
+                        Flexible(
+                          child: Text(
+                            word.word,
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.bold,
+                              color: inkColor,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
+                        const SizedBox(width: 6),
                         IconButton(
                           onPressed: () =>
                               _ttsService.speak(word.word, lang: 'de-DE'),
                           icon: Icon(
                             Icons.volume_up_rounded,
                             color: genderColor,
+                            size: 24,
                           ),
                           tooltip: 'Play pronunciation',
                         ),
@@ -229,12 +327,12 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                     ),
 
                     if (word.ipa != null && word.ipa!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         word.ipa!,
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                          color: inkColor.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -249,24 +347,34 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                                 key: const ValueKey('hint'),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
+                                    horizontal: 14,
+                                    vertical: 7,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainer,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    "Tap card to flip answer",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
+                                    color: inkColor.withValues(alpha: 0.06),
+                                    borderRadius: BorderRadius.circular(3),
+                                    border: Border.all(
+                                      color: inkColor.withValues(alpha: 0.15),
                                     ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.touch_app_rounded,
+                                        size: 15,
+                                        color: inkColor.withValues(alpha: 0.7),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "Tap card to flip answer",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: inkColor.withValues(alpha: 0.7),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               )
@@ -277,7 +385,10 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    const Divider(height: 16),
+                                    Divider(
+                                      height: 16,
+                                      color: inkColor.withValues(alpha: 0.15),
+                                    ),
                                     WordHeaderCard(
                                       wordData: _wordDataFor(word),
                                       contextSentence: example.german,
@@ -296,9 +407,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
+                                          color: inkColor.withValues(alpha: 0.7),
                                         ),
                                       ),
                                     ],
@@ -308,45 +417,28 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                                       child: OutlinedButton.icon(
                                         onPressed: () {
                                           Navigator.of(context).push(
-                                            PageRouteBuilder(
-                                              pageBuilder:
-                                                  (
-                                                    context,
-                                                    animation,
-                                                    secondaryAnimation,
-                                                  ) => WordDetailScreen(
-                                                    word: word.word,
-                                                    wordData: _wordDataFor(
-                                                      word,
-                                                    ),
-                                                  ),
-                                              transitionsBuilder:
-                                                  (
-                                                    context,
-                                                    animation,
-                                                    secondaryAnimation,
-                                                    child,
-                                                  ) => FadeTransition(
-                                                    opacity: animation,
-                                                    child: child,
-                                                  ),
-                                              transitionDuration:
-                                                  const Duration(
-                                                    milliseconds: 200,
-                                                  ),
+                                            MaterialPageRoute(
+                                              builder: (_) => WordDetailScreen(
+                                                word: word.word,
+                                                wordData: _wordDataFor(word),
+                                              ),
                                             ),
                                           );
                                         },
                                         icon: const Icon(
                                           Icons.menu_book_rounded,
-                                          size: 18,
+                                          size: 16,
                                         ),
                                         label: const Text(
                                           'Explore in Dictionary →',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                         style: OutlinedButton.styleFrom(
                                           padding: const EdgeInsets.symmetric(
-                                            vertical: 10,
+                                            vertical: 8,
                                           ),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
@@ -367,10 +459,9 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Rating buttons: always present so the layout never resizes when
-          // the card flips — only their opacity/interactivity changes.
+          // Rating buttons: always present so layout never resizes when card flips
           AnimatedOpacity(
             duration: const Duration(milliseconds: 200),
             opacity: _showAnswer ? 1.0 : 0.0,
@@ -381,32 +472,36 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                   Expanded(
                     child: _buildRatingButton(
                       label: "Again",
+                      sublabel: "Reset",
                       rating: ReviewRating.again,
-                      color: Colors.red.shade700,
+                      color: const Color(0xFFC0392B),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: _buildRatingButton(
                       label: "Hard",
+                      sublabel: "+1d",
                       rating: ReviewRating.hard,
-                      color: Colors.orange.shade800,
+                      color: const Color(0xFFD35400),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: _buildRatingButton(
                       label: "Good",
+                      sublabel: "SM-2",
                       rating: ReviewRating.good,
-                      color: Colors.blue.shade700,
+                      color: const Color(0xFF2980B9),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: _buildRatingButton(
                       label: "Easy",
+                      sublabel: "+Bonus",
                       rating: ReviewRating.easy,
-                      color: Colors.green.shade700,
+                      color: const Color(0xFF27AE60),
                     ),
                   ),
                 ],
@@ -420,6 +515,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
 
   Widget _buildRatingButton({
     required String label,
+    required String sublabel,
     required ReviewRating rating,
     required Color color,
   }) {
@@ -428,58 +524,189 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        elevation: 0,
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+          ),
+          Text(
+            sublabel,
+            style: const TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w500,
+              color: Colors.white70,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildCompletionCard() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
+    final profileService = ProfileService();
+    final gamification = GamificationService();
+    final totalSaved = _vocabService.cachedSavedCount;
+
+    final bool hasReviewedInSession = _reviewedThisSession > 0;
+
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
         child: Container(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: cardBg,
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+              color: inkColor.withValues(alpha: 0.18),
+              width: 1,
             ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.task_alt_rounded, size: 64, color: Colors.green),
-              const SizedBox(height: 16),
-              Text(
-                'All Reviews Completed!',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.task_alt_rounded,
+                  size: 36,
+                  color: Colors.green,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 14),
               Text(
-                'You are all caught up for today. Great job keeping your memory fresh!',
+                hasReviewedInSession
+                    ? 'Review Session Complete! 🎉'
+                    : (totalSaved > 0
+                        ? 'All Caught Up! 🎉'
+                        : 'No Saved Words Yet'),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: inkColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                hasReviewedInSession
+                    ? 'Great job keeping your memory fresh and advancing your Spaced Repetition mastery!'
+                    : (totalSaved > 0
+                        ? 'You have 0 words due for review right now. Keep your streak going or practice all words anytime!'
+                        : 'Save words from stories, videos, or lookups to build your personalized Spaced Repetition deck!'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12.5,
+                  color: inkColor.withValues(alpha: 0.65),
                 ),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Back to Home'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+              const SizedBox(height: 20),
+
+              // Summary Stats Box
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: inkColor.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: inkColor.withValues(alpha: 0.12)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatCol(
+                      label: 'REVIEWED',
+                      value: '$_reviewedThisSession',
+                      inkColor: inkColor,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 28,
+                      color: inkColor.withValues(alpha: 0.12),
+                    ),
+                    _buildStatCol(
+                      label: 'MASTERY PTS',
+                      value: '${_vocabService.vocabMasteryScore}',
+                      inkColor: inkColor,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 28,
+                      color: inkColor.withValues(alpha: 0.12),
+                    ),
+                    _buildStatCol(
+                      label: 'LEVEL',
+                      value: 'Lvl ${gamification.level}',
+                      inkColor: rustAccent,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 28,
+                      color: inkColor.withValues(alpha: 0.12),
+                    ),
+                    _buildStatCol(
+                      label: 'STREAK',
+                      value: '${profileService.currentStreak}d 🔥',
+                      inkColor: rustAccent,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+
+              // Action Buttons
+              if (totalSaved > 0) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => _loadDeck(forceAll: true),
+                    icon: const Icon(Icons.style_rounded, size: 16),
+                    label: Text(
+                      'Practice All Saved Words ($totalSaved)',
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: rustAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  label: const Text(
+                    'Back to Home',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                 ),
               ),
@@ -489,4 +716,35 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
       ),
     );
   }
+
+  Widget _buildStatCol({
+    required String label,
+    required String value,
+    required Color inkColor,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.bold,
+            color: inkColor,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 8.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+            color: inkColor.withValues(alpha: 0.6),
+          ),
+        ),
+      ],
+    );
+  }
 }
+

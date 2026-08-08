@@ -65,7 +65,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => MediaLibraryService()),
+            ChangeNotifierProvider.value(value: MediaLibraryService()),
             ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ],
           child: MaterialApp(
@@ -78,11 +78,20 @@ void main() {
       );
 
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(richTextContaining(originalMarker), findsOneWidget);
 
-      final editButtonFinder = find.byTooltip('Edit paragraph').first;
+      final paragraphGesture = find.ancestor(
+        of: richTextContaining(originalMarker),
+        matching: find.byWidgetPredicate((w) => w is GestureDetector && w.onLongPress != null),
+      );
+      await tester.longPressAt(tester.getTopLeft(paragraphGesture) + const Offset(10, 10));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final editButtonFinder = find.byIcon(Icons.edit_rounded).first;
       expect(editButtonFinder, findsOneWidget);
       await tester.tap(editButtonFinder);
       // Not pumpAndSettle(): the sheet's TextField is autofocus:true, and

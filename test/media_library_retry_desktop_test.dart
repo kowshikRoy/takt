@@ -61,7 +61,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => MediaLibraryService()),
+            ChangeNotifierProvider.value(value: MediaLibraryService()),
             ChangeNotifierProvider(create: (_) => CurriculumService()),
           ],
           child: const MaterialApp(home: DiscoverScreen()),
