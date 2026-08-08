@@ -193,9 +193,18 @@ class _VideoScreenState extends State<VideoScreen>
     } else {
       // 1. Play real Gemini Studio Audio file if downloaded or available
       if (_localAudioFilePath != null && File(_localAudioFilePath!).existsSync()) {
-        await _audioPlayer.play(DeviceFileSource(_localAudioFilePath!));
+        try {
+          await _audioPlayer.play(DeviceFileSource(_localAudioFilePath!));
+        } catch (_) {
+          _startSequentialTts();
+        }
       } else if (_directVideoUrl != null && (_directVideoUrl!.contains('/audio/') || _directVideoUrl!.contains('.wav'))) {
-        await _audioPlayer.play(UrlSource(_directVideoUrl!));
+        try {
+          await _audioPlayer.play(UrlSource(_directVideoUrl!));
+        } catch (e) {
+          debugPrint('AudioPlayer stream error: $e, falling back to on-device TTS');
+          _startSequentialTts();
+        }
       } else {
         // 2. Fall back to on-device sequential TTS
         _startSequentialTts();
@@ -285,7 +294,13 @@ class _VideoScreenState extends State<VideoScreen>
          _directVideoUrl!.contains('youtu.be/') ||
          _directVideoUrl!.contains('youtube.com/shorts'));
 
-    if (_directVideoUrl != null && _directVideoUrl!.isNotEmpty && !isWebPageUrl) {
+    final isAudioUrl = _directVideoUrl != null &&
+        (_directVideoUrl!.contains('/audio/') ||
+         _directVideoUrl!.contains('.wav') ||
+         _directVideoUrl!.contains('.mp3') ||
+         video.mediaType == 'audio');
+
+    if (_directVideoUrl != null && _directVideoUrl!.isNotEmpty && !isWebPageUrl && !isAudioUrl) {
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(_directVideoUrl!),
       );
