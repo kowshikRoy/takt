@@ -105,7 +105,7 @@ class MediaLibraryService extends ChangeNotifier {
       final List<dynamic> decodedList = jsonDecode(videosJson);
       final rawList = decodedList.map((item) => ProcessedVideo.fromJson(item)).toList();
 
-      // Deduplicate by normalized URL
+      // Deduplicate by normalized URL and merge richest data
       final Map<String, ProcessedVideo> uniqueMap = {};
       for (final v in rawList) {
         final norm = normalizeMediaUrl(v.url);
@@ -114,11 +114,25 @@ class MediaLibraryService extends ChangeNotifier {
           uniqueMap[key] = v;
         } else {
           final existing = uniqueMap[key]!;
-          if (existing.status != ProcessingStatus.completed && v.status == ProcessingStatus.completed) {
-            uniqueMap[key] = v;
-          } else if (existing.title == null && v.title != null) {
-            uniqueMap[key] = existing.copyWith(title: v.title, category: v.category ?? existing.category);
-          }
+          final bestStatus = (v.status == ProcessingStatus.completed) ? v.status : existing.status;
+          final bestSubtitles = v.subtitles.isNotEmpty ? v.subtitles : existing.subtitles;
+          final bestTitle = (v.title != null && v.title!.isNotEmpty && v.title != 'German Lesson' && v.title != 'YouTube Lesson')
+              ? v.title
+              : existing.title;
+          final bestCategory = v.category?.isNotEmpty == true ? v.category : existing.category;
+          final bestThumbnail = (v.thumbnail != null && !v.thumbnail!.contains('picsum.photos'))
+              ? v.thumbnail
+              : existing.thumbnail;
+          final bestVideoUrl = (v.videoUrl?.isNotEmpty == true) ? v.videoUrl : existing.videoUrl;
+
+          uniqueMap[key] = existing.copyWith(
+            status: bestStatus,
+            subtitles: bestSubtitles,
+            title: bestTitle,
+            category: bestCategory,
+            thumbnail: bestThumbnail,
+            videoUrl: bestVideoUrl,
+          );
         }
       }
       _processedVideos = uniqueMap.values.toList();
