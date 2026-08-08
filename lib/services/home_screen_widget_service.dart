@@ -21,6 +21,9 @@ class HomeScreenWidgetService {
   final StreamController<Uri> _widgetClickController = StreamController<Uri>.broadcast();
   Stream<Uri> get onWidgetClicked => _widgetClickController.stream;
 
+  Uri? _initialUri;
+  Uri? get initialUri => _initialUri;
+
   bool _initialized = false;
 
   /// Initializes HomeWidget listeners and performs the initial widget sync.
@@ -39,9 +42,10 @@ class HomeScreenWidgetService {
       });
 
       // Check if app was initially opened from home screen widget click
-      final initialUri = await HomeWidget.initiallyLaunchedFromHomeWidget();
-      if (initialUri != null) {
-        _widgetClickController.add(initialUri);
+      final uri = await HomeWidget.initiallyLaunchedFromHomeWidget();
+      if (uri != null) {
+        _initialUri = uri;
+        _widgetClickController.add(uri);
       }
 
       // Sync fresh widget data
@@ -67,21 +71,27 @@ class HomeScreenWidgetService {
       final dueCountText = '⚡ ${dueWords.length}';
 
       // 1. Determine featured Word of the Day
-      String wordStr = 'Wort';
-      String article = 'das';
-      String fullWord = 'das Wort';
-      String ipa = '/vɔʁt/';
-      String definition = 'word, term';
-      String cefr = 'A1';
-      String exampleDe = 'Ein Bild sagt mehr als tausend Worte.';
-      String exampleEn = 'A picture is worth a thousand words.';
+      String wordStr = 'Entwicklung';
+      String article = 'die';
+      String fullWord = 'die Entwicklung';
+      String ipa = '/ɛntˈvɪklʊŋ/';
+      String definition = 'development, progress';
+      String cefr = 'B1';
+      String exampleDe = 'Die Entwicklung der App macht große Fortschritte.';
+      String exampleEn = 'The development of the app is making great progress.';
 
       if (featuredWord != null) {
         wordStr = featuredWord.word;
         fullWord = featuredWord.fullWordWithArticle;
         ipa = featuredWord.ipa ?? '';
         definition = featuredWord.primaryDefinition;
-        cefr = 'B1';
+        if (featuredWord.contextExamples.isNotEmpty) {
+          exampleDe = featuredWord.contextExamples.first.sentence;
+          exampleEn = featuredWord.contextExamples.first.translation ?? '';
+        } else if (featuredWord.contextSentence != null && featuredWord.contextSentence!.isNotEmpty) {
+          exampleDe = featuredWord.contextSentence!;
+          exampleEn = '';
+        }
       } else if (dueWords.isNotEmpty) {
         // Prioritize first due word
         final due = dueWords.first;
@@ -89,7 +99,13 @@ class HomeScreenWidgetService {
         fullWord = due.fullWordWithArticle;
         ipa = due.ipa ?? '';
         definition = due.primaryDefinition;
-        cefr = 'B1';
+        if (due.contextExamples.isNotEmpty) {
+          exampleDe = due.contextExamples.first.sentence;
+          exampleEn = due.contextExamples.first.translation ?? '';
+        } else if (due.contextSentence != null && due.contextSentence!.isNotEmpty) {
+          exampleDe = due.contextSentence!;
+          exampleEn = '';
+        }
       } else {
         // Fetch from saved words or fallback dictionary lookup
         final savedWords = await vocab.getSavedWords();
@@ -101,17 +117,13 @@ class HomeScreenWidgetService {
           fullWord = picked.fullWordWithArticle;
           ipa = picked.ipa ?? '';
           definition = picked.primaryDefinition;
-          cefr = 'B1';
-        } else {
-          // Curated fallback for brand new users
-          wordStr = 'Entwicklung';
-          article = 'die';
-          fullWord = 'die Entwicklung';
-          ipa = '/ɛntˈvɪklʊŋ/';
-          definition = 'development, progress';
-          cefr = 'B1';
-          exampleDe = 'Die Entwicklung der App macht große Fortschritte.';
-          exampleEn = 'The development of the app is making great progress.';
+          if (picked.contextExamples.isNotEmpty) {
+            exampleDe = picked.contextExamples.first.sentence;
+            exampleEn = picked.contextExamples.first.translation ?? '';
+          } else if (picked.contextSentence != null && picked.contextSentence!.isNotEmpty) {
+            exampleDe = picked.contextSentence!;
+            exampleEn = '';
+          }
         }
       }
 
@@ -134,6 +146,21 @@ class HomeScreenWidgetService {
           }
         }
       } catch (_) {}
+
+      // Fallback example sentence enrichment if empty
+      if (exampleDe.isEmpty) {
+        try {
+          final fullResult = await dict.lookupWord(wordStr);
+          final examples = fullResult?['examples'];
+          if (examples is List && examples.isNotEmpty) {
+            final firstEx = examples.first;
+            if (firstEx is Map) {
+              exampleDe = firstEx['german']?.toString() ?? firstEx['sentence']?.toString() ?? '';
+              exampleEn = firstEx['english']?.toString() ?? firstEx['translation']?.toString() ?? '';
+            }
+          }
+        } catch (_) {}
+      }
 
       final deepLink = 'takt://word?term=${Uri.encodeComponent(wordStr)}';
 

@@ -1,11 +1,16 @@
 package com.example.takt
 
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val POS_CHANNEL = "com.example.takt/pos_tagger"
+
+    override fun getRenderMode(): RenderMode {
+        return RenderMode.texture
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

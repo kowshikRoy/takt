@@ -32,38 +32,8 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      try {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-      } catch (e, st) {
-        AppLogger.error(
-          'Firebase initialization failed',
-          error: e,
-          stackTrace: st,
-          tag: 'Firebase',
-        );
-      }
 
-      // Initialize Home Screen Widget Service & deep links
-      try {
-        final widgetService = HomeScreenWidgetService();
-        await widgetService.init();
-        widgetService.onWidgetClicked.listen((uri) {
-          final term = uri.queryParameters['term'];
-          if (term != null && term.isNotEmpty) {
-            appNavigatorKey.currentState?.push(
-              MaterialPageRoute(builder: (_) => WordDetailScreen(word: term)),
-            );
-          }
-        });
-      } catch (e) {
-        AppLogger.error('Widget service init failed', error: e, tag: 'HomeWidget');
-      }
-
-      // Catch framework-level errors (widget build/layout/paint) that would
-      // otherwise only show as a red error screen in debug and vanish silently
-      // in release, with nothing anywhere recording that they happened.
+      // Catch framework-level errors (widget build/layout/paint)
       FlutterError.onError = (FlutterErrorDetails details) {
         AppLogger.error(
           'Uncaught Flutter error',
@@ -74,6 +44,7 @@ void main() {
         FlutterError.presentError(details);
       };
 
+      // Launch UI immediately so the user never sees a black screen
       runApp(
         MultiProvider(
           providers: [
@@ -95,6 +66,9 @@ void main() {
           child: const MyApp(),
         ),
       );
+
+      // Async background service initialization (non-blocking)
+      _initBackgroundServices();
     },
     (error, stackTrace) {
       AppLogger.error(
@@ -105,6 +79,53 @@ void main() {
       );
     },
   );
+}
+
+void _initBackgroundServices() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e, st) {
+    AppLogger.error(
+      'Firebase initialization failed',
+      error: e,
+      stackTrace: st,
+      tag: 'Firebase',
+    );
+  }
+
+  void handleWidgetClick(Uri uri) {
+    final rawTerm = uri.queryParameters['term'];
+    if (rawTerm != null && rawTerm.isNotEmpty) {
+      final term = Uri.decodeComponent(rawTerm).trim();
+      void navigate() {
+        appNavigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => WordDetailScreen(word: term)),
+        );
+      }
+
+      if (appNavigatorKey.currentState != null) {
+        navigate();
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future.delayed(const Duration(milliseconds: 300), navigate);
+        });
+      }
+    }
+  }
+
+  // Initialize Home Screen Widget Service & deep links
+  try {
+    final widgetService = HomeScreenWidgetService();
+    widgetService.onWidgetClicked.listen(handleWidgetClick);
+    await widgetService.init().timeout(const Duration(seconds: 5));
+    if (widgetService.initialUri != null) {
+      handleWidgetClick(widgetService.initialUri!);
+    }
+  } catch (e) {
+    AppLogger.error('Widget service init failed', error: e, tag: 'HomeWidget');
+  }
 }
 
 class MyApp extends StatelessWidget {

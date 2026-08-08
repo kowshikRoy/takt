@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TAKT</string>
+    <string name="widget_word_of_the_day_description">Daily German Word of the Day, streak, and review stats</string>
+    <string name="widget_word_of_the_day_small_description">Compact daily German Word of the Day with streak</string>
+</resources>
