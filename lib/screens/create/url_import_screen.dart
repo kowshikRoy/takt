@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/processing_status.dart';
 import '../../services/media_library_service.dart';
+import '../video_screen.dart';
 
 class UrlImportScreen extends StatefulWidget {
   const UrlImportScreen({super.key});
@@ -73,6 +74,26 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
   void _processMediaUrl(String url) async {
     final mediaLibraryService = Provider.of<MediaLibraryService>(context, listen: false);
     
+    // If the media was already processed and completed, open it immediately
+    final existingCompleted = mediaLibraryService.processedVideos.where(
+      (v) => v.url.trim().toLowerCase() == url.trim().toLowerCase() && v.status == ProcessingStatus.completed,
+    ).firstOrNull;
+
+    if (existingCompleted != null) {
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: existingCompleted)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Opening existing lesson ⚡'),
+            backgroundColor: Color(0xFF2C5E3B),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
     // Launch non-blocking background media submission
     unawaited(mediaLibraryService.submitMediaProcessingTaskInBackground(url));
 
@@ -328,7 +349,11 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                                     ? const Icon(Icons.check_circle_outline_rounded, size: 18, color: Color(0xFF2C5E3B))
                                     : null,
                             onTap: () {
-                              _urlController.text = video.url;
+                              if (isCompleted) {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
+                              } else {
+                                _urlController.text = video.url;
+                              }
                             },
                           ),
                         );
