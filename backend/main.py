@@ -124,14 +124,29 @@ def get_cache_key(url: str) -> str:
     """Generates a unique, filesystem-safe key for a URL."""
     return hashlib.md5(url.encode()).hexdigest()
 
-def read_from_cache(key: str) -> MediaResponse | None:
-    """Reads a MediaResponse from the cache if it exists."""
+
+def read_from_cache(key: str, url: str = None) -> MediaResponse | None:
+    """Reads a MediaResponse from the cache if it exists, self-healing legacy placeholders."""
     cache_file = os.path.join(CACHE_DIR, f"{key}.json")
     if os.path.exists(cache_file):
         print(f"Cache hit for key: {key}")
-        with open(cache_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return MediaResponse(**data)
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                
+                # Self-heal legacy placeholder thumbnails for YouTube URLs
+                if url and ('youtube.com' in url or 'youtu.be' in url):
+                    video_id_match = re.search(r'(?:v=|\/|shorts\/)([0-9A-Za-z_-]{11})', url)
+                    if video_id_match:
+                        yt_id = video_id_match.group(1)
+                        yt_thumb = f"https://img.youtube.com/vi/{yt_id}/hqdefault.jpg"
+                        if not data.get('thumbnail') or 'picsum.photos' in data.get('thumbnail', ''):
+                            data['thumbnail'] = yt_thumb
+                
+                return MediaResponse(**data)
+        except Exception as e:
+            print(f"Cache read warning: {e}")
+            return None
     print(f"Cache miss for key: {key}")
     return None
 
@@ -1127,12 +1142,21 @@ async def process_media_task(task_id: str, url: str):
     update_task_stage(task_id, "Checking cache...", 5)
     
     cache_key = get_cache_key(url)
-    cached_response = await asyncio.to_thread(read_from_cache, cache_key)
+    cached_response = await asyncio.to_thread(read_from_cache, cache_key, url)
     if cached_response:
+        # Refresh YouTube title if legacy cached item had generic title
+        if ('youtube.com' in url or 'youtu.be' in url) and (not cached_response.title or cached_response.title in ['German Dialogue Lesson', 'YouTube Lesson', 'German Lesson']):
+            yt_meta = await asyncio.to_thread(fetch_youtube_metadata_fast, url)
+            if yt_meta.get('title') and yt_meta['title'] not in ['German Lesson', 'Media']:
+                cached_response.title = yt_meta['title']
+                await asyncio.to_thread(write_to_cache, cache_key, cached_response)
+
         tasks[task_id] = {
             "status": TaskStatus.COMPLETED,
             "stage_message": "Loaded from cache ⚡",
             "progress_percentage": 100,
+            "title": cached_response.title,
+            "thumbnail": cached_response.thumbnail,
             "result": cached_response,
             "error": None,
         }

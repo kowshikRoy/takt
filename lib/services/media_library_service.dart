@@ -432,10 +432,14 @@ class MediaLibraryService extends ChangeNotifier {
 
         if (index != -1) {
           final current = _processedVideos[index];
+          final incomingTitle = (title != null && title.isNotEmpty && title != 'German Dialogue Lesson' && title != 'YouTube Lesson' && title != 'German Lesson') ? title : null;
+          final effectiveTitle = (current.title != null && current.title!.isNotEmpty && current.title != 'German Dialogue Lesson' && current.title != 'YouTube Lesson')
+              ? current.title
+              : (incomingTitle ?? current.title);
+
           final effectiveThumbnail = (thumbnail != null && thumbnail.isNotEmpty && !thumbnail.contains('picsum.photos'))
               ? thumbnail
-              : (current.thumbnail ?? ProcessedVideo.extractYouTubeThumbnail(originalUrl));
-          final effectiveTitle = current.title?.isNotEmpty == true ? current.title : (title?.isNotEmpty == true ? title : current.title);
+              : ((current.thumbnail != null && !current.thumbnail!.contains('picsum.photos')) ? current.thumbnail : ProcessedVideo.extractYouTubeThumbnail(originalUrl));
 
           _processedVideos[index] = ProcessedVideo(
             id: taskId,
