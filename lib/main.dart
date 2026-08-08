@@ -23,6 +23,7 @@ import 'services/discovery_service.dart';
 import 'services/tts_service.dart';
 import 'services/home_screen_widget_service.dart';
 import 'screens/word_detail_screen.dart';
+import 'services/phrase_service.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -89,6 +90,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => BookGuideService()),
             ChangeNotifierProvider(create: (_) => DiscoveryService()),
             ChangeNotifierProvider(create: (_) => TtsService()),
+            ChangeNotifierProvider(create: (_) => PhraseService()),
           ],
           child: const MyApp(),
         ),
