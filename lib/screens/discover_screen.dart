@@ -13,6 +13,7 @@ import 'video_screen.dart';
 import 'create/text_input_screen.dart';
 import 'create/url_import_screen.dart';
 import 'skill_tree_screen.dart';
+import 'transcribed_media_grid_screen.dart';
 import '../theme/books_modernist_style.dart';
 
 class DiscoverScreen extends StatefulWidget {
@@ -331,13 +332,52 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
                 // Transcribed Media
                 if (mediaLibraryService.processedVideos.isNotEmpty) ...[
-                  Text(
-                    'TRANSCRIBED MEDIA',
-                    style: BooksModernist.body(
-                      size: 11,
-                      weight: FontWeight.w800,
-                      color: BooksModernist.accentDark,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'TRANSCRIBED MEDIA',
+                        style: BooksModernist.body(
+                          size: 11,
+                          weight: FontWeight.w800,
+                          color: BooksModernist.accentDark,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TranscribedMediaGridScreen(),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'View All (${mediaLibraryService.processedVideos.length})',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                     ListView.separated(
