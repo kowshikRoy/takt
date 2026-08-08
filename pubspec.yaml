@@ -99,6 +99,7 @@ flutter:
     - assets/compound_words.json
     - assets/speaking/shadowing_sentences.json
     - assets/grammar/
+    - assets/phrases/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -6,6 +6,7 @@ import 'practice/sentence_practice_screen.dart';
 import 'practice/vocabulary_practice_screen.dart';
 import 'practice/speaking_practice_screen.dart';
 import 'grammar/grammar_lessons_list_screen.dart';
+import 'phrases/phrase_catalog_screen.dart';
 import '../widgets/auth_sync_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/vocabulary_service.dart';
@@ -798,6 +799,12 @@ class HomeScreen extends StatelessWidget {
                   Expanded(child: _buildGrammarGuideCard(context)),
                 ],
               ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: _buildPhrasesPracticeCard(context)),
+                ],
+              ),
             ],
           )
         : Column(
@@ -905,6 +912,8 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
+              _buildPhrasesPracticeCard(context),
+              const SizedBox(height: 12),
               _buildGrammarGuideCard(context),
               const SizedBox(height: 12),
               _buildCompoundPracticeCard(context),
@@ -914,6 +923,80 @@ class HomeScreen extends StatelessWidget {
               _buildSpeakingPracticeCard(context),
             ],
           );
+  }
+
+  Widget _buildPhrasesPracticeCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = const Color(0xFF8C2D19);
+
+    return Card(
+      elevation: 0,
+      color: cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(3),
+        side: BorderSide(color: inkColor.withValues(alpha: 0.35)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PhraseCatalogScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: rustAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
+                ),
+                child: Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  color: rustAccent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)?.titlePhrasesHub ??
+                          'Alltagsphrasen & Redewendungen',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: inkColor,
+                      ),
+                    ),
+                    Text(
+                      AppLocalizations.of(context)?.subtitlePhrasesHub ??
+                          '1.000+ Redemittel für Gastronomie, Small Talk & Alltag',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: inkColor.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: rustAccent,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildGrammarGuideCard(BuildContext context) {

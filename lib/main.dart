@@ -21,6 +21,7 @@ import 'services/notification_service.dart';
 import 'services/book_guide_service.dart';
 import 'services/discovery_service.dart';
 import 'services/tts_service.dart';
+import 'services/phrase_service.dart';
 
 void main() {
   // Catch everything else (async errors outside the widget tree).
@@ -69,6 +70,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => BookGuideService()),
             ChangeNotifierProvider(create: (_) => DiscoveryService()),
             ChangeNotifierProvider(create: (_) => TtsService()),
+            ChangeNotifierProvider(create: (_) => PhraseService()),
           ],
           child: const MyApp(),
         ),
