@@ -424,7 +424,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
         final colorScheme = Theme.of(sheetContext).colorScheme;
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,10 +433,10 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                 Row(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(4),
                       child: SizedBox(
-                        width: 56,
-                        height: 40,
+                        width: 48,
+                        height: 34,
                         child: CachedNetworkImage(
                           imageUrl: video.thumbnailUrl,
                           fit: BoxFit.cover,
@@ -453,7 +453,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                             video.effectiveTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -467,15 +467,17 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 const Divider(height: 1),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
 
                 // 1. Edit Title
                 ListTile(
-                  leading: const Icon(Icons.edit_outlined, size: 20),
-                  title: const Text('Edit Title', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  subtitle: Text(video.effectiveTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+                  dense: true,
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  leading: const Icon(Icons.edit_outlined, size: 19),
+                  title: const Text('Edit Title', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _showEditTitleDialog(context, video, mediaLibraryService);
@@ -484,9 +486,24 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
 
                 // 2. Set Category
                 ListTile(
-                  leading: const Icon(Icons.label_outline_rounded, size: 20),
-                  title: const Text('Set Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  subtitle: Text(video.category?.isNotEmpty == true ? 'Current: ${video.category}' : 'Add a tag (e.g. Conversation, Travel)', style: const TextStyle(fontSize: 11)),
+                  dense: true,
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  leading: const Icon(Icons.label_outline_rounded, size: 19),
+                  title: const Text('Set Category', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  trailing: video.category?.isNotEmpty == true
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: colorScheme.secondaryContainer.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            video.category!.toUpperCase(),
+                            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: colorScheme.onSecondaryContainer),
+                          ),
+                        )
+                      : null,
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _showEditCategoryDialog(context, video, mediaLibraryService);
@@ -495,50 +512,49 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
 
                 // 3. Copy Link
                 ListTile(
-                  leading: const Icon(Icons.copy_rounded, size: 20),
-                  title: const Text('Copy Link', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  dense: true,
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  leading: const Icon(Icons.copy_rounded, size: 19),
+                  title: const Text('Copy Link', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     Clipboard.setData(ClipboardData(text: video.url));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Link copied to clipboard!'),
-                        duration: Duration(seconds: 2),
-                      ),
+                      const SnackBar(content: Text('Link copied to clipboard!'), duration: Duration(seconds: 2)),
                     );
                   },
                 ),
 
                 // 4. Submit URL Again / Re-process
                 ListTile(
-                  leading: Icon(Icons.refresh_rounded, size: 20, color: colorScheme.primary),
-                  title: const Text('Submit URL Again / Re-process', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Re-download and re-transcribe media', style: TextStyle(fontSize: 11)),
+                  dense: true,
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  leading: Icon(Icons.refresh_rounded, size: 19, color: colorScheme.primary),
+                  title: const Text('Submit URL Again', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _urlController.text = video.url;
                     mediaLibraryService.submitMediaProcessingTaskInBackground(video.url);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Re-submitting media for processing...'),
-                        duration: Duration(seconds: 3),
-                      ),
+                      const SnackBar(content: Text('Re-submitting media for processing...'), duration: Duration(seconds: 3)),
                     );
                   },
                 ),
 
                 // 5. Delete Lesson
                 ListTile(
-                  leading: Icon(Icons.delete_outline_rounded, size: 20, color: colorScheme.error),
-                  title: Text('Delete Lesson', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.error)),
+                  dense: true,
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  leading: Icon(Icons.delete_outline_rounded, size: 19, color: colorScheme.error),
+                  title: Text('Delete Lesson', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: colorScheme.error)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     mediaLibraryService.deleteProcessedVideo(video.id);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Lesson deleted'),
-                        duration: Duration(seconds: 2),
-                      ),
+                      const SnackBar(content: Text('Lesson deleted'), duration: Duration(seconds: 2)),
                     );
                   },
                 ),
