@@ -102,6 +102,8 @@ class SyncService extends ChangeNotifier {
       final vocabPayload = updatedLocalWords.map((w) => w.toJson()).toList();
       final articlesPayload = await MediaLibraryService().getArticlesForSync();
       final mediaPayload = MediaLibraryService().getMediaForSync();
+      final deletedMediaPayload = MediaLibraryService().getDeletedMediaKeysForSync();
+      final deletedArticlesPayload = MediaLibraryService().getDeletedArticleIdsForSync();
 
       final postResponse = await http
           .post(
@@ -111,6 +113,8 @@ class SyncService extends ChangeNotifier {
               'vocabulary': vocabPayload,
               'articles': articlesPayload,
               'media': mediaPayload,
+              'deleted_media_ids': deletedMediaPayload,
+              'deleted_article_ids': deletedArticlesPayload,
               'streak_freezes': ProfileService().streakFreezes,
               'curriculum_progress': CurriculumService().completedNodeIds
                   .toList(),

@@ -10,6 +10,7 @@ import '../models/subtitle_cue.dart';
 import 'backend_service.dart';
 import 'ondevice_ai_service.dart';
 import 'app_logger.dart';
+import 'sync_service.dart';
 
 class MediaLibraryService extends ChangeNotifier {
   static final MediaLibraryService _instance = MediaLibraryService._internal();
@@ -18,20 +19,46 @@ class MediaLibraryService extends ChangeNotifier {
   static const String _importedArticlesKey = 'imported_articles';
   static const String _customContentKeyPrefix = 'custom_content_';
   static const String _processedVideosKey = 'processed_videos';
+  static const String _deletedMediaKeysKey = 'deleted_media_keys';
+  static const String _deletedArticleIdsKey = 'deleted_article_ids';
 
   final BackendService _backendService = BackendService();
   final Map<String, Timer> _pollingTimers = {};
 
   List<Article> _importedArticles = [];
   List<ProcessedVideo> _processedVideos = [];
+  Set<String> _deletedMediaKeys = {};
+  Set<String> _deletedArticleIds = {};
 
   List<Article> get importedArticles => _importedArticles;
   List<ProcessedVideo> get processedVideos => _processedVideos;
 
+  List<String> getDeletedMediaKeysForSync() => _deletedMediaKeys.toList();
+  List<String> getDeletedArticleIdsForSync() => _deletedArticleIds.toList();
+
   MediaLibraryService._internal() {
+    _loadDeletedKeys();
     _loadImportedArticles();
     _loadProcessedVideos();
     clearAllAnalysisCache();
+  }
+
+  Future<void> _loadDeletedKeys() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _deletedMediaKeys = (prefs.getStringList(_deletedMediaKeysKey) ?? []).toSet();
+      _deletedArticleIds = (prefs.getStringList(_deletedArticleIdsKey) ?? []).toSet();
+    } catch (_) {}
+  }
+
+  bool _isMediaDeleted(String? id, String? taskId, String? url) {
+    if (id != null && _deletedMediaKeys.contains(id)) return true;
+    if (taskId != null && _deletedMediaKeys.contains(taskId)) return true;
+    if (url != null) {
+      final norm = normalizeMediaUrl(url);
+      if (_deletedMediaKeys.contains(norm) || _deletedMediaKeys.contains(url)) return true;
+    }
+    return false;
   }
 
   Future<void> clearAllAnalysisCache() async {
@@ -54,6 +81,7 @@ class MediaLibraryService extends ChangeNotifier {
       final List<dynamic> decodedList = jsonDecode(articlesJson);
       _importedArticles = decodedList
           .map((item) => Article.fromJson(item as Map<String, dynamic>))
+          .where((a) => !_deletedArticleIds.contains(a.id))
           .toList();
     } else {
       _importedArticles = [
@@ -99,15 +127,22 @@ class MediaLibraryService extends ChangeNotifier {
 
   Future<void> _loadProcessedVideos() async {
     final prefs = await SharedPreferences.getInstance();
+    final deletedList = prefs.getStringList(_deletedMediaKeysKey) ?? [];
+    _deletedMediaKeys = deletedList.toSet();
+
     final String? videosJson = prefs.getString(_processedVideosKey);
 
     if (videosJson != null) {
       final List<dynamic> decodedList = jsonDecode(videosJson);
       final rawList = decodedList.map((item) => ProcessedVideo.fromJson(item)).toList();
 
-      // Deduplicate by normalized URL and merge richest data
+      // Deduplicate by normalized URL, prune deleted, and merge richest data
       final Map<String, ProcessedVideo> uniqueMap = {};
       for (final v in rawList) {
+        if (_isMediaDeleted(v.id, v.taskId, v.url)) {
+          continue;
+        }
+
         final norm = normalizeMediaUrl(v.url);
         final key = norm.isNotEmpty ? norm : v.id;
         if (!uniqueMap.containsKey(key)) {
@@ -165,6 +200,12 @@ class MediaLibraryService extends ChangeNotifier {
 
   Future<void> submitMediaProcessingTaskInBackground(String originalUrl) async {
     final normalized = normalizeMediaUrl(originalUrl);
+
+    // Un-tombstone if user explicitly re-submits
+    _deletedMediaKeys.remove(originalUrl);
+    _deletedMediaKeys.remove(normalized);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_deletedMediaKeysKey, _deletedMediaKeys.toList());
 
     // Check if video with this URL already exists (especially if failed or retrying)
     final existingIndex = _processedVideos.indexWhere(
@@ -529,12 +570,51 @@ class MediaLibraryService extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteProcessedVideo(String id) async {
-    _processedVideos.removeWhere((v) => v.id == id || v.taskId == id);
+  Future<void> deleteProcessedVideo(String id, {String? url}) async {
+    ProcessedVideo? videoToDelete;
+    for (final v in _processedVideos) {
+      if (v.id == id || v.taskId == id || (url != null && normalizeMediaUrl(v.url) == normalizeMediaUrl(url))) {
+        videoToDelete = v;
+        break;
+      }
+    }
+
+    final targetUrl = url ?? videoToDelete?.url;
+    final normalizedUrl = targetUrl != null ? normalizeMediaUrl(targetUrl) : null;
+    final taskId = videoToDelete?.taskId;
+
+    // 1. Remove from in-memory list
+    _processedVideos.removeWhere((v) =>
+        v.id == id ||
+        v.taskId == id ||
+        (taskId != null && (v.id == taskId || v.taskId == taskId)) ||
+        (normalizedUrl != null && normalizeMediaUrl(v.url) == normalizedUrl));
+
+    // 2. Cancel all associated polling timers
+    if (taskId != null) {
+      _pollingTimers[taskId]?.cancel();
+      _pollingTimers.remove(taskId);
+    }
     _pollingTimers[id]?.cancel();
     _pollingTimers.remove(id);
+
+    // 3. Mark as deleted in persistent tombstone set
+    _deletedMediaKeys.add(id);
+    if (taskId != null) _deletedMediaKeys.add(taskId);
+    if (videoToDelete?.id != null) _deletedMediaKeys.add(videoToDelete!.id);
+    if (targetUrl != null) _deletedMediaKeys.add(targetUrl);
+    if (normalizedUrl != null) _deletedMediaKeys.add(normalizedUrl);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_deletedMediaKeysKey, _deletedMediaKeys.toList());
+
     notifyListeners();
     await _saveProcessedVideos();
+
+    // 4. Trigger cloud sync to update remote database immediately
+    try {
+      unawaited(SyncService().syncNow());
+    } catch (_) {}
   }
 
   Future<void> importWebArticleInBackground(String url) async {
@@ -615,6 +695,10 @@ class MediaLibraryService extends ChangeNotifier {
   }
 
   Future<void> addImportedArticle(Article article, String content) async {
+    _deletedArticleIds.remove(article.id);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_deletedArticleIdsKey, _deletedArticleIds.toList());
+
     _importedArticles.insert(0, article);
     notifyListeners();
     await _saveImportedArticles();
@@ -623,10 +707,16 @@ class MediaLibraryService extends ChangeNotifier {
 
   Future<void> deleteArticle(String id) async {
     _importedArticles.removeWhere((a) => a.id == id);
+    _deletedArticleIds.add(id);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_deletedArticleIdsKey, _deletedArticleIds.toList());
+    await prefs.remove('$_customContentKeyPrefix$id');
     notifyListeners();
     await _saveImportedArticles();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_customContentKeyPrefix$id');
+
+    try {
+      unawaited(SyncService().syncNow());
+    } catch (_) {}
   }
 
   Future<void> _saveImportedArticles() async {
@@ -679,11 +769,17 @@ class MediaLibraryService extends ChangeNotifier {
 
   Future<void> deleteImportedArticle(String articleId) async {
     _importedArticles.removeWhere((article) => article.id == articleId);
-    await _saveImportedArticles();
+    _deletedArticleIds.add(articleId);
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_deletedArticleIdsKey, _deletedArticleIds.toList());
     await prefs.remove('$_customContentKeyPrefix$articleId');
     await prefs.remove('$_analysisCachePrefix$articleId');
     notifyListeners();
+    await _saveImportedArticles();
+
+    try {
+      unawaited(SyncService().syncNow());
+    } catch (_) {}
   }
 
   /// Builds the sync payload for imported articles, bundling each article's
@@ -713,7 +809,7 @@ class MediaLibraryService extends ChangeNotifier {
   /// if an article with this id already exists locally, it's left alone.
   Future<void> mergeArticleFromSync(Map<String, dynamic> json) async {
     final id = json['id'] as String?;
-    if (id == null || _importedArticles.any((a) => a.id == id)) return;
+    if (id == null || _deletedArticleIds.contains(id) || _importedArticles.any((a) => a.id == id)) return;
 
     final content = json['content'] as String? ?? '';
     final article = Article.fromJson(json);
@@ -727,7 +823,15 @@ class MediaLibraryService extends ChangeNotifier {
   /// same rationale as [mergeArticleFromSync].
   Future<void> mergeMediaFromSync(Map<String, dynamic> json) async {
     final id = json['id'] as String?;
-    if (id == null || _processedVideos.any((v) => v.id == id)) return;
+    final taskId = json['taskId'] as String?;
+    final url = json['url'] as String?;
+
+    if (_isMediaDeleted(id, taskId, url)) return;
+
+    final norm = url != null ? normalizeMediaUrl(url) : '';
+    if (id == null || _processedVideos.any((v) => v.id == id || v.taskId == id || (norm.isNotEmpty && normalizeMediaUrl(v.url) == norm))) {
+      return;
+    }
 
     _processedVideos.insert(0, ProcessedVideo.fromJson(json));
     await _saveProcessedVideos();

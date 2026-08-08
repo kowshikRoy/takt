@@ -1861,6 +1861,8 @@ class SyncPayload(BaseModel):
     vocabulary: list[dict] | None = None
     articles: list[dict] | None = None
     media: list[dict] | None = None
+    deleted_media_ids: list[str] | None = None
+    deleted_article_ids: list[str] | None = None
     stats: dict | None = None
     xp_events: list[dict] | None = None
     streak_freezes: int | None = None
@@ -1954,7 +1956,12 @@ def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_med
             k = item.get('id', item.get('title'))
             if k:
                 article_map[k] = item
+        if payload.deleted_article_ids:
+            for del_id in payload.deleted_article_ids:
+                article_map.pop(del_id, None)
         existing_articles = list(article_map.values())
+    elif payload.deleted_article_ids:
+        existing_articles = [a for a in existing_articles if a.get('id') not in payload.deleted_article_ids]
 
     if payload.media is not None:
         media_map = {item.get('id'): item for item in existing_media if item.get('id')}
@@ -1962,7 +1969,20 @@ def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_med
             k = item.get('id')
             if k:
                 media_map[k] = item
-        existing_media = list(media_map.values())
+        if payload.deleted_media_ids:
+            deleted_set = set(payload.deleted_media_ids)
+            existing_media = [
+                m for m in media_map.values()
+                if m.get('id') not in deleted_set and m.get('taskId') not in deleted_set and m.get('url') not in deleted_set
+            ]
+        else:
+            existing_media = list(media_map.values())
+    elif payload.deleted_media_ids:
+        deleted_set = set(payload.deleted_media_ids)
+        existing_media = [
+            m for m in existing_media
+            if m.get('id') not in deleted_set and m.get('taskId') not in deleted_set and m.get('url') not in deleted_set
+        ]
 
     if payload.stats is not None:
         existing_stats.update(payload.stats)
