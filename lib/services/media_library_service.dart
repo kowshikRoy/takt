@@ -70,13 +70,59 @@ class MediaLibraryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  static String normalizeMediaUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return trimmed;
+    try {
+      final uri = Uri.parse(trimmed);
+      if (uri.host.contains('youtu.be')) {
+        final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
+        if (id.isNotEmpty) return 'https://www.youtube.com/watch?v=$id';
+      }
+      if (uri.pathSegments.contains('shorts')) {
+        final idx = uri.pathSegments.indexOf('shorts');
+        if (idx + 1 < uri.pathSegments.length) {
+          final id = uri.pathSegments[idx + 1];
+          if (id.isNotEmpty) return 'https://www.youtube.com/watch?v=$id';
+        }
+      }
+      if (uri.queryParameters.containsKey('v')) {
+        final id = uri.queryParameters['v']!;
+        if (id.isNotEmpty) return 'https://www.youtube.com/watch?v=$id';
+      }
+      if (trimmed.endsWith('/')) {
+        return trimmed.substring(0, trimmed.length - 1);
+      }
+    } catch (_) {}
+    return trimmed;
+  }
+
   Future<void> _loadProcessedVideos() async {
     final prefs = await SharedPreferences.getInstance();
     final String? videosJson = prefs.getString(_processedVideosKey);
 
     if (videosJson != null) {
       final List<dynamic> decodedList = jsonDecode(videosJson);
-      _processedVideos = decodedList.map((item) => ProcessedVideo.fromJson(item)).toList();
+      final rawList = decodedList.map((item) => ProcessedVideo.fromJson(item)).toList();
+
+      // Deduplicate by normalized URL
+      final Map<String, ProcessedVideo> uniqueMap = {};
+      for (final v in rawList) {
+        final norm = normalizeMediaUrl(v.url);
+        final key = norm.isNotEmpty ? norm : v.id;
+        if (!uniqueMap.containsKey(key)) {
+          uniqueMap[key] = v;
+        } else {
+          final existing = uniqueMap[key]!;
+          if (existing.status != ProcessingStatus.completed && v.status == ProcessingStatus.completed) {
+            uniqueMap[key] = v;
+          } else if (existing.title == null && v.title != null) {
+            uniqueMap[key] = existing.copyWith(title: v.title, category: v.category ?? existing.category);
+          }
+        }
+      }
+      _processedVideos = uniqueMap.values.toList();
+      await _saveProcessedVideos();
     }
 
     // Resume polling for any video in active/processing state
@@ -104,13 +150,18 @@ class MediaLibraryService extends ChangeNotifier {
   }
 
   Future<void> submitMediaProcessingTaskInBackground(String originalUrl) async {
+    final normalized = normalizeMediaUrl(originalUrl);
+
     // Check if video with this URL already exists (especially if failed or retrying)
-    final existingIndex = _processedVideos.indexWhere((v) => v.url.trim().toLowerCase() == originalUrl.trim().toLowerCase());
-    final tempId = existingIndex != -1 ? _processedVideos[existingIndex].id : 'task_${DateTime.now().millisecondsSinceEpoch}';
+    final existingIndex = _processedVideos.indexWhere(
+      (v) => normalizeMediaUrl(v.url) == normalized,
+    );
+    final existing = existingIndex != -1 ? _processedVideos[existingIndex] : null;
+    final tempId = existing?.id ?? 'task_${DateTime.now().millisecondsSinceEpoch}';
     final initialYtThumb = ProcessedVideo.extractYouTubeThumbnail(originalUrl);
-    final existingTitle = existingIndex != -1 ? _processedVideos[existingIndex].title : null;
-    final existingThumbnail = (existingIndex != -1 ? _processedVideos[existingIndex].thumbnail : null) ?? initialYtThumb;
-    final existingCategory = existingIndex != -1 ? _processedVideos[existingIndex].category : null;
+    final existingTitle = existing?.title;
+    final existingThumbnail = existing?.thumbnail ?? initialYtThumb;
+    final existingCategory = existing?.category;
 
     final newVideo = ProcessedVideo(
       id: tempId,
@@ -119,7 +170,7 @@ class MediaLibraryService extends ChangeNotifier {
       status: ProcessingStatus.downloading,
       stageMessage: 'Connecting to server...',
       progressPercentage: 5,
-      subtitles: existingIndex != -1 ? _processedVideos[existingIndex].subtitles : [],
+      subtitles: existing?.subtitles ?? [],
       title: existingTitle,
       thumbnail: existingThumbnail,
       category: existingCategory,
@@ -130,12 +181,20 @@ class MediaLibraryService extends ChangeNotifier {
     } else {
       _processedVideos.insert(0, newVideo);
     }
+
+    // Remove any duplicate entries for this normalized URL if they existed
+    _processedVideos.removeWhere(
+      (v) => normalizeMediaUrl(v.url) == normalized && v.id != tempId,
+    );
+
     notifyListeners();
     await _saveProcessedVideos();
 
     try {
       final submitResponse = await _backendService.submitMediaUrl(originalUrl);
-      final index = _processedVideos.indexWhere((v) => v.id == tempId || v.taskId == tempId);
+      final index = _processedVideos.indexWhere(
+        (v) => v.id == tempId || v.taskId == tempId || normalizeMediaUrl(v.url) == normalized,
+      );
 
       if (submitResponse != null && submitResponse.containsKey('task_id')) {
         final realTaskId = submitResponse['task_id'] as String;
@@ -178,7 +237,9 @@ class MediaLibraryService extends ChangeNotifier {
         }
       }
     } catch (e) {
-      final index = _processedVideos.indexWhere((v) => v.id == tempId || v.taskId == tempId);
+      final index = _processedVideos.indexWhere(
+        (v) => v.id == tempId || v.taskId == tempId || normalizeMediaUrl(v.url) == normalized,
+      );
       if (index != -1) {
         _processedVideos[index] = ProcessedVideo(
           id: tempId,
@@ -200,6 +261,9 @@ class MediaLibraryService extends ChangeNotifier {
   }
 
   Future<void> addMediaProcessingTask(String taskId, String originalUrl) async {
+    final normalized = normalizeMediaUrl(originalUrl);
+    final existingIndex = _processedVideos.indexWhere((v) => normalizeMediaUrl(v.url) == normalized);
+    
     final newVideo = ProcessedVideo(
       id: taskId,
       taskId: taskId,
@@ -210,7 +274,11 @@ class MediaLibraryService extends ChangeNotifier {
       subtitles: [],
     );
 
-    _processedVideos.insert(0, newVideo);
+    if (existingIndex != -1) {
+      _processedVideos[existingIndex] = newVideo;
+    } else {
+      _processedVideos.insert(0, newVideo);
+    }
     notifyListeners();
     await _saveProcessedVideos();
 
@@ -218,29 +286,7 @@ class MediaLibraryService extends ChangeNotifier {
   }
 
   Future<void> retryProcessingTask(String oldTaskId, String originalUrl) async {
-    // Submit media task again via BackendService
-    final submitRes = await _backendService.submitMediaUrl(originalUrl);
-    final newTaskId = submitRes?['task_id'] as String?;
-    
-    final index = _processedVideos.indexWhere((v) => v.taskId == oldTaskId || v.id == oldTaskId);
-    if (index != -1 && newTaskId != null) {
-      final old = _processedVideos[index];
-      _processedVideos[index] = ProcessedVideo(
-        id: newTaskId,
-        taskId: newTaskId,
-        url: originalUrl,
-        status: ProcessingStatus.downloading,
-        stageMessage: 'Connecting to server...',
-        progressPercentage: 5,
-        subtitles: [],
-        title: old.title,
-        thumbnail: old.thumbnail ?? ProcessedVideo.extractYouTubeThumbnail(originalUrl),
-        category: old.category,
-      );
-      notifyListeners();
-      await _saveProcessedVideos();
-      _startPollingForTask(newTaskId, originalUrl);
-    }
+    await submitMediaProcessingTaskInBackground(originalUrl);
   }
 
   Future<bool> refreshVideoUrl(String id, String originalUrl) async {
@@ -276,13 +322,16 @@ class MediaLibraryService extends ChangeNotifier {
 
     int pollAttempts = 0;
     const maxPollAttempts = 80; // 80 * 3s = 4 minutes maximum polling
+    final normalized = normalizeMediaUrl(originalUrl);
 
     final timer = Timer.periodic(const Duration(seconds: 3), (t) async {
       pollAttempts++;
       if (pollAttempts > maxPollAttempts) {
         t.cancel();
         _pollingTimers.remove(taskId);
-        final index = _processedVideos.indexWhere((v) => v.taskId == taskId || v.id == taskId);
+        final index = _processedVideos.indexWhere(
+          (v) => v.taskId == taskId || v.id == taskId || normalizeMediaUrl(v.url) == normalized,
+        );
         if (index != -1 && _processedVideos[index].status != ProcessingStatus.completed) {
           final current = _processedVideos[index];
           _processedVideos[index] = ProcessedVideo(
@@ -322,7 +371,9 @@ class MediaLibraryService extends ChangeNotifier {
         return;
       }
 
-      final index = _processedVideos.indexWhere((v) => v.taskId == taskId || v.id == taskId);
+      final index = _processedVideos.indexWhere(
+        (v) => v.taskId == taskId || v.id == taskId || normalizeMediaUrl(v.url) == normalized,
+      );
 
       if (statusStr == 'processing' || statusStr == 'downloading' || statusStr == 'transcribing' || statusStr == 'pending') {
         if (index != -1) {
