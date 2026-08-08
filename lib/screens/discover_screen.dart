@@ -503,6 +503,29 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                                     ],
                                                   ),
                                                 ),
+                                                if (video.category != null && video.category!.isNotEmpty) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: colorScheme.secondaryContainer.withValues(alpha: 0.6),
+                                                      borderRadius: BorderRadius.circular(3),
+                                                      border: Border.all(
+                                                        color: colorScheme.secondary.withValues(alpha: 0.3),
+                                                        width: 0.8,
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      video.category!.toUpperCase(),
+                                                      style: TextStyle(
+                                                        fontSize: 9.5,
+                                                        fontWeight: FontWeight.w800,
+                                                        letterSpacing: 0.3,
+                                                        color: colorScheme.onSecondaryContainer,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                                 const SizedBox(width: 8),
 
                                                 // Descriptive subtitle text
@@ -1072,7 +1095,29 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 const Divider(height: 1),
                 const SizedBox(height: 8),
 
-                // 1. Copy Link
+                // 1. Edit Title
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined, size: 20),
+                  title: const Text('Edit Title', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  subtitle: Text(video.effectiveTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showEditTitleDialog(context, video, mediaLibraryService);
+                  },
+                ),
+
+                // 2. Set Category
+                ListTile(
+                  leading: const Icon(Icons.label_outline_rounded, size: 20),
+                  title: const Text('Set Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  subtitle: Text(video.category?.isNotEmpty == true ? 'Current: ${video.category}' : 'Add a tag (e.g. Conversation, Travel)', style: const TextStyle(fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showEditCategoryDialog(context, video, mediaLibraryService);
+                  },
+                ),
+
+                // 3. Copy Link
                 ListTile(
                   leading: const Icon(Icons.copy_rounded, size: 20),
                   title: const Text('Copy Link', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
@@ -1088,7 +1133,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   },
                 ),
 
-                // 2. Submit URL Again / Re-process
+                // 4. Submit URL Again / Re-process
                 ListTile(
                   leading: Icon(Icons.refresh_rounded, size: 20, color: colorScheme.primary),
                   title: const Text('Submit URL Again / Re-process', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
@@ -1105,7 +1150,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   },
                 ),
 
-                // 3. Delete Lesson
+                // 5. Delete Lesson
                 ListTile(
                   leading: Icon(Icons.delete_outline_rounded, size: 20, color: colorScheme.error),
                   title: Text('Delete Lesson', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.error)),
@@ -1117,6 +1162,118 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showEditTitleDialog(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
+    final controller = TextEditingController(text: video.effectiveTitle);
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Title', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Enter lesson title',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 2,
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.pop(dialogContext),
+            ),
+            FilledButton(
+              child: const Text('Save'),
+              onPressed: () {
+                final newTitle = controller.text.trim();
+                if (newTitle.isNotEmpty) {
+                  mediaLibraryService.updateVideoDetails(video.id, title: newTitle);
+                }
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Title updated!'), duration: Duration(seconds: 2)),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditCategoryDialog(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
+    final defaultCategories = ['Conversation', 'Grammar', 'Vocabulary', 'Travel', 'Stories', 'News', 'Business', 'Pronunciation'];
+    final controller = TextEditingController(text: video.category ?? '');
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final selected = controller.text.trim();
+            return AlertDialog(
+              title: const Text('Set Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Quick Categories:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: defaultCategories.map((cat) {
+                        final isSelected = selected.toLowerCase() == cat.toLowerCase();
+                        return ChoiceChip(
+                          label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          selected: isSelected,
+                          onSelected: (val) {
+                            setDialogState(() {
+                              controller.text = val ? cat : '';
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: controller,
+                      decoration: const InputDecoration(
+                        labelText: 'Or enter custom category',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
+                FilledButton(
+                  child: const Text('Save'),
+                  onPressed: () {
+                    final newCategory = controller.text.trim();
+                    mediaLibraryService.updateVideoDetails(video.id, category: newCategory);
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(newCategory.isNotEmpty ? 'Category set to $newCategory' : 'Category cleared'), duration: const Duration(seconds: 2)),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );

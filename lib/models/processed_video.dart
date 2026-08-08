@@ -15,6 +15,7 @@ class ProcessedVideo {
   final String mediaType;
   final String? thumbnail;
   final String? title;
+  final String? category;
 
   static String? extractYouTubeThumbnail(String? url) {
     if (url == null || url.isEmpty) return null;
@@ -119,7 +120,40 @@ class ProcessedVideo {
     this.mediaType = 'video',
     this.thumbnail,
     this.title,
+    this.category,
   });
+
+  ProcessedVideo copyWith({
+    String? id,
+    String? taskId,
+    String? url,
+    ProcessingStatus? status,
+    String? stageMessage,
+    String? errorMessage,
+    int? progressPercentage,
+    List<SubtitleCue>? subtitles,
+    String? videoUrl,
+    String? mediaType,
+    String? thumbnail,
+    String? title,
+    String? category,
+  }) {
+    return ProcessedVideo(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      url: url ?? this.url,
+      status: status ?? this.status,
+      stageMessage: stageMessage ?? this.stageMessage,
+      errorMessage: errorMessage ?? this.errorMessage,
+      progressPercentage: progressPercentage ?? this.progressPercentage,
+      subtitles: subtitles ?? this.subtitles,
+      videoUrl: videoUrl ?? this.videoUrl,
+      mediaType: mediaType ?? this.mediaType,
+      thumbnail: thumbnail ?? this.thumbnail,
+      title: title ?? this.title,
+      category: category ?? this.category,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -140,6 +174,7 @@ class ProcessedVideo {
       'mediaType': mediaType,
       'thumbnail': thumbnail,
       'title': title,
+      'category': category,
     };
   }
 
@@ -188,6 +223,7 @@ class ProcessedVideo {
       mediaType: json['mediaType'] as String? ?? 'video',
       thumbnail: thumb,
       title: json['title'] as String?,
+      category: json['category'] as String?,
     );
   }
 }

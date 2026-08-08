@@ -90,6 +90,19 @@ class MediaLibraryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateVideoDetails(String videoId, {String? title, String? category}) async {
+    final index = _processedVideos.indexWhere((v) => v.id == videoId || v.taskId == videoId);
+    if (index != -1) {
+      final current = _processedVideos[index];
+      _processedVideos[index] = current.copyWith(
+        title: title ?? current.title,
+        category: category ?? current.category,
+      );
+      notifyListeners();
+      await _saveProcessedVideos();
+    }
+  }
+
   Future<void> submitMediaProcessingTaskInBackground(String originalUrl) async {
     // Check if video with this URL already exists (especially if failed or retrying)
     final existingIndex = _processedVideos.indexWhere((v) => v.url.trim().toLowerCase() == originalUrl.trim().toLowerCase());
