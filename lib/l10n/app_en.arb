@@ -56,6 +56,13 @@
   "sectionPracticeLearning": "Practice & Learning",
   "labelDailyGoal": "Daily Word Goal",
   "labelSoundEffects": "Sound Effects",
+  "labelGermanVoice": "German Voice (TTS)",
+  "subtitleGermanVoice": "Voice used for spoken German audio",
+  "labelSystemDefaultVoice": "System Default",
+  "subtitleSystemDefaultVoice": "Default speech engine",
+  "titleSelectGermanVoice": "Select German Voice",
+  "labelSpeechRate": "Speech Speed",
+  "msgNoVoicesDetected": "Using system default voice. No additional voices found on this device.",
   "titleProfile": "Profile",
 
   "titleDailyDiscovery": "DAILY DISCOVERY",

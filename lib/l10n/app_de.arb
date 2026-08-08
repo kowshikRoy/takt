@@ -56,6 +56,13 @@
   "sectionPracticeLearning": "Training & Lernen",
   "labelDailyGoal": "Tägliches Wortziel",
   "labelSoundEffects": "Soundeffekte",
+  "labelGermanVoice": "Deutsche Stimme (TTS)",
+  "subtitleGermanVoice": "Stimme für deutsche Sprachausgabe",
+  "labelSystemDefaultVoice": "Systemstandard",
+  "subtitleSystemDefaultVoice": "Standard-Sprachausgabe",
+  "titleSelectGermanVoice": "Deutsche Stimme wählen",
+  "labelSpeechRate": "Sprechgeschwindigkeit",
+  "msgNoVoicesDetected": "Systemstandard wird verwendet. Keine weiteren Stimmen auf diesem Gerät gefunden.",
   "titleProfile": "Profil",
 
   "titleDailyDiscovery": "TÄGLICHE ENTDECKUNGEN",

@@ -398,6 +398,48 @@ abstract class AppLocalizations {
   /// **'Sound Effects'**
   String get labelSoundEffects;
 
+  /// No description provided for @labelGermanVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'German Voice (TTS)'**
+  String get labelGermanVoice;
+
+  /// No description provided for @subtitleGermanVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice used for spoken German audio'**
+  String get subtitleGermanVoice;
+
+  /// No description provided for @labelSystemDefaultVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'System Default'**
+  String get labelSystemDefaultVoice;
+
+  /// No description provided for @subtitleSystemDefaultVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Default speech engine'**
+  String get subtitleSystemDefaultVoice;
+
+  /// No description provided for @titleSelectGermanVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Select German Voice'**
+  String get titleSelectGermanVoice;
+
+  /// No description provided for @labelSpeechRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech Speed'**
+  String get labelSpeechRate;
+
+  /// No description provided for @msgNoVoicesDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'Using system default voice. No additional voices found on this device.'**
+  String get msgNoVoicesDetected;
+
   /// No description provided for @titleProfile.
   ///
   /// In en, this message translates to:

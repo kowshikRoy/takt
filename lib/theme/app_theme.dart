@@ -208,7 +208,7 @@ class AppTheme {
   }
 
   // Light Theme
-  static ThemeData lightTheme(String fontFamily, [AppColorTheme theme = AppColorTheme.retroTeal]) {
+  static ThemeData lightTheme(String fontFamily, [AppColorTheme theme = AppColorTheme.modernist]) {
     final seed = _getSeedColor(theme);
     final bg = _getBackgroundColor(theme);
 
@@ -323,7 +323,7 @@ class AppTheme {
   }
 
   // Dark Theme
-  static ThemeData darkTheme(String fontFamily, [AppColorTheme theme = AppColorTheme.retroTeal]) {
+  static ThemeData darkTheme(String fontFamily, [AppColorTheme theme = AppColorTheme.modernist]) {
     final seed = _getSeedColor(theme);
     
     final baseScheme = ColorScheme.fromSeed(

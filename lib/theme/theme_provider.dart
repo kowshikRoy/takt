@@ -4,7 +4,7 @@ import 'app_theme.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
-  AppColorTheme _colorTheme = AppColorTheme.retroTeal; // Default to new Teal theme
+  AppColorTheme _colorTheme = AppColorTheme.modernist; // Bauhaus Modernist Theme
 
   ThemeProvider() {
     _loadTheme();

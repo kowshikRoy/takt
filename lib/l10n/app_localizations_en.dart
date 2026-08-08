@@ -159,6 +159,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelSoundEffects => 'Sound Effects';
 
   @override
+  String get labelGermanVoice => 'German Voice (TTS)';
+
+  @override
+  String get subtitleGermanVoice => 'Voice used for spoken German audio';
+
+  @override
+  String get labelSystemDefaultVoice => 'System Default';
+
+  @override
+  String get subtitleSystemDefaultVoice => 'Default speech engine';
+
+  @override
+  String get titleSelectGermanVoice => 'Select German Voice';
+
+  @override
+  String get labelSpeechRate => 'Speech Speed';
+
+  @override
+  String get msgNoVoicesDetected =>
+      'Using system default voice. No additional voices found on this device.';
+
+  @override
   String get titleProfile => 'Profile';
 
   @override

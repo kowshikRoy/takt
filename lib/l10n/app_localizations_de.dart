@@ -160,6 +160,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String get labelSoundEffects => 'Soundeffekte';
 
   @override
+  String get labelGermanVoice => 'Deutsche Stimme (TTS)';
+
+  @override
+  String get subtitleGermanVoice => 'Stimme für deutsche Sprachausgabe';
+
+  @override
+  String get labelSystemDefaultVoice => 'Systemstandard';
+
+  @override
+  String get subtitleSystemDefaultVoice => 'Standard-Sprachausgabe';
+
+  @override
+  String get titleSelectGermanVoice => 'Deutsche Stimme wählen';
+
+  @override
+  String get labelSpeechRate => 'Sprechgeschwindigkeit';
+
+  @override
+  String get msgNoVoicesDetected =>
+      'Systemstandard wird verwendet. Keine weiteren Stimmen auf diesem Gerät gefunden.';
+
+  @override
   String get titleProfile => 'Profil';
 
   @override

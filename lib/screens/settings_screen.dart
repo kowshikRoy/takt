@@ -9,6 +9,7 @@ import '../services/sound_service.dart';
 import '../services/notification_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../services/tts_service.dart';
 import '../widgets/capped_width.dart';
 import '../widgets/auth_sync_dialog.dart';
 
@@ -53,8 +54,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           l10n?.titleSettings.toUpperCase() ?? 'SETTINGS',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            fontSize: 15,
-            letterSpacing: 1.0,
+            fontSize: 13.5,
+            letterSpacing: 0.9,
             color: inkColor,
           ),
         ),
@@ -62,41 +63,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: inkColor),
+          icon: Icon(Icons.arrow_back_rounded, color: inkColor, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
         child: CappedWidth(
           maxWidth: 700,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            children: [
-              // 1. ACCOUNT & CLOUD SYNC CARD
-              _buildSectionTitle(context, l10n?.sectionAccountSync ?? 'ACCOUNT & SYNC', rustAccent),
-              _buildAccountSyncCard(context, inkColor, cardBg, rustAccent),
-              const SizedBox(height: 20),
+          child: ListTileTheme.merge(
+            dense: true,
+            titleTextStyle: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: inkColor,
+            ),
+            subtitleTextStyle: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w400,
+              color: inkColor.withValues(alpha: 0.6),
+            ),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              children: [
+                // 1. ACCOUNT & CLOUD SYNC CARD
+                _buildSectionTitle(context, l10n?.sectionAccountSync ?? 'ACCOUNT & SYNC', rustAccent),
+                _buildAccountSyncCard(context, inkColor, cardBg, rustAccent),
+                const SizedBox(height: 20),
 
-              // 2. APPEARANCE CARD
-              _buildSectionTitle(context, l10n?.sectionAppearance.toUpperCase() ?? 'APPEARANCE', rustAccent),
-              _buildAppearanceCard(context, themeProvider, inkColor, cardBg, rustAccent),
-              const SizedBox(height: 20),
+                // 2. APPEARANCE CARD
+                _buildSectionTitle(context, l10n?.sectionAppearance.toUpperCase() ?? 'APPEARANCE', rustAccent),
+                _buildAppearanceCard(context, themeProvider, inkColor, cardBg, rustAccent),
+                const SizedBox(height: 20),
 
-              // 3. LEARNING PREFERENCES CARD
-              _buildSectionTitle(context, l10n?.sectionLearningPreferences ?? 'LEARNING PREFERENCES', rustAccent),
-              _buildLearningPreferencesCard(context, l10n, inkColor, cardBg, rustAccent),
-              const SizedBox(height: 20),
+                // 3. LEARNING PREFERENCES CARD
+                _buildSectionTitle(context, l10n?.sectionLearningPreferences ?? 'LEARNING PREFERENCES', rustAccent),
+                _buildLearningPreferencesCard(context, l10n, inkColor, cardBg, rustAccent),
+                const SizedBox(height: 20),
 
-              // 4. DATA & STORAGE CARD
-              _buildSectionTitle(context, l10n?.sectionDataStorage ?? 'DATA & STORAGE', rustAccent),
-              _buildDataStorageCard(context, inkColor, cardBg, rustAccent),
-              const SizedBox(height: 20),
+                // 4. DATA & STORAGE CARD
+                _buildSectionTitle(context, l10n?.sectionDataStorage ?? 'DATA & STORAGE', rustAccent),
+                _buildDataStorageCard(context, inkColor, cardBg, rustAccent),
+                const SizedBox(height: 20),
 
-              // 5. ABOUT CARD
-              _buildSectionTitle(context, l10n?.sectionAbout ?? 'ABOUT', rustAccent),
-              _buildAboutCard(context, inkColor, cardBg, rustAccent),
-              const SizedBox(height: 32),
-            ],
+                // 5. ABOUT CARD
+                _buildSectionTitle(context, l10n?.sectionAbout ?? 'ABOUT', rustAccent),
+                _buildAboutCard(context, inkColor, cardBg, rustAccent),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),
@@ -105,13 +119,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSectionTitle(BuildContext context, String title, Color rustAccent) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      padding: const EdgeInsets.only(left: 4, bottom: 6),
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 11.5,
+          fontSize: 10.5,
           fontWeight: FontWeight.w800,
-          letterSpacing: 1.0,
+          letterSpacing: 0.9,
           color: rustAccent,
         ),
       ),
@@ -127,17 +141,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final auth = AuthService();
     final l10n = AppLocalizations.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
+    return Material(
+      color: cardBg,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
+        side: BorderSide(
           color: inkColor.withValues(alpha: 0.18),
           width: 1,
         ),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -150,7 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       auth.username ?? 'Learner',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.bold,
                         color: inkColor,
                       ),
@@ -159,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       auth.email ?? 'Offline guest session',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
                         color: inkColor.withValues(alpha: 0.6),
                       ),
                     ),
@@ -167,7 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                 decoration: BoxDecoration(
                   color: auth.isAuthenticated
                       ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
@@ -184,14 +199,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Icon(
                       auth.isAuthenticated ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-                      size: 13,
+                      size: 12,
                       color: auth.isAuthenticated ? const Color(0xFF2C5E3B) : inkColor.withValues(alpha: 0.6),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       auth.isAuthenticated ? 'Connected' : 'Offline',
                       style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.4,
                         color: auth.isAuthenticated ? const Color(0xFF2C5E3B) : inkColor.withValues(alpha: 0.6),
@@ -202,16 +217,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Divider(height: 1, color: inkColor.withValues(alpha: 0.12)),
           const SizedBox(height: 12),
+          Divider(height: 1, color: inkColor.withValues(alpha: 0.12)),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '${l10n?.labelLastSynced ?? 'Last synced'}: ${l10n?.labelJustNow ?? 'just now'}',
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 11,
                   color: inkColor.withValues(alpha: 0.6),
                 ),
               ),
@@ -222,10 +237,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: () => AuthSyncDialog.show(context),
                       style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
+                        textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       ),
                       child: const Text('Sign In'),
                     ),
@@ -235,17 +251,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       backgroundColor: rustAccent,
                       foregroundColor: Colors.white,
                       visualDensity: VisualDensity.compact,
+                      textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     ),
                     icon: _isSyncing
                         ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 1.8, color: Colors.white),
                           )
-                        : const Icon(Icons.sync_rounded, size: 16),
+                        : const Icon(Icons.sync_rounded, size: 14),
                     label: Text(l10n?.actionSyncNow ?? 'Sync Now'),
                   ),
                 ],
@@ -253,6 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -266,11 +285,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ) {
     final l10n = AppLocalizations.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
+    return Material(
+      color: cardBg,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
+        side: BorderSide(
           color: inkColor.withValues(alpha: 0.18),
           width: 1,
         ),
@@ -279,43 +298,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // Theme Mode
           ListTile(
-            title: Text(l10n?.labelAppTheme ?? 'App Theme', style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(_getThemeModeName(themeProvider.themeMode)),
-            leading: Icon(Icons.brightness_6_rounded, color: rustAccent),
-            trailing: const Icon(Icons.chevron_right_rounded),
+            title: Text(l10n?.labelAppTheme ?? 'App Theme', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
+            subtitle: Text(_getThemeModeName(themeProvider.themeMode), style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+            leading: Icon(Icons.brightness_6_rounded, color: rustAccent, size: 20),
+            trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
             onTap: () => _showThemeDialog(context, themeProvider),
           ),
           Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
 
           // Color Palette
           ListTile(
-            title: Text(l10n?.labelColorPalette ?? 'Color Palette', style: const TextStyle(fontWeight: FontWeight.w600)),
+            title: Text(l10n?.labelColorPalette ?? 'Color Palette', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
             subtitle: Row(
               children: [
                 Container(
-                  width: 12,
-                  height: 12,
+                  width: 10,
+                  height: 10,
                   margin: const EdgeInsets.only(right: 6),
                   decoration: BoxDecoration(
                     color: _getThemeColorPreview(themeProvider.colorTheme),
-                    borderRadius: BorderRadius.circular(2.5),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                Text(_getColorThemeName(themeProvider.colorTheme)),
+                Text(_getColorThemeName(themeProvider.colorTheme), style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
               ],
             ),
-            leading: Icon(Icons.color_lens_rounded, color: rustAccent),
-            trailing: const Icon(Icons.chevron_right_rounded),
+            leading: Icon(Icons.color_lens_rounded, color: rustAccent, size: 20),
+            trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
             onTap: () => _showColorThemeDialog(context, themeProvider),
           ),
           Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
 
           // Typography Font
           ListTile(
-            title: Text(l10n?.labelTypography ?? 'Typography', style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(themeProvider.fontFamily),
-            leading: Icon(Icons.font_download_rounded, color: rustAccent),
-            trailing: const Icon(Icons.chevron_right_rounded),
+            title: Text(l10n?.labelTypography ?? 'Typography', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
+            subtitle: Text(themeProvider.fontFamily, style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+            leading: Icon(Icons.font_download_rounded, color: rustAccent, size: 20),
+            trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
             onTap: () => _showFontDialog(context, themeProvider),
           ),
         ],
@@ -330,11 +349,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color cardBg,
     Color rustAccent,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
+    return Material(
+      color: cardBg,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
+        side: BorderSide(
           color: inkColor.withValues(alpha: 0.18),
           width: 1,
         ),
@@ -345,10 +364,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Consumer<ProfileService>(
             builder: (context, profileService, _) {
               return ListTile(
-                title: Text(l10n?.labelTargetLevel ?? 'Target Level (CEFR)', style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text('Level ${profileService.targetLevel}'),
-                leading: Icon(Icons.military_tech_rounded, color: rustAccent),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                title: Text(l10n?.labelTargetLevel ?? 'Target Level (CEFR)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
+                subtitle: Text('Level ${profileService.targetLevel}', style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+                leading: Icon(Icons.military_tech_rounded, color: rustAccent, size: 20),
+                trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
                 onTap: () => _showProficiencyLevelDialog(context, profileService),
               );
             },
@@ -359,14 +378,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Consumer<ProfileService>(
             builder: (context, profileService, _) {
               return ListTile(
-                title: Text(l10n?.labelDailyGoal ?? 'Daily Word Goal', style: const TextStyle(fontWeight: FontWeight.w600)),
+                title: Text(l10n?.labelDailyGoal ?? 'Daily Word Goal', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
                 subtitle: Text(
                   l10n?.labelWordsPerDay(profileService.dailyWordGoalCount) ??
                       '${profileService.dailyWordGoalCount} words/day',
+                  style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
                 ),
-                leading: Icon(Icons.style_rounded, color: rustAccent),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                leading: Icon(Icons.style_rounded, color: rustAccent, size: 20),
+                trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
                 onTap: () => _showDailyWordGoalDialog(context, profileService),
+              );
+            },
+          ),
+          Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
+
+          // German Voice (TTS)
+          Consumer<TtsService>(
+            builder: (context, ttsService, _) {
+              final selectedVoice = ttsService.selectedVoice;
+              final voiceSubtitle = selectedVoice == null
+                  ? '${l10n?.labelSystemDefaultVoice ?? 'System Default'} (de-DE)'
+                  : '${selectedVoice.label} · ${selectedVoice.regionLabel}';
+
+              return ListTile(
+                title: Text(
+                  l10n?.labelGermanVoice ?? 'German Voice (TTS)',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor),
+                ),
+                subtitle: Text(
+                  voiceSubtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
+                ),
+                leading: Icon(Icons.record_voice_over_rounded, color: rustAccent, size: 20),
+                trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
+                onTap: () => _showGermanVoiceDialog(context, ttsService),
               );
             },
           ),
@@ -378,9 +425,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               return Column(
                 children: [
                   SwitchListTile(
-                    title: Text(l10n?.labelSoundEffects ?? 'Sound Effects', style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: const Text('Audio cues for correct/incorrect reviews'),
-                    secondary: Icon(Icons.volume_up_rounded, color: rustAccent),
+                    title: Text(l10n?.labelSoundEffects ?? 'Sound Effects', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
+                    subtitle: Text('Audio cues for correct/incorrect reviews', style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+                    secondary: Icon(Icons.volume_up_rounded, color: rustAccent, size: 20),
                     value: soundService.enabled,
                     onChanged: (val) => soundService.setEnabled(val),
                   ),
@@ -388,11 +435,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
                     ListTile(
                       contentPadding: const EdgeInsets.only(left: 56, right: 16),
-                      title: const Text('Sound Style', style: TextStyle(fontWeight: FontWeight.w600)),
+                      title: Text('Sound Style', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
                       subtitle: Text(
                         SoundService.availablePacks[soundService.soundPack] ?? 'Marimba (Duolingo Style)',
+                        style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
                       ),
-                      trailing: const Icon(Icons.chevron_right_rounded),
+                      trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
                       onTap: () => _showSoundPackDialog(context, soundService),
                     ),
                   ],
@@ -406,9 +454,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Consumer<NotificationService>(
             builder: (context, notificationService, _) {
               return SwitchListTile(
-                title: Text(l10n?.labelStreakReminders ?? 'Streak Reminders', style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text(l10n?.labelDailyReminderSubtitle ?? 'A daily nudge if you haven\'t practiced yet'),
-                secondary: Icon(Icons.notifications_active_outlined, color: rustAccent),
+                title: Text(l10n?.labelStreakReminders ?? 'Streak Reminders', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
+                subtitle: Text(
+                  l10n?.labelDailyReminderSubtitle ?? 'A daily nudge if you haven\'t practiced yet',
+                  style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
+                ),
+                secondary: Icon(Icons.notifications_active_outlined, color: rustAccent, size: 20),
                 value: notificationService.enabled,
                 onChanged: (val) async {
                   final ok = await notificationService.setEnabled(val);
@@ -436,11 +487,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color cardBg,
     Color rustAccent,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
+    return Material(
+      color: cardBg,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
+        side: BorderSide(
           color: inkColor.withValues(alpha: 0.18),
           width: 1,
         ),
@@ -455,11 +506,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color cardBg,
     Color rustAccent,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
+    return Material(
+      color: cardBg,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
+        side: BorderSide(
           color: inkColor.withValues(alpha: 0.18),
           width: 1,
         ),
@@ -467,9 +518,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         children: [
           ListTile(
-            title: const Text('Version', style: TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: const Text('1.0.0 · Bauhaus Modernist Edition'),
-            leading: Icon(Icons.info_outline_rounded, color: rustAccent),
+            title: Text('Version', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
+            subtitle: Text('1.0.0 · Bauhaus Modernist Edition', style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+            leading: Icon(Icons.info_outline_rounded, color: rustAccent, size: 20),
           ),
         ],
       ),
@@ -530,11 +581,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showThemeDialog(BuildContext context, ThemeProvider provider) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: const Text('Select Theme'),
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: inkColor.withValues(alpha: 0.18), width: 1),
+        ),
+        title: Text(
+          'SELECT THEME',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: inkColor,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -565,6 +634,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
+              foregroundColor: rustAccent,
+              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Close'),
@@ -574,19 +645,335 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showGermanVoiceDialog(BuildContext context, TtsService ttsService) {
+    ttsService.getGermanVoices();
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return ChangeNotifierProvider.value(
+          value: ttsService,
+          child: Consumer<TtsService>(
+            builder: (dialogCtx, tts, _) {
+              final availableVoices = tts.availableVoices;
+              final isLoading = tts.isLoadingVoices;
+              final selectedVoice = tts.selectedVoice;
+
+              return AlertDialog(
+                backgroundColor: cardBg,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  side: BorderSide(color: inkColor.withValues(alpha: 0.18), width: 1),
+                ),
+                titlePadding: const EdgeInsets.fromLTRB(18, 18, 12, 10),
+                title: Row(
+                  children: [
+                    Icon(Icons.record_voice_over_rounded, color: rustAccent, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n?.titleSelectGermanVoice ?? 'Select German Voice',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: inkColor,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.refresh_rounded, size: 18, color: inkColor),
+                      tooltip: 'Refresh voices',
+                      onPressed: () => tts.getGermanVoices(forceRefresh: true),
+                    ),
+                  ],
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(ctx).size.height * 0.65,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. System Default Option
+                          RadioListTile<String?>(
+                            dense: true,
+                            value: null,
+                            groupValue: selectedVoice?.name,
+                            title: Text(
+                              l10n?.labelSystemDefaultVoice ?? 'System Default',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12.5,
+                                color: inkColor,
+                              ),
+                            ),
+                            subtitle: Text(
+                              l10n?.subtitleSystemDefaultVoice ?? 'Default speech engine (de-DE)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: inkColor.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            secondary: IconButton(
+                              icon: Icon(
+                                tts.isPlayingPreview &&
+                                        tts.previewingVoiceKey == '__system_default__'
+                                    ? Icons.stop_circle_rounded
+                                    : Icons.volume_up_rounded,
+                                color: rustAccent,
+                                size: 18,
+                              ),
+                              tooltip: 'Preview voice',
+                              onPressed: () {
+                                if (tts.isPlayingPreview &&
+                                    tts.previewingVoiceKey == '__system_default__') {
+                                  tts.stop();
+                                } else {
+                                  tts.previewVoice(null);
+                                }
+                              },
+                            ),
+                            onChanged: (_) {
+                              tts.setVoice(null);
+                              Navigator.pop(ctx);
+                            },
+                          ),
+
+                          const SizedBox(height: 6),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                            child: Text(
+                              'AVAILABLE GERMAN VOICES (${availableVoices.length})',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
+                                color: rustAccent,
+                              ),
+                            ),
+                          ),
+                          Divider(height: 6, color: inkColor.withValues(alpha: 0.12)),
+
+                          // 2. Voices List / Loading / Empty State
+                          if (isLoading && availableVoices.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: rustAccent,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'Scanning German voices...',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: inkColor.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else if (availableVoices.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Text(
+                                l10n?.msgNoVoicesDetected ??
+                                    'Using system default voice. No additional voices found on this device.',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: inkColor.withValues(alpha: 0.6),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            )
+                          else
+                            ...availableVoices.map((voice) {
+                              final isSelected = selectedVoice?.name == voice.name;
+                              final isPlayingThis = tts.isPlayingPreview &&
+                                  tts.previewingVoiceKey == voice.name;
+
+                              return RadioListTile<String?>(
+                                dense: true,
+                                value: voice.name,
+                                groupValue: selectedVoice?.name,
+                                selected: isSelected,
+                                title: Text(
+                                  voice.label,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.5,
+                                    color: inkColor,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  voice.details,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: inkColor.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                                secondary: IconButton(
+                                  icon: Icon(
+                                    isPlayingThis
+                                        ? Icons.stop_circle_rounded
+                                        : Icons.volume_up_rounded,
+                                    color: rustAccent,
+                                    size: 18,
+                                  ),
+                                  tooltip: 'Preview voice',
+                                  onPressed: () {
+                                    if (isPlayingThis) {
+                                      tts.stop();
+                                    } else {
+                                      tts.previewVoice(voice);
+                                    }
+                                  },
+                                ),
+                                onChanged: (_) {
+                                  tts.setVoice(voice);
+                                  Navigator.pop(ctx);
+                                },
+                              );
+                            }),
+
+                          const SizedBox(height: 6),
+                          Divider(height: 12, color: inkColor.withValues(alpha: 0.12)),
+
+                          // 3. Speech Rate Control
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  l10n?.labelSpeechRate ?? 'Speech Speed',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: inkColor,
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    (0.4, '0.8x'),
+                                    (0.5, '1.0x'),
+                                    (0.6, '1.2x'),
+                                  ].map((opt) {
+                                    final isCur = (tts.speechRate - opt.$1).abs() < 0.05;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(left: 6),
+                                      child: InkWell(
+                                        onTap: () => tts.setSpeechRate(opt.$1),
+                                        borderRadius: BorderRadius.circular(3),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isCur
+                                                ? rustAccent
+                                                : inkColor.withValues(alpha: 0.08),
+                                            borderRadius: BorderRadius.circular(3),
+                                          ),
+                                          child: Text(
+                                            opt.$2,
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: isCur ? Colors.white : inkColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      tts.stop();
+                      Navigator.pop(ctx);
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: rustAccent,
+                      textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   void _showSoundPackDialog(BuildContext context, SoundService soundService) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: const Text('Sound Style'),
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: inkColor.withValues(alpha: 0.18), width: 1),
+        ),
+        title: Text(
+          'SOUND STYLE',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: inkColor,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: SoundService.availablePacks.entries.map((entry) {
             return RadioListTile<String>(
-              title: Text(entry.value),
+              dense: true,
+              title: Text(entry.value, style: TextStyle(color: inkColor, fontSize: 12.5)),
               secondary: IconButton(
-                icon: const Icon(Icons.volume_up_rounded),
+                icon: Icon(Icons.volume_up_rounded, color: rustAccent, size: 18),
                 tooltip: 'Preview sound',
                 onPressed: () => soundService.previewSoundPack(entry.key),
               ),
@@ -605,6 +992,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
+              foregroundColor: rustAccent,
+              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Close'),
@@ -618,11 +1007,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     BuildContext context,
     ProfileService profileService,
   ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: const Text('Daily Word Goal'),
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: inkColor.withValues(alpha: 0.18), width: 1),
+        ),
+        title: Text(
+          'DAILY WORD GOAL',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: inkColor,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [3, 5, 10, 15].map((count) {
@@ -639,6 +1046,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
+              foregroundColor: rustAccent,
+              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Close'),
@@ -649,36 +1058,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showColorThemeDialog(BuildContext context, ThemeProvider provider) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: const Text('Select Palette'),
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: inkColor.withValues(alpha: 0.18), width: 1),
+        ),
+        title: Text(
+          'SELECT PALETTE',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: inkColor,
+          ),
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: AppColorTheme.values.map((theme) {
+            children: AppColorTheme.values.map((thm) {
               return RadioListTile<AppColorTheme>(
+                dense: true,
                 title: Row(
                   children: [
                     Container(
-                      width: 14,
-                      height: 14,
+                      width: 12,
+                      height: 12,
                       decoration: BoxDecoration(
-                        color: _getThemeColorPreview(theme),
-                        borderRadius: BorderRadius.circular(2.5),
+                        color: _getThemeColorPreview(thm),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _getColorThemeName(theme),
+                        _getColorThemeName(thm),
+                        style: TextStyle(color: inkColor, fontSize: 12.5),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
-                value: theme,
+                value: thm,
                 groupValue: provider.colorTheme,
                 onChanged: (val) {
                   if (val != null) {
@@ -694,6 +1123,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
+              foregroundColor: rustAccent,
+              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Close'),
@@ -704,6 +1135,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showFontDialog(BuildContext context, ThemeProvider provider) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
     final fonts = [
       'Spline Sans',
       'Lora',
@@ -718,8 +1155,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: const Text('Select Typography'),
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: inkColor.withValues(alpha: 0.18), width: 1),
+        ),
+        title: Text(
+          'SELECT TYPOGRAPHY',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: inkColor,
+          ),
+        ),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -729,12 +1178,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final fontKey = fonts[index];
 
               return RadioListTile<String>(
+                dense: true,
                 title: Text(
                   fontKey,
                   style: AppTheme.getButtonTextStyle(
                     fontKey,
                     fontWeight: FontWeight.normal,
-                  ).copyWith(color: Theme.of(context).colorScheme.onSurface),
+                  ).copyWith(color: inkColor, fontSize: 12.5),
                 ),
                 value: fontKey,
                 groupValue: provider.fontFamily,
@@ -752,6 +1202,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
+              foregroundColor: rustAccent,
+              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Cancel'),
@@ -768,8 +1220,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     T groupValue,
     ValueChanged<T?> onChanged,
   ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+
     return RadioListTile<T>(
-      title: Text(title),
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      title: Text(title, style: TextStyle(color: inkColor, fontSize: 12.5, fontWeight: FontWeight.w500)),
       value: value,
       groupValue: groupValue,
       onChanged: (val) {
@@ -783,6 +1241,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     BuildContext context,
     ProfileService profileService,
   ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
     final levels = [
       ('A1', 'Beginner', 'Basic everyday phrases and essential vocabulary'),
       ('A2', 'Elementary', 'Routine conversations and simple descriptive language'),
@@ -795,18 +1259,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          title: const Text('Select Proficiency Level'),
+          backgroundColor: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+            side: BorderSide(color: inkColor.withValues(alpha: 0.18), width: 1),
+          ),
+          title: Text(
+            'SELECT PROFICIENCY LEVEL',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: inkColor,
+            ),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: levels.map((lvl) {
                 final isSelected = profileService.targetLevel == lvl.$1;
                 return RadioListTile<String>(
+                  dense: true,
                   value: lvl.$1,
                   groupValue: profileService.targetLevel,
-                  title: Text('${lvl.$1} · ${lvl.$2}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(lvl.$3, style: const TextStyle(fontSize: 12)),
+                  title: Text(
+                    '${lvl.$1} · ${lvl.$2}',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: inkColor, fontSize: 12.5),
+                  ),
+                  subtitle: Text(
+                    lvl.$3,
+                    style: TextStyle(fontSize: 11, color: inkColor.withValues(alpha: 0.6)),
+                  ),
                   selected: isSelected,
                   onChanged: (val) {
                     if (val != null) {
@@ -818,6 +1301,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }).toList(),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: TextButton.styleFrom(
+                foregroundColor: rustAccent,
+                textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              child: const Text('Close'),
+            ),
+          ],
         );
       },
     );
@@ -923,15 +1417,15 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                   valueListenable: _dictService.latestVersionNotifier,
                   builder: (context, latestTag, _) {
                     return Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
                               Container(
-                                width: 38,
-                                height: 38,
+                                width: 34,
+                                height: 34,
                                 decoration: BoxDecoration(
                                   color: rustAccent.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(4),
@@ -939,10 +1433,10 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                 child: Icon(
                                   Icons.storage_rounded,
                                   color: rustAccent,
-                                  size: 20,
+                                  size: 18,
                                 ),
                               ),
-                              const SizedBox(width: 14),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -953,7 +1447,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                           child: Text(
                                             'Offline German Dictionary',
                                             style: TextStyle(
-                                              fontSize: 14.5,
+                                              fontSize: 13.5,
                                               fontWeight: FontWeight.bold,
                                               color: inkColor,
                                             ),
@@ -963,8 +1457,8 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                           const SizedBox(width: 8),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
+                                              horizontal: 5,
+                                              vertical: 1.5,
                                             ),
                                             decoration: BoxDecoration(
                                               color: rustAccent,
@@ -974,7 +1468,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                               'UPDATE',
                                               style: TextStyle(
                                                 color: Colors.white,
-                                                fontSize: 9,
+                                                fontSize: 8.5,
                                                 fontWeight: FontWeight.bold,
                                                 letterSpacing: 0.5,
                                               ),
@@ -991,7 +1485,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                           ? 'Installed: $_version • Latest: $latestTag'
                                           : 'Installed: $_version • Size: $_size',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 11.5,
                                         color: inkColor.withValues(alpha: 0.6),
                                       ),
                                     ),
@@ -1000,24 +1494,24 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 'Status: Downloaded & Ready',
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: inkColor.withValues(alpha: 0.6),
                                 ),
                               ),
                               if (isDownloading || isChecking)
                                 const SizedBox(
-                                  width: 18,
-                                  height: 18,
+                                  width: 16,
+                                  height: 16,
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2.0,
+                                    strokeWidth: 1.8,
                                   ),
                                 )
                               else if (hasUpdate)
@@ -1027,11 +1521,13 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                     backgroundColor: rustAccent,
                                     foregroundColor: Colors.white,
                                     visualDensity: VisualDensity.compact,
+                                    textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4),
                                     ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   ),
-                                  icon: const Icon(Icons.system_update_rounded, size: 14),
+                                  icon: const Icon(Icons.system_update_rounded, size: 13),
                                   label: const Text('Update Now'),
                                 )
                               else
@@ -1039,17 +1535,19 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                   onPressed: _handleUpdateOrRedownload,
                                   style: OutlinedButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
+                                    textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4),
                                     ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   ),
-                                  icon: const Icon(Icons.download_rounded, size: 14),
+                                  icon: const Icon(Icons.download_rounded, size: 13),
                                   label: const Text('Re-download'),
                                 ),
                             ],
                           ),
                           if (isDownloading) ...[
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             ValueListenableBuilder<double>(
                               valueListenable: _dictService.downloadProgressNotifier,
                               builder: (context, progress, _) {
@@ -1060,7 +1558,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                       borderRadius: BorderRadius.circular(3),
                                       child: LinearProgressIndicator(
                                         value: progress > 0 ? progress : null,
-                                        minHeight: 5,
+                                        minHeight: 4,
                                         color: rustAccent,
                                       ),
                                     ),
@@ -1070,7 +1568,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                           ? 'Downloading update... ${(progress * 100).toStringAsFixed(0)}%'
                                           : 'Connecting to GitHub...',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 10.5,
                                         color: rustAccent,
                                         fontWeight: FontWeight.w600,
                                       ),
