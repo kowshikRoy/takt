@@ -93,10 +93,10 @@ class MediaLibraryService extends ChangeNotifier {
   Future<void> submitMediaProcessingTaskInBackground(String originalUrl) async {
     // Check if video with this URL already exists (especially if failed or retrying)
     final existingIndex = _processedVideos.indexWhere((v) => v.url.trim().toLowerCase() == originalUrl.trim().toLowerCase());
-    
     final tempId = existingIndex != -1 ? _processedVideos[existingIndex].id : 'task_${DateTime.now().millisecondsSinceEpoch}';
+    final initialYtThumb = ProcessedVideo.extractYouTubeThumbnail(originalUrl);
     final existingTitle = existingIndex != -1 ? _processedVideos[existingIndex].title : null;
-    final existingThumbnail = existingIndex != -1 ? _processedVideos[existingIndex].thumbnail : null;
+    final existingThumbnail = (existingIndex != -1 ? _processedVideos[existingIndex].thumbnail : null) ?? initialYtThumb;
 
     final newVideo = ProcessedVideo(
       id: tempId,
@@ -352,6 +352,12 @@ class MediaLibraryService extends ChangeNotifier {
         subtitles = await onDeviceAI.translateSubtitlesOnDevice(subtitles);
 
         if (index != -1) {
+          final current = _processedVideos[index];
+          final effectiveThumbnail = (thumbnail != null && thumbnail.isNotEmpty && !thumbnail.contains('picsum.photos'))
+              ? thumbnail
+              : (current.thumbnail ?? ProcessedVideo.extractYouTubeThumbnail(originalUrl));
+          final effectiveTitle = (title != null && title.isNotEmpty) ? title : current.title;
+
           _processedVideos[index] = ProcessedVideo(
             id: taskId,
             taskId: taskId,
@@ -362,8 +368,8 @@ class MediaLibraryService extends ChangeNotifier {
             subtitles: subtitles,
             videoUrl: videoUrl,
             mediaType: mediaTypeStr,
-            thumbnail: thumbnail,
-            title: title,
+            thumbnail: effectiveThumbnail,
+            title: effectiveTitle,
           );
           notifyListeners();
           await _saveProcessedVideos();

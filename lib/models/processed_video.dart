@@ -16,11 +16,36 @@ class ProcessedVideo {
   final String? thumbnail;
   final String? title;
 
-  static const String defaultThumbnail = 'assets/images/story_soccer.png';
+  static String? extractYouTubeThumbnail(String? url) {
+    if (url == null || url.isEmpty) return null;
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.contains('youtu.be')) {
+        final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+        if (id != null && id.isNotEmpty) return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+      }
+      if (uri.pathSegments.contains('shorts')) {
+        final idx = uri.pathSegments.indexOf('shorts');
+        if (idx + 1 < uri.pathSegments.length) {
+          final id = uri.pathSegments[idx + 1];
+          if (id.isNotEmpty) return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+        }
+      }
+      if (uri.queryParameters.containsKey('v')) {
+        final id = uri.queryParameters['v'];
+        if (id != null && id.isNotEmpty) return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+      }
+    } catch (_) {}
+    return null;
+  }
 
   String get effectiveThumbnail {
-    if (thumbnail != null && thumbnail!.isNotEmpty) {
+    if (thumbnail != null && thumbnail!.isNotEmpty && !thumbnail!.contains('picsum.photos')) {
       return thumbnail!;
+    }
+    final ytThumb = extractYouTubeThumbnail(url);
+    if (ytThumb != null && ytThumb.isNotEmpty) {
+      return ytThumb;
     }
     final hash = id.hashCode.abs() % 1000;
     return 'https://picsum.photos/seed/$hash/400/225';
