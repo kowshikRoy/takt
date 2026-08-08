@@ -47,6 +47,11 @@ void main() {
   testWidgets(
     'editing a paragraph replaces its text and persists via saveCustomContent',
     (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       SharedPreferences.setMockInitialValues({});
 
       final article = Article(
@@ -94,10 +99,9 @@ void main() {
       final editButtonFinder = find.byIcon(Icons.edit_rounded).first;
       expect(editButtonFinder, findsOneWidget);
       await tester.tap(editButtonFinder);
-      // Not pumpAndSettle(): the sheet's TextField is autofocus:true, and
-      // its blinking cursor animation never settles, which would hang here.
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
 
       final fieldFinder = find.widgetWithText(TextField, originalText);
       expect(fieldFinder, findsOneWidget, reason: 'sheet TextField should be pre-filled with the paragraph text');
@@ -106,10 +110,11 @@ void main() {
       const editedText = 'Dies ist der $editedMarker Absatz.';
       await tester.enterText(fieldFinder, editedText);
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(richTextContaining(editedMarker), findsOneWidget);
       expect(richTextContaining(originalMarker), findsNothing);

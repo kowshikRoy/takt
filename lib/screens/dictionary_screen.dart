@@ -235,11 +235,23 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   }
 
   void _onResultSelected(Map<String, dynamic> result) async {
-    final rawId = result['id'];
-    final intId = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
     final resultWord = result['word']?.toString() ?? '';
-    var fullWord = intId != null ? await _dictionaryService.getWordDetails(intId) : null;
-    fullWord ??= await _dictionaryService.lookupWord(resultWord);
+    if (resultWord.isEmpty) return;
+
+    // 1. Look up by word string to ensure accurate match across database updates
+    var fullWord = await _dictionaryService.lookupWord(resultWord);
+
+    // 2. If not found by word and we have an ID, try by ID only if word matches
+    if (fullWord == null) {
+      final rawId = result['id'];
+      final intId = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
+      if (intId != null) {
+        final byId = await _dictionaryService.getWordDetails(intId);
+        if (byId != null && (byId['word']?.toString().toLowerCase() == resultWord.toLowerCase())) {
+          fullWord = byId;
+        }
+      }
+    }
     fullWord ??= result;
 
     if (mounted) {
@@ -515,10 +527,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       children: [
         _buildHeader(
           context,
-          showBackButton:
-              _selectedWord != null ||
-              _isSearching ||
-              _searchController.text.isNotEmpty,
+          showBackButton: _selectedWord != null,
         ),
         Expanded(
           child: Stack(
@@ -899,7 +908,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       {'id': 'noun', 'label': 'Nouns'},
       {'id': 'verb', 'label': 'Verbs'},
       {'id': 'adj', 'label': 'Adjectives'},
-      {'id': 'saved', 'label': 'Saved (${_savedWordIds.length})'},
+      {'id': 'saved', 'label': 'Study Deck (${_savedWordIds.length})'},
     ];
 
     final colorScheme = Theme.of(context).colorScheme;
@@ -919,7 +928,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   showCheckmark: false,
                   avatar: isSavedChip
                       ? Icon(
-                          Icons.bookmark_rounded,
+                          Icons.style_rounded,
                           size: 13,
                           color: isSelected
                               ? colorScheme.onPrimary
@@ -1027,7 +1036,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         alignment: Alignment.center,
         child: Text(
           _selectedPosFilter == 'saved'
-              ? 'No saved words yet.'
+              ? 'No words in your Study Deck yet.'
               : 'No matching vocabulary entries found.',
           style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
@@ -1036,7 +1045,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
     String sectionTitle = 'Explore Top Frequency Words';
     if (_selectedPosFilter == 'saved') {
-      sectionTitle = 'Saved Vocabulary Words';
+      sectionTitle = 'Study Deck Words';
     } else if (_selectedPosFilter == 'noun') {
       sectionTitle = 'Explore Top Nouns';
     } else if (_selectedPosFilter == 'verb') {
@@ -1171,7 +1180,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(2.0),
                             child: Icon(
-                              isSaved ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+                              isSaved ? Icons.style_rounded : Icons.style_outlined,
                               size: 18,
                               color: isSaved ? colorScheme.primary : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                             ),
@@ -1674,13 +1683,112 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     }
   }
 
+  ({String label, Color color, Color bgColor, Color borderColor})? _getVerbRegularity({
+    required String infinitive,
+    required List<dynamic> forms,
+    String? verbClass,
+  }) {
+    final lowerInf = infinitive.toLowerCase().trim();
+
+    // 1. Modals & Core Auxiliaries
+    const modals = {
+      'können',
+      'müssen',
+      'dürfen',
+      'sollen',
+      'wollen',
+      'mögen',
+      'möchte',
+      'wissen',
+    };
+    if (modals.contains(lowerInf)) {
+      return (
+        label: 'Modal Verb',
+        color: const Color(0xFF8E24AA),
+        bgColor: const Color(0xFF8E24AA).withValues(alpha: 0.12),
+        borderColor: const Color(0xFF8E24AA).withValues(alpha: 0.35),
+      );
+    }
+    if (lowerInf == 'sein' || lowerInf == 'werden' || lowerInf == 'haben') {
+      return (
+        label: 'Irregular (Auxiliary)',
+        color: const Color(0xFFD97706),
+        bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+        borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+      );
+    }
+
+    // 2. Direct verb_class from database
+    final vClass = verbClass?.toLowerCase().trim();
+    if (vClass == 'weak' || vClass == 'regular') {
+      return (
+        label: 'Regular (Schwach)',
+        color: const Color(0xFF16A34A),
+        bgColor: const Color(0xFF16A34A).withValues(alpha: 0.12),
+        borderColor: const Color(0xFF16A34A).withValues(alpha: 0.35),
+      );
+    }
+    if (vClass == 'strong') {
+      return (
+        label: 'Irregular (Stark)',
+        color: const Color(0xFFD97706),
+        bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+        borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+      );
+    }
+    if (vClass == 'mixed' || vClass == 'irregular') {
+      return (
+        label: 'Irregular (Gemischt)',
+        color: const Color(0xFFD97706),
+        bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+        borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+      );
+    }
+
+    // 3. Check explicit forms tags if present in DB
+    for (final f in forms) {
+      if (f is! Map) continue;
+      final formText = (f['form'] ?? '').toString().toLowerCase().trim();
+      final tags = (f['tags'] ?? '').toString().toLowerCase();
+      if (formText.contains('weak') || tags.contains('weak')) {
+        return (
+          label: 'Regular (Schwach)',
+          color: const Color(0xFF16A34A),
+          bgColor: const Color(0xFF16A34A).withValues(alpha: 0.12),
+          borderColor: const Color(0xFF16A34A).withValues(alpha: 0.35),
+        );
+      }
+      if (formText.contains('strong') || tags.contains('strong')) {
+        return (
+          label: 'Irregular (Stark)',
+          color: const Color(0xFFD97706),
+          bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+          borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+        );
+      }
+      if (formText.contains('irregular') || tags.contains('irregular')) {
+        return (
+          label: 'Irregular (Stark)',
+          color: const Color(0xFFD97706),
+          bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+          borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+        );
+      }
+    }
+
+    return null;
+  }
+
   Widget _buildVerbConjugationTable(
     BuildContext context,
     Map<String, dynamic> wordData,
   ) {
     final forms = (wordData['forms'] as List?) ?? [];
     final colorScheme = Theme.of(context).colorScheme;
-    final infinitive = wordData['word']?.toString() ?? '';
+    final baseForm = wordData['base_form']?.toString().trim();
+    final infinitive = (baseForm != null && baseForm.isNotEmpty)
+        ? baseForm
+        : (wordData['word']?.toString() ?? '');
 
     // Determine auxiliary verb
     String aux = 'haben';
@@ -1783,6 +1891,12 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       return '$a $part2';
     }).toList();
 
+    final regularity = _getVerbRegularity(
+      infinitive: infinitive,
+      forms: forms,
+      verbClass: wordData['verb_class']?.toString(),
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1796,17 +1910,53 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           Row(
             children: [
               Icon(
-                Icons.table_chart_rounded,
+                Icons.transform_rounded,
                 size: 16,
                 color: colorScheme.primary,
               ),
               const SizedBox(width: 6),
-              const Expanded(
-                child: Text(
-                  'Verb Conjugation Table',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              Text(
+                'Verb Conjugation Table',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: colorScheme.primary,
                 ),
               ),
+              if (regularity != null) ...[
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: regularity.bgColor,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: regularity.borderColor, width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: regularity.color,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        regularity.label,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: regularity.color,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -1847,10 +1997,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
               ),
               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
               columnWidths: const {
-                0: FlexColumnWidth(0.95),
-                1: FlexColumnWidth(1.05),
-                2: FlexColumnWidth(1.05),
-                3: FlexColumnWidth(1.45),
+                0: FlexColumnWidth(0.78),
+                1: FlexColumnWidth(1.02),
+                2: FlexColumnWidth(1.25),
+                3: FlexColumnWidth(1.35),
               },
               children: [
                 TableRow(
@@ -2498,8 +2648,8 @@ class _SavedVocabularySheetState extends State<_SavedVocabularySheet> {
                         const SizedBox(height: 12),
                         Text(
                           _searchQuery.isNotEmpty
-                              ? 'No saved words match "$_searchQuery"'
-                              : 'No words saved in this category yet.',
+                              ? 'No Study Deck words match "$_searchQuery"'
+                              : 'No words in your Study Deck for this category yet.',
                           style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
                         ),
                       ],

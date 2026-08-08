@@ -37,14 +37,18 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
     aaptOptions {
         noCompress.add("db")
+        noCompress.add("bin")
     }
 }
 
@@ -54,4 +58,7 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation("org.apache.opennlp:opennlp-tools:2.3.0")
+    implementation("org.slf4j:slf4j-nop:2.0.9")
+    testImplementation("junit:junit:4.13.2")
 }

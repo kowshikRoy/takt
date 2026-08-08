@@ -6,12 +6,18 @@ class InteractiveGermanText extends StatefulWidget {
   final String text;
   final TextStyle? style;
   final String? sourceTitle;
+  final String? highlightWord;
+  final TextStyle? highlightStyle;
+  final Color? highlightColor;
 
   const InteractiveGermanText(
     this.text, {
     super.key,
     this.style,
     this.sourceTitle,
+    this.highlightWord,
+    this.highlightStyle,
+    this.highlightColor,
   });
 
   @override
@@ -31,7 +37,9 @@ class _InteractiveGermanTextState extends State<InteractiveGermanText> {
   @override
   void didUpdateWidget(covariant InteractiveGermanText oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text) {
+    if (oldWidget.text != widget.text ||
+        oldWidget.highlightWord != widget.highlightWord ||
+        oldWidget.style != widget.style) {
       _disposeRecognizers();
       _buildSpans();
     }
@@ -55,11 +63,13 @@ class _InteractiveGermanTextState extends State<InteractiveGermanText> {
     final regex = RegExp(r'([a-zA-ZäöüÄÖÜß]+)|([^a-zA-ZäöüÄÖÜß]+)');
     final matches = regex.allMatches(widget.text);
 
+    final highlight = widget.highlightWord?.toLowerCase().trim();
+
     for (final match in matches) {
       final word = match.group(1);
       final nonWord = match.group(2);
 
-      if (word != null && word.length >= 2) {
+      if (word != null && word.isNotEmpty) {
         final recognizer = TapGestureRecognizer()
           ..onTap = () {
             GlanceWordSheet.show(
@@ -71,15 +81,32 @@ class _InteractiveGermanTextState extends State<InteractiveGermanText> {
           };
         _recognizers.add(recognizer);
 
+        final lowerWord = word.toLowerCase();
+        final isHighlighted = highlight != null &&
+            highlight.isNotEmpty &&
+            (lowerWord == highlight ||
+                (lowerWord.length >= 3 && highlight.contains(lowerWord)) ||
+                (highlight.length >= 3 && lowerWord.contains(highlight)));
+
+        TextStyle? wordStyle = widget.style;
+        if (isHighlighted) {
+          wordStyle = widget.highlightStyle ??
+              (widget.style ?? const TextStyle()).copyWith(
+                fontWeight: FontWeight.bold,
+                color: widget.highlightColor ??
+                    Theme.of(context).colorScheme.primary,
+              );
+        }
+
         _spans.add(
           TextSpan(
             text: word,
             recognizer: recognizer,
-            style: widget.style,
+            style: wordStyle,
           ),
         );
       } else {
-        _spans.add(TextSpan(text: word ?? nonWord, style: widget.style));
+        _spans.add(TextSpan(text: nonWord ?? '', style: widget.style));
       }
     }
   }

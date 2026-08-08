@@ -64,6 +64,7 @@ dependencies:
   google_sign_in: ^6.2.2
   record: ^7.1.1
   permission_handler: ^12.0.1
+  home_widget: ^0.9.0
 
 dev_dependencies:
   flutter_test:
@@ -94,8 +95,9 @@ flutter:
     - assets/sounds/
     - assets/images/cat.png
     - assets/images/sofa.png
-    - assets/books/
-    - assets/books/netzwerk-a2/
+    - assets/books/books_catalog.json
+    - assets/books/netzwerk-a2/unit_01.json
+    - assets/books/netzwerk-a2/unit_02.json
     - assets/compound_words.json
     - assets/speaking/shadowing_sentences.json
     - assets/grammar/

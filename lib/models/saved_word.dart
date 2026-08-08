@@ -65,6 +65,7 @@ class SavedWord {
   final String? contextSentence;
   final String? sourceTitle;
   final List<WordContextExample> contextExamples;
+  final String source; // 'user_added' | 'wiktionary_fetched' | 'user_edited' | 'dictionary_saved'
 
   VocabCategory category;
 
@@ -88,6 +89,7 @@ class SavedWord {
     this.contextSentence,
     this.sourceTitle,
     List<WordContextExample>? contextExamples,
+    this.source = 'user_added',
     this.category = VocabCategory.learning,
     this.interval = 0,
     this.easeFactor = 2.5,
@@ -128,6 +130,22 @@ class SavedWord {
   }
 
   bool get isDue => category == VocabCategory.learning && DateTime.now().isAfter(dueDate);
+
+  String get article {
+    final g = gender?.toLowerCase();
+    if (g == 'm' || g == 'masc' || g == 'masculine' || g == 'der') return 'der';
+    if (g == 'f' || g == 'fem' || g == 'feminine' || g == 'die') return 'die';
+    if (g == 'n' || g == 'neu' || g == 'neuter' || g == 'das') return 'das';
+    return '';
+  }
+
+  String get fullWordWithArticle {
+    final art = article;
+    if (art.isNotEmpty && !word.toLowerCase().startsWith(RegExp(r'^(der|die|das)\s+'))) {
+      return '$art $word';
+    }
+    return word;
+  }
 
   // Backward compatibility getters
   String get germanWord => word;
@@ -223,6 +241,7 @@ class SavedWord {
       contextSentence: contextSentence,
       sourceTitle: sourceTitle,
       contextExamples: contextExamples,
+      source: source,
       category: category,
       interval: nextInterval,
       easeFactor: nextEaseFactor,
@@ -245,6 +264,7 @@ class SavedWord {
         'contextSentence': contextSentence,
         'sourceTitle': sourceTitle,
         'contextExamples': contextExamples.map((e) => e.toMap()).toList(),
+        'source': source,
         'category': category.name,
         'interval': interval,
         'easeFactor': easeFactor,
@@ -283,6 +303,7 @@ class SavedWord {
       contextSentence: jsonMap['contextSentence'] as String?,
       sourceTitle: jsonMap['sourceTitle'] as String?,
       contextExamples: examples.isNotEmpty ? examples : null,
+      source: jsonMap['source'] as String? ?? 'user_added',
       category: VocabCategory.values.firstWhere(
         (e) => e.name == jsonMap['category'],
         orElse: () => VocabCategory.learning,
@@ -308,6 +329,7 @@ class SavedWord {
         'contextSentence': contextSentence,
         'sourceTitle': sourceTitle,
         'contextExamples': jsonEncode(contextExamples.map((e) => e.toMap()).toList()),
+        'source': source,
         'category': category.name,
         'interval': interval,
         'easeFactor': easeFactor,
@@ -344,6 +366,7 @@ class SavedWord {
       contextSentence: map['contextSentence'] as String?,
       sourceTitle: map['sourceTitle'] as String?,
       contextExamples: examples.isNotEmpty ? examples : null,
+      source: map['source'] as String? ?? 'user_added',
       category: VocabCategory.values.firstWhere(
         (e) => e.name == map['category'],
         orElse: () => VocabCategory.learning,

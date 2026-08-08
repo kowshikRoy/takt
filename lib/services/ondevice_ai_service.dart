@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'dictionary_service.dart';
 import '../models/subtitle_cue.dart';
+import 'native_nlp_service.dart';
 import 'app_logger.dart';
 
 class GrammarTokenAnalysis {
@@ -153,11 +154,21 @@ class OnDeviceAIService {
     final List<GrammarTokenAnalysis> tokenAnalyses = [];
     final List<String> translatedWords = [];
 
+    // Native Platform Channel / NLTagger fast token analysis (<5ms)
+    final nativeTokens = await NativeNlpService().getTaggedTokens(sentence);
+    final Map<String, String> nativePosMap = {};
+    for (var nt in nativeTokens) {
+      if (nt['token'] != null && nt['pos'] != null) {
+        nativePosMap[nt['token']!.toLowerCase()] = nt['pos']!;
+      }
+    }
+
     for (int i = 0; i < rawTokens.length; i++) {
       final token = rawTokens[i];
       final lowerToken = token.toLowerCase();
+      final nativePos = nativePosMap[lowerToken];
 
-      String pos = 'Unknown';
+      String pos = nativePos != null && nativePos != 'unknown' ? nativePos : 'Unknown';
       String trans = token;
       String note = '';
 
@@ -171,13 +182,33 @@ class OnDeviceAIService {
         note = _lookupCache[lowerToken]!['note']!;
       } else {
         try {
-          // 1. Try exact ultra-fast dictionary lookup first (<1ms)
-          final posResults = await _dictionaryService.lookupWordFast(lowerToken);
+          // Check if preceded by a German article or determiner -> strongly indicates Noun
+          final bool isPrecededByArticle = i > 0 &&
+              const {
+                'der', 'die', 'das', 'den', 'dem', 'des',
+                'ein', 'eine', 'einen', 'einem', 'einer', 'eines',
+                'kein', 'keine', 'keinen', 'keinem', 'keiner', 'keines',
+                'mein', 'meine', 'dein', 'sein', 'ihr', 'unser', 'euer'
+              }.contains(rawTokens[i - 1].toLowerCase());
+
+          final targetPos = (nativePos != null && nativePos != 'unknown')
+              ? DictionaryService.normalizePos(nativePos)
+              : (isPrecededByArticle ? 'noun' : '');
+
+          // 1. Try exact ultra-fast dictionary lookup first (<1ms) preserving German token casing
+          final posResults = await _dictionaryService.lookupWordFast(token);
           if (posResults.isNotEmpty && posResults.first['definitions'] != null && (posResults.first['definitions'] as List).isNotEmpty) {
-            final firstDef = (posResults.first['definitions'] as List).first.toString();
-            pos = (posResults.first['pos'] as String?) ?? 'Word';
+            Map<String, dynamic> chosen = posResults.first;
+            if (targetPos.isNotEmpty) {
+              chosen = posResults.firstWhere(
+                (r) => DictionaryService.normalizePos(r['pos']?.toString()) == targetPos,
+                orElse: () => posResults.first,
+              );
+            }
+            final firstDef = (chosen['definitions'] as List).first.toString();
+            pos = (chosen['pos'] as String?) ?? 'Word';
             trans = _cleanTranslation(token, firstDef);
-            note = 'Lemma: ${posResults.first['word']} | POS: $pos';
+            note = 'Lemma: ${chosen['word']} | POS: $pos';
           } else {
             // 2. Search fuzzy match
             final dbResults = await _dictionaryService.search(lowerToken);

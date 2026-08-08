@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
@@ -79,7 +80,7 @@ class StoryReaderScreen extends StatefulWidget {
   State<StoryReaderScreen> createState() => _StoryReaderScreenState();
 }
 
-class _StoryReaderScreenState extends State<StoryReaderScreen> {
+class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindingObserver {
   final DictionaryService _dictionaryService = DictionaryService();
   final VocabularyService _vocabularyService = VocabularyService();
   final TtsService _ttsService = TtsService();
@@ -120,9 +121,36 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_updateScrollProgress);
     _loadContent();
     ProfileService().recordActivityToday(story: true);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _ttsService.stop();
+      if (mounted) setState(() => _isPlayingTts = false);
+    }
+  }
+
+  @override
+  void deactivate() {
+    _ttsService.stop();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scrollController.removeListener(_updateScrollProgress);
+    _scrollController.dispose();
+    _ttsSubscription?.cancel();
+    _ttsService.stop();
+    super.dispose();
   }
 
   void _updateScrollProgress() {
@@ -192,14 +220,6 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         alignment: 0.3,
       );
     }
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_updateScrollProgress);
-    _scrollController.dispose();
-    _ttsSubscription?.cancel();
-    super.dispose();
   }
 
   List<String> _getParagraphList() {
@@ -391,6 +411,19 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     }
   }
 
+  void _speakParagraph(String text, int index) {
+    HapticFeedback.selectionClick();
+    if (_isPlayingTts && _currentTtsProgress?.text == text) {
+      _ttsService.stop();
+      setState(() => _isPlayingTts = false);
+      return;
+    }
+    _ttsService.stop();
+    _ttsService.setSpeechRate(_speechRate);
+    _ttsService.speak(text);
+    setState(() => _isPlayingTts = true);
+  }
+
   void _changeSpeed(double rate) {
     setState(() {
       _speechRate = rate;
@@ -407,60 +440,66 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
       scaffoldBg = isDark ? const Color(0xFF262220) : const Color(0xFFF6F0E6);
     }
 
-    return Scaffold(
-      backgroundColor: scaffoldBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: _activeViewIndex == 1
-                  ? _buildKeyVocabularyView(context)
-                  : Column(
-                      children: [
-                        // 1. Sharp Bordered Textbook Page Card Container (Identical to TextbookUnitScreen)
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                            decoration: BoxDecoration(
-                              color: _isSepiaMode
-                                  ? (isDark ? const Color(0xFF322C28) : const Color(0xFFEBE0D0))
-                                  : BooksModernist.surface,
-                              border: Border.all(color: BooksModernist.divider, width: 1.5),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.translucent,
-                              onTap: () {
-                                if (_activeActionParagraphs.isNotEmpty) {
-                                  setState(() {
-                                    _activeActionParagraphs.clear();
-                                  });
-                                }
-                              },
-                              child: SingleChildScrollView(
-                                controller: _scrollController,
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildStoryContent(context),
-                                  ],
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        _ttsService.stop();
+      },
+      child: Scaffold(
+        backgroundColor: scaffoldBg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: _activeViewIndex == 1
+                    ? _buildKeyVocabularyView(context)
+                    : Column(
+                        children: [
+                          // 1. Sharp Bordered Textbook Page Card Container (Identical to TextbookUnitScreen)
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                              decoration: BoxDecoration(
+                                color: _isSepiaMode
+                                    ? (isDark ? const Color(0xFF322C28) : const Color(0xFFEBE0D0))
+                                    : BooksModernist.surface,
+                                border: Border.all(color: BooksModernist.divider, width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onTap: () {
+                                  if (_activeActionParagraphs.isNotEmpty) {
+                                    setState(() {
+                                      _activeActionParagraphs.clear();
+                                    });
+                                  }
+                                },
+                                child: SingleChildScrollView(
+                                  controller: _scrollController,
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildStoryContent(context),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-            ),
-          ],
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -946,7 +985,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: Icon(_savedVocabIds.contains(item.word.toLowerCase().trim()) ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded),
+                      icon: Icon(_savedVocabIds.contains(item.word.toLowerCase().trim()) ? Icons.style_rounded : Icons.style_outlined),
+                      tooltip: isSaved ? 'In Study Deck' : 'Add to Study Deck',
                       color: colorScheme.primary,
                       onPressed: () async {
                         final wordId = item.word.toLowerCase().trim();
@@ -1353,11 +1393,11 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               ),
               IconButton(
                 icon: Icon(
-                  _isPlayingTts ? Icons.pause_rounded : Icons.mic_rounded,
+                  _isPlayingTts ? Icons.pause_rounded : Icons.volume_up_rounded,
                   size: 20,
                   color: _isPlayingTts ? BooksModernist.accent : BooksModernist.accentDark,
                 ),
-                tooltip: _isPlayingTts ? 'Pause' : 'Audio anhören',
+                tooltip: _isPlayingTts ? 'Pause' : 'Read aloud',
                 onPressed: _togglePlayAllTts,
               ),
               IconButton(
@@ -1648,6 +1688,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onDoubleTap: () => _speakParagraph(text, index),
       onLongPress: () {
         setState(() {
           if (_activeActionParagraphs.contains(index)) {
@@ -1698,6 +1739,29 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    InkWell(
+                      onTap: () => _speakParagraph(text, index),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(
+                              (_isPlayingTts && _currentTtsProgress?.text == text)
+                                  ? Icons.pause_rounded
+                                  : Icons.volume_up_rounded,
+                              size: 14,
+                              color: BooksModernist.accent,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Speak',
+                              style: BooksModernist.body(size: 11, weight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(height: 12, width: 1, color: BooksModernist.dividerThin),
                     InkWell(
                       onTap: () => _showAiGrammarExplainer(context, text, index),
                       child: Padding(
@@ -1917,8 +1981,8 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               backgroundColor: backgroundColor,
             ),
             recognizer: TapGestureRecognizer()
-              ..onTapDown = (details) {
-                _handleWordTap(word, text, details.globalPosition, paragraphIndex);
+              ..onTap = () {
+                _handleWordTap(word, text, paragraphIndex);
               },
           ),
         );
@@ -1940,9 +2004,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     return spans;
   }
 
-  void _handleWordTap(String word, String contextText, Offset tapPosition, int paragraphIndex) {
+  void _handleWordTap(String word, String contextText, int paragraphIndex) {
     final cleanWord = word.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
     if (cleanWord.isEmpty) return;
+
+    if (_isPlayingTts) {
+      _ttsService.stop();
+      setState(() => _isPlayingTts = false);
+    }
 
     _tappedWordNotifier.value = _TappedWordData(cleanWord, paragraphIndex);
 
@@ -1957,13 +2026,15 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         if (tokenWord.toLowerCase() == cleanWord.toLowerCase() ||
             tokenLemma.toLowerCase() == cleanWord.toLowerCase()) {
           final gender = _getNounGender(cleanWord, t['gender']?.toString(), tokenLemma);
+          final trans = t['translation']?.toString().trim();
           instantDetails = [
             {
               'word': tokenWord.isNotEmpty ? tokenWord : cleanWord,
               'base_form': tokenLemma.isNotEmpty ? tokenLemma : cleanWord,
               'pos': t['pos'] ?? 'noun',
               'gender': gender,
-              'definitions': <String>[],
+              'definition': (trans != null && trans.isNotEmpty) ? trans : '',
+              'definitions': (trans != null && trans.isNotEmpty) ? <String>[trans] : <String>[],
               'contextNote': t['note'] ?? '',
             }
           ];
@@ -1993,69 +2064,72 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     final newText = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
-      isScrollControlled: true,
+      isScrollControlled: false,
       builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Theme.of(sheetContext).colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(sheetContext).colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              decoration: BoxDecoration(
+                color: Theme.of(sheetContext).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(sheetContext).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Edit Paragraph',
-                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  minLines: 3,
-                  maxLines: 10,
-                  style: _getReaderTextStyle(sheetContext).copyWith(fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText: 'Paragraph text…',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Edit Paragraph',
+                    style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(sheetContext),
-                        child: const Text('Cancel'),
-                      ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    minLines: 2,
+                    maxLines: 6,
+                    style: _getReaderTextStyle(sheetContext).copyWith(fontSize: 15),
+                    decoration: InputDecoration(
+                      hintText: 'Paragraph text…',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                      isDense: true,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () =>
-                            Navigator.pop(sheetContext, controller.text.trim()),
-                        child: const Text('Save'),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          child: const Text('Cancel'),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () =>
+                              Navigator.pop(sheetContext, controller.text.trim()),
+                          child: const Text('Save'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -2396,14 +2470,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                                   ],
                                 ),
                                 trailing: IconButton(
-                                  icon: const Icon(Icons.bookmark_border_rounded, size: 20),
-                                  tooltip: 'Save word',
+                                  icon: const Icon(Icons.style_outlined, size: 20),
+                                  tooltip: 'Add to Study Deck',
                                   onPressed: () async {
                                     await _vocabularyService.saveWord(token.word);
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                          content: Text('Saved "${token.word}" to Vocabulary!'),
+                                          content: Text('Added "${token.word}" to Study Deck!'),
                                           duration: const Duration(seconds: 2),
                                         ),
                                       );

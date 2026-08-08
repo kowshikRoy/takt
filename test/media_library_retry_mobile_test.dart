@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:takt/models/processed_video.dart';
 import 'package:takt/models/processing_status.dart';
-import 'package:takt/screens/discover_screen.dart';
+import 'package:takt/screens/create/url_import_screen.dart';
 import 'package:takt/services/curriculum_service.dart';
 import 'package:takt/services/media_library_service.dart';
 
@@ -15,10 +15,6 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
-    // DiscoverScreen's "Path" tab (SkillTreeScreen) is built eagerly by
-    // TabBarView even though this test only interacts with "Library", and
-    // it pulls in VocabularyService, which opens a real sqflite database —
-    // unavailable via platform channels in a plain widget test.
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   });
@@ -26,9 +22,6 @@ void main() {
   testWidgets(
     'mobile grid card shows the error and a working Retry button',
     (tester) async {
-      // See media_library_retry_desktop_test.dart for why this is
-      // suppressed: a pre-existing, unrelated overflow in the "Continue
-      // Learning" section (hardcoded mock data), orthogonal to this test.
       final originalOnError = FlutterError.onError;
       FlutterError.onError = (details) {
         if (details.exception.toString().contains('RenderFlex overflowed')) {
@@ -51,32 +44,32 @@ void main() {
         'processed_videos': jsonEncode([failedVideo.toJson()]),
       });
 
-      await tester.binding.setSurfaceSize(const Size(400, 800));
+      final mediaService = MediaLibraryService();
+      await mediaService.reloadForTesting();
+
+      await tester.binding.setSurfaceSize(const Size(500, 1400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider.value(value: MediaLibraryService()),
+            ChangeNotifierProvider.value(value: mediaService),
             ChangeNotifierProvider(create: (_) => CurriculumService()),
           ],
-          child: const MaterialApp(home: DiscoverScreen()),
+          child: const MaterialApp(home: UrlImportScreen()),
         ),
       );
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      await tester.tap(find.text('Library'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.text('Could not fetch transcript'), findsOneWidget);
-      final retryButtonFinder = find.widgetWithText(OutlinedButton, 'Retry');
+      final errorFinder = find.text('Could not fetch transcript');
+      expect(errorFinder, findsOneWidget);
+      final retryButtonFinder = find.widgetWithText(FilledButton, 'Retry');
       expect(retryButtonFinder, findsOneWidget);
-      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
 
-      final retryButton = tester.widget<OutlinedButton>(retryButtonFinder);
+      final retryButton = tester.widget<FilledButton>(retryButtonFinder);
       expect(retryButton.onPressed, isNotNull);
       retryButton.onPressed!();
       await tester.pump();

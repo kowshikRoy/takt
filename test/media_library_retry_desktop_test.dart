@@ -54,6 +54,9 @@ void main() {
         'processed_videos': jsonEncode([failedVideo.toJson()]),
       });
 
+      final mediaService = MediaLibraryService();
+      await mediaService.reloadForTesting();
+
       // discover_screen.dart's own breakpoint: isDesktop = maxWidth > 700.
       await tester.binding.setSurfaceSize(const Size(1000, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -61,7 +64,7 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider.value(value: MediaLibraryService()),
+            ChangeNotifierProvider.value(value: mediaService),
             ChangeNotifierProvider(create: (_) => CurriculumService()),
           ],
           child: const MaterialApp(home: DiscoverScreen()),

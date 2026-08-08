@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 import 'analytics_service.dart';
 import 'app_logger.dart';
+import 'home_screen_widget_service.dart';
 
 class ProfileService extends ChangeNotifier {
   static final ProfileService _instance = ProfileService._internal();
@@ -142,6 +143,7 @@ class ProfileService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyTargetLevel, level);
+      unawaited(HomeScreenWidgetService().updateWidgetData());
     } catch (e) {
       AppLogger.error(
         "Error saving target proficiency level",
@@ -204,6 +206,7 @@ class ProfileService extends ChangeNotifier {
       _updateBestStreak();
       await _checkStreakMilestones(prefs);
       notifyListeners();
+      unawaited(HomeScreenWidgetService().updateWidgetData());
     }
   }
 

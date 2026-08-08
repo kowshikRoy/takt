@@ -97,81 +97,36 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
   Future<void> _loadSavedState() async {
     final word = widget.word.replaceAll(RegExp(r'\s+'), ' ').trim();
     final dictService = DictionaryService();
-    final activePos = _detailsList.isNotEmpty ? _detailsList.first['pos']?.toString() : null;
+    final String? contextualPos = (widget.detailsList != null && widget.detailsList!.isNotEmpty)
+        ? widget.detailsList!.first['pos']?.toString()
+        : null;
+
     final dbDetails = await dictService.lookupConsolidatedWord(
       word,
-      pos: activePos,
+      pos: contextualPos,
       contextSentence: widget.contextSentence,
     );
 
-    if (dbDetails.isNotEmpty) {
-      if (_detailsList.isEmpty) {
-        _detailsList = List.from(dbDetails);
-      } else {
-        List<Map<String, dynamic>> mergedList = [];
-        for (var instant in _detailsList) {
-          final Map<String, dynamic> merged = Map<String, dynamic>.from(instant);
-          Map<String, dynamic>? match;
-          for (var dbEntry in dbDetails) {
-            if (dbEntry['word'].toString().toLowerCase() == word.toLowerCase() ||
-                dbEntry['base_form']?.toString().toLowerCase() == word.toLowerCase()) {
-              match = dbEntry;
-              break;
-            }
-          }
-          match ??= dbDetails.first;
-
-          if ((merged['gender'] == null || merged['gender'].toString().isEmpty) && match['gender'] != null) {
-            merged['gender'] = match['gender'];
-          }
-          if ((merged['pos'] == null || merged['pos'].toString().isEmpty) && match['pos'] != null) {
-            merged['pos'] = match['pos'];
-          }
-          if ((merged['base_form'] == null || merged['base_form'].toString().isEmpty) && match['base_form'] != null) {
-            merged['base_form'] = match['base_form'];
-          }
-          if (merged['ipa'] == null && match['ipa'] != null) {
-            merged['ipa'] = match['ipa'];
-          }
-          if (match['definitions'] != null && (match['definitions'] as List).isNotEmpty) {
-            final dbDefs = List<String>.from(match['definitions']);
-            final existingDefs = List<String>.from(merged['definitions'] ?? []);
-            final combined = <String>[...dbDefs];
-            for (var d in existingDefs) {
-              if (!combined.contains(d)) {
-                combined.add(d);
-              }
-            }
-            merged['definitions'] = combined;
-          }
-          mergedList.add(merged);
-        }
-
-        for (var dbEntry in dbDetails) {
-          bool exists = mergedList.any((m) => m['pos'] == dbEntry['pos']);
-          if (!exists) {
-            mergedList.add(dbEntry);
-          }
-        }
-        _detailsList = mergedList;
-      }
-    }
-
     final saved = await _vocabService.getSavedWordByWord(word);
-    String? foundPlural;
-    String cefr = 'B1';
-    if (_detailsList.isNotEmpty) {
-      final first = _detailsList.first;
-      cefr = DictionaryService.getCefrLevel(first['freq_rank']);
-      final wId = int.tryParse(first['id']?.toString() ?? '0') ?? 0;
-      final baseForm = first['base_form']?.toString();
-      foundPlural = await dictService.getPluralForm(wId, word, baseForm: baseForm);
-    }
     if (mounted) {
       setState(() {
+        if (dbDetails.isNotEmpty) {
+          _detailsList = List.from(dbDetails);
+        }
         _savedWord = saved;
-        _pluralForm = foundPlural;
       });
+    }
+
+    if (_detailsList.isNotEmpty) {
+      final first = _detailsList.first;
+      final wId = int.tryParse(first['id']?.toString() ?? '0') ?? 0;
+      final baseForm = first['base_form']?.toString();
+      final foundPlural = await dictService.getPluralForm(wId, word, baseForm: baseForm);
+      if (mounted && foundPlural != null) {
+        setState(() {
+          _pluralForm = foundPlural;
+        });
+      }
     }
   }
 
@@ -278,6 +233,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
                 : {},
             onCategorySelected: _toggleCategory,
             contextSentence: widget.contextSentence,
+            onWordEdited: () => _loadSavedState(),
           ),
 
           const SizedBox(height: 12),

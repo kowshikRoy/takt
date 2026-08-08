@@ -6,6 +6,8 @@ import '../services/tts_service.dart';
 import '../models/saved_word.dart';
 import '../widgets/word_header_card.dart';
 import '../widgets/word_edit_sheet.dart';
+import '../widgets/vocab_status_pills.dart';
+import '../widgets/interactive_german_text.dart';
 
 class WordDetailScreen extends StatefulWidget {
   final String word;
@@ -114,15 +116,27 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
       Map<String, dynamic> wordData, VocabCategory category) async {
     final wordStr = wordData['word']?.toString() ?? widget.word;
     final wordId = wordStr.toLowerCase().trim();
-    final currentCategory = _savedWordCategories[wordId];
+    final widgetWordLower = widget.word.toLowerCase().trim();
+    final currentCategory = _savedWordCategories[wordId] ??
+        _savedWordCategories[widgetWordLower] ??
+        _savedWord?.category;
 
     if (currentCategory == category) {
-      await _vocabService.removeWord(wordId);
+      await _vocabService.removeWord(_savedWord?.id ?? wordId);
+      await _vocabService.removeWord(wordStr);
+      await _vocabService.removeWord(widget.word);
       setState(() {
         _savedWord = null;
         _savedWordIds.remove(wordId);
         _savedWordCategories.remove(wordId);
+        _savedWordIds.remove(widgetWordLower);
+        _savedWordCategories.remove(widgetWordLower);
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Removed "$wordStr" from Study Deck')),
+        );
+      }
     } else {
       final defs = (wordData['definitions'] as List?) ?? [];
       final primaryDef = defs.isNotEmpty ? defs.first.toString() : '';
@@ -175,6 +189,20 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
         ),
         centerTitle: false,
         actions: [
+          if (_wordDetails != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 4.0),
+              child: Center(
+                child: VocabStatusPills(
+                  iconOnly: true,
+                  currentCategory: _savedWordCategories[widget.word.toLowerCase().trim()] ??
+                      (_savedWordIds.contains(widget.word.toLowerCase().trim())
+                          ? VocabCategory.reviewLater
+                          : null),
+                  onCategorySelected: (category) => _setStatus(_wordDetails!, category),
+                ),
+              ),
+            ),
           IconButton(
             icon: Icon(Icons.edit_outlined, color: colorScheme.onSurface),
             tooltip: 'Edit word',
@@ -194,6 +222,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                       WordHeaderCard(
                         wordData: _wordDetails!,
                         contextSentence: _savedWord?.contextSentence,
+                        showStatusPills: false,
                         savedWordIds: _savedWordIds,
                         savedWordCategories: _savedWordCategories,
                         onCategorySelected: (category) =>
@@ -335,7 +364,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
 
   Widget _buildExamplesTab(
       BuildContext context, Map<String, dynamic> wordData) {
-    final dictExamples = (wordData['examples'] as List?) ?? [];
+    final rawDictExamples = (wordData['examples'] as List?) ?? [];
     final colorScheme = Theme.of(context).colorScheme;
     final targetWord = wordData['word']?.toString() ?? widget.word;
 
@@ -354,6 +383,18 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
         );
       }
     }
+
+    // Deduplicate: Don't show user encounters / media transcripts under Dictionary Examples
+    final encounterSentences = encounters.map((e) => e.sentence.trim().toLowerCase()).toSet();
+    if (_savedWord?.contextSentence != null && _savedWord!.contextSentence!.isNotEmpty) {
+      encounterSentences.add(_savedWord!.contextSentence!.trim().toLowerCase());
+    }
+
+    final dictExamples = rawDictExamples.where((ex) {
+      final de = (ex is Map ? (ex['de'] ?? ex['sentence'] ?? '').toString() : '').trim().toLowerCase();
+      if (de.isEmpty) return false;
+      return !encounterSentences.contains(de);
+    }).toList();
 
     if (encounters.isEmpty && dictExamples.isEmpty) {
       return Padding(
@@ -577,58 +618,21 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
   Widget _buildHighlightedSentence(
       BuildContext context, String sentence, String targetWord) {
     final colorScheme = Theme.of(context).colorScheme;
-    if (targetWord.isEmpty) {
-      return Text(
-        sentence,
-        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: colorScheme.onSurface),
-      );
-    }
-
-    final lowerSentence = sentence.toLowerCase();
-    final lowerWord = targetWord.toLowerCase();
-    final matchIndex = lowerSentence.indexOf(lowerWord);
-
-    if (matchIndex == -1) {
-      return Text(
-        sentence,
-        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: colorScheme.onSurface),
-      );
-    }
-
-    final before = sentence.substring(0, matchIndex);
-    final matched = sentence.substring(matchIndex, matchIndex + targetWord.length);
-    final after = sentence.substring(matchIndex + targetWord.length);
-
-    return RichText(
-      text: TextSpan(
-        style: TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 13,
-          color: colorScheme.onSurface,
-          height: 1.4,
-        ),
-        children: [
-          TextSpan(text: before),
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: Text(
-                matched,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: colorScheme.primary,
-                ),
-              ),
-            ),
-          ),
-          TextSpan(text: after),
-        ],
+    return InteractiveGermanText(
+      sentence,
+      highlightWord: targetWord,
+      sourceTitle: 'Dictionary Example',
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+        color: colorScheme.onSurface,
+        height: 1.45,
+      ),
+      highlightStyle: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        color: colorScheme.primary,
+        height: 1.45,
       ),
     );
   }
@@ -655,9 +659,633 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
     return [rawTags.toString()];
   }
 
+  String _findVerbForm(
+    List<dynamic> forms,
+    bool Function(String tags) condition, {
+    String fallback = '-',
+  }) {
+    for (final f in forms) {
+      if (f is! Map) continue;
+      final form = (f['form'] ?? '').toString().trim();
+      final tags = _parseTags(f['tags']).join(' ').toLowerCase();
+      if (condition(tags) && form.isNotEmpty) {
+        return form;
+      }
+    }
+    return fallback;
+  }
+
+  String _getPresentFallback(String infinitive, int index) {
+    String stem = infinitive;
+    if (infinitive.endsWith('en')) {
+      stem = infinitive.substring(0, infinitive.length - 2);
+    } else if (infinitive.endsWith('n')) {
+      stem = infinitive.substring(0, infinitive.length - 1);
+    }
+    switch (index) {
+      case 0:
+        return '${stem}e';
+      case 1:
+        return stem.endsWith('s') || stem.endsWith('z') || stem.endsWith('ß') || stem.endsWith('x')
+            ? '${stem}t'
+            : '${stem}st';
+      case 2:
+        return '${stem}t';
+      case 3:
+        return infinitive;
+      case 4:
+        return '${stem}t';
+      case 5:
+      default:
+        return infinitive;
+    }
+  }
+
+  String _getPastFallback(String infinitive, int index) {
+    String stem = infinitive;
+    if (infinitive.endsWith('en')) {
+      stem = infinitive.substring(0, infinitive.length - 2);
+    } else if (infinitive.endsWith('n')) {
+      stem = infinitive.substring(0, infinitive.length - 1);
+    }
+    final suffix = (stem.endsWith('t') || stem.endsWith('d')) ? 'et' : 't';
+    switch (index) {
+      case 0:
+        return '$stem${suffix}e';
+      case 1:
+        return '$stem${suffix}est';
+      case 2:
+        return '$stem${suffix}e';
+      case 3:
+        return '$stem${suffix}en';
+      case 4:
+        return '$stem${suffix}et';
+      case 5:
+      default:
+        return '$stem${suffix}en';
+    }
+  }
+
+  Widget _buildMiniVerbStat(
+    BuildContext context, {
+    required String label,
+    required String value,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableCell(
+    String text, {
+    bool isHeader = false,
+    bool isBold = false,
+    bool isSemiBold = false,
+    bool isMuted = false,
+    required ColorScheme colorScheme,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+      child: Text(
+        text,
+        maxLines: 2,
+        softWrap: true,
+        style: TextStyle(
+          fontSize: isHeader ? 9.5 : 11.5,
+          fontWeight: isHeader
+              ? FontWeight.bold
+              : (isBold
+                  ? FontWeight.bold
+                  : (isSemiBold ? FontWeight.w600 : FontWeight.normal)),
+          color: isHeader
+              ? colorScheme.primary
+              : (isMuted
+                  ? colorScheme.onSurfaceVariant
+                  : colorScheme.onSurface),
+        ),
+      ),
+    );
+  }
+
+  ({String label, Color color, Color bgColor, Color borderColor})? _getVerbRegularity({
+    required String infinitive,
+    required List<dynamic> forms,
+    String? verbClass,
+  }) {
+    final lowerInf = infinitive.toLowerCase().trim();
+
+    // 1. Modals & Core Auxiliaries
+    const modals = {
+      'können',
+      'müssen',
+      'dürfen',
+      'sollen',
+      'wollen',
+      'mögen',
+      'möchte',
+      'wissen',
+    };
+    if (modals.contains(lowerInf)) {
+      return (
+        label: 'Modal Verb',
+        color: const Color(0xFF8E24AA),
+        bgColor: const Color(0xFF8E24AA).withValues(alpha: 0.12),
+        borderColor: const Color(0xFF8E24AA).withValues(alpha: 0.35),
+      );
+    }
+    if (lowerInf == 'sein' || lowerInf == 'werden' || lowerInf == 'haben') {
+      return (
+        label: 'Irregular (Auxiliary)',
+        color: const Color(0xFFD97706),
+        bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+        borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+      );
+    }
+
+    // 2. Direct verb_class from database
+    final vClass = verbClass?.toLowerCase().trim();
+    if (vClass == 'weak' || vClass == 'regular') {
+      return (
+        label: 'Regular (Schwach)',
+        color: const Color(0xFF16A34A),
+        bgColor: const Color(0xFF16A34A).withValues(alpha: 0.12),
+        borderColor: const Color(0xFF16A34A).withValues(alpha: 0.35),
+      );
+    }
+    if (vClass == 'strong') {
+      return (
+        label: 'Irregular (Stark)',
+        color: const Color(0xFFD97706),
+        bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+        borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+      );
+    }
+    if (vClass == 'mixed' || vClass == 'irregular') {
+      return (
+        label: 'Irregular (Gemischt)',
+        color: const Color(0xFFD97706),
+        bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+        borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+      );
+    }
+
+    // 3. Check explicit forms tags if present in DB
+    for (final f in forms) {
+      if (f is! Map) continue;
+      final formText = (f['form'] ?? '').toString().toLowerCase().trim();
+      final tags = _parseTags(f['tags']).join(' ').toLowerCase();
+      if (formText.contains('weak') || tags.contains('weak')) {
+        return (
+          label: 'Regular (Schwach)',
+          color: const Color(0xFF16A34A),
+          bgColor: const Color(0xFF16A34A).withValues(alpha: 0.12),
+          borderColor: const Color(0xFF16A34A).withValues(alpha: 0.35),
+        );
+      }
+      if (formText.contains('strong') || tags.contains('strong')) {
+        return (
+          label: 'Irregular (Stark)',
+          color: const Color(0xFFD97706),
+          bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+          borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+        );
+      }
+      if (formText.contains('irregular') || tags.contains('irregular')) {
+        return (
+          label: 'Irregular (Stark)',
+          color: const Color(0xFFD97706),
+          bgColor: const Color(0xFFD97706).withValues(alpha: 0.12),
+          borderColor: const Color(0xFFD97706).withValues(alpha: 0.35),
+        );
+      }
+    }
+
+    return null;
+  }
+
+  Widget _buildVerbConjugationTable(
+    BuildContext context,
+    Map<String, dynamic> wordData,
+  ) {
+    final forms = (wordData['forms'] as List?) ?? [];
+    final colorScheme = Theme.of(context).colorScheme;
+    final baseForm = wordData['base_form']?.toString().trim();
+    final infinitive = (baseForm != null && baseForm.isNotEmpty)
+        ? baseForm
+        : (wordData['word']?.toString() ?? '');
+
+    // Determine auxiliary verb
+    String aux = 'haben';
+    for (final f in forms) {
+      if (f is! Map) continue;
+      final form = (f['form'] ?? '').toString().trim().toLowerCase();
+      final tags = _parseTags(f['tags']).join(' ').toLowerCase();
+      if (tags.contains('auxiliary')) {
+        if (form == 'sein' || form == 'haben') {
+          aux = form;
+          break;
+        }
+      }
+    }
+
+    // Determine participle II
+    String part2 = _findVerbForm(
+      forms,
+      (t) =>
+          t.contains('participle') &&
+          (t.contains('past') || t.contains('perfect')),
+      fallback: _findVerbForm(
+        forms,
+        (t) => t.contains('participle'),
+        fallback: '-',
+      ),
+    );
+    if (part2 == '-') {
+      String stem = infinitive;
+      if (infinitive.endsWith('en')) {
+        stem = infinitive.substring(0, infinitive.length - 2);
+      } else if (infinitive.endsWith('n')) {
+        stem = infinitive.substring(0, infinitive.length - 1);
+      }
+      part2 = 'ge${stem}t';
+    }
+
+    final pronouns = ['ich', 'du', 'er/sie/es', 'wir', 'ihr', 'sie/Sie'];
+
+    bool isPastTag(String t) =>
+        t.contains('preterite') ||
+        t.contains('past') && !t.contains('participle');
+
+    final presentForms = List.generate(6, (index) {
+      bool cond(String t) {
+        if (!t.contains('present') || t.contains('subjunctive')) return false;
+        switch (index) {
+          case 0:
+            return t.contains('singular') && t.contains('first-person');
+          case 1:
+            return t.contains('singular') && t.contains('second-person');
+          case 2:
+            return t.contains('singular') && t.contains('third-person');
+          case 3:
+            return t.contains('plural') && t.contains('first-person');
+          case 4:
+            return t.contains('plural') && t.contains('second-person');
+          case 5:
+            return t.contains('plural') && t.contains('third-person');
+          default:
+            return false;
+        }
+      }
+
+      final found = _findVerbForm(forms, cond, fallback: '-');
+      return found != '-' ? found : _getPresentFallback(infinitive, index);
+    });
+
+    final pastForms = List.generate(6, (index) {
+      bool cond(String t) {
+        if (!isPastTag(t) || t.contains('subjunctive')) return false;
+        switch (index) {
+          case 0:
+            return t.contains('singular') && t.contains('first-person');
+          case 1:
+            return t.contains('singular') && t.contains('second-person');
+          case 2:
+            return t.contains('singular') && t.contains('third-person');
+          case 3:
+            return t.contains('plural') && t.contains('first-person');
+          case 4:
+            return t.contains('plural') && t.contains('second-person');
+          case 5:
+            return t.contains('plural') && t.contains('third-person');
+          default:
+            return false;
+        }
+      }
+
+      final found = _findVerbForm(forms, cond, fallback: '-');
+      return found != '-' ? found : _getPastFallback(infinitive, index);
+    });
+
+    final auxConjugations = aux == 'sein'
+        ? ['bin', 'bist', 'ist', 'sind', 'seid', 'sind']
+        : ['habe', 'hast', 'hat', 'haben', 'habt', 'haben'];
+
+    final perfectForms = auxConjugations.map((a) => '$a $part2').toList();
+
+    final regularity = _getVerbRegularity(
+      infinitive: infinitive,
+      forms: forms,
+      verbClass: wordData['verb_class']?.toString(),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.transform_rounded,
+                size: 16,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'VERB CONJUGATION TABLE',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 1.1,
+                  color: colorScheme.primary,
+                ),
+              ),
+              if (regularity != null) ...[
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: regularity.bgColor,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: regularity.borderColor, width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: regularity.color,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        regularity.label,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                          color: regularity.color,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMiniVerbStat(
+                  context,
+                  label: 'Infinitive',
+                  value: infinitive,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMiniVerbStat(
+                  context,
+                  label: 'Auxiliary',
+                  value: aux,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMiniVerbStat(
+                  context,
+                  label: 'Partizip II',
+                  value: part2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4.0),
+            child: Table(
+              border: TableBorder.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                width: 0.8,
+              ),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              columnWidths: const {
+                0: FlexColumnWidth(0.78),
+                1: FlexColumnWidth(1.02),
+                2: FlexColumnWidth(1.25),
+                3: FlexColumnWidth(1.35),
+              },
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.4),
+                  ),
+                  children: [
+                    _buildTableCell('PRONOUN', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PRÄSENS', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PAST', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PERFECT', isHeader: true, colorScheme: colorScheme),
+                  ],
+                ),
+                ...List.generate(6, (index) {
+                  final isAlt = index % 2 == 1;
+                  return TableRow(
+                    decoration: BoxDecoration(
+                      color: isAlt
+                          ? colorScheme.surfaceContainerHigh.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                    ),
+                    children: [
+                      _buildTableCell(pronouns[index], isBold: true, colorScheme: colorScheme),
+                      _buildTableCell(presentForms[index], isSemiBold: true, colorScheme: colorScheme),
+                      _buildTableCell(pastForms[index], isSemiBold: true, colorScheme: colorScheme),
+                      _buildTableCell(perfectForms[index], isMuted: true, colorScheme: colorScheme),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNounDeclensionTable(
+    BuildContext context,
+    Map<String, dynamic> wordData,
+  ) {
+    final forms = (wordData['forms'] as List?) ?? [];
+    final colorScheme = Theme.of(context).colorScheme;
+    final word = wordData['word']?.toString() ?? '';
+    final rawGender = wordData['gender']?.toString().toLowerCase() ?? '';
+    final gender = rawGender.startsWith('m')
+        ? 'm'
+        : (rawGender.startsWith('f') ? 'f' : (rawGender.startsWith('n') ? 'n' : ''));
+
+    final plural = wordData['plural']?.toString() ??
+        _findVerbForm(
+          forms,
+          (t) => t.contains('plural') && t.contains('nominative'),
+          fallback: _findVerbForm(forms, (t) => t.contains('plural'), fallback: '$word(e)'),
+        );
+    final cleanPlural = plural.toLowerCase().startsWith('die ')
+        ? plural.substring(4)
+        : plural;
+
+    final cases = ['Nominativ', 'Akkusativ', 'Dativ', 'Genitiv'];
+    final singularArticles = gender == 'm'
+        ? ['der', 'den', 'dem', 'des']
+        : (gender == 'f'
+            ? ['die', 'die', 'der', 'der']
+            : (gender == 'n' ? ['das', 'das', 'dem', 'des'] : ['-', '-', '-', '-']));
+
+    final pluralArticles = ['die', 'die', 'den', 'der'];
+
+    final singularForms = List.generate(4, (i) {
+      if (gender == 'm' || gender == 'n') {
+        if (i == 3) return '${singularArticles[i]} $word(e)s';
+        if (i == 2) return '${singularArticles[i]} $word';
+      }
+      return '${singularArticles[i]} $word';
+    });
+
+    final pluralForms = List.generate(4, (i) {
+      if (i == 2) {
+        final dativePlural = cleanPlural.endsWith('n') || cleanPlural.endsWith('s')
+            ? cleanPlural
+            : '${cleanPlural}n';
+        return '${pluralArticles[i]} $dativePlural';
+      }
+      return '${pluralArticles[i]} $cleanPlural';
+    });
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.table_chart_rounded, size: 16, color: colorScheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                'NOUN DECLENSION TABLE',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 1.1,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4.0),
+            child: Table(
+              border: TableBorder.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                width: 0.8,
+              ),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              columnWidths: const {
+                0: FlexColumnWidth(1.1),
+                1: FlexColumnWidth(1.4),
+                2: FlexColumnWidth(1.4),
+              },
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.4),
+                  ),
+                  children: [
+                    _buildTableCell('CASE', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('SINGULAR', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PLURAL', isHeader: true, colorScheme: colorScheme),
+                  ],
+                ),
+                ...List.generate(4, (index) {
+                  final isAlt = index % 2 == 1;
+                  return TableRow(
+                    decoration: BoxDecoration(
+                      color: isAlt
+                          ? colorScheme.surfaceContainerHigh.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                    ),
+                    children: [
+                      _buildTableCell(cases[index], isBold: true, colorScheme: colorScheme),
+                      _buildTableCell(singularForms[index], isSemiBold: true, colorScheme: colorScheme),
+                      _buildTableCell(pluralForms[index], isSemiBold: true, colorScheme: colorScheme),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDeclensionTab(
       BuildContext context, Map<String, dynamic> wordData) {
-    final colorScheme = Theme.of(context).colorScheme;
+    if (_isVerb(wordData)) {
+      return _buildVerbConjugationTable(context, wordData);
+    }
+    final pos = wordData['pos']?.toString().toLowerCase() ?? '';
+    final gender = wordData['gender']?.toString() ?? '';
+    if (pos == 'noun' || pos == 'n' || pos == 'nouns' || gender.isNotEmpty) {
+      return _buildNounDeclensionTable(context, wordData);
+    }
+
     final rawForms = wordData['forms'];
     final forms = rawForms is List ? rawForms : <dynamic>[];
 
@@ -667,11 +1295,11 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
         child: Center(
           child: Column(
             children: [
-              Icon(Icons.table_chart_outlined, size: 36, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+              Icon(Icons.table_chart_outlined, size: 36, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
               const SizedBox(height: 8),
               Text(
                 'No inflection forms available.',
-                style: TextStyle(color: colorScheme.onSurfaceVariant),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -679,6 +1307,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
       );
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

@@ -489,6 +489,7 @@ class _WordEditSheetState extends State<WordEditSheet> {
   Widget _buildPosDropdown(BuildContext context) {
     return DropdownButtonFormField<String>(
       initialValue: _pos,
+      isExpanded: true,
       decoration: _fieldDecoration(context, 'Part of speech'),
       items: _posOptions
           .map(
@@ -505,6 +506,7 @@ class _WordEditSheetState extends State<WordEditSheet> {
   Widget _buildGenderDropdown(BuildContext context) {
     return DropdownButtonFormField<String>(
       initialValue: _gender,
+      isExpanded: true,
       decoration: _fieldDecoration(context, 'Gender'),
       items: const [
         DropdownMenuItem(value: 'm', child: Text('der (m)')),

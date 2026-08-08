@@ -21,21 +21,21 @@ void main() {
   }
 
   group('WordHeaderCard Meaning Source Badge Tests', () {
-    testWidgets('Displays My Library badge when meaning is from user database', (tester) async {
+    testWidgets('Displays Dictionary badge when saved word is from dictionary', (tester) async {
       final data = {
         'word': 'Haus',
         'pos': 'noun',
         'gender': 'n',
         'definitions': ['house, building'],
-        'source': 'user_database',
+        'source': 'dictionary_saved',
         'isFromUserDatabase': true,
       };
 
       await tester.pumpWidget(buildTestCard(data));
       await tester.pump();
 
-      expect(find.text('My Library'), findsOneWidget);
-      expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
+      expect(find.text('Dictionary'), findsOneWidget);
+      expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
     });
 
     testWidgets('Displays Dictionary badge for offline dictionary match', (tester) async {
@@ -59,7 +59,7 @@ void main() {
         'pos': 'noun',
         'gender': 'm',
         'definitions': ['beat, rhythm, cycle'],
-        'source': 'wiktionary',
+        'source': 'wiktionary_fetched',
         'isWiktionaryFallback': true,
       };
 
@@ -70,20 +70,21 @@ void main() {
       expect(find.byIcon(Icons.public_rounded), findsOneWidget);
     });
 
-    testWidgets('Displays Google Translate badge for machine translation safety net', (tester) async {
+    testWidgets('Displays Custom Note badge for custom edited words', (tester) async {
       final data = {
-        'word': 'unbekannt',
-        'pos': 'adj',
-        'definitions': ['unknown'],
-        'source': 'nmt_translation',
-        'isNmtTranslation': true,
+        'word': 'Titel',
+        'pos': 'noun',
+        'gender': 'm',
+        'definitions': ['headline, title'],
+        'source': 'user_edited',
+        'isFromUserDatabase': true,
       };
 
       await tester.pumpWidget(buildTestCard(data));
       await tester.pump();
 
-      expect(find.text('Google Translate'), findsOneWidget);
-      expect(find.byIcon(Icons.g_translate_rounded), findsOneWidget);
+      expect(find.text('Custom Note'), findsOneWidget);
+      expect(find.byIcon(Icons.edit_note_rounded), findsOneWidget);
     });
   });
 }

@@ -4,36 +4,42 @@ import '../models/saved_word.dart';
 class VocabStatusPills extends StatelessWidget {
   final VocabCategory? currentCategory;
   final ValueChanged<VocabCategory> onCategorySelected;
+  final bool iconOnly;
 
   const VocabStatusPills({
     super.key,
     required this.currentCategory,
     required this.onCategorySelected,
+    this.iconOnly = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: iconOnly ? MainAxisSize.min : MainAxisSize.max,
       children: [
         _buildPill(
           context: context,
-          label: 'Save',
-          icon: Icons.bookmark_border_rounded,
-          activeIcon: Icons.bookmark_rounded,
+          label: 'Deck',
+          tooltip: 'Add to Study Deck',
+          icon: Icons.style_outlined,
+          activeIcon: Icons.style_rounded,
           category: VocabCategory.reviewLater,
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: iconOnly ? 4 : 8),
         _buildPill(
           context: context,
           label: 'Learning',
+          tooltip: 'Mark as Learning',
           icon: Icons.psychology_outlined,
           activeIcon: Icons.psychology_rounded,
           category: VocabCategory.learning,
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: iconOnly ? 4 : 8),
         _buildPill(
           context: context,
           label: 'Known',
+          tooltip: 'Mark as Known',
           icon: Icons.check_circle_outline_rounded,
           activeIcon: Icons.check_circle_rounded,
           category: VocabCategory.mastered,
@@ -45,6 +51,7 @@ class VocabStatusPills extends StatelessWidget {
   Widget _buildPill({
     required BuildContext context,
     required String label,
+    required String tooltip,
     required IconData icon,
     required IconData activeIcon,
     required VocabCategory category,
@@ -58,46 +65,60 @@ class VocabStatusPills extends StatelessWidget {
             ? colorScheme.primary
             : Colors.amber.shade800);
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onCategorySelected(category),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive ? activeBg : colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: isActive ? activeBg : colorScheme.outlineVariant.withValues(alpha: 0.5),
-              width: isActive ? 1.5 : 1.0,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isActive ? activeIcon : icon,
-                size: 14,
-                color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                    color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
+    Widget pillContent = AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: iconOnly
+          ? const EdgeInsets.all(6)
+          : const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: isActive ? activeBg : colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isActive ? activeBg : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: isActive ? 1.5 : 1.0,
         ),
       ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isActive ? activeIcon : icon,
+            size: iconOnly ? 16 : 14,
+            color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+          ),
+          if (!iconOnly) ...[
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
+
+    Widget pillButton = Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => onCategorySelected(category),
+        child: pillContent,
+      ),
+    );
+
+    if (iconOnly) {
+      return pillButton;
+    }
+
+    return Expanded(child: pillButton);
   }
 }

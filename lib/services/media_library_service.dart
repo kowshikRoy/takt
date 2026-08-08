@@ -43,6 +43,14 @@ class MediaLibraryService extends ChangeNotifier {
     clearAllAnalysisCache();
   }
 
+  @visibleForTesting
+  Future<void> reloadForTesting() async {
+    await _loadDeletedKeys();
+    await _loadImportedArticles();
+    await _loadProcessedVideos();
+    notifyListeners();
+  }
+
   Future<void> _loadDeletedKeys() async {
     try {
       final prefs = await SharedPreferences.getInstance();

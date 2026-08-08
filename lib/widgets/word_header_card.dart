@@ -7,6 +7,7 @@ import '../services/tts_service.dart';
 import '../services/dictionary_service.dart';
 import 'vocab_status_pills.dart';
 import 'noun_headword_title.dart';
+import 'edit_word_dialog.dart';
 
 class WordHeaderCard extends StatelessWidget {
   final Map<String, dynamic> wordData;
@@ -18,6 +19,7 @@ class WordHeaderCard extends StatelessWidget {
   final String? contextSentence;
   final String? ipa;
   final bool showStatusPills;
+  final VoidCallback? onWordEdited;
 
   WordHeaderCard({
     super.key,
@@ -30,6 +32,7 @@ class WordHeaderCard extends StatelessWidget {
     this.contextSentence,
     this.ipa,
     this.showStatusPills = true,
+    this.onWordEdited,
   });
 
   final TtsService _ttsService = TtsService();
@@ -96,9 +99,14 @@ class WordHeaderCard extends StatelessWidget {
 
   List<String> _extractDefinitions(Map<String, dynamic> data) {
     if (data['definitions'] != null) {
-      return List<String>.from(data['definitions']);
-    } else if (data['definition'] != null) {
-      return [data['definition'].toString()];
+      final list = List<String>.from(data['definitions'])
+          .map((d) => d.toString().trim())
+          .where((d) => d.isNotEmpty)
+          .toList();
+      if (list.isNotEmpty) return list;
+    }
+    if (data['definition'] != null && data['definition'].toString().trim().isNotEmpty) {
+      return [data['definition'].toString().trim()];
     }
     return [];
   }
@@ -120,18 +128,18 @@ class WordHeaderCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final source = data['source']?.toString().toLowerCase() ?? '';
-    final isUserDb = data['isFromUserDatabase'] == true || source == 'user_database';
-    final isWiki = data['isWiktionaryFallback'] == true || source == 'wiktionary';
+    final isUserEdited = source == 'user_edited' || source == 'custom';
+    final isWiki = data['isWiktionaryFallback'] == true || source == 'wiktionary' || source == 'wiktionary_fetched';
     final isNmt = data['isNmtTranslation'] == true || source == 'nmt_translation';
 
     IconData icon;
     String label;
     Color badgeColor;
 
-    if (isUserDb) {
-      icon = Icons.bookmark_rounded;
-      label = "My Library";
-      badgeColor = Colors.amber.shade800;
+    if (isUserEdited) {
+      icon = Icons.edit_note_rounded;
+      label = "Custom Note";
+      badgeColor = Colors.purple.shade700;
     } else if (isWiki) {
       icon = Icons.public_rounded;
       label = "Wiktionary";
@@ -398,6 +406,17 @@ class WordHeaderCard extends StatelessWidget {
               ],
               const Spacer(),
               _buildMeaningSourceBadge(context, wordData),
+              if (showStatusPills) ...[
+                const SizedBox(width: 8),
+                VocabStatusPills(
+                  iconOnly: true,
+                  currentCategory: savedWordCategories[wordId] ??
+                      (savedWordIds.contains(wordId)
+                          ? VocabCategory.reviewLater
+                          : null),
+                  onCategorySelected: onCategorySelected,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 6),
@@ -474,29 +493,6 @@ class WordHeaderCard extends StatelessWidget {
                 _buildContextSentence(context, contextSentence!, word),
               ],
             ),
-          ),
-        ],
-
-        if (showStatusPills) ...[
-          const SizedBox(height: 16),
-          // Vocabulary Status Header & Toggle Chips
-          Text(
-            "VOCABULARY STATUS",
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-              color: colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          VocabStatusPills(
-            currentCategory:
-                savedWordCategories[wordId] ??
-                (savedWordIds.contains(wordId)
-                    ? VocabCategory.reviewLater
-                    : null),
-            onCategorySelected: onCategorySelected,
           ),
         ],
       ],

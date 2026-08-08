@@ -10,6 +10,7 @@ import 'auth_service.dart';
 import 'app_logger.dart';
 import 'dictionary_service.dart';
 import 'profile_service.dart';
+import 'home_screen_widget_service.dart';
 
 class VocabularyService extends ChangeNotifier {
   static final VocabularyService _instance = VocabularyService._internal();
@@ -17,8 +18,10 @@ class VocabularyService extends ChangeNotifier {
   static Completer<Database>? _dbCompleter;
   static const String _legacyStorageKey = 'user_vocabulary_list';
   static const String _webStorageKey = 'user_vocabulary_json_v1';
+  static const String _deletedStorageKey = 'takt_deleted_vocabulary_ids';
 
   final Map<String, SavedWord> _inMemoryWords = {};
+  Set<String> _deletedWordIds = {};
   List<SavedWord> _cachedSavedWords = [];
   List<SavedWord> _cachedDueWords = [];
 
@@ -26,6 +29,31 @@ class VocabularyService extends ChangeNotifier {
   List<SavedWord> get cachedDueWords => _cachedDueWords;
   int get cachedSavedCount => _cachedSavedWords.length;
   int get cachedDueCount => _cachedDueWords.length;
+
+  List<String> getDeletedWordIdsForSync() => _deletedWordIds.toList();
+
+  Future<void> clearDeletedWordIds() async {
+    _deletedWordIds.clear();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_deletedStorageKey);
+    } catch (_) {}
+  }
+
+  Future<void> _loadDeletedWordIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_deletedStorageKey) ?? [];
+      _deletedWordIds = list.toSet();
+    } catch (_) {}
+  }
+
+  Future<void> _persistDeletedWordIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_deletedStorageKey, _deletedWordIds.toList());
+    } catch (_) {}
+  }
 
   /// Vocabulary Mastery Score calculated from stage of each saved word:
   /// Level 0 (New): 1 pt
@@ -98,6 +126,7 @@ class VocabularyService extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    await _loadDeletedWordIds();
     if (kIsWeb) {
       await _loadWebWords();
     } else {
@@ -166,7 +195,7 @@ class VocabularyService extends ChangeNotifier {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE saved_words (
@@ -187,7 +216,8 @@ class VocabularyService extends ChangeNotifier {
             repetitions INTEGER,
             dueDate TEXT,
             lastReviewed TEXT,
-            createdAt TEXT
+            createdAt TEXT,
+            source TEXT DEFAULT 'dictionary_saved'
           )
         ''');
       },
@@ -195,6 +225,24 @@ class VocabularyService extends ChangeNotifier {
         if (oldVersion < 2) {
           try {
             await db.execute('ALTER TABLE saved_words ADD COLUMN contextExamples TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 3) {
+          try {
+            await db.execute("ALTER TABLE saved_words ADD COLUMN source TEXT DEFAULT 'dictionary_saved'");
+          } catch (_) {}
+        }
+        if (oldVersion < 4) {
+          try {
+            await db.execute("UPDATE saved_words SET source = 'dictionary_saved' WHERE source = 'user_database' OR source = 'user_added' OR source IS NULL");
+          } catch (_) {}
+        }
+        if (oldVersion < 5) {
+          try {
+            await db.execute('ALTER TABLE saved_words ADD COLUMN baseForm TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE saved_words ADD COLUMN pos TEXT');
           } catch (_) {}
         }
       },
@@ -227,6 +275,15 @@ class VocabularyService extends ChangeNotifier {
   }
 
   Future<void> upsertWord(SavedWord word, {bool notify = true, bool triggerSync = true}) async {
+    final cleanId = word.id.trim().toLowerCase();
+    final cleanWord = word.word.trim().toLowerCase();
+    if (_deletedWordIds.remove(word.id) ||
+        _deletedWordIds.remove(cleanId) ||
+        _deletedWordIds.remove(word.word) ||
+        _deletedWordIds.remove(cleanWord)) {
+      _persistDeletedWordIds();
+    }
+
     SavedWord wordToSave = word;
     final existing = await getSavedWord(word.id) ?? await getSavedWordByWord(word.word);
     if (existing != null) {
@@ -287,6 +344,7 @@ class VocabularyService extends ChangeNotifier {
     if (triggerSync) {
       _triggerCloudSync();
     }
+    unawaited(HomeScreenWidgetService().updateWidgetData());
   }
 
   Future<void> recordEncounterExample(String word, WordContextExample example) async {
@@ -321,17 +379,21 @@ class VocabularyService extends ChangeNotifier {
     }
   }
 
-  /// Merges a word coming from the cloud into local storage. Cloud sync can
-  /// lag behind (a previous push failed, another device hasn't synced yet,
-  /// etc.), so a remote copy is not necessarily newer than what's on this
-  /// device. Blindly overwriting local rows with remote ones on every sync
-  /// (which runs automatically on every app launch) would silently revert
-  /// review progress made since the cloud was last updated — keep whichever
-  /// side actually has more review progress instead of trusting remote by
-  /// default.
+  /// Merges a word coming from the cloud into local storage.
   Future<void> mergeWordFromSync(Map<String, dynamic> jsonMap) async {
     final incoming = SavedWord.fromJson(jsonMap);
-    final existing = await getSavedWord(incoming.id);
+    final cleanId = incoming.id.trim().toLowerCase();
+    final cleanWord = incoming.word.trim().toLowerCase();
+
+    // Do not resurrect words marked as deleted locally
+    if (_deletedWordIds.contains(incoming.id) ||
+        _deletedWordIds.contains(cleanId) ||
+        _deletedWordIds.contains(incoming.word) ||
+        _deletedWordIds.contains(cleanWord)) {
+      return;
+    }
+
+    final existing = await getSavedWord(incoming.id) ?? await getSavedWordByWord(incoming.word);
     if (existing != null && _isAtLeastAsAdvanced(existing, incoming)) {
       return;
     }
@@ -352,19 +414,39 @@ class VocabularyService extends ChangeNotifier {
     return !localReviewed.isBefore(remoteReviewed);
   }
 
-  Future<void> removeWord(String id) async {
+  Future<void> removeWord(String idOrWord) async {
+    final clean = idOrWord.trim().toLowerCase();
+
+    // 1. Remove from in-memory / web
+    _inMemoryWords.remove(idOrWord);
+    _inMemoryWords.remove(clean);
+    _inMemoryWords.removeWhere((k, v) =>
+        k.toLowerCase() == clean ||
+        v.word.toLowerCase() == clean ||
+        v.id.toLowerCase() == clean);
+
     if (kIsWeb) {
-      _inMemoryWords.remove(id);
       await _saveWebWords();
     } else {
+      // 2. Remove from local SQLite database (matching by ID or Word case-insensitively)
       final db = await database;
       if (db != null) {
-        await db.delete('saved_words', where: 'id = ?', whereArgs: [id]);
+        await db.delete(
+          'saved_words',
+          where: 'id = ? OR LOWER(id) = ? OR LOWER(word) = ?',
+          whereArgs: [idOrWord, clean, clean],
+        );
       }
     }
-    await refreshCache();
 
+    // 3. Mark in persistent tombstone set for cloud sync
+    _deletedWordIds.add(idOrWord);
+    _deletedWordIds.add(clean);
+    await _persistDeletedWordIds();
+
+    await refreshCache();
     _triggerCloudSync();
+    unawaited(HomeScreenWidgetService().updateWidgetData());
   }
 
   Future<SavedWord?> getSavedWord(String id) async {
@@ -425,82 +507,100 @@ class VocabularyService extends ChangeNotifier {
     return res.map((m) => SavedWord.fromMap(m)).toList();
   }
 
-  /// Older builds of the Key Vocabulary save flow had a bug where a missing
-  /// dictionary definition fell back to saving the German word itself as
-  /// its own "definition" (see story_reader_screen.dart's fix). Those
-  /// entries are indistinguishable from a legitimately-empty lookup except
-  /// by the fact that the "definition" equals the word — re-resolve those
-  /// through the same fallback chain the Dictionary page uses and persist
-  /// the fix. Cheap to call on every load: only words matching that exact
-  /// signature trigger a re-lookup.
-  Future<int> repairStaleDefinitions() async {
+  /// Re-evaluates saved words against updated dictionary & OpenNLP POS contextual disambiguation.
+  /// Fixes stale definitions, resolves lemmas, and updates incorrect POS tags (e.g. attributive adjectives).
+  Future<int> refreshAndRepairSavedWords({bool forceAll = false}) async {
     final words = await getSavedWords();
     final dictionaryService = DictionaryService();
-    int fixedCount = 0;
+    int updatedCount = 0;
 
     for (var i = 0; i < words.length; i++) {
       final word = words[i];
-      final looksStale =
-          word.primaryDefinition.trim().isEmpty ||
-          word.primaryDefinition.trim().toLowerCase() ==
-              word.word.trim().toLowerCase();
-      if (!looksStale) continue;
+      if (word.source == 'user_edited') continue;
 
-      String? newDef;
+      final hasContext = word.contextSentence != null && word.contextSentence!.trim().isNotEmpty;
+      final looksStaleDef = word.primaryDefinition.trim().isEmpty ||
+          word.primaryDefinition.trim().toLowerCase() == word.word.trim().toLowerCase();
+
+      if (!forceAll && !looksStaleDef && !hasContext && word.pos != null && word.pos!.isNotEmpty) {
+        continue;
+      }
+
       try {
-        final fastEntries = await dictionaryService.lookupWordFast(
-          word.word,
-        );
-        if (fastEntries.isNotEmpty) {
-          final defs = (fastEntries.first['definitions'] as List?) ?? [];
-          if (defs.isNotEmpty) newDef = defs.first.toString();
+        List<Map<String, dynamic>> entries;
+        if (hasContext) {
+          entries = await dictionaryService.lookupContextualWord(
+            word.word,
+            contextSentence: word.contextSentence,
+          );
+        } else {
+          entries = await dictionaryService.lookupWordAllPOS(word.word);
         }
-        if (newDef == null || newDef.isEmpty) {
-          final fullEntry = await dictionaryService.lookupWord(word.word);
-          final onlineDefs = (fullEntry?['definitions'] as List?) ?? [];
-          if (onlineDefs.isNotEmpty) newDef = onlineDefs.first.toString();
+
+        if (entries.isNotEmpty) {
+          final best = entries.first;
+          final bestPos = best['pos']?.toString();
+          final bestGender = best['gender']?.toString();
+          final bestBase = best['base_form']?.toString();
+          final bestIpa = best['ipa']?.toString();
+          final bestDefs = (best['definitions'] as List?)?.whereType<String>().where((d) => d.trim().isNotEmpty).toList() ?? [];
+          final newPrimaryDef = bestDefs.isNotEmpty
+              ? bestDefs.first
+              : (best['definition']?.toString() ?? word.primaryDefinition);
+
+          final posChanged = bestPos != null &&
+              bestPos.isNotEmpty &&
+              DictionaryService.normalizePos(bestPos) != DictionaryService.normalizePos(word.pos);
+          final defChanged = looksStaleDef && newPrimaryDef.isNotEmpty && newPrimaryDef != word.primaryDefinition;
+          final baseChanged = bestBase != null && bestBase.isNotEmpty && bestBase != word.baseForm;
+
+          if (posChanged || defChanged || baseChanged || forceAll) {
+            final updated = SavedWord(
+              id: word.id,
+              word: word.word,
+              baseForm: bestBase ?? word.baseForm,
+              pos: (bestPos != null && bestPos.isNotEmpty) ? bestPos : word.pos,
+              gender: (bestPos?.toLowerCase() == 'noun') ? bestGender : null,
+              primaryDefinition: newPrimaryDef.isNotEmpty ? newPrimaryDef : word.primaryDefinition,
+              definitions: bestDefs.isNotEmpty ? bestDefs : word.definitions,
+              ipa: (bestIpa != null && bestIpa.isNotEmpty) ? bestIpa : word.ipa,
+              contextSentence: word.contextSentence,
+              sourceTitle: word.sourceTitle,
+              contextExamples: word.contextExamples,
+              category: word.category,
+              interval: word.interval,
+              easeFactor: word.easeFactor,
+              repetitions: word.repetitions,
+              dueDate: word.dueDate,
+              lastReviewed: word.lastReviewed,
+              createdAt: word.createdAt,
+              source: word.source,
+            );
+            await upsertWord(
+              updated,
+              notify: false,
+              triggerSync: i == words.length - 1,
+            );
+            updatedCount++;
+          }
         }
       } catch (e) {
         AppLogger.error(
-          "Failed to repair definition for '${word.word}'",
+          "Failed to refresh metadata for '${word.word}'",
           error: e,
           tag: 'VocabularyService',
         );
       }
-
-      if (newDef == null || newDef.isEmpty) continue;
-
-      final repaired = SavedWord(
-        id: word.id,
-        word: word.word,
-        baseForm: word.baseForm,
-        pos: word.pos,
-        gender: word.gender,
-        primaryDefinition: newDef,
-        definitions: [newDef],
-        ipa: word.ipa,
-        contextSentence: word.contextSentence,
-        sourceTitle: word.sourceTitle,
-        category: word.category,
-        interval: word.interval,
-        easeFactor: word.easeFactor,
-        repetitions: word.repetitions,
-        dueDate: word.dueDate,
-        lastReviewed: word.lastReviewed,
-        createdAt: word.createdAt,
-      );
-      await upsertWord(
-        repaired,
-        notify: false,
-        triggerSync: i == words.length - 1,
-      );
-      fixedCount++;
     }
 
-    if (fixedCount > 0) {
+    if (updatedCount > 0) {
       await refreshCache();
     }
-    return fixedCount;
+    return updatedCount;
+  }
+
+  Future<int> repairStaleDefinitions() async {
+    return refreshAndRepairSavedWords();
   }
 
   Future<List<SavedWord>> getDueWords() async {

@@ -271,7 +271,7 @@ class ProfileScreen extends StatelessWidget {
             child: _buildMetricCard(
               context,
               value: '$savedCount',
-              label: l10n?.labelWordsSaved.toUpperCase() ?? 'WORDS SAVED',
+              label: l10n?.labelWordsSaved.toUpperCase() ?? 'STUDY DECK',
               color: rustAccent,
               cardBg: cardBg,
               inkColor: inkColor,

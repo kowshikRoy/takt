@@ -297,20 +297,22 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                         final isProcessing = !isFailed && !isCompleted;
                         final colorScheme = Theme.of(context).colorScheme;
 
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: isFailed
-                                  ? colorScheme.error.withValues(alpha: 0.4)
-                                  : isProcessing
-                                      ? colorScheme.primary.withValues(alpha: 0.3)
-                                      : colorScheme.outlineVariant.withValues(alpha: 0.5),
-                              width: 0.8,
+                        return Material(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(4),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: isFailed
+                                    ? colorScheme.error.withValues(alpha: 0.4)
+                                    : isProcessing
+                                        ? colorScheme.primary.withValues(alpha: 0.3)
+                                        : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                                width: 0.8,
+                              ),
                             ),
-                          ),
-                          child: ListTile(
+                            child: ListTile(
                             dense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                             leading: ClipRRect(
@@ -395,7 +397,8 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                             },
                             onLongPress: () => _showMediaActionSheet(context, video, mediaService),
                           ),
-                        );
+                        ),
+                      );
                       },
                     ),
                     const SizedBox(height: 24),

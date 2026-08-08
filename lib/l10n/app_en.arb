@@ -66,10 +66,10 @@
   "titleProfile": "Profile",
 
   "titleDailyDiscovery": "DAILY DISCOVERY",
-  "subtitleDailyDiscovery": "Tap a word to add it to your review list",
-  "labelSavedCount": "{saved} / {goal} SAVED",
+  "subtitleDailyDiscovery": "Tap a word to add it to your Study Deck",
+  "labelSavedCount": "{saved} / {goal} IN DECK",
   "@labelSavedCount": {
-    "description": "Progress of saved words today against daily goal",
+    "description": "Progress of Study Deck words added today against daily goal",
     "placeholders": {
       "saved": { "type": "int" },
       "goal": { "type": "int" }
@@ -125,8 +125,8 @@
   "titleSentenceBuilder": "Sentence Builder",
   "titleCompoundPuzzle": "Compound Puzzle",
   "subtitleCompoundPuzzle": "Build massive words",
-  "titleVocabFlashcards": "Vocabulary Flashcard Practice",
-  "subtitleVocabFlashcards": "Review your saved vocabulary cards",
+  "titleVocabFlashcards": "Study Deck Flashcards",
+  "subtitleVocabFlashcards": "Review your Study Deck cards",
   "titleSpeakingPracticeCard": "Speaking Practice",
   "subtitleSpeakingPracticeCard": "Speech Shadowing",
 
@@ -135,7 +135,7 @@
   "labelTimeframe30D": "30D",
   "labelTimeframe12W": "12W",
   "labelTimeframeAll": "All",
-  "labelWordsSaved": "Words Saved",
+  "labelWordsSaved": "Study Deck",
   "labelMastered": "Mastered",
   "titleMemoryRetention": "MEMORY RETENTION (SRS)",
   "labelStageLearning": "Learning",

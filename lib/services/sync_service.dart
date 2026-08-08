@@ -100,6 +100,7 @@ class SyncService extends ChangeNotifier {
       // 3. Push updated local state to GCP backend
       final updatedLocalWords = await vocabService.getAllSavedWords();
       final vocabPayload = updatedLocalWords.map((w) => w.toJson()).toList();
+      final deletedVocabPayload = vocabService.getDeletedWordIdsForSync();
       final articlesPayload = await MediaLibraryService().getArticlesForSync();
       final mediaPayload = MediaLibraryService().getMediaForSync();
       final deletedMediaPayload = MediaLibraryService().getDeletedMediaKeysForSync();
@@ -111,6 +112,7 @@ class SyncService extends ChangeNotifier {
             headers: headers,
             body: jsonEncode({
               'vocabulary': vocabPayload,
+              'deleted_vocabulary_ids': deletedVocabPayload,
               'articles': articlesPayload,
               'media': mediaPayload,
               'deleted_media_ids': deletedMediaPayload,
@@ -127,6 +129,7 @@ class SyncService extends ChangeNotifier {
           .timeout(const Duration(seconds: 15));
 
       if (postResponse.statusCode == 200) {
+        await vocabService.clearDeletedWordIds();
         _lastSyncedAt = DateTime.now();
         _isSyncing = false;
         notifyListeners();

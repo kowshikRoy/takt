@@ -403,6 +403,7 @@ class TtsService extends ChangeNotifier {
 
   Future<void> speak(String text, {String lang = "de-DE"}) async {
     await _ensureWebVoicesLoaded();
+    await _flutterTts.stop();
     final isGerman = lang.toLowerCase().startsWith('de');
     if (isGerman && _selectedVoice != null) {
       await _applyVoice();
@@ -414,6 +415,7 @@ class TtsService extends ChangeNotifier {
 
   Future<void> speakAndWait(String text, {String lang = "de-DE"}) async {
     await _ensureWebVoicesLoaded();
+    await _flutterTts.stop();
     final isGerman = lang.toLowerCase().startsWith('de');
     if (isGerman && _selectedVoice != null) {
       await _applyVoice();

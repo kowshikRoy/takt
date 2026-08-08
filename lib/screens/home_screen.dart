@@ -562,8 +562,8 @@ class HomeScreen extends StatelessWidget {
                             ],
                           ),
                           content: Text(
-                            'Daily review unlocks after saving 5 words to your dictionary.\n\n'
-                            'You currently have $savedCount / 5 words saved. Visit the Learn tab or Dictionary to save more words!',
+                            'Daily review unlocks after saving 5 words to your Study Deck.\n\n'
+                            'You currently have $savedCount / 5 words in your Study Deck. Visit the Learn tab or Dictionary to add more words!',
                             style: TextStyle(color: inkColor),
                           ),
                           actions: [
@@ -618,8 +618,8 @@ class HomeScreen extends StatelessWidget {
                               const SizedBox(height: 2),
                               Text(
                                 isUnlocked
-                                    ? 'Review your personalized vocabulary deck'
-                                    : '$savedCount of 5 words saved so far',
+                                    ? 'Review your personalized Study Deck'
+                                    : '$savedCount of 5 words in Study Deck so far',
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   color: inkColor.withValues(alpha: 0.65),

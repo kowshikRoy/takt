@@ -455,13 +455,13 @@ abstract class AppLocalizations {
   /// No description provided for @subtitleDailyDiscovery.
   ///
   /// In en, this message translates to:
-  /// **'Tap a word to add it to your review list'**
+  /// **'Tap a word to add it to your Study Deck'**
   String get subtitleDailyDiscovery;
 
-  /// Progress of saved words today against daily goal
+  /// Progress of Study Deck words added today against daily goal
   ///
   /// In en, this message translates to:
-  /// **'{saved} / {goal} SAVED'**
+  /// **'{saved} / {goal} IN DECK'**
   String labelSavedCount(int saved, int goal);
 
   /// No description provided for @msgAllWordsReviewed.
@@ -641,13 +641,13 @@ abstract class AppLocalizations {
   /// No description provided for @titleVocabFlashcards.
   ///
   /// In en, this message translates to:
-  /// **'Vocabulary Flashcard Practice'**
+  /// **'Study Deck Flashcards'**
   String get titleVocabFlashcards;
 
   /// No description provided for @subtitleVocabFlashcards.
   ///
   /// In en, this message translates to:
-  /// **'Review your saved vocabulary cards'**
+  /// **'Review your Study Deck cards'**
   String get subtitleVocabFlashcards;
 
   /// No description provided for @titleSpeakingPracticeCard.
@@ -695,7 +695,7 @@ abstract class AppLocalizations {
   /// No description provided for @labelWordsSaved.
   ///
   /// In en, this message translates to:
-  /// **'Words Saved'**
+  /// **'Study Deck'**
   String get labelWordsSaved;
 
   /// No description provided for @labelMastered.

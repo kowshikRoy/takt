@@ -515,7 +515,7 @@ class _VideoScreenState extends State<VideoScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Saved "${vocab.fullWordWithArticle}" to Learning Deck! 🎉'),
+            content: Text('Added "${vocab.fullWordWithArticle}" to Study Deck! 🎉'),
             backgroundColor: Colors.green,
           ),
         );
@@ -1773,7 +1773,7 @@ class _VideoScreenState extends State<VideoScreen>
                         Icon(Icons.bookmark_rounded, color: colorScheme.primary),
                         const SizedBox(width: 8),
                         Text(
-                          'Saved Vocabulary',
+                          'Study Deck',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -1794,7 +1794,7 @@ class _VideoScreenState extends State<VideoScreen>
                   child: words.isEmpty
                       ? Center(
                           child: Text(
-                            'No saved German words yet.\nTap any German word in the transcript to bookmark it!',
+                            'No German words in your Study Deck yet.\nTap any German word in the transcript to add it!',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
                           ),
@@ -2247,8 +2247,8 @@ class _VideoScreenState extends State<VideoScreen>
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _toggleSaveVocab(item),
-                        icon: Icon(isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded),
-                        label: Text(isSaved ? 'Saved' : 'Bookmark'),
+                        icon: Icon(isSaved ? Icons.style_rounded : Icons.style_outlined),
+                        label: Text(isSaved ? 'In Study Deck' : 'Add to Study Deck'),
                       ),
                     ),
                     const SizedBox(width: 12),

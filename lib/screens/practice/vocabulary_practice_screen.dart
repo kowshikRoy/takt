@@ -9,6 +9,7 @@ import '../../services/gamification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/capped_width.dart';
 import '../../widgets/word_header_card.dart';
+import '../../widgets/noun_headword_title.dart';
 import '../word_detail_screen.dart';
 
 class VocabularyPracticeScreen extends StatefulWidget {
@@ -31,6 +32,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   bool _isPracticingAll = false;
   int _reviewedThisSession = 0;
   final Map<String, Map<String, String?>> _exampleCache = {};
+  final Map<String, Map<String, dynamic>> _wordDetailsCache = {};
   final Map<String, Future<String?>> _imageFutureCache = {};
 
   @override
@@ -72,8 +74,19 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
 
   Future<void> _preloadExamples() async {
     for (final word in _dueWords) {
+      final lower = word.word.toLowerCase().trim();
+      if (!_wordDetailsCache.containsKey(lower)) {
+        final details = await _dictionaryService.lookupConsolidatedWord(
+          word.word,
+          contextSentence: word.contextSentence,
+        );
+        if (details.isNotEmpty && mounted) {
+          setState(() {
+            _wordDetailsCache[lower] = details.first;
+          });
+        }
+      }
       if (word.contextSentence == null || word.contextSentence!.isEmpty) {
-        final lower = word.word.toLowerCase().trim();
         if (!_exampleCache.containsKey(lower)) {
           final examples = await _dictionaryService.getExamplesForWord(
             word.word,
@@ -161,13 +174,36 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   }
 
   Map<String, dynamic> _wordDataFor(SavedWord word) {
+    final lower = word.word.toLowerCase().trim();
+    final cached = _wordDetailsCache[lower];
+
+    final effectiveSource = word.source.isNotEmpty ? word.source : 'dictionary_saved';
+    final effectiveLabel = effectiveSource == 'wiktionary_fetched'
+        ? 'Wiktionary'
+        : (effectiveSource == 'user_edited'
+            ? 'Custom Note'
+            : (effectiveSource == 'nmt_translation' ? 'Google Translate' : 'Dictionary'));
+
+    final forms = cached?['forms'] ?? [];
+    final plural = cached?['plural'] ?? (cached != null ? NounHeadwordTitle.extractPluralForm(cached) : null);
+    final freqRank = cached?['freq_rank'];
+
     return {
       'word': word.word,
-      'pos': word.pos,
-      'gender': word.gender,
+      'pos': word.pos ?? cached?['pos'],
+      'gender': word.gender ?? cached?['gender'],
+      'ipa': word.ipa ?? cached?['ipa'],
       'definitions': word.definitions.isNotEmpty
           ? word.definitions
-          : [word.primaryDefinition],
+          : (cached?['definitions'] ?? [word.primaryDefinition]),
+      'forms': forms,
+      if (plural != null) 'plural': plural,
+      if (freqRank != null) 'freq_rank': freqRank,
+      'source': effectiveSource,
+      'sourceLabel': effectiveLabel,
+      'isFromUserDatabase': true,
+      'contextSentence': word.contextSentence,
+      'contextExamples': word.contextExamples,
     };
   }
 
@@ -596,7 +632,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                     ? 'Review Session Complete! 🎉'
                     : (totalSaved > 0
                         ? 'All Caught Up! 🎉'
-                        : 'No Saved Words Yet'),
+                        : 'No Study Deck Words Yet'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -609,8 +645,8 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 hasReviewedInSession
                     ? 'Great job keeping your memory fresh and advancing your Spaced Repetition mastery!'
                     : (totalSaved > 0
-                        ? 'You have 0 words due for review right now. Keep your streak going or practice all words anytime!'
-                        : 'Save words from stories, videos, or lookups to build your personalized Spaced Repetition deck!'),
+                        ? 'You have 0 words due for review right now. Keep your streak going or practice your entire deck anytime!'
+                        : 'Save words from stories, videos, or lookups to build your personalized Study Deck!'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,
@@ -678,7 +714,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                     onPressed: () => _loadDeck(forceAll: true),
                     icon: const Icon(Icons.style_rounded, size: 16),
                     label: Text(
-                      'Practice All Saved Words ($totalSaved)',
+                      'Practice Entire Study Deck ($totalSaved)',
                       style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
                     ),
                     style: FilledButton.styleFrom(

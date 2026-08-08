@@ -908,9 +908,9 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
               _buildModeOption(
                 ctx,
                 mode: GenderQuizDeckMode.mySavedDeck,
-                title: 'My Saved Vocabulary',
-                subtitle: 'Practice words you have saved while reading',
-                icon: Icons.bookmark_rounded,
+                title: 'My Study Deck',
+                subtitle: 'Practice words you added while reading & listening',
+                icon: Icons.style_rounded,
               ),
               const SizedBox(height: 12),
             ],

@@ -188,11 +188,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subtitleDailyDiscovery =>
-      'Tap a word to add it to your review list';
+      'Tap a word to add it to your Study Deck';
 
   @override
   String labelSavedCount(int saved, int goal) {
-    return '$saved / $goal SAVED';
+    return '$saved / $goal IN DECK';
   }
 
   @override
@@ -289,10 +289,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subtitleCompoundPuzzle => 'Build massive words';
 
   @override
-  String get titleVocabFlashcards => 'Vocabulary Flashcard Practice';
+  String get titleVocabFlashcards => 'Study Deck Flashcards';
 
   @override
-  String get subtitleVocabFlashcards => 'Review your saved vocabulary cards';
+  String get subtitleVocabFlashcards => 'Review your Study Deck cards';
 
   @override
   String get titleSpeakingPracticeCard => 'Speaking Practice';
@@ -316,7 +316,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelTimeframeAll => 'All';
 
   @override
-  String get labelWordsSaved => 'Words Saved';
+  String get labelWordsSaved => 'Study Deck';
 
   @override
   String get labelMastered => 'Mastered';

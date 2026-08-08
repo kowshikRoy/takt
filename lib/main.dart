@@ -21,6 +21,10 @@ import 'services/notification_service.dart';
 import 'services/book_guide_service.dart';
 import 'services/discovery_service.dart';
 import 'services/tts_service.dart';
+import 'services/home_screen_widget_service.dart';
+import 'screens/word_detail_screen.dart';
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   // Catch everything else (async errors outside the widget tree).
@@ -38,6 +42,22 @@ void main() {
           stackTrace: st,
           tag: 'Firebase',
         );
+      }
+
+      // Initialize Home Screen Widget Service & deep links
+      try {
+        final widgetService = HomeScreenWidgetService();
+        await widgetService.init();
+        widgetService.onWidgetClicked.listen((uri) {
+          final term = uri.queryParameters['term'];
+          if (term != null && term.isNotEmpty) {
+            appNavigatorKey.currentState?.push(
+              MaterialPageRoute(builder: (_) => WordDetailScreen(word: term)),
+            );
+          }
+        });
+      } catch (e) {
+        AppLogger.error('Widget service init failed', error: e, tag: 'HomeWidget');
       }
 
       // Catch framework-level errors (widget build/layout/paint) that would
@@ -93,6 +113,7 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'DeutschApp',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme(
