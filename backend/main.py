@@ -884,84 +884,74 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> tuple[list[
 
 def generate_dialogue_audio_with_gemini(dialogue_lines: list[str], output_wav_path: str, api_key: str = None) -> bool:
     """
-    Generates studio German audio for the dialogue script using Gemini 3.1 / 2.5 Flash TTS 
-    with expressive voice acting directives in 1 or 2 batch calls (strictly respecting 3 RPM limit).
+    Generates studio German audio for the dialogue script using Gemini 2.5 Flash TTS 
+    with expressive voice acting directives in 1 single call (strictly 1 RPM).
+    Includes automatic 429 exponential backoff retry.
     """
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key or not dialogue_lines:
         return False
 
-    # Limit to top dialogue lines if script is extremely long, chunk into batches of 20 lines (max 2 chunks = 2 RPM)
-    max_total_lines = 40
-    lines_to_speak = dialogue_lines[:max_total_lines]
-    chunk_size = 20
-    chunks = [lines_to_speak[i:i + chunk_size] for i in range(0, len(lines_to_speak), chunk_size)]
-
-    models_to_try = [
-        "gemini-3.1-flash-tts-preview",
-        "gemini-2.5-flash-preview-tts",
-        "gemini-2.5-flash-tts"
-    ]
-
-    for model_name in models_to_try:
-        all_pcm_bytes = bytearray()
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-        success = True
-
-        for chunk_idx, chunk in enumerate(chunks):
-            full_dialogue_text = "\n".join(chunk)
-            prompt = (
-                "You are a professional native German voice actor. "
-                "Perform the following German conversation with authentic native pronunciation, lively conversational cadence, "
-                "expressive intonation, natural breathing pauses between sentences, and engaging warmth:\n\n"
-                f"{full_dialogue_text}"
-            )
-            payload = {
-                "contents": [
+    max_lines = 35
+    lines_to_speak = dialogue_lines[:max_lines]
+    full_dialogue_text = "\n".join(lines_to_speak)
+    
+    prompt = (
+        "You are a professional native German voice actor. "
+        "Perform the following German conversation with authentic native pronunciation, lively conversational cadence, "
+        "expressive intonation, natural breathing pauses between sentences, and engaging warmth:\n\n"
+        f"{full_dialogue_text}"
+    )
+    
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={key}"
+    payload = {
+        "contents": [
+            {
+                "parts": [
                     {
-                        "parts": [
-                            {
-                                "text": prompt
-                            }
-                        ]
+                        "text": prompt
                     }
-                ],
-                "generationConfig": {
-                    "responseModalities": ["AUDIO"]
-                }
+                ]
             }
+        ],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"]
+        }
+    }
 
-            try:
-                print(f"Calling Gemini Studio TTS ({model_name}, batch {chunk_idx+1}/{len(chunks)}, {len(chunk)} lines)...")
-                res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=240)
-                if res.status_code == 200:
-                    res_json = res.json()
-                    candidates = res_json.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        for part in parts:
-                            inline_data = part.get("inlineData", {})
-                            if inline_data.get("data"):
-                                pcm_chunk = base64.b64decode(inline_data["data"])
-                                all_pcm_bytes.extend(pcm_chunk)
-                else:
-                    print(f"Gemini TTS ({model_name}) returned status {res.status_code}: {res.text[:200]}")
-                    success = False
-                    break
-            except Exception as e:
-                print(f"Gemini TTS generation error with {model_name} on batch {chunk_idx+1}: {e}")
-                success = False
+    for attempt in range(3):
+        try:
+            print(f"Calling Gemini Studio TTS (attempt {attempt+1}/3, {len(lines_to_speak)} dialogue lines)...")
+            res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=240)
+            if res.status_code == 200:
+                res_json = res.json()
+                candidates = res_json.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    for part in parts:
+                        inline_data = part.get("inlineData", {})
+                        if inline_data.get("data"):
+                            pcm_bytes = base64.b64decode(inline_data["data"])
+                            # Write 24kHz 16-bit Mono WAV file
+                            with wave.open(output_wav_path, "wb") as wav_file:
+                                wav_file.setnchannels(1)
+                                wav_file.setsampwidth(2)
+                                wav_file.setframerate(24000)
+                                wav_file.writeframes(pcm_bytes)
+                            print(f"Successfully generated Gemini Studio WAV audio ({len(pcm_bytes)} bytes) at {output_wav_path}")
+                            return True
+            elif res.status_code == 429:
+                print(f"Gemini TTS rate limited (429), waiting 8s before retry (attempt {attempt+1}/3)...")
+                time.sleep(8)
+                continue
+            else:
+                print(f"Gemini TTS returned status {res.status_code}: {res.text[:200]}")
                 break
+        except Exception as e:
+            print(f"Gemini TTS generation error (attempt {attempt+1}): {e}")
+            time.sleep(5)
 
-        if success and all_pcm_bytes:
-            # Write 24kHz 16-bit Mono WAV file
-            with wave.open(output_wav_path, "wb") as wav_file:
-                wav_file.setnchannels(1)
-                wav_file.setsampwidth(2)
-                wav_file.setframerate(24000)
-                wav_file.writeframes(bytes(all_pcm_bytes))
-            print(f"Successfully generated Gemini Studio WAV audio using {model_name} ({len(all_pcm_bytes)} bytes) at {output_wav_path}")
-            return True
+    return False
 
     return False
 
