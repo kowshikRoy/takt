@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/media_library_service.dart';
@@ -371,6 +372,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
                               }
                             },
+                            onLongPress: () => _showMediaActionSheet(context, video, mediaLibraryService),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               child: Column(
@@ -802,6 +804,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
             }
           },
+          onLongPress: () => _showMediaActionSheet(context, video, mediaLibraryService),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1008,6 +1011,116 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showMediaActionSheet(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        final colorScheme = Theme.of(sheetContext).colorScheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with thumbnail, title and URL
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: SizedBox(
+                        width: 56,
+                        height: 40,
+                        child: (video.thumbnail != null && video.thumbnail!.isNotEmpty)
+                            ? Image.network(
+                                video.thumbnail!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade800),
+                              )
+                            : Container(color: colorScheme.primary.withValues(alpha: 0.12)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            video.effectiveTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            video.url,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+
+                // 1. Copy Link
+                ListTile(
+                  leading: const Icon(Icons.copy_rounded, size: 20),
+                  title: const Text('Copy Link', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    Clipboard.setData(ClipboardData(text: video.url));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Link copied to clipboard!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+
+                // 2. Submit URL Again / Re-process
+                ListTile(
+                  leading: Icon(Icons.refresh_rounded, size: 20, color: colorScheme.primary),
+                  title: const Text('Submit URL Again / Re-process', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Re-download and re-transcribe media', style: TextStyle(fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    mediaLibraryService.submitMediaProcessingTaskInBackground(video.url);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Re-submitting media for processing...'),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                ),
+
+                // 3. Delete Lesson
+                ListTile(
+                  leading: Icon(Icons.delete_outline_rounded, size: 20, color: colorScheme.error),
+                  title: Text('Delete Lesson', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.error)),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _confirmDeleteVideo(context, video, mediaLibraryService);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
