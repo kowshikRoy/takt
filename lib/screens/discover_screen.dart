@@ -1038,13 +1038,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       child: SizedBox(
                         width: 56,
                         height: 40,
-                        child: (video.thumbnail != null && video.thumbnail!.isNotEmpty)
-                            ? Image.network(
-                                video.thumbnail!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade800),
-                              )
-                            : Container(color: colorScheme.primary.withValues(alpha: 0.12)),
+                        child: CachedNetworkImage(
+                          imageUrl: video.thumbnailUrl,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),

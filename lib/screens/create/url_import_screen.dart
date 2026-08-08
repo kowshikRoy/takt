@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/processing_status.dart';
 import '../../services/media_library_service.dart';
 import '../video_screen.dart';
@@ -281,18 +282,15 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                                 child: Stack(
                                   fit: StackFit.expand,
                                   children: [
-                                    if (video.thumbnail != null && video.thumbnail!.isNotEmpty)
-                                      Image.network(
-                                        video.thumbnail!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade800),
-                                      )
-                                    else
-                                      Container(
+                                    CachedNetworkImage(
+                                      imageUrl: video.thumbnailUrl,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => Container(
                                         color: isFailed
                                             ? colorScheme.error.withValues(alpha: 0.12)
                                             : colorScheme.primary.withValues(alpha: 0.12),
                                       ),
+                                    ),
                                     if (isProcessing)
                                       Container(
                                         color: Colors.black45,
@@ -439,13 +437,11 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                       child: SizedBox(
                         width: 56,
                         height: 40,
-                        child: (video.thumbnail != null && video.thumbnail!.isNotEmpty)
-                            ? Image.network(
-                                video.thumbnail!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade800),
-                              )
-                            : Container(color: colorScheme.primary.withValues(alpha: 0.12)),
+                        child: CachedNetworkImage(
+                          imageUrl: video.thumbnailUrl,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),

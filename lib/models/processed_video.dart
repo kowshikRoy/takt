@@ -169,10 +169,16 @@ class ProcessedVideo {
       );
     }).toList();
 
+    final urlStr = json['url'] as String? ?? '';
+    String? thumb = json['thumbnail'] as String?;
+    if (thumb == null || thumb.isEmpty || thumb.contains('picsum.photos')) {
+      thumb = extractYouTubeThumbnail(urlStr) ?? thumb;
+    }
+
     return ProcessedVideo(
       id: json['id'] as String,
       taskId: json['taskId'] as String?,
-      url: json['url'] as String,
+      url: urlStr,
       status: statusEnum,
       stageMessage: json['stageMessage'] as String?,
       errorMessage: json['errorMessage'] as String?,
@@ -180,7 +186,7 @@ class ProcessedVideo {
       subtitles: subList,
       videoUrl: json['videoUrl'] as String?,
       mediaType: json['mediaType'] as String? ?? 'video',
-      thumbnail: json['thumbnail'] as String?,
+      thumbnail: thumb,
       title: json['title'] as String?,
     );
   }
