@@ -32,6 +32,7 @@ class KeyStoryVocab {
   final int paragraphIndex;
   final String paragraphOriginal;
   final String paragraphTranslated;
+  final int? freqRank;
 
   KeyStoryVocab({
     required this.word,
@@ -43,6 +44,7 @@ class KeyStoryVocab {
     required this.paragraphIndex,
     required this.paragraphOriginal,
     required this.paragraphTranslated,
+    this.freqRank,
   });
 
   String get fullWordWithArticle {
@@ -61,12 +63,10 @@ class KeyStoryVocab {
     return '';
   }
 
-  String get difficultyLabel {
-    if (word.length > 8) return 'B2';
-    if (word.length > 6) return 'B1';
-    if (word.length > 4) return 'A2';
-    return 'A1';
-  }
+  String get difficultyLabel => DictionaryService.getCefrLevel(
+        freqRank,
+        fallback: word.length > 8 ? 'B2' : (word.length > 6 ? 'B1' : (word.length > 4 ? 'A2' : 'A1')),
+      );
 }
 
 class StoryReaderScreen extends StatefulWidget {
@@ -652,6 +652,19 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     final Map<String, KeyStoryVocab> uniqueMap = {};
     final paragraphs = _getParagraphList();
 
+    const stopWords = {
+      'der', 'die', 'das', 'dem', 'den', 'des', 'ein', 'eine', 'einen', 'einem',
+      'einer', 'eines', 'und', 'oder', 'aber', 'ist', 'sind', 'war', 'waren',
+      'in', 'im', 'zu', 'zum', 'zur', 'mit', 'von', 'aus', 'bei', 'nach',
+      'über', 'unter', 'vor', 'hinter', 'neben', 'auf', 'an', 'für', 'um',
+      'durch', 'gegen', 'ohne', 'nicht', 'ja', 'nein', 'so', 'dass', 'daß',
+      'wie', 'als', 'auch', 'noch', 'nur', 'schon', 'mehr', 'sehr', 'viel',
+      'ich', 'du', 'er', 'sie', 'es', 'wir', 'ihr', 'mich', 'dich',
+      'ihn', 'uns', 'euch', 'ihnen', 'mein', 'dein', 'sein', 'unser',
+      'euer', 'sich', 'was', 'wer', 'wo', 'wann', 'warum', 'dies',
+      'diese', 'dieser', 'dieses', 'diesen', 'diesem', 'alle', 'alles', 'man'
+    };
+
     for (int pIdx = 0; pIdx < paragraphs.length; pIdx++) {
       final pData = _paragraphAnalysisData[pIdx];
       if (pData == null) continue;
@@ -666,6 +679,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         final translation = token['translation']?.toString().trim();
 
         if (rawWord.length < 3) continue;
+        if (stopWords.contains(rawWord.toLowerCase())) continue;
 
         final isCapitalized = rawWord[0] == rawWord[0].toUpperCase() && rawWord[0].contains(RegExp(r'[A-ZÄÖÜ]'));
         final isNoun = isCapitalized || (pos != null && (pos.contains('NOUN') || pos.contains('N') || pos.contains('subst')));
@@ -681,13 +695,16 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
         final gender = isNoun ? _getNounGender(rawWord, null, lemma) : null;
         String def = (translation != null && translation.isNotEmpty) ? translation : '';
+        int? freqRank;
+        String? fastIpa;
 
-        if (def.isEmpty) {
-          final entryList = await _dictionaryService.lookupWordFast(key);
-          if (entryList.isNotEmpty) {
-            final fastDefs = (entryList.first['definitions'] as List?) ?? [];
-            if (fastDefs.isNotEmpty) def = fastDefs.first.toString();
-          }
+        final entryList = await _dictionaryService.lookupWordFast(key);
+        if (entryList.isNotEmpty) {
+          final first = entryList.first;
+          final fastDefs = (first['definitions'] as List?) ?? [];
+          if (def.isEmpty && fastDefs.isNotEmpty) def = fastDefs.first.toString();
+          if (first['ipa'] != null) fastIpa = first['ipa'].toString();
+          if (first['freq_rank'] is int) freqRank = first['freq_rank'] as int;
         }
 
         if (def.isEmpty) {
@@ -698,6 +715,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           final fullEntry = await _dictionaryService.lookupWord(key);
           final onlineDefs = (fullEntry?['definitions'] as List?) ?? [];
           if (onlineDefs.isNotEmpty) def = onlineDefs.first.toString();
+          if (fastIpa == null && fullEntry?['ipa'] != null) {
+            fastIpa = fullEntry!['ipa'].toString();
+          }
         }
 
         if (def.isEmpty) def = key;
@@ -708,9 +728,11 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           pos: isNoun ? 'NOUN' : (isVerb ? 'VERB' : 'ADJ'),
           gender: gender,
           primaryDefinition: def,
+          ipa: fastIpa,
           paragraphIndex: pIdx,
           paragraphOriginal: paragraphs[pIdx],
           paragraphTranslated: engTranslation,
+          freqRank: freqRank,
         );
       }
     }
@@ -1162,16 +1184,23 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                       ),
                       const SizedBox(width: 6),
                     ],
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                      child: Text(
-                        vocab.difficultyLabel,
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.primary),
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        final cefrColors = AppTheme.getCefrColors(vocab.difficultyLabel, isDark: isDark);
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: cefrColors.background,
+                            borderRadius: BorderRadius.circular(4.0),
+                            border: Border.all(color: cefrColors.border, width: 0.8),
+                          ),
+                          child: Text(
+                            vocab.difficultyLabel,
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: cefrColors.foreground),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

@@ -126,7 +126,7 @@ class DiscoveryService extends ChangeNotifier {
     if (wordStr == null || wordStr.isEmpty) return;
 
     final newWord = SavedWord(
-      id: 'disc_${DateTime.now().millisecondsSinceEpoch}',
+      id: wordStr.toLowerCase().trim(),
       word: wordStr,
       gender: entry['gender'] as String?,
       pos: entry['pos'] as String?,

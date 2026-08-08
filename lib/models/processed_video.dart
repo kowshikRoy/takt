@@ -55,13 +55,46 @@ class ProcessedVideo {
   String get thumbnailUrl => effectiveThumbnail;
 
   String get effectiveTitle {
-    if (title != null && title!.isNotEmpty) {
+    if (title != null && title!.isNotEmpty && title != 'Media') {
       return title!;
     }
     if (url.contains('youtube.com') || url.contains('youtu.be')) {
       return 'YouTube Lesson';
     }
     return 'Media Lesson';
+  }
+
+  double get durationSeconds {
+    if (subtitles.isEmpty) return 0;
+    return subtitles.last.end;
+  }
+
+  String get formattedDuration {
+    final secs = durationSeconds;
+    if (secs <= 0) return '';
+    final totalSeconds = secs.round();
+    final minutes = totalSeconds ~/ 60;
+    final remainingSeconds = totalSeconds % 60;
+    if (minutes >= 60) {
+      final hours = minutes ~/ 60;
+      final remainingMins = minutes % 60;
+      return '$hours:${remainingMins.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    }
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  String get estimatedDurationLabel {
+    final secs = durationSeconds;
+    if (secs <= 0) return '';
+    final totalMins = (secs / 60).round();
+    if (totalMins < 1) return '< 1 min';
+    if (totalMins >= 60) {
+      final hours = totalMins ~/ 60;
+      final mins = totalMins % 60;
+      if (mins == 0) return '~$hours hr';
+      return '~$hours hr $mins min';
+    }
+    return '~$totalMins min';
   }
 
   int get effectiveProgress {

@@ -1452,21 +1452,27 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: inkColor.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(2),
-                          border: Border.all(color: inkColor.withValues(alpha: 0.25)),
-                        ),
-                        child: Text(
-                          book.cefrLevel,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: inkColor,
-                          ),
-                        ),
+                      Builder(
+                        builder: (context) {
+                          final isDark = Theme.of(context).brightness == Brightness.dark;
+                          final cefrColors = AppTheme.getCefrColors(book.cefrLevel, isDark: isDark);
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: cefrColors.background,
+                              borderRadius: BorderRadius.circular(3),
+                              border: Border.all(color: cefrColors.border, width: 0.8),
+                            ),
+                            child: Text(
+                              book.cefrLevel,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: cefrColors.foreground,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(width: 8),
                       Expanded(

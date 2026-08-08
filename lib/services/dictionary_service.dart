@@ -8,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 import '../config.dart';
 import 'app_logger.dart';
 import 'ondevice_ai_service.dart';
+import 'vocabulary_service.dart';
 
 class DictionaryService {
   static final DictionaryService _instance = DictionaryService._internal();
@@ -55,6 +56,18 @@ class DictionaryService {
   }
 
   static const String _dbFileName = "german_dictionary.db";
+
+  /// Maps a frequency rank to its CEFR difficulty level (A1, A2, B1, B2, C1, C2)
+  static String getCefrLevel(dynamic freqRaw, {String fallback = 'B1'}) {
+    final rank = freqRaw != null ? int.tryParse(freqRaw.toString()) : null;
+    if (rank == null || rank <= 0) return fallback;
+    if (rank <= 600) return 'A1';
+    if (rank <= 1600) return 'A2';
+    if (rank <= 3800) return 'B1';
+    if (rank <= 8500) return 'B2';
+    if (rank <= 15000) return 'C1';
+    return 'C2';
+  }
 
   Future<String> _getDatabasePath() async {
     final dbDir = await getDatabasesPath();
@@ -368,7 +381,17 @@ class DictionaryService {
       }
     }
 
-    // Web / API Fallback via OmniScribe REST API
+    // Step 2: Live Consolidated Lookup (User DB -> Wiktionary -> NMT) with Auto-Caching
+    try {
+      final consolidated = await lookupConsolidatedWord(query);
+      if (consolidated.isNotEmpty) {
+        return consolidated;
+      }
+    } catch (e) {
+      AppLogger.error("Consolidated search fallback error", error: e, tag: 'DictionaryService');
+    }
+
+    // Step 3: Web / API Fallback via OmniScribe REST API
     try {
       final backendUrl = Config.backendUrl;
       final uri = Uri.parse('$backendUrl/api/dictionary/search?q=${Uri.encodeComponent(query)}');
@@ -382,7 +405,7 @@ class DictionaryService {
       AppLogger.error("OmniScribe dictionary API search error", error: e, tag: 'DictionaryService');
     }
 
-    // Direct Google Translate NMT Fallback for missing DB words (e.g. Gesellschaft)
+    // Step 4: Direct Google Translate NMT Fallback
     final onlineResult = await translateWordOnline(query);
     if (onlineResult != null) {
       return [onlineResult];
@@ -543,9 +566,12 @@ class DictionaryService {
   Future<List<Map<String, dynamic>>> lookupWordFast(String word) async {
     final db = await database;
     if (db == null) return [];
+    final cleanWord = word.trim();
+    if (cleanWord.isEmpty) return [];
+
     try {
-      final List<Map<String, dynamic>> results = await db.rawQuery('''
-        SELECT w.id, w.word, w.pos, w.gender, w.ipa, w.base_form,
+      List<Map<String, dynamic>> results = await db.rawQuery('''
+        SELECT w.id, w.word, w.pos, w.gender, w.ipa, w.base_form, w.freq_rank,
                COALESCE(d.definition, d_base.definition) as definition
         FROM words w
         LEFT JOIN definitions d ON w.id = d.word_id
@@ -553,8 +579,25 @@ class DictionaryService {
         LEFT JOIN definitions d_base ON w_base.id = d_base.word_id
         WHERE w.word = ? COLLATE NOCASE
         ORDER BY w.id ASC
-      ''', [word.trim()]);
+      ''', [cleanWord]);
       
+      // If direct match not found, resolve inflected forms via forms table
+      if (results.isEmpty) {
+        try {
+          results = await db.rawQuery('''
+            SELECT w.id, w.word, w.pos, w.gender, w.ipa, w.base_form, w.freq_rank,
+                   COALESCE(d.definition, d_base.definition) as definition
+            FROM forms f
+            JOIN words w ON f.word_id = w.id
+            LEFT JOIN definitions d ON w.id = d.word_id
+            LEFT JOIN words w_base ON w.base_form = w_base.word
+            LEFT JOIN definitions d_base ON w_base.id = d_base.word_id
+            WHERE f.form = ? COLLATE NOCASE
+            ORDER BY w.id ASC
+          ''', [cleanWord]);
+        } catch (_) {}
+      }
+
       if (results.isEmpty) return [];
       
       Map<String, Map<String, dynamic>> groupedByPosKey = {};
@@ -575,6 +618,7 @@ class DictionaryService {
             'gender': r['gender'],
             'ipa': r['ipa'],
             'base_form': r['base_form'],
+            'freq_rank': r['freq_rank'] is int ? r['freq_rank'] as int : null,
             'definitions': <String>[],
           };
         }
@@ -984,9 +1028,66 @@ class DictionaryService {
   }
 
   /// Wiktionary REST API Fallback (Fetches definitions, Part of Speech, Gender, IPA & example sentences)
-  Future<Map<String, dynamic>?> fetchWiktionaryFallback(String word) async {
-    final cleanWord = word.trim();
+  /// Normalizes part of speech strings into standardized canonical identifiers
+  static String normalizePos(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    final lower = raw.trim().toLowerCase();
+    if (lower.contains('pron') || lower.contains('pronomen')) return 'pron';
+    if (lower.contains('adv') || lower.contains('adverb')) return 'adv';
+    if (lower.contains('adj') || lower.contains('adjektiv')) return 'adj';
+    if (lower.contains('noun') || lower == 'n' || lower.contains('substantiv') || lower.contains('nomen')) return 'noun';
+    if (lower.contains('verb') || lower == 'v') return 'verb';
+    if (lower.contains('prep') || lower.contains('präposition') || lower.contains('praeposition')) return 'prep';
+    if (lower.contains('conj') || lower.contains('konjunktion')) return 'conj';
+    if (lower.contains('interj') || lower.contains('interjektion')) return 'interj';
+    if (lower.contains('num') || lower.contains('numeral') || lower.contains('zahlwort')) return 'num';
+    if (lower.contains('phrase') || lower.contains('idiom') || lower.contains('redewendung')) return 'phrase';
+    return lower;
+  }
+
+  List<Map<String, dynamic>> _groupDbResultsByPos(List<Map<String, dynamic>> results, String cleanWord) {
+    Map<String, Map<String, dynamic>> groupedByPosKey = {};
+    Map<String, int> lowestIdForPosKey = {};
+
+    for (var r in results) {
+      final id = r['id'] as int;
+      final wStr = (r['word'] as String? ?? cleanWord).toLowerCase();
+      final posStr = (r['pos'] as String? ?? '').toLowerCase();
+      final key = "${wStr}_$posStr";
+
+      if (!lowestIdForPosKey.containsKey(key)) {
+        lowestIdForPosKey[key] = id;
+        groupedByPosKey[key] = {
+          'id': id,
+          'word': r['word'],
+          'pos': r['pos'],
+          'gender': r['gender'],
+          'ipa': r['ipa'],
+          'base_form': r['base_form'],
+          'freq_rank': r['freq_rank'] is int ? r['freq_rank'] as int : null,
+          'definitions': <String>[],
+        };
+      }
+
+      if (id == lowestIdForPosKey[key]) {
+        if (r['definition'] != null && r['definition'].toString().isNotEmpty) {
+          final defs = groupedByPosKey[key]!['definitions'] as List<String>;
+          final defStr = r['definition'].toString();
+          if (!defs.contains(defStr)) {
+            defs.add(defStr);
+          }
+        }
+      }
+    }
+
+    return groupedByPosKey.values.toList();
+  }
+
+  Future<Map<String, dynamic>?> fetchWiktionaryFallback(String word, {String? targetPos}) async {
+    final cleanWord = word.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (cleanWord.isEmpty) return null;
+
+    final normTargetPos = normalizePos(targetPos);
 
     try {
       final uri = Uri.parse(
@@ -999,26 +1100,42 @@ class DictionaryService {
 
         final List<dynamic>? deEntries = data['de'] as List<dynamic>?;
         if (deEntries != null && deEntries.isNotEmpty) {
-          String pos = 'word';
+          String pos = normTargetPos.isNotEmpty ? normTargetPos : 'word';
           String? gender;
           List<String> definitions = [];
           List<Map<String, String?>> examples = [];
 
-          for (final entry in deEntries) {
+          // Sort entries so targetPos is prioritized
+          final entriesToProcess = List<dynamic>.from(deEntries);
+          if (normTargetPos.isNotEmpty) {
+            entriesToProcess.sort((a, b) {
+              final aPos = (a is Map) ? normalizePos(a['partOfSpeech']?.toString()) : '';
+              final bPos = (b is Map) ? normalizePos(b['partOfSpeech']?.toString()) : '';
+              final aMatch = aPos == normTargetPos;
+              final bMatch = bPos == normTargetPos;
+              if (aMatch && !bMatch) return -1;
+              if (!aMatch && bMatch) return 1;
+              return 0;
+            });
+          }
+
+          for (final entry in entriesToProcess) {
             if (entry is Map<String, dynamic>) {
               final rawPos = entry['partOfSpeech']?.toString().toLowerCase();
               if (rawPos != null && rawPos.isNotEmpty) {
-                if (rawPos.contains('noun')) {
-                  pos = 'noun';
-                  if (rawPos.contains('feminine') || rawPos.endsWith(' f') || rawPos.contains('(f)')) gender = 'f';
-                  else if (rawPos.contains('masculine') || rawPos.endsWith(' m') || rawPos.contains('(m)')) gender = 'm';
-                  else if (rawPos.contains('neuter') || rawPos.endsWith(' n') || rawPos.contains('(n)')) gender = 'n';
+                final entryNormPos = normalizePos(rawPos);
+                if (pos == 'word' || pos.isEmpty) {
+                  pos = entryNormPos;
                 }
-                else if (rawPos.contains('verb')) pos = 'verb';
-                else if (rawPos.contains('adj')) pos = 'adj';
-                else if (rawPos.contains('adv')) pos = 'adv';
-                else if (rawPos.contains('prep')) pos = 'prep';
-                else if (pos == 'word') pos = rawPos;
+                if (entryNormPos == 'noun') {
+                  if (rawPos.contains('feminine') || rawPos.endsWith(' f') || rawPos.contains('(f)')) {
+                    gender = 'f';
+                  } else if (rawPos.contains('masculine') || rawPos.endsWith(' m') || rawPos.contains('(m)')) {
+                    gender = 'm';
+                  } else if (rawPos.contains('neuter') || rawPos.endsWith(' n') || rawPos.contains('(n)')) {
+                    gender = 'n';
+                  }
+                }
               }
 
               final List<dynamic>? defsList = entry['definitions'] as List<dynamic>?;
@@ -1032,9 +1149,13 @@ class DictionaryService {
                             RegExp(r'\b(feminine|masculine|neuter)\b', caseSensitive: false).firstMatch(rawDef);
                         if (gMatch != null) {
                           final gStr = gMatch.group(1)!.toLowerCase();
-                          if (gStr.startsWith('f')) gender = 'f';
-                          else if (gStr.startsWith('m')) gender = 'm';
-                          else if (gStr.startsWith('n')) gender = 'n';
+                          if (gStr.startsWith('f')) {
+                            gender = 'f';
+                          } else if (gStr.startsWith('m')) {
+                            gender = 'm';
+                          } else if (gStr.startsWith('n')) {
+                            gender = 'n';
+                          }
                         }
                       }
 
@@ -1188,51 +1309,15 @@ class DictionaryService {
     return cleanText;
   }
 
-  Future<Map<String, dynamic>?> lookupWord(String word) async {
-    final cleanWord = word.trim();
+  Future<Map<String, dynamic>?> lookupWord(String word, {String? targetPos}) async {
+    final cleanWord = word.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (cleanWord.isEmpty) return null;
 
-    if (!kIsWeb) {
-      final db = await database;
-      if (db != null) {
-        try {
-          final List<Map<String, dynamic>> results = await db.query(
-            'words',
-            where: 'word = ? COLLATE NOCASE',
-            whereArgs: [cleanWord],
-            orderBy: 'id ASC',
-            limit: 1,
-          );
-
-          if (results.isNotEmpty) {
-            return await getWordDetails(results.first['id'] as int);
-          }
-        } catch (e) {
-          AppLogger.error("Lookup error", error: e, tag: 'DictionaryService');
-        }
-      }
+    final consolidated = await lookupConsolidatedWord(cleanWord, pos: targetPos);
+    if (consolidated.isNotEmpty) {
+      return consolidated.first;
     }
-
-    // Step 1: Wiktionary REST API Fallback (Rich POS & Definitions)
-    final wiktionaryResult = await fetchWiktionaryFallback(cleanWord);
-    if (wiktionaryResult != null) {
-      return wiktionaryResult;
-    }
-
-    // Step 2: Direct Google Translate NMT Fallback (Safety Net)
-    final nmtResult = await translateWordOnline(cleanWord);
-    if (nmtResult != null) {
-      final defs = (nmtResult['definitions'] as List?)?.cast<String>() ?? [];
-      final int? cachedId = await _cacheFetchedWordInDatabase(
-        word: cleanWord,
-        pos: 'word',
-        definitions: defs,
-      );
-      if (cachedId != null) {
-        nmtResult['id'] = cachedId;
-      }
-    }
-    return nmtResult;
+    return null;
   }
 
   Future<List<Map<String, dynamic>>> lookupWordAllPOS(String word) async {
@@ -1246,7 +1331,7 @@ class DictionaryService {
       try {
         results = await db.rawQuery('''
           SELECT w.id, w.word, w.pos, COALESCE(w.gender, w_base.gender) as gender,
-                 w.ipa, w.base_form,
+                 w.ipa, w.base_form, w.freq_rank,
                  COALESCE(d.definition, d_base.definition) as definition
           FROM words w
           LEFT JOIN definitions d ON w.id = d.word_id
@@ -1257,7 +1342,7 @@ class DictionaryService {
         ''', [clean, clean]);
       } catch (_) {
         results = await db.rawQuery('''
-          SELECT w.id, w.word, w.pos, w.gender, w.ipa, d.definition
+          SELECT w.id, w.word, w.pos, w.gender, w.ipa, w.freq_rank, d.definition
           FROM words w
           LEFT JOIN definitions d ON w.id = d.word_id
           WHERE w.word = ? COLLATE NOCASE
@@ -1278,6 +1363,7 @@ class DictionaryService {
               'gender': onlineResult['gender'],
               'ipa': onlineResult['ipa'],
               'base_form': clean,
+              'freq_rank': onlineResult['freq_rank'] is int ? onlineResult['freq_rank'] as int : null,
               'definition': def,
               'definitions': onlineResult['definitions'] ?? [def],
               'isWiktionaryFallback': onlineResult['isWiktionaryFallback'] ?? false,
@@ -1306,6 +1392,7 @@ class DictionaryService {
             'gender': r['gender'],
             'ipa': r['ipa'],
             'base_form': r['base_form'],
+            'freq_rank': r['freq_rank'] is int ? r['freq_rank'] as int : null,
             'definitions': <String>[],
           };
         }
@@ -1555,6 +1642,207 @@ class DictionaryService {
     }
 
     return working;
+  }
+
+  /// Consolidated word meaning resolution hierarchy:
+  /// 1. User Database (`VocabularyService` saved words matching word & POS)
+  /// 2. German Dictionary Database (`dict.db` SQLite matching word & POS)
+  /// 3. Wiktionary REST API (matching word & POS with auto-caching)
+  /// 4. Online NMT translation (safety net)
+  ///
+  /// Supports single words, phrases with spaces (e.g. "Platz nehmen", "es gibt"),
+  /// and disambiguates multiple meanings across Parts of Speech (noun, verb, adj, etc.).
+  Future<List<Map<String, dynamic>>> lookupConsolidatedWord(
+    String word, {
+    String? pos,
+    String? contextSentence,
+  }) async {
+    final cleanWord = word.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleanWord.isEmpty) return [];
+
+    final normPos = normalizePos(pos);
+    final List<Map<String, dynamic>> consolidatedResults = [];
+
+    // =========================================================================
+    // STEP 1: Check User Database (SavedWord in VocabularyService)
+    // =========================================================================
+    try {
+      final vocabService = VocabularyService();
+      final savedWords = await vocabService.getSavedWords();
+      final matchingSaved = savedWords.where((sw) {
+        final sameWord = sw.word.toLowerCase().trim() == cleanWord.toLowerCase() ||
+            (sw.baseForm != null && sw.baseForm!.toLowerCase().trim() == cleanWord.toLowerCase());
+        if (!sameWord) return false;
+        if (normPos.isNotEmpty && sw.pos != null && sw.pos!.isNotEmpty) {
+          return normalizePos(sw.pos) == normPos;
+        }
+        return true;
+      }).toList();
+
+      for (final sw in matchingSaved) {
+        final defs = <String>[
+          if (sw.primaryDefinition.isNotEmpty) sw.primaryDefinition,
+          ...sw.definitions.where((d) => d != sw.primaryDefinition && d.isNotEmpty),
+        ];
+
+        final examples = <Map<String, String?>>[];
+        if (sw.contextSentence != null && sw.contextSentence!.isNotEmpty) {
+          examples.add({'de': sw.contextSentence!, 'en': null});
+        }
+        for (final ex in sw.contextExamples) {
+          if (ex.sentence.isNotEmpty && !examples.any((e) => e['de'] == ex.sentence)) {
+            examples.add({'de': ex.sentence, 'en': ex.translation});
+          }
+        }
+
+        consolidatedResults.add({
+          'id': sw.id.hashCode.abs(),
+          'word': sw.word,
+          'pos': sw.pos != null && sw.pos!.isNotEmpty ? sw.pos! : (normPos.isNotEmpty ? normPos : 'word'),
+          'gender': sw.gender,
+          'ipa': sw.ipa,
+          'base_form': sw.baseForm ?? sw.word,
+          'freq_rank': null,
+          'definitions': defs,
+          'definition': sw.primaryDefinition,
+          'examples': examples,
+          'category': sw.category.name,
+          'isFromUserDatabase': true,
+          'source': 'user_database',
+          'sourceLabel': 'Saved in your library',
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error querying user database in lookupConsolidatedWord', error: e, tag: 'DictionaryService');
+    }
+
+    // =========================================================================
+    // STEP 2: Check German Dictionary Database (SQLite dict.db)
+    // =========================================================================
+    List<Map<String, dynamic>> dbResults = [];
+    if (!kIsWeb) {
+      final db = await database;
+      if (db != null) {
+        try {
+          if (normPos.isNotEmpty) {
+            // Targeted POS search in words table
+            final raw = await db.rawQuery('''
+              SELECT w.id, w.word, w.pos, COALESCE(w.gender, w_base.gender) as gender,
+                     w.ipa, w.base_form, w.freq_rank,
+                     COALESCE(d.definition, d_base.definition) as definition
+              FROM words w
+              LEFT JOIN definitions d ON w.id = d.word_id
+              LEFT JOIN words w_base ON w.base_form = w_base.word
+              LEFT JOIN definitions d_base ON w_base.id = d_base.word_id
+              WHERE (w.word = ? COLLATE NOCASE OR w.base_form = ? COLLATE NOCASE)
+                AND (w.pos LIKE ? COLLATE NOCASE OR w.pos LIKE ? COLLATE NOCASE)
+              ORDER BY LENGTH(w.word) ASC, w.id ASC
+            ''', [cleanWord, cleanWord, '%$normPos%', '%${pos?.trim()}%']);
+
+            if (raw.isNotEmpty) {
+              dbResults = _groupDbResultsByPos(raw, cleanWord);
+            }
+          }
+
+          // If no POS-specific match found or no POS supplied, query all POS senses
+          if (dbResults.isEmpty) {
+            if (contextSentence != null && contextSentence.isNotEmpty) {
+              dbResults = await lookupContextualWord(cleanWord, contextSentence: contextSentence);
+            } else {
+              dbResults = await lookupWordAllPOS(cleanWord);
+            }
+          }
+        } catch (e) {
+          AppLogger.error('Dictionary DB lookup error in lookupConsolidatedWord', error: e, tag: 'DictionaryService');
+        }
+      }
+    }
+
+    // If SQLite returned results, merge and enrich with source tag
+    for (final r in dbResults) {
+      final enriched = Map<String, dynamic>.from(r);
+      enriched['source'] = 'german_dictionary';
+      enriched['sourceLabel'] = 'German Dictionary';
+
+      final existingIndex = consolidatedResults.indexWhere((c) =>
+        normalizePos(c['pos']?.toString()) == normalizePos(enriched['pos']?.toString())
+      );
+      if (existingIndex != -1) {
+        final userDefs = List<String>.from(consolidatedResults[existingIndex]['definitions'] ?? []);
+        final dbDefs = List<String>.from(enriched['definitions'] ?? [enriched['definition'] ?? '']);
+        for (final d in dbDefs) {
+          if (!userDefs.contains(d) && d.trim().isNotEmpty) {
+            userDefs.add(d);
+          }
+        }
+        consolidatedResults[existingIndex]['definitions'] = userDefs;
+        if (consolidatedResults[existingIndex]['gender'] == null && enriched['gender'] != null) {
+          consolidatedResults[existingIndex]['gender'] = enriched['gender'];
+        }
+        if (consolidatedResults[existingIndex]['ipa'] == null && enriched['ipa'] != null) {
+          consolidatedResults[existingIndex]['ipa'] = enriched['ipa'];
+        }
+        if (consolidatedResults[existingIndex]['base_form'] == null && enriched['base_form'] != null) {
+          consolidatedResults[existingIndex]['base_form'] = enriched['base_form'];
+        }
+      } else {
+        consolidatedResults.add(enriched);
+      }
+    }
+
+    // =========================================================================
+    // STEP 3: Wiktionary API Fallback (with POS-targeted query)
+    // =========================================================================
+    final hasRequestedPos = normPos.isEmpty || consolidatedResults.any((c) => normalizePos(c['pos']?.toString()) == normPos);
+    if (!hasRequestedPos || consolidatedResults.isEmpty) {
+      try {
+        final wiktionaryResult = await fetchWiktionaryFallback(cleanWord, targetPos: pos);
+        if (wiktionaryResult != null) {
+          final enriched = Map<String, dynamic>.from(wiktionaryResult);
+          enriched['source'] = 'wiktionary';
+          enriched['sourceLabel'] = 'Wiktionary';
+
+          final existingIndex = consolidatedResults.indexWhere((c) =>
+            normalizePos(c['pos']?.toString()) == normalizePos(enriched['pos']?.toString())
+          );
+          if (existingIndex == -1) {
+            consolidatedResults.add(enriched);
+          }
+        }
+      } catch (e) {
+        AppLogger.error('Wiktionary fallback error in lookupConsolidatedWord', error: e, tag: 'DictionaryService');
+      }
+    }
+
+    // =========================================================================
+    // STEP 4: Safety Net (NMT Translation)
+    // =========================================================================
+    if (consolidatedResults.isEmpty) {
+      try {
+        final nmtResult = await translateWordOnline(cleanWord);
+        if (nmtResult != null) {
+          final enriched = Map<String, dynamic>.from(nmtResult);
+          enriched['source'] = 'nmt_translation';
+          enriched['sourceLabel'] = 'Machine Translation';
+          consolidatedResults.add(enriched);
+        }
+      } catch (_) {}
+    }
+
+    // Priority sorting: Exact requested POS on top
+    if (normPos.isNotEmpty && consolidatedResults.length > 1) {
+      consolidatedResults.sort((a, b) {
+        final aPos = normalizePos(a['pos']?.toString());
+        final bPos = normalizePos(b['pos']?.toString());
+        final aMatch = aPos == normPos;
+        final bMatch = bPos == normPos;
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
+      });
+    }
+
+    return consolidatedResults;
   }
 
   Future<List<Map<String, dynamic>>> getRandomNouns({int limit = 10}) async {

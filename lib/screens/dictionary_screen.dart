@@ -223,7 +223,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           return _savedWordIds.contains(wordStr) || _savedWordIds.contains(idStr);
         }).toList();
       } else {
-        filtered = results.where((r) => r['pos'] == _selectedPosFilter).toList();
+        filtered = results.where((r) {
+          final rPos = DictionaryService.normalizePos(r['pos']?.toString());
+          return rPos == _selectedPosFilter || (r['pos']?.toString().toLowerCase() == _selectedPosFilter);
+        }).toList();
       }
       setState(() {
         _searchResults = filtered;
@@ -844,6 +847,13 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       child: TextField(
         controller: _searchController,
         onChanged: _onSearchChanged,
+        onSubmitted: (query) {
+          if (_searchResults.isNotEmpty) {
+            _onResultSelected(_searchResults.first);
+          } else if (query.trim().isNotEmpty) {
+            _onSearchChanged(query);
+          }
+        },
         decoration: InputDecoration(
           prefixIcon: Icon(Icons.search_rounded, color: colorScheme.primary),
           suffixIcon: _searchController.text.isNotEmpty
@@ -1190,14 +1200,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     );
   }
 
-  String _getCefrLevel(int? freqRank) {
-    if (freqRank == null || freqRank <= 0) return 'B1';
-    if (freqRank <= 500) return 'A1';
-    if (freqRank <= 1500) return 'A2';
-    if (freqRank <= 3500) return 'B1';
-    if (freqRank <= 6000) return 'B2';
-    return 'C1';
-  }
+  String _getCefrLevel(int? freqRank) => DictionaryService.getCefrLevel(freqRank);
 
   /// Renders nothing until (and unless) a real image is found — no
   /// placeholder box for words without one, since most entries (verbs,
@@ -1324,23 +1327,31 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 if (freq != null)
                   Align(
                     alignment: Alignment.topRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        _getCefrLevel(freq),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSecondaryContainer,
-                        ),
-                      ),
+                    child: Builder(
+                      builder: (context) {
+                        final cefr = _getCefrLevel(freq);
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        final cefrColors = AppTheme.getCefrColors(cefr, isDark: isDark);
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cefrColors.background,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: cefrColors.border, width: 0.8),
+                          ),
+                          child: Text(
+                            cefr,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: cefrColors.foreground,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
 

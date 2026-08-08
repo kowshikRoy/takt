@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/book_guide.dart';
 import '../../services/book_guide_service.dart';
 import '../../theme/books_modernist_style.dart';
+import '../../theme/app_theme.dart';
 import 'textbook_unit_screen.dart';
 
 class BookDetailScreen extends StatefulWidget {
@@ -136,7 +137,28 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ModernistTag('CEFR ${widget.book.cefrLevel}'),
+                Builder(
+                  builder: (context) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final cefrColors = AppTheme.getCefrColors(widget.book.cefrLevel, isDark: isDark);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: cefrColors.background,
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(color: cefrColors.border, width: 0.8),
+                      ),
+                      child: Text(
+                        'CEFR ${widget.book.cefrLevel}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: cefrColors.foreground,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 8),
                 Text(
                   widget.book.title,

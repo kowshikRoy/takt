@@ -648,6 +648,22 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
   void _showEditCategoryDialog(BuildContext context, dynamic video, MediaLibraryService mediaLibraryService) {
     final defaultCategories = ['Conversation', 'Grammar', 'Vocabulary', 'Travel', 'Stories', 'News', 'Business', 'Pronunciation'];
     final controller = TextEditingController(text: video.category ?? '');
+
+    // Extract recently created custom categories from all videos in user's library
+    final recentCategories = <String>[];
+    for (final v in mediaLibraryService.processedVideos) {
+      final cat = v.category?.trim();
+      if (cat != null && cat.isNotEmpty) {
+        final formatted = cat.substring(0, 1).toUpperCase() + (cat.length > 1 ? cat.substring(1) : '');
+        if (!recentCategories.any((c) => c.toLowerCase() == formatted.toLowerCase())) {
+          recentCategories.add(formatted);
+        }
+      }
+    }
+
+    final remainingPresets = defaultCategories
+        .where((preset) => !recentCategories.any((r) => r.toLowerCase() == preset.toLowerCase()))
+        .toList();
     
     showDialog(
       context: context,
@@ -662,16 +678,51 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Quick Categories:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
+                    if (recentCategories.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(Icons.history_rounded, size: 13, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 4),
+                          const Text('Recent Categories:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 4,
+                        children: recentCategories.map((cat) {
+                          final isSelected = selected.toLowerCase() == cat.toLowerCase();
+                          return ChoiceChip(
+                            label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                            selected: isSelected,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+                            labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+                            onSelected: (val) {
+                              setDialogState(() {
+                                controller.text = val ? cat : '';
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: defaultCategories.map((cat) {
+                      spacing: 5,
+                      runSpacing: 4,
+                      children: remainingPresets.map((cat) {
                         final isSelected = selected.toLowerCase() == cat.toLowerCase();
                         return ChoiceChip(
-                          label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                           selected: isSelected,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
                           onSelected: (val) {
                             setDialogState(() {
                               controller.text = val ? cat : '';
@@ -680,7 +731,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: controller,
                       decoration: const InputDecoration(

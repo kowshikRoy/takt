@@ -79,13 +79,11 @@ class GlanceWordSheet extends StatefulWidget {
 
 class _GlanceWordSheetState extends State<GlanceWordSheet> {
   final VocabularyService _vocabService = VocabularyService();
-  final TtsService _ttsService = TtsService();
 
   List<Map<String, dynamic>> _detailsList = [];
   SavedWord? _savedWord;
   final int _selectedSenseIndex = 0;
   String? _pluralForm;
-  String _cefrBadge = 'B1';
 
   @override
   void initState() {
@@ -97,10 +95,12 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
   }
 
   Future<void> _loadSavedState() async {
-    final word = widget.word.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
+    final word = widget.word.replaceAll(RegExp(r'\s+'), ' ').trim();
     final dictService = DictionaryService();
-    final dbDetails = await dictService.lookupContextualWord(
+    final activePos = _detailsList.isNotEmpty ? _detailsList.first['pos']?.toString() : null;
+    final dbDetails = await dictService.lookupConsolidatedWord(
       word,
+      pos: activePos,
       contextSentence: widget.contextSentence,
     );
 
@@ -162,14 +162,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     String cefr = 'B1';
     if (_detailsList.isNotEmpty) {
       final first = _detailsList.first;
-      final freqRank = first['freq_rank'] != null ? int.tryParse(first['freq_rank'].toString()) : null;
-      if (freqRank != null) {
-        if (freqRank <= 500) cefr = 'A1';
-        else if (freqRank <= 1500) cefr = 'A2';
-        else if (freqRank <= 3500) cefr = 'B1';
-        else if (freqRank <= 6000) cefr = 'B2';
-        else cefr = 'C1';
-      }
+      cefr = DictionaryService.getCefrLevel(first['freq_rank']);
       final wId = int.tryParse(first['id']?.toString() ?? '0') ?? 0;
       final baseForm = first['base_form']?.toString();
       foundPlural = await dictService.getPluralForm(wId, word, baseForm: baseForm);
@@ -178,7 +171,6 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
       setState(() {
         _savedWord = saved;
         _pluralForm = foundPlural;
-        _cefrBadge = cefr;
       });
     }
   }
@@ -239,121 +231,6 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     } else {
       await _setCategory(category);
     }
-  }
-
-  String _inferGenderIfNull(String wordStr, String? rawGender, String? pos) {
-    if (rawGender != null && rawGender.trim().isNotEmpty) {
-      final g = rawGender.trim().toLowerCase();
-      if (g == 'masculine' || g == 'm') return 'm';
-      if (g == 'feminine' || g == 'f') return 'f';
-      if (g == 'neuter' || g == 'n') return 'n';
-    }
-
-    final lower = wordStr.trim().toLowerCase();
-    
-    if (lower.endsWith('schaft') ||
-        lower.endsWith('ung') ||
-        lower.endsWith('heit') ||
-        lower.endsWith('keit') ||
-        lower.endsWith('tät') ||
-        lower.endsWith('tion') ||
-        lower.endsWith('ei') ||
-        lower.endsWith('in')) {
-      return 'f';
-    }
-    if (lower.endsWith('chen') ||
-        lower.endsWith('lein') ||
-        lower.endsWith('tum') ||
-        lower.endsWith('ment')) {
-      return 'n';
-    }
-    if (lower.endsWith('ismus') || lower.endsWith('ling') || lower.endsWith('or')) {
-      return 'm';
-    }
-
-    return '';
-  }
-
-  Color _getGenderColor(String? gender) {
-    if (gender == 'masculine' || gender == 'm') return AppTheme.genderMasc;
-    if (gender == 'feminine' || gender == 'f') return AppTheme.genderFem;
-    if (gender == 'neuter' || gender == 'n') return AppTheme.genderNeu;
-    return Theme.of(context).colorScheme.primary;
-  }
-
-  String _getArticle(String? gender) {
-    if (gender == 'masculine' || gender == 'm') return 'Der';
-    if (gender == 'feminine' || gender == 'f') return 'Die';
-    if (gender == 'neuter' || gender == 'n') return 'Das';
-    return '';
-  }
-
-  String _extractSingleSentence(String text, String targetWord) {
-    final cleanWord = targetWord.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
-    final sentences = text.split(RegExp(r'(?<=[.!?])\s+|\n+'));
-    if (cleanWord.isNotEmpty) {
-      for (final s in sentences) {
-        if (s.toLowerCase().contains(cleanWord.toLowerCase())) {
-          return s.trim();
-        }
-      }
-    }
-    return sentences.first.trim();
-  }
-
-  Widget _buildContextSentence(BuildContext context, String rawText, String targetWord) {
-    final sentence = _extractSingleSentence(rawText, targetWord);
-    final cleanWord = targetWord.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
-    if (cleanWord.isEmpty || !sentence.toLowerCase().contains(cleanWord.toLowerCase())) {
-      return Text(
-        sentence,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-      );
-    }
-
-    final regExp = RegExp(RegExp.escape(cleanWord), caseSensitive: false);
-    final matches = regExp.allMatches(sentence);
-    final spans = <InlineSpan>[];
-    int lastEnd = 0;
-
-    for (final match in matches) {
-      if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: sentence.substring(lastEnd, match.start),
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ));
-      }
-      spans.add(TextSpan(
-        text: sentence.substring(match.start, match.end),
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      ));
-      lastEnd = match.end;
-    }
-
-    if (lastEnd < sentence.length) {
-      spans.add(TextSpan(
-        text: sentence.substring(lastEnd),
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-      ));
-    }
-
-    return Text.rich(TextSpan(children: spans));
   }
 
   @override

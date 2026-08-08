@@ -783,7 +783,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ),
             ),
             SizedBox(
-              height: 220,
+              height: 200,
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 scrollDirection: Axis.horizontal,
@@ -877,17 +877,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _buildVideoCard(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final isCompleted = video.status == ProcessingStatus.completed;
     final isFailed = video.status == ProcessingStatus.failed;
     final isProcessing = !isCompleted && !isFailed;
 
     return Container(
-      width: 220,
-      margin: const EdgeInsets.only(right: 16),
+      width: 175,
+      margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(4.0),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isFailed
               ? colorScheme.error.withValues(alpha: 0.4)
@@ -900,213 +901,208 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(4.0),
+          borderRadius: BorderRadius.circular(8),
           onTap: () {
             if (isCompleted) {
               Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
+            } else if (isFailed) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(video.errorMessage ?? 'Processing failed. Long-press to retry.'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
             }
           },
           onLongPress: () => _showMediaActionSheet(context, video, mediaLibraryService),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4.0)),
-                      child: CachedNetworkImage(
+              // 16:9 Thumbnail with cues badge overlay
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
                         imageUrl: video.thumbnailUrl,
                         fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
-                      ),
-                    ),
-
-                    // Completed overlay
-                    if (isCompleted)
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                        errorWidget: (_, __, ___) => Container(
+                          color: isFailed
+                              ? colorScheme.error.withValues(alpha: 0.12)
+                              : colorScheme.primary.withValues(alpha: 0.12),
                         ),
                       ),
-
-                    // Processing overlay with stages & progress
-                    if (isProcessing)
-                      Container(
-                        color: Colors.black.withValues(alpha: 0.65),
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
-                              ),
-                              child: Icon(
-                                video.statusIcon,
-                                size: 18,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(
-                                    width: 8,
-                                    height: 8,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 1.5,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${video.statusShortLabel} · ${video.effectiveProgress}%',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              video.stageMessage ?? 'Processing media...',
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white70, fontSize: 10),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // Failed overlay
-                    if (isFailed)
-                      Container(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 24),
-                            const SizedBox(height: 4),
-                            Text(
-                              video.errorMessage ?? video.stageMessage ?? 'Processing failed',
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontSize: 10.5),
-                            ),
-                            const SizedBox(height: 6),
-                            OutlinedButton.icon(
-                              onPressed: () => mediaLibraryService.retryProcessingTask(
-                                video.taskId ?? video.id,
-                                video.url,
-                              ),
-                              icon: const Icon(Icons.refresh_rounded, size: 14, color: Colors.white),
-                              label: const Text('Retry', style: TextStyle(color: Colors.white, fontSize: 11)),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.white70),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // Top-right delete button
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Material(
-                        color: Colors.transparent,
-                        shape: const CircleBorder(),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () => _confirmDeleteVideo(context, video, mediaLibraryService),
-                          child: Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: const BoxDecoration(
-                              color: Colors.black54,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 16),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Bottom progress bar during processing
-                    if (isProcessing)
+                      // Gradient overlay
                       Positioned(
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        child: LinearProgressIndicator(
-                          value: video.effectiveProgress / 100.0,
-                          minHeight: 3,
-                          backgroundColor: Colors.black26,
-                          valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        video.effectiveTitle,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isCompleted) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2C5E3B).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: const Text(
-                          'Ready',
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF2C5E3B),
+                        height: 32,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.7),
+                                Colors.transparent,
+                              ],
+                            ),
                           ),
                         ),
                       ),
+                      // Top Right 3-Dots Action Button
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: InkWell(
+                          onTap: () => _showMediaActionSheet(context, video, mediaLibraryService),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.more_vert_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Status / Cues badge at bottom
+                      Positioned(
+                        left: 6,
+                        bottom: 4,
+                        right: 6,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (isCompleted)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.subtitles_rounded, size: 10, color: Colors.white),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      '${video.subtitles.length} cues',
+                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                    if (video.estimatedDurationLabel.isNotEmpty) ...[
+                                      const SizedBox(width: 4),
+                                      const Text('•', style: TextStyle(fontSize: 8, color: Colors.white70)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        video.estimatedDurationLabel,
+                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              )
+                            else if (isProcessing)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primary.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Text(
+                                  '${video.effectiveProgress}%',
+                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.error.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: const Text(
+                                  'FAILED',
+                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                              ),
+                            if (isCompleted)
+                              const Icon(Icons.play_circle_filled_rounded, size: 18, color: Colors.white),
+                          ],
+                        ),
+                      ),
                     ],
-                  ],
+                  ),
+                ),
+              ),
+
+              // Details Padding
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Title
+                      Text(
+                        video.effectiveTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, height: 1.2),
+                      ),
+
+                      // Tags & Status Row
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (video.category != null && video.category!.trim().isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: colorScheme.secondaryContainer.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Text(
+                                video.category!.trim().toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.3,
+                                  color: colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                          ],
+                          Text(
+                            isCompleted
+                                ? (video.estimatedDurationLabel.isNotEmpty
+                                    ? 'Ready • ${video.estimatedDurationLabel}'
+                                    : 'Ready to learn')
+                                : (video.stageMessage ?? video.statusShortLabel),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isFailed ? colorScheme.error : colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1308,6 +1304,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   void _showEditCategoryDialog(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
     final defaultCategories = ['Conversation', 'Grammar', 'Vocabulary', 'Travel', 'Stories', 'News', 'Business', 'Pronunciation'];
     final controller = TextEditingController(text: video.category ?? '');
+
+    // Extract recently created custom categories from all videos in user's library
+    final recentCategories = <String>[];
+    for (final v in mediaLibraryService.processedVideos) {
+      final cat = v.category?.trim();
+      if (cat != null && cat.isNotEmpty) {
+        final formatted = cat.substring(0, 1).toUpperCase() + (cat.length > 1 ? cat.substring(1) : '');
+        if (!recentCategories.any((c) => c.toLowerCase() == formatted.toLowerCase())) {
+          recentCategories.add(formatted);
+        }
+      }
+    }
+
+    final remainingPresets = defaultCategories
+        .where((preset) => !recentCategories.any((r) => r.toLowerCase() == preset.toLowerCase()))
+        .toList();
     
     showDialog(
       context: context,
@@ -1322,16 +1334,51 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Quick Categories:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
+                    if (recentCategories.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(Icons.history_rounded, size: 13, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 4),
+                          const Text('Recent Categories:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 4,
+                        children: recentCategories.map((cat) {
+                          final isSelected = selected.toLowerCase() == cat.toLowerCase();
+                          return ChoiceChip(
+                            label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                            selected: isSelected,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+                            labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+                            onSelected: (val) {
+                              setDialogState(() {
+                                controller.text = val ? cat : '';
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: defaultCategories.map((cat) {
+                      spacing: 5,
+                      runSpacing: 4,
+                      children: remainingPresets.map((cat) {
                         final isSelected = selected.toLowerCase() == cat.toLowerCase();
                         return ChoiceChip(
-                          label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                           selected: isSelected,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
                           onSelected: (val) {
                             setDialogState(() {
                               controller.text = val ? cat : '';
@@ -1340,7 +1387,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: controller,
                       decoration: const InputDecoration(

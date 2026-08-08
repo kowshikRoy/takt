@@ -388,7 +388,7 @@ class _VideoScreenState extends State<VideoScreen>
       }
     }
 
-    final List<KeyMediaVocab> extracted = [];
+    final Map<String, KeyMediaVocab> extractedMap = {};
 
     for (final entry in tokenContext.entries) {
       final lower = entry.key;
@@ -405,26 +405,14 @@ class _VideoScreenState extends State<VideoScreen>
         }
         if (def.isEmpty) continue;
 
+        final wordName = first['word'] as String? ?? ctx.rawToken;
+        final wordKey = wordName.toLowerCase();
         final pos = (first['pos'] as String? ?? '').toLowerCase();
         final gender = first['gender'] as String?;
         final baseForm = first['base_form'] as String?;
         final ipa = first['ipa'] as String?;
         final freqRank = first['freq_rank'] is int ? first['freq_rank'] as int : null;
-
-        String difficulty = 'B1';
-        if (freqRank != null) {
-          if (freqRank <= 300) {
-            difficulty = 'A1';
-          } else if (freqRank <= 1000) {
-            difficulty = 'A2';
-          } else if (freqRank <= 3000) {
-            difficulty = 'B1';
-          } else if (freqRank <= 8000) {
-            difficulty = 'B2';
-          } else {
-            difficulty = 'C1';
-          }
-        }
+        final difficulty = DictionaryService.getCefrLevel(freqRank);
 
         final wordRank = levelRanks[difficulty] ?? 3;
         int levelScore;
@@ -437,11 +425,31 @@ class _VideoScreenState extends State<VideoScreen>
         } else {
           levelScore = 50 - (wordRank - userRank).abs() * 12;
         }
-        final score = levelScore + (occurrences - 1) * 10;
 
-        extracted.add(
-          KeyMediaVocab(
-            word: first['word'] as String? ?? ctx.rawToken,
+        if (extractedMap.containsKey(wordKey)) {
+          final existing = extractedMap[wordKey]!;
+          final totalOccurrences = existing.occurrences + occurrences;
+          final updatedScore = levelScore + (totalOccurrences - 1) * 10;
+          extractedMap[wordKey] = KeyMediaVocab(
+            word: existing.word,
+            baseForm: existing.baseForm ?? baseForm,
+            pos: existing.pos ?? pos,
+            gender: existing.gender ?? gender,
+            primaryDefinition: existing.primaryDefinition,
+            ipa: existing.ipa ?? ipa,
+            cueIndex: existing.cueIndex,
+            cueStartTime: existing.cueStartTime,
+            cueOriginal: existing.cueOriginal,
+            cueTranslated: existing.cueTranslated,
+            freqRank: existing.freqRank ?? freqRank,
+            difficultyLabel: existing.difficultyLabel,
+            occurrences: totalOccurrences,
+            relevanceScore: updatedScore,
+          );
+        } else {
+          final score = levelScore + (occurrences - 1) * 10;
+          extractedMap[wordKey] = KeyMediaVocab(
+            word: wordName,
             baseForm: baseForm,
             pos: pos,
             gender: gender,
@@ -455,11 +463,12 @@ class _VideoScreenState extends State<VideoScreen>
             difficultyLabel: difficulty,
             occurrences: occurrences,
             relevanceScore: score,
-          ),
-        );
+          );
+        }
       }
     }
 
+    final List<KeyMediaVocab> extracted = extractedMap.values.toList();
     extracted.sort((a, b) => b.relevanceScore.compareTo(a.relevanceScore));
 
     if (mounted) {
@@ -2025,20 +2034,27 @@ class _VideoScreenState extends State<VideoScreen>
                 final isSelected = profileService.targetLevel == lvl.$1;
                 return ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  leading: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected ? colorScheme.primary : colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      lvl.$1,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
-                      ),
-                    ),
+                  leading: Builder(
+                    builder: (context) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      final cefrColors = AppTheme.getCefrColors(lvl.$1, isDark: isDark);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected ? cefrColors.foreground : cefrColors.background,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: cefrColors.border, width: 0.8),
+                        ),
+                        child: Text(
+                          lvl.$1,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: isSelected ? Colors.white : cefrColors.foreground,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   title: Text(lvl.$2, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   subtitle: Text(lvl.$3, style: const TextStyle(fontSize: 11)),
@@ -2349,29 +2365,35 @@ class _VideoScreenState extends State<VideoScreen>
                                 color: colorScheme.onSurface,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            InkWell(
+                                                    InkWell(
                               borderRadius: BorderRadius.circular(10),
                               onTap: () => _showLevelPickerDialog(context),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.primaryContainer,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.military_tech_rounded, size: 13, color: colorScheme.primary),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      'Target: $userLevel',
-                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                              child: Builder(
+                                builder: (context) {
+                                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                                  final cefrColors = AppTheme.getCefrColors(userLevel, isDark: isDark);
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: cefrColors.background,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: cefrColors.border, width: 0.8),
                                     ),
-                                    const SizedBox(width: 2),
-                                    Icon(Icons.arrow_drop_down_rounded, size: 14, color: colorScheme.primary),
-                                  ],
-                                ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.military_tech_rounded, size: 13, color: cefrColors.foreground),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          'Target: $userLevel',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: cefrColors.foreground),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Icon(Icons.arrow_drop_down_rounded, size: 14, color: cefrColors.foreground),
+                                      ],
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -2453,12 +2475,25 @@ class _VideoScreenState extends State<VideoScreen>
               ...['A1', 'A2', 'B1', 'B2', 'C1'].map((lvl) {
                 final count = _keyVocabList.where((v) => v.difficultyLabel == lvl).length;
                 if (count == 0) return const SizedBox.shrink();
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                final cefrColors = AppTheme.getCefrColors(lvl, isDark: isDark);
+                final isSelected = _selectedVocabLevelFilter == lvl;
                 return Padding(
                   padding: const EdgeInsets.only(left: 6.0),
                   child: ChoiceChip(
                     showCheckmark: false,
-                    selected: _selectedVocabLevelFilter == lvl,
-                    label: Text('$lvl ($count)'),
+                    selected: isSelected,
+                    label: Text(
+                      '$lvl ($count)',
+                      style: TextStyle(
+                        color: isSelected ? cefrColors.foreground : null,
+                        fontWeight: isSelected ? FontWeight.bold : null,
+                      ),
+                    ),
+                    selectedColor: cefrColors.background,
+                    side: BorderSide(
+                      color: isSelected ? cefrColors.border : colorScheme.outlineVariant.withValues(alpha: 0.4),
+                    ),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -2542,16 +2577,23 @@ class _VideoScreenState extends State<VideoScreen>
                       ),
                       const SizedBox(width: 6),
                     ],
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        vocab.difficultyLabel,
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.primary),
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        final cefrColors = AppTheme.getCefrColors(vocab.difficultyLabel, isDark: isDark);
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: cefrColors.background,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: cefrColors.border, width: 0.8),
+                          ),
+                          child: Text(
+                            vocab.difficultyLabel,
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: cefrColors.foreground),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

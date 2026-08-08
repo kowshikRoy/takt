@@ -12,6 +12,18 @@ enum AppColorTheme {
   slateGrey,
 }
 
+class CefrBadgeColors {
+  final Color foreground;
+  final Color background;
+  final Color border;
+
+  const CefrBadgeColors({
+    required this.foreground,
+    required this.background,
+    required this.border,
+  });
+}
+
 class AppTheme {
   // Theme Palettes
   static const Color _classicSeed = Color(0xFFEA2A33); // Original Red
@@ -40,6 +52,86 @@ class AppTheme {
   static const Color genderNeuDark = Color(0xFFB5DB99);  // Lighter Green for Dark Mode
 
   static const Color genderPlural = Color(0xFFF9844A); // Retro Orange (from palette)
+
+  /// Returns harmonious CEFR badge colors (foreground, background, border)
+  /// tailored for Light and Dark themes to avoid clashing with grammatical genders.
+  static CefrBadgeColors getCefrColors(String level, {bool isDark = false}) {
+    switch (level.toUpperCase().trim()) {
+      case 'A1':
+        return isDark
+            ? const CefrBadgeColors(
+                foreground: Color(0xFF81C784),
+                background: Color(0xFF1B3B22),
+                border: Color(0xFF2E7D32),
+              )
+            : const CefrBadgeColors(
+                foreground: Color(0xFF1B5E20),
+                background: Color(0xFFE8F5E9),
+                border: Color(0xFFC8E6C9),
+              );
+      case 'A2':
+        return isDark
+            ? const CefrBadgeColors(
+                foreground: Color(0xFF4DB6AC),
+                background: Color(0xFF133834),
+                border: Color(0xFF00695C),
+              )
+            : const CefrBadgeColors(
+                foreground: Color(0xFF00695C),
+                background: Color(0xFFE0F2F1),
+                border: Color(0xFFB2DFDB),
+              );
+      case 'B1':
+        return isDark
+            ? const CefrBadgeColors(
+                foreground: Color(0xFF64B5F6),
+                background: Color(0xFF152E4D),
+                border: Color(0xFF1565C0),
+              )
+            : const CefrBadgeColors(
+                foreground: Color(0xFF1565C0),
+                background: Color(0xFFE3F2FD),
+                border: Color(0xFFBBDEFB),
+              );
+      case 'B2':
+        return isDark
+            ? const CefrBadgeColors(
+                foreground: Color(0xFFFBBF24),
+                background: Color(0xFF422D0A),
+                border: Color(0xFFB45309),
+              )
+            : const CefrBadgeColors(
+                foreground: Color(0xFFB45309),
+                background: Color(0xFFFEF3C7),
+                border: Color(0xFFFDE68A),
+              );
+      case 'C1':
+        return isDark
+            ? const CefrBadgeColors(
+                foreground: Color(0xFFA78BFA),
+                background: Color(0xFF2E1C4E),
+                border: Color(0xFF6D28D9),
+              )
+            : const CefrBadgeColors(
+                foreground: Color(0xFF6D28D9),
+                background: Color(0xFFEDE9FE),
+                border: Color(0xFFDDD6FE),
+              );
+      case 'C2':
+      default:
+        return isDark
+            ? const CefrBadgeColors(
+                foreground: Color(0xFFFB7185),
+                background: Color(0xFF3D101E),
+                border: Color(0xFF9F1239),
+              )
+            : const CefrBadgeColors(
+                foreground: Color(0xFF9F1239),
+                background: Color(0xFFFFE4E6),
+                border: Color(0xFFFECDD3),
+              );
+    }
+  }
 
   static TextTheme _buildTextTheme(TextTheme base, ColorScheme colorScheme, [String fontFamily = 'Spline Sans']) {
     TextTheme baseTheme;

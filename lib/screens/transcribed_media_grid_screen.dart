@@ -349,7 +349,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 0.78,
+                childAspectRatio: 0.86,
               ),
               itemBuilder: (context, vIndex) {
                 return _buildVideoGridCard(context, videosInGroup[vIndex], mediaService);
@@ -374,7 +374,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.78,
+        childAspectRatio: 0.86,
       ),
       itemBuilder: (context, index) {
         return _buildVideoGridCard(context, videos[index], mediaService);
@@ -466,6 +466,27 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                           ),
                         ),
                       ),
+                      // Top Right 3-Dots Action Button
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: InkWell(
+                          onTap: () => _showMediaActionSheet(context, video, mediaService),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.more_vert_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
                       // Status / Cues badge at bottom
                       Positioned(
                         left: 6,
@@ -478,7 +499,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.6),
+                                  color: Colors.black.withValues(alpha: 0.65),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                                 child: Row(
@@ -490,6 +511,15 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                                       '${video.subtitles.length} cues',
                                       style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
                                     ),
+                                    if (video.estimatedDurationLabel.isNotEmpty) ...[
+                                      const SizedBox(width: 4),
+                                      const Text('•', style: TextStyle(fontSize: 8, color: Colors.white70)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        video.estimatedDurationLabel,
+                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               )
@@ -530,7 +560,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
               // Details Padding
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -569,7 +599,11 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                             const SizedBox(height: 3),
                           ],
                           Text(
-                            isCompleted ? 'Ready to learn' : (video.stageMessage ?? video.statusShortLabel),
+                            isCompleted
+                                ? (video.estimatedDurationLabel.isNotEmpty
+                                    ? 'Ready • ${video.estimatedDurationLabel}'
+                                    : 'Ready to learn')
+                                : (video.stageMessage ?? video.statusShortLabel),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -820,6 +854,22 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
   void _showEditCategoryDialog(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
     final defaultCategories = ['Conversation', 'Grammar', 'Vocabulary', 'Travel', 'Stories', 'News', 'Business', 'Pronunciation'];
     final controller = TextEditingController(text: video.category ?? '');
+
+    // Extract recently created custom categories from all videos in user's library
+    final recentCategories = <String>[];
+    for (final v in mediaLibraryService.processedVideos) {
+      final cat = v.category?.trim();
+      if (cat != null && cat.isNotEmpty) {
+        final formatted = cat.substring(0, 1).toUpperCase() + (cat.length > 1 ? cat.substring(1) : '');
+        if (!recentCategories.any((c) => c.toLowerCase() == formatted.toLowerCase())) {
+          recentCategories.add(formatted);
+        }
+      }
+    }
+
+    final remainingPresets = defaultCategories
+        .where((preset) => !recentCategories.any((r) => r.toLowerCase() == preset.toLowerCase()))
+        .toList();
     
     showDialog(
       context: context,
@@ -834,16 +884,51 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Quick Categories:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
+                    if (recentCategories.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(Icons.history_rounded, size: 13, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 4),
+                          const Text('Recent Categories:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 4,
+                        children: recentCategories.map((cat) {
+                          final isSelected = selected.toLowerCase() == cat.toLowerCase();
+                          return ChoiceChip(
+                            label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                            selected: isSelected,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+                            labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+                            onSelected: (val) {
+                              setDialogState(() {
+                                controller.text = val ? cat : '';
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: defaultCategories.map((cat) {
+                      spacing: 5,
+                      runSpacing: 4,
+                      children: remainingPresets.map((cat) {
                         final isSelected = selected.toLowerCase() == cat.toLowerCase();
                         return ChoiceChip(
-                          label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                           selected: isSelected,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
                           onSelected: (val) {
                             setDialogState(() {
                               controller.text = val ? cat : '';
@@ -852,7 +937,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: controller,
                       decoration: const InputDecoration(

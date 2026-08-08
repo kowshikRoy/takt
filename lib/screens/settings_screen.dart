@@ -365,7 +365,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, profileService, _) {
               return ListTile(
                 title: Text(l10n?.labelTargetLevel ?? 'Target Level (CEFR)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
-                subtitle: Text('Level ${profileService.targetLevel}', style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+                subtitle: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Level ', style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+                    Builder(
+                      builder: (context) {
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        final cefrColors = AppTheme.getCefrColors(profileService.targetLevel, isDark: isDark);
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: cefrColors.background,
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(color: cefrColors.border, width: 0.8),
+                          ),
+                          child: Text(
+                            profileService.targetLevel,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: cefrColors.foreground),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
                 leading: Icon(Icons.military_tech_rounded, color: rustAccent, size: 20),
                 trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
                 onTap: () => _showProficiencyLevelDialog(context, profileService),
@@ -1282,9 +1305,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   dense: true,
                   value: lvl.$1,
                   groupValue: profileService.targetLevel,
-                  title: Text(
-                    '${lvl.$1} · ${lvl.$2}',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: inkColor, fontSize: 12.5),
+                  title: Row(
+                    children: [
+                      Builder(
+                        builder: (context) {
+                          final cefrColors = AppTheme.getCefrColors(lvl.$1, isDark: isDark);
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: cefrColors.background,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: cefrColors.border, width: 0.8),
+                            ),
+                            child: Text(
+                              lvl.$1,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: cefrColors.foreground,
+                                fontSize: 11,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        lvl.$2,
+                        style: TextStyle(fontWeight: FontWeight.bold, color: inkColor, fontSize: 12.5),
+                      ),
+                    ],
                   ),
                   subtitle: Text(
                     lvl.$3,

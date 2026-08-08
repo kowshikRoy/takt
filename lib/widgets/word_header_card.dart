@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/books_modernist_style.dart';
 import '../models/saved_word.dart';
 import '../services/tts_service.dart';
+import '../services/dictionary_service.dart';
 import 'vocab_status_pills.dart';
 import 'noun_headword_title.dart';
 
@@ -91,16 +92,7 @@ class WordHeaderCard extends StatelessWidget {
     return '';
   }
 
-  String _getCefrLevel(dynamic freqRaw) {
-    final rank = freqRaw != null ? int.tryParse(freqRaw.toString()) : null;
-    if (rank == null) return 'B1';
-    if (rank <= 500) return 'A1';
-    if (rank <= 1500) return 'A2';
-    if (rank <= 3500) return 'B1';
-    if (rank <= 7000) return 'B2';
-    if (rank <= 12000) return 'C1';
-    return 'C2';
-  }
+  String _getCefrLevel(dynamic freqRaw) => DictionaryService.getCefrLevel(freqRaw);
 
   List<String> _extractDefinitions(Map<String, dynamic> data) {
     if (data['definitions'] != null) {
@@ -121,6 +113,74 @@ class WordHeaderCard extends StatelessWidget {
       }
     }
     return sentences.first.trim();
+  }
+
+  Widget _buildMeaningSourceBadge(BuildContext context, Map<String, dynamic> data) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final source = data['source']?.toString().toLowerCase() ?? '';
+    final isUserDb = data['isFromUserDatabase'] == true || source == 'user_database';
+    final isWiki = data['isWiktionaryFallback'] == true || source == 'wiktionary';
+    final isNmt = data['isNmtTranslation'] == true || source == 'nmt_translation';
+
+    IconData icon;
+    String label;
+    Color badgeColor;
+
+    if (isUserDb) {
+      icon = Icons.bookmark_rounded;
+      label = "My Library";
+      badgeColor = Colors.amber.shade800;
+    } else if (isWiki) {
+      icon = Icons.public_rounded;
+      label = "Wiktionary";
+      badgeColor = Colors.blue.shade700;
+    } else if (isNmt) {
+      icon = Icons.g_translate_rounded;
+      label = "Google Translate";
+      badgeColor = Colors.deepPurple.shade400;
+    } else {
+      icon = Icons.menu_book_rounded;
+      label = "Dictionary";
+      badgeColor = colorScheme.primary;
+    }
+
+    return Tooltip(
+      message: "Meaning source: $label",
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: badgeColor.withValues(alpha: isDark ? 0.18 : 0.10),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: badgeColor.withValues(alpha: isDark ? 0.35 : 0.25),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 11.5,
+              color: badgeColor,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: badgeColor,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildContextSentence(
@@ -264,20 +324,28 @@ class WordHeaderCard extends StatelessWidget {
               },
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: colorScheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                _getCefrLevel(freq),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSecondaryContainer,
-                ),
-              ),
+            Builder(
+              builder: (context) {
+                final cefr = _getCefrLevel(freq);
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                final cefrColors = AppTheme.getCefrColors(cefr, isDark: isDark);
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: cefrColors.background,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: cefrColors.border, width: 0.8),
+                  ),
+                  child: Text(
+                    cefr,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: cefrColors.foreground,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -328,6 +396,8 @@ class WordHeaderCard extends StatelessWidget {
                   ),
                 ),
               ],
+              const Spacer(),
+              _buildMeaningSourceBadge(context, wordData),
             ],
           ),
           const SizedBox(height: 6),
