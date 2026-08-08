@@ -110,6 +110,7 @@ class MediaLibraryService extends ChangeNotifier {
     final initialYtThumb = ProcessedVideo.extractYouTubeThumbnail(originalUrl);
     final existingTitle = existingIndex != -1 ? _processedVideos[existingIndex].title : null;
     final existingThumbnail = (existingIndex != -1 ? _processedVideos[existingIndex].thumbnail : null) ?? initialYtThumb;
+    final existingCategory = existingIndex != -1 ? _processedVideos[existingIndex].category : null;
 
     final newVideo = ProcessedVideo(
       id: tempId,
@@ -121,6 +122,7 @@ class MediaLibraryService extends ChangeNotifier {
       subtitles: existingIndex != -1 ? _processedVideos[existingIndex].subtitles : [],
       title: existingTitle,
       thumbnail: existingThumbnail,
+      category: existingCategory,
     );
 
     if (existingIndex != -1) {
@@ -137,7 +139,7 @@ class MediaLibraryService extends ChangeNotifier {
 
       if (submitResponse != null && submitResponse.containsKey('task_id')) {
         final realTaskId = submitResponse['task_id'] as String;
-        final initialTitle = (submitResponse['title'] as String?) ?? existingTitle;
+        final initialTitle = existingTitle?.isNotEmpty == true ? existingTitle : (submitResponse['title'] as String?);
         final initialThumbnail = (submitResponse['thumbnail'] as String?) ?? existingThumbnail;
         if (index != -1) {
           _processedVideos[index] = ProcessedVideo(
@@ -150,6 +152,7 @@ class MediaLibraryService extends ChangeNotifier {
             subtitles: [],
             title: initialTitle,
             thumbnail: initialThumbnail,
+            category: existingCategory,
           );
           notifyListeners();
           await _saveProcessedVideos();
@@ -168,6 +171,7 @@ class MediaLibraryService extends ChangeNotifier {
             subtitles: [],
             title: existingTitle,
             thumbnail: existingThumbnail,
+            category: existingCategory,
           );
           notifyListeners();
           await _saveProcessedVideos();
@@ -187,6 +191,7 @@ class MediaLibraryService extends ChangeNotifier {
           subtitles: [],
           title: existingTitle,
           thumbnail: existingThumbnail,
+          category: existingCategory,
         );
         notifyListeners();
         await _saveProcessedVideos();
@@ -219,6 +224,7 @@ class MediaLibraryService extends ChangeNotifier {
     
     final index = _processedVideos.indexWhere((v) => v.taskId == oldTaskId || v.id == oldTaskId);
     if (index != -1 && newTaskId != null) {
+      final old = _processedVideos[index];
       _processedVideos[index] = ProcessedVideo(
         id: newTaskId,
         taskId: newTaskId,
@@ -227,6 +233,9 @@ class MediaLibraryService extends ChangeNotifier {
         stageMessage: 'Connecting to server...',
         progressPercentage: 5,
         subtitles: [],
+        title: old.title,
+        thumbnail: old.thumbnail ?? ProcessedVideo.extractYouTubeThumbnail(originalUrl),
+        category: old.category,
       );
       notifyListeners();
       await _saveProcessedVideos();
@@ -252,6 +261,7 @@ class MediaLibraryService extends ChangeNotifier {
           mediaType: old.mediaType,
           thumbnail: old.thumbnail,
           title: old.title,
+          category: old.category,
         );
         notifyListeners();
         await _saveProcessedVideos();
@@ -274,6 +284,7 @@ class MediaLibraryService extends ChangeNotifier {
         _pollingTimers.remove(taskId);
         final index = _processedVideos.indexWhere((v) => v.taskId == taskId || v.id == taskId);
         if (index != -1 && _processedVideos[index].status != ProcessingStatus.completed) {
+          final current = _processedVideos[index];
           _processedVideos[index] = ProcessedVideo(
             id: taskId,
             taskId: taskId,
@@ -283,6 +294,9 @@ class MediaLibraryService extends ChangeNotifier {
             errorMessage: 'Task exceeded maximum time limit.',
             progressPercentage: 0,
             subtitles: [],
+            title: current.title,
+            thumbnail: current.thumbnail,
+            category: current.category,
           );
           notifyListeners();
           await _saveProcessedVideos();
@@ -316,7 +330,7 @@ class MediaLibraryService extends ChangeNotifier {
           final incomingTitle = statusResponse['title'] as String?;
           final incomingThumbnail = statusResponse['thumbnail'] as String?;
 
-          final updatedTitle = incomingTitle ?? current.title;
+          final updatedTitle = current.title?.isNotEmpty == true ? current.title : (incomingTitle ?? current.title);
           final updatedThumbnail = incomingThumbnail ?? current.thumbnail;
 
           if (current.stageMessage != stageMsg || 
@@ -335,6 +349,7 @@ class MediaLibraryService extends ChangeNotifier {
               mediaType: current.mediaType,
               thumbnail: updatedThumbnail,
               title: updatedTitle,
+              category: current.category,
             );
             notifyListeners();
             await _saveProcessedVideos();
@@ -369,7 +384,7 @@ class MediaLibraryService extends ChangeNotifier {
           final effectiveThumbnail = (thumbnail != null && thumbnail.isNotEmpty && !thumbnail.contains('picsum.photos'))
               ? thumbnail
               : (current.thumbnail ?? ProcessedVideo.extractYouTubeThumbnail(originalUrl));
-          final effectiveTitle = (title != null && title.isNotEmpty) ? title : current.title;
+          final effectiveTitle = current.title?.isNotEmpty == true ? current.title : (title?.isNotEmpty == true ? title : current.title);
 
           _processedVideos[index] = ProcessedVideo(
             id: taskId,
@@ -383,6 +398,7 @@ class MediaLibraryService extends ChangeNotifier {
             mediaType: mediaTypeStr,
             thumbnail: effectiveThumbnail,
             title: effectiveTitle,
+            category: current.category,
           );
           notifyListeners();
           await _saveProcessedVideos();
@@ -392,6 +408,7 @@ class MediaLibraryService extends ChangeNotifier {
         _pollingTimers.remove(taskId);
 
         if (index != -1) {
+          final current = _processedVideos[index];
           _processedVideos[index] = ProcessedVideo(
             id: taskId,
             taskId: taskId,
@@ -401,6 +418,9 @@ class MediaLibraryService extends ChangeNotifier {
             errorMessage: errorMsg,
             progressPercentage: 0,
             subtitles: [],
+            title: current.title,
+            thumbnail: current.thumbnail,
+            category: current.category,
           );
           notifyListeners();
           await _saveProcessedVideos();
@@ -433,6 +453,7 @@ class MediaLibraryService extends ChangeNotifier {
         thumbnail: old.thumbnail,
         subtitles: subtitles,
         errorMessage: old.errorMessage,
+        category: old.category,
       );
       notifyListeners();
       await _saveProcessedVideos();
