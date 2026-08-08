@@ -171,7 +171,25 @@ class DictionaryService {
   Future<void> _downloadDatabaseFile(String path) async {
     if (_latestAssetDownloadUrl == null) {
       try {
-        await checkForDatabaseUpdate();
+        final response = await http.get(
+          Uri.parse("https://api.github.com/repos/kowshikRoy/takt/releases/latest"),
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'TaktApp/1.0',
+          },
+        ).timeout(const Duration(seconds: 5));
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final assets = (data['assets'] as List<dynamic>?) ?? [];
+          for (var asset in assets) {
+            final name = asset['name']?.toString() ?? '';
+            final downloadUrl = asset['browser_download_url']?.toString();
+            if (name.endsWith('.db') && downloadUrl != null) {
+              _latestAssetDownloadUrl = downloadUrl;
+              break;
+            }
+          }
+        }
       } catch (_) {}
     }
 
@@ -241,14 +259,14 @@ class DictionaryService {
 
   Future<String> getDatabaseVersion() async {
     try {
-      final db = await database;
-      if (db != null && db.isOpen) {
-        final List<Map<String, dynamic>> res = await db.rawQuery("PRAGMA user_version;");
+      if (_database != null && _database!.isOpen) {
+        final List<Map<String, dynamic>> res = await _database!.rawQuery("PRAGMA user_version;");
         int v = res.first['user_version'] as int? ?? 0;
         if (v > 0) return "v$v.0";
       }
       final path = await _getDatabasePath();
-      if (await File(path).exists()) {
+      final file = File(path);
+      if (await file.exists() && await file.length() > 0) {
         final db = await openDatabase(path, readOnly: true);
         final List<Map<String, dynamic>> res = await db.rawQuery("PRAGMA user_version;");
         await db.close();
@@ -279,6 +297,7 @@ class DictionaryService {
   String? _latestAssetDownloadUrl;
 
   Future<void> checkForDatabaseUpdate() async {
+    if (isCheckingNotifier.value) return;
     isCheckingNotifier.value = true;
     try {
       final currentVerStr = await getDatabaseVersion();
@@ -321,6 +340,9 @@ class DictionaryService {
   }
 
   Future<void> redownloadDatabase() async {
+    isDownloadingNotifier.value = true;
+    downloadProgressNotifier.value = 0.0;
+    downloadErrorNotifier.value = null;
     try {
       final path = await _getDatabasePath();
       if (_database != null && _database!.isOpen) {
@@ -349,6 +371,7 @@ class DictionaryService {
       hasUpdateNotifier.value = false;
     } catch (e) {
       downloadErrorNotifier.value = "Failed to update database: $e";
+    } finally {
       isDownloadingNotifier.value = false;
     }
   }

@@ -138,11 +138,12 @@ class HomeScreenWidgetService {
             ipa = entry['ipa'].toString();
           }
           final g = entry['gender']?.toString().toLowerCase();
-          if (g == 'm') article = 'der';
-          if (g == 'f') article = 'die';
-          if (g == 'n') article = 'das';
-          if (article.isNotEmpty && !wordStr.startsWith(RegExp(r'^(der|die|das)\s+', caseSensitive: false))) {
-            fullWord = '$article $wordStr';
+          String detectedArticle = '';
+          if (g == 'm' || g == 'masc' || g == 'masculine') detectedArticle = 'der';
+          if (g == 'f' || g == 'fem' || g == 'feminine') detectedArticle = 'die';
+          if (g == 'n' || g == 'neu' || g == 'neuter') detectedArticle = 'das';
+          if (detectedArticle.isNotEmpty && !wordStr.toLowerCase().startsWith(RegExp(r'^(der|die|das)\s+'))) {
+            fullWord = '$detectedArticle $wordStr';
           }
         }
       } catch (_) {}

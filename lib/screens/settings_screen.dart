@@ -1387,20 +1387,24 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
 
   Future<void> _loadMetadata() async {
     final s = await _dictService.getDatabaseSizeFormatted();
-    if (mounted) {
-      setState(() {
-        _size = s;
-      });
-    }
-
     final v = await _dictService.getDatabaseVersion();
     if (mounted) {
       setState(() {
+        _size = s;
         _version = v;
       });
     }
 
     await _dictService.checkForDatabaseUpdate();
+
+    if (mounted) {
+      final updatedV = await _dictService.getDatabaseVersion();
+      final updatedS = await _dictService.getDatabaseSizeFormatted();
+      setState(() {
+        _version = updatedV;
+        _size = updatedS;
+      });
+    }
   }
 
   Future<void> _handleUpdateOrRedownload() async {

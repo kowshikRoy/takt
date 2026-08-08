@@ -26,7 +26,6 @@ class WordOfTheDaySmallWidgetProvider : HomeWidgetProvider() {
             val deepLink = widgetData.getString("widget_deep_link", "takt://word?term=Wort") ?: "takt://word?term=Wort"
 
             views.setTextViewText(R.id.widget_small_word, word)
-            views.setTextViewText(R.id.widget_small_ipa, ipa)
             views.setTextViewText(R.id.widget_small_def, definition)
             views.setTextViewText(R.id.widget_small_cefr, cefr)
             views.setTextViewText(R.id.widget_small_streak, streak)
