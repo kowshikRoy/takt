@@ -130,6 +130,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get titleVocabPractice => 'Vokabel-Training';
 
   @override
+  String get titlePhrasesHub => 'Alltagsphrasen & Redewendungen';
+
+  @override
+  String get subtitlePhrasesHub =>
+      '1.000+ Redemittel für Gastronomie, Small Talk & Alltag';
+
+  @override
   String get msgCorrect => 'Richtig!';
 
   @override

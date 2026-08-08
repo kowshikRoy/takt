@@ -10,9 +10,9 @@ import sys
 # However, usually we want the full thing. I'll add a limit arg.
 MAX_WORDS = None
 
-URL = "https://kaikki.org/dictionary/German/kaikki.org-dictionary-German.jsonl"
-DB_PATH = "../assets/german_dictionary_v17.db"
-TEMP_JSONL = "temp_dictionary.jsonl"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(SCRIPT_DIR, "../assets/german_dictionary_v18.db")
+TEMP_JSONL = os.path.join(SCRIPT_DIR, "temp_dictionary.jsonl")
 
 # Max example sentences to keep per base word (Kaikki entries can have many;
 # a handful is plenty for a learner-facing "Examples" tab and keeps DB size sane).
@@ -29,6 +29,7 @@ def _is_placeholder_translation(text):
 
 def setup_database(conn):
     c = conn.cursor()
+    c.execute("PRAGMA user_version = 18;")
     c.execute("DROP TABLE IF EXISTS words")
     c.execute("DROP TABLE IF EXISTS definitions")
     c.execute("DROP TABLE IF EXISTS forms")
@@ -44,7 +45,8 @@ def setup_database(conn):
             pos TEXT,
             gender TEXT,
             ipa TEXT,
-            base_form TEXT
+            base_form TEXT,
+            verb_class TEXT
         )
     """)
 
@@ -192,9 +194,28 @@ def process_file(file_path, conn):
             if not definitions and not base_form:
                 continue
 
+            # Extract verb class from conjugation metadata
+            verb_class = None
+            if pos == "verb" and "forms" in data:
+                for f in data["forms"]:
+                    if f.get("source") == "conjugation" and "table-tags" in f.get("tags", []):
+                        raw_val = (f.get("form") or "").strip().lower()
+                        if "irregular weak" in raw_val or "mixed" in raw_val:
+                            verb_class = "mixed"
+                            break
+                        elif "strong" in raw_val:
+                            verb_class = "strong"
+                            break
+                        elif "weak" in raw_val:
+                            verb_class = "weak"
+                            break
+                        elif "irregular" in raw_val:
+                            verb_class = "irregular"
+                            break
+
             # Insert Word
-            c.execute("INSERT INTO words (word, pos, gender, ipa, base_form) VALUES (?, ?, ?, ?, ?)",
-                      (word, pos, gender, ipa, base_form))
+            c.execute("INSERT INTO words (word, pos, gender, ipa, base_form, verb_class) VALUES (?, ?, ?, ?, ?, ?)",
+                      (word, pos, gender, ipa, base_form, verb_class))
             word_id = c.lastrowid
             
             # Insert Definitions

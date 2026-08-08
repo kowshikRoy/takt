@@ -8,8 +8,9 @@ Create a lite database with ~30K most common words using heuristics:
 import sqlite3
 import os
 
-SOURCE_DB = "../assets/german_dictionary_v17.db"
-TARGET_DB = "../assets/german_dictionary_v17_lite.db"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SOURCE_DB = os.path.join(SCRIPT_DIR, "../assets/german_dictionary_v18.db")
+TARGET_DB = os.path.join(SCRIPT_DIR, "../assets/german_dictionary_v18_lite.db")
 
 def create_lite_database():
     print(f"Creating lite database from {SOURCE_DB}...")
@@ -23,6 +24,7 @@ def create_lite_database():
     
     source_c = source_conn.cursor()
     target_c = target_conn.cursor()
+    target_c.execute("PRAGMA user_version = 18;")
     
     # Copy schema (skip sqlite_sequence)
     source_c.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'")

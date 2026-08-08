@@ -338,6 +338,18 @@ abstract class AppLocalizations {
   /// **'Vocabulary Deck'**
   String get titleVocabPractice;
 
+  /// No description provided for @titlePhrasesHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyday Phrases & Idioms'**
+  String get titlePhrasesHub;
+
+  /// No description provided for @subtitlePhrasesHub.
+  ///
+  /// In en, this message translates to:
+  /// **'1,000+ dining, small talk, travel & cultural expressions'**
+  String get subtitlePhrasesHub;
+
   /// No description provided for @msgCorrect.
   ///
   /// In en, this message translates to:

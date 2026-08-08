@@ -59,4 +59,7 @@ def populate_frequency(db_path=DB_PATH, freq_path=FREQ_PATH):
     print(f"Successfully updated {matched} words out of {len(words)} total words in {db_path}!")
 
 if __name__ == "__main__":
-    populate_frequency()
+    populate_frequency(os.path.join(os.path.dirname(__file__), "../assets/german_dictionary_v18.db"))
+    lite_path = os.path.join(os.path.dirname(__file__), "../assets/german_dictionary_v18_lite.db")
+    if os.path.exists(lite_path):
+        populate_frequency(lite_path)

@@ -129,6 +129,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get titleVocabPractice => 'Vocabulary Deck';
 
   @override
+  String get titlePhrasesHub => 'Everyday Phrases & Idioms';
+
+  @override
+  String get subtitlePhrasesHub =>
+      '1,000+ dining, small talk, travel & cultural expressions';
+
+  @override
   String get msgCorrect => 'Correct!';
 
   @override

@@ -1,18 +1,48 @@
 import sqlite3
 import sys
 import os
+import glob
 
-DB_PATH = "assets/german_dictionary_v16.db"
+import re
 
-def inspect_word(word):
-    if not os.path.exists(DB_PATH):
-        print(f"Error: Database not found at {DB_PATH}")
+def get_latest_db():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    assets_dir = os.path.join(script_dir, "../assets")
+    
+    candidates = []
+    for f in glob.glob(os.path.join(assets_dir, "german_dictionary_v*.db")):
+        # Skip Git LFS pointer stubs (< 100KB)
+        if os.path.getsize(f) < 100 * 1024:
+            continue
+        match = re.search(r'german_dictionary_v(\d+)(_lite)?\.db$', os.path.basename(f))
+        if match:
+            ver = int(match.group(1))
+            is_lite = 1 if match.group(2) else 0
+            candidates.append((ver, is_lite, f))
+    
+    if candidates:
+        # Sort by version DESC, then lite DESC (so v18_lite before v18)
+        candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        return candidates[0][2]
+
+    fallback = os.path.join(assets_dir, "dict.db")
+    if os.path.exists(fallback) and os.path.getsize(fallback) > 100 * 1024:
+        return fallback
+    return os.path.join(assets_dir, "german_dictionary_v18_lite.db")
+
+DB_PATH = get_latest_db()
+
+def inspect_word(word, db_path=None):
+    target_db = db_path or DB_PATH
+    if not os.path.exists(target_db):
+        print(f"Error: Database not found at {target_db}")
         return
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(target_db)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
+    print(f"Using database: {os.path.basename(target_db)}")
     print(f"Inspecting word: '{word}'\n" + "="*40)
 
     # 1. Get Word Info
@@ -21,16 +51,34 @@ def inspect_word(word):
 
     if not words:
         print("No entry found in 'words' table.")
+        conn.close()
         return
 
     for w in words:
         word_id = w['id']
+        keys = w.keys()
         print(f"\n[ID: {word_id}] Word: {w['word']}")
-        freq = w['freq_rank'] if 'freq_rank' in w.keys() else 'N/A'
+        freq = w['freq_rank'] if 'freq_rank' in keys else 'N/A'
         print(f"  Pos: {w['pos']}")
         print(f"  Gender: {w['gender']}")
         print(f"  IPA: {w['ipa']}")
         print(f"  Base Form: {w['base_form']}")
+        
+        if 'verb_class' in keys:
+            v_class = w['verb_class']
+            if v_class:
+                label_map = {
+                    'weak': 'weak / Regular (Schwach)',
+                    'strong': 'strong / Irregular (Stark)',
+                    'mixed': 'mixed / Irregular (Gemischt)',
+                    'irregular': 'irregular / Auxiliary (Hilfsverb/Unregelmäßig)',
+                    'modal': 'modal / Modalverb',
+                }
+                display_strength = label_map.get(v_class.lower(), v_class)
+                print(f"  Verb Strength: {display_strength}")
+            else:
+                print(f"  Verb Strength: None")
+
         print(f"  Frequency Rank: #{freq}" if freq != 'N/A' and freq is not None else "  Frequency Rank: N/A")
 
         # 2. Get Definitions
@@ -40,34 +88,51 @@ def inspect_word(word):
         for d in defs:
             print(f"    - {d['definition']}")
 
-        # 3. Get Forms (v9+ with tags table)
+        # 3. Get Examples
+        try:
+            c.execute("SELECT de, en FROM examples WHERE word_id = ?", (word_id,))
+            examples = c.fetchall()
+            if examples:
+                print(f"  Examples ({len(examples)}):")
+                for ex in examples:
+                    en_text = f" ({ex['en']})" if ex['en'] else ""
+                    print(f"    - {ex['de']}{en_text}")
+        except Exception:
+            pass
+
+        # 4. Get Forms
         c.execute("SELECT f.form, t.tags FROM forms f LEFT JOIN tags t ON f.tag_id = t.id WHERE f.word_id = ?", (word_id,))
         forms = c.fetchall()
         print(f"  Forms ({len(forms)}):")
-        for f in forms:
+        for f in forms[:15]:
             print(f"    - {f['form']} {f['tags']}")
+        if len(forms) > 15:
+            print(f"    ... and {len(forms) - 15} more forms")
         
-        # 4. Get Relations (v16+)
-        c.execute("SELECT relation_type, related_word FROM relations WHERE word_id = ?", (word_id,))
-        relations = c.fetchall()
-        if relations:
-            print(f"  Relations ({len(relations)}):")
-            # Group by type
-            synonyms = [r['related_word'] for r in relations if r['relation_type'] == 'synonym']
-            antonyms = [r['related_word'] for r in relations if r['relation_type'] == 'antonym']
-            related = [r['related_word'] for r in relations if r['relation_type'] == 'related']
-            
-            if synonyms:
-                print(f"    Synonyms: {', '.join(synonyms)}")
-            if antonyms:
-                print(f"    Antonyms: {', '.join(antonyms)}")
-            if related:
-                print(f"    Related: {', '.join(related)}")
+        # 5. Get Relations
+        try:
+            c.execute("SELECT relation_type, related_word FROM relations WHERE word_id = ?", (word_id,))
+            relations = c.fetchall()
+            if relations:
+                print(f"  Relations ({len(relations)}):")
+                synonyms = [r['related_word'] for r in relations if r['relation_type'] == 'synonym']
+                antonyms = [r['related_word'] for r in relations if r['relation_type'] == 'antonym']
+                related = [r['related_word'] for r in relations if r['relation_type'] == 'related']
+                
+                if synonyms:
+                    print(f"    Synonyms: {', '.join(synonyms)}")
+                if antonyms:
+                    print(f"    Antonyms: {', '.join(antonyms)}")
+                if related:
+                    print(f"    Related: {', '.join(related)}")
+        except Exception:
+            pass
             
     conn.close()
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 scripts/inspect_word.py <word>")
+        print("Usage: python3 scripts/inspect_word.py <word> [optional_db_path]")
     else:
-        inspect_word(sys.argv[1])
+        db_arg = sys.argv[2] if len(sys.argv) > 2 else None
+        inspect_word(sys.argv[1], db_arg)

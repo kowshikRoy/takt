@@ -93,8 +93,10 @@ backend/assets/
 assets/*.db
 *.db-shm
 *.db-wal
+**/*.jsonl
 *.jsonl
 temp_*.jsonl
+kaikki*.jsonl
 
 # Book source files (PDFs, audio, extras) — only track JSON data files
 assets/books/**

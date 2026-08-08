@@ -1863,6 +1863,7 @@ class SyncPayload(BaseModel):
     media: list[dict] | None = None
     deleted_media_ids: list[str] | None = None
     deleted_article_ids: list[str] | None = None
+    deleted_vocabulary_ids: list[str] | None = None
     stats: dict | None = None
     xp_events: list[dict] | None = None
     streak_freezes: int | None = None
@@ -1948,7 +1949,22 @@ def _merge_sync_payload(payload, existing_vocab, existing_articles, existing_med
             k = item.get('id', item.get('word'))
             if k:
                 vocab_map[k] = item
+        if payload.deleted_vocabulary_ids:
+            deleted_set = {str(d).strip().lower() for d in payload.deleted_vocabulary_ids}
+            vocab_map = {
+                k: v for k, v in vocab_map.items()
+                if str(k).strip().lower() not in deleted_set and
+                   str(v.get('id', '')).strip().lower() not in deleted_set and
+                   str(v.get('word', '')).strip().lower() not in deleted_set
+            }
         existing_vocab = list(vocab_map.values())
+    elif payload.deleted_vocabulary_ids:
+        deleted_set = {str(d).strip().lower() for d in payload.deleted_vocabulary_ids}
+        existing_vocab = [
+            v for v in existing_vocab
+            if str(v.get('id', '')).strip().lower() not in deleted_set and
+               str(v.get('word', '')).strip().lower() not in deleted_set
+        ]
 
     if payload.articles is not None:
         article_map = {item.get('id', item.get('title')): item for item in existing_articles}
