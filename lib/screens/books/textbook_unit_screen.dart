@@ -17,6 +17,7 @@ import '../../widgets/books/sections/phonetics_categorization_widget.dart';
 import '../../widgets/books/sections/writing_exercise_widget.dart';
 import '../../widgets/books/sections/reading_profiles_widget.dart';
 import '../../widgets/books/sections/reading_matching_widget.dart';
+import '../../widgets/capped_width.dart';
 
 class TextbookUnitScreen extends StatefulWidget {
   final ChapterSummary chapterSummary;
@@ -133,7 +134,9 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Theme(
+      data: BooksModernist.readingTheme(context),
+      child: Scaffold(
       backgroundColor: BooksModernist.bg,
       body: SafeArea(
         child: _isLoading
@@ -148,6 +151,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
                       Expanded(child: _buildPageView()),
                     ],
                   ),
+      ),
       ),
     );
   }
@@ -381,7 +385,9 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
 
   Widget _buildPageCard(
       BuildContext context, PageModel page, int pageIndex, int totalPages) {
-    return Column(
+    return CappedWidth(
+      maxWidth: 760,
+      child: Column(
       children: [
         // 1. Bordered page content card (sharp corners, no curvature)
         Expanded(
@@ -477,6 +483,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
           ),
         ),
       ],
+      ),
     );
   }
 

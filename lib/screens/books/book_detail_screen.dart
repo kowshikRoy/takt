@@ -57,7 +57,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     final totalSections = _chapterProgress.values.fold(0, (s, p) => s + p.$2);
     final bookProgress = totalSections > 0 ? totalDone / totalSections : 0.0;
 
-    return Scaffold(
+    return Theme(
+      data: BooksModernist.readingTheme(context),
+      child: Scaffold(
       backgroundColor: BooksModernist.bg,
       body: SafeArea(
         child: Column(
@@ -91,6 +93,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
