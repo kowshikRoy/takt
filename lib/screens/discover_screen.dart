@@ -92,10 +92,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           final tabController = DefaultTabController.of(context);
           return Scaffold(
             backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            // Desktop already surfaces "Import" via the sidebar's Import Any
+            // Content banner — the FAB there would be a second button doing
+            // the exact same thing. Keep it only where it's the sole entry
+            // point: mobile, and only on the Library tab.
             floatingActionButton: AnimatedBuilder(
               animation: tabController,
               builder: (context, _) {
                 if (tabController.index != 0) return const SizedBox.shrink();
+                if (MediaQuery.sizeOf(context).width > 700) return const SizedBox.shrink();
                 return FloatingActionButton(
                   onPressed: () => _showCreateOptions(context),
                   backgroundColor: Theme.of(context).colorScheme.primary,
@@ -240,410 +245,392 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Continue Learning Section
-                Text(
-                  'CONTINUE LEARNING',
-                  style: BooksModernist.body(
-                    size: 11,
-                    weight: FontWeight.w800,
-                    color: BooksModernist.accentDark,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _continueLearningArticles.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final article = _continueLearningArticles[index];
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(6.0),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(4.0),
-                        child: ListTile(
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(4.0),
-                            child: Image.asset(article.imageUrl, width: 44, height: 44, fit: BoxFit.cover),
-                          ),
-                          title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          subtitle: Text('Level ${article.level}', style: const TextStyle(fontSize: 11)),
-                          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                          onTap: () => _openReader(article),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Imported Articles
-                if (mediaLibraryService.importedArticles.isNotEmpty) ...[
-                  Text(
-                    'YOUR IMPORTS',
-                    style: BooksModernist.body(
-                      size: 11,
-                      weight: FontWeight.w800,
-                      color: BooksModernist.accentDark,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: mediaLibraryService.importedArticles.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final article = mediaLibraryService.importedArticles[index];
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(4.0),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(4.0),
-                          child: ListTile(
-                            title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            subtitle: Text(article.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18),
-                              tooltip: 'Delete article',
-                              onPressed: () => _confirmDelete(context, article, mediaLibraryService),
-                            ),
-                            onTap: () => _openReader(article),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                // Transcribed Media
-                if (mediaLibraryService.processedVideos.isNotEmpty) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        'TRANSCRIBED MEDIA',
-                        style: BooksModernist.body(
-                          size: 11,
-                          weight: FontWeight.w800,
-                          color: BooksModernist.accentDark,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TranscribedMediaGridScreen(),
-                            ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'View All (${mediaLibraryService.processedVideos.length})',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 2),
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                size: 16,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: mediaLibraryService.processedVideos.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final video = mediaLibraryService.processedVideos[index];
-                        final isCompleted = video.status == ProcessingStatus.completed;
-                        final isFailed = video.status == ProcessingStatus.failed;
-                        final isProcessing = !isCompleted && !isFailed;
-                        final colorScheme = Theme.of(context).colorScheme;
-
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(4.0),
-                            border: Border.all(
-                              color: isFailed
-                                  ? colorScheme.error.withValues(alpha: 0.4)
-                                  : isProcessing
-                                      ? colorScheme.primary.withValues(alpha: 0.3)
-                                      : colorScheme.outlineVariant.withValues(alpha: 0.5),
-                              width: isProcessing ? 1.0 : 0.8,
-                            ),
-                          ),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(4.0),
-                            onTap: () {
-                              if (isCompleted) {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
-                              }
-                            },
-                            onLongPress: () => _showMediaActionSheet(context, video, mediaLibraryService),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      // Thumbnail with live processing overlay
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: SizedBox(
-                                          width: 52,
-                                          height: 38,
-                                          child: Stack(
-                                            fit: StackFit.expand,
-                                            children: [
-                                              if (video.thumbnail != null && video.thumbnail!.isNotEmpty)
-                                                Image.network(
-                                                  video.thumbnail!,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) => Container(
-                                                    color: isFailed
-                                                        ? colorScheme.error.withValues(alpha: 0.12)
-                                                        : colorScheme.primary.withValues(alpha: 0.12),
-                                                  ),
-                                                )
-                                              else
-                                                Container(
-                                                  color: isFailed
-                                                      ? colorScheme.error.withValues(alpha: 0.12)
-                                                      : isCompleted
-                                                          ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
-                                                          : colorScheme.primary.withValues(alpha: 0.12),
-                                                ),
-                                              if (isProcessing)
-                                                Container(
-                                                  color: Colors.black45,
-                                                  child: const Center(
-                                                    child: SizedBox(
-                                                      width: 14,
-                                                      height: 14,
-                                                      child: CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                              else if (isCompleted)
-                                                Container(
-                                                  color: Colors.black26,
-                                                  child: const Center(
-                                                    child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-                                                  ),
-                                                )
-                                              else
-                                                Center(
-                                                  child: Icon(video.statusIcon, size: 18, color: colorScheme.error),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-
-                                      // Title and Status Badge
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              video.effectiveTitle,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                // Modernist Status Badge
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: isFailed
-                                                        ? colorScheme.error.withValues(alpha: 0.12)
-                                                        : isCompleted
-                                                            ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
-                                                            : colorScheme.primary.withValues(alpha: 0.12),
-                                                    borderRadius: BorderRadius.circular(3),
-                                                    border: Border.all(
-                                                      color: isFailed
-                                                          ? colorScheme.error.withValues(alpha: 0.3)
-                                                          : isCompleted
-                                                              ? const Color(0xFF2C5E3B).withValues(alpha: 0.3)
-                                                              : colorScheme.primary.withValues(alpha: 0.3),
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      if (isProcessing) ...[
-                                                        SizedBox(
-                                                          width: 9,
-                                                          height: 9,
-                                                          child: CircularProgressIndicator(
-                                                            strokeWidth: 1.5,
-                                                            color: colorScheme.primary,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(width: 4),
-                                                      ],
-                                                      Text(
-                                                        isProcessing
-                                                            ? '${video.statusShortLabel} · ${video.effectiveProgress}%'
-                                                            : video.statusShortLabel,
-                                                        style: TextStyle(
-                                                          fontSize: 10.5,
-                                                          fontWeight: FontWeight.w800,
-                                                          letterSpacing: 0.3,
-                                                          color: isFailed
-                                                              ? colorScheme.error
-                                                              : isCompleted
-                                                                  ? const Color(0xFF2C5E3B)
-                                                                  : colorScheme.primary,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                if (video.category != null && video.category!.isNotEmpty) ...[
-                                                  const SizedBox(width: 6),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color: colorScheme.secondaryContainer.withValues(alpha: 0.6),
-                                                      borderRadius: BorderRadius.circular(3),
-                                                      border: Border.all(
-                                                        color: colorScheme.secondary.withValues(alpha: 0.3),
-                                                        width: 0.8,
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      video.category!.toUpperCase(),
-                                                      style: TextStyle(
-                                                        fontSize: 9.5,
-                                                        fontWeight: FontWeight.w800,
-                                                        letterSpacing: 0.3,
-                                                        color: colorScheme.onSecondaryContainer,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                                const SizedBox(width: 8),
-
-                                                // Descriptive subtitle text
-                                                Expanded(
-                                                  child: Text(
-                                                    isFailed
-                                                        ? (video.errorMessage ?? video.stageMessage ?? 'Processing failed')
-                                                        : (video.stageMessage ?? 'Ready to practice'),
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color: isFailed
-                                                          ? colorScheme.error
-                                                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      // Actions
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (isFailed)
-                                            IconButton(
-                                              icon: const Icon(Icons.refresh_rounded, size: 20),
-                                              tooltip: 'Retry',
-                                              onPressed: () => mediaLibraryService.retryProcessingTask(
-                                                video.taskId ?? video.id,
-                                                video.url,
-                                              ),
-                                            ),
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.delete_outline_rounded,
-                                              size: 19,
-                                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                                            ),
-                                            tooltip: 'Delete',
-                                            onPressed: () => _confirmDeleteVideo(context, video, mediaLibraryService),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-
-                                  // Linear Progress Bar if processing
-                                  if (isProcessing) ...[
-                                    const SizedBox(height: 8),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(2),
-                                      child: LinearProgressIndicator(
-                                        value: video.effectiveProgress / 100.0,
-                                        minHeight: 3,
-                                        backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
-                                        valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                ],
+                // My Content — one merged list instead of three separately
+                // headed sections (Continue Learning / Your Imports /
+                // Transcribed Media) that overlapped without a clear rule
+                // for which list a given piece of content belonged in.
+                ..._buildMyContentSection(context, mediaLibraryService),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  List<Widget> _buildMyContentSection(BuildContext context, MediaLibraryService mediaLibraryService) {
+    final rows = <Widget>[
+      ..._continueLearningArticles.map((a) => _buildContinueLearningRow(context, a)),
+      ...mediaLibraryService.importedArticles.map((a) => _buildImportedArticleRow(context, a, mediaLibraryService)),
+      ...mediaLibraryService.processedVideos.map((v) => _buildDesktopVideoRow(context, v, mediaLibraryService)),
+    ];
+
+    if (rows.isEmpty) {
+      return [
+        Text(
+          'MY CONTENT',
+          style: BooksModernist.body(size: 11, weight: FontWeight.w800, color: BooksModernist.accentDark),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(6.0),
+            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+          ),
+          child: Text(
+            'Nothing here yet — import an article or video above to get started.',
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'MY CONTENT',
+            style: BooksModernist.body(size: 11, weight: FontWeight.w800, color: BooksModernist.accentDark),
+          ),
+          if (mediaLibraryService.processedVideos.isNotEmpty)
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TranscribedMediaGridScreen()),
+                );
+              },
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'All Videos',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(Icons.chevron_right_rounded, size: 16, color: Theme.of(context).colorScheme.primary),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      for (int i = 0; i < rows.length; i++) ...[
+        rows[i],
+        if (i != rows.length - 1) const SizedBox(height: 10),
+      ],
+    ];
+  }
+
+  Widget _buildContinueLearningRow(BuildContext context, Article article) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(6.0),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 0.8,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(4.0),
+        child: ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(4.0),
+            child: Image.asset(article.imageUrl, width: 44, height: 44, fit: BoxFit.cover),
+          ),
+          title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          subtitle: Text('Level ${article.level}', style: const TextStyle(fontSize: 11)),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: () => _openReader(article),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImportedArticleRow(BuildContext context, Article article, MediaLibraryService mediaLibraryService) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(4.0),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 0.8,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(4.0),
+        child: ListTile(
+          title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          subtitle: Text(article.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+          trailing: IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18),
+            tooltip: 'Delete article',
+            onPressed: () => _confirmDelete(context, article, mediaLibraryService),
+          ),
+          onTap: () => _openReader(article),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopVideoRow(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
+    final isCompleted = video.status == ProcessingStatus.completed;
+    final isFailed = video.status == ProcessingStatus.failed;
+    final isProcessing = !isCompleted && !isFailed;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(4.0),
+        border: Border.all(
+          color: isFailed
+              ? colorScheme.error.withValues(alpha: 0.4)
+              : isProcessing
+                  ? colorScheme.primary.withValues(alpha: 0.3)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: isProcessing ? 1.0 : 0.8,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(4.0),
+        onTap: () {
+          if (isCompleted) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => VideoScreen(processedVideo: video)));
+          }
+        },
+        onLongPress: () => _showMediaActionSheet(context, video, mediaLibraryService),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Thumbnail with live processing overlay
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: SizedBox(
+                      width: 52,
+                      height: 38,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (video.thumbnail != null && video.thumbnail!.isNotEmpty)
+                            Image.network(
+                              video.thumbnail!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: isFailed
+                                    ? colorScheme.error.withValues(alpha: 0.12)
+                                    : colorScheme.primary.withValues(alpha: 0.12),
+                              ),
+                            )
+                          else
+                            Container(
+                              color: isFailed
+                                  ? colorScheme.error.withValues(alpha: 0.12)
+                                  : isCompleted
+                                      ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
+                                      : colorScheme.primary.withValues(alpha: 0.12),
+                            ),
+                          if (isProcessing)
+                            Container(
+                              color: Colors.black45,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else if (isCompleted)
+                            Container(
+                              color: Colors.black26,
+                              child: const Center(
+                                child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                              ),
+                            )
+                          else
+                            Center(
+                              child: Icon(video.statusIcon, size: 18, color: colorScheme.error),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Title and Status Badge
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          video.effectiveTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            // Modernist Status Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isFailed
+                                    ? colorScheme.error.withValues(alpha: 0.12)
+                                    : isCompleted
+                                        ? const Color(0xFF2C5E3B).withValues(alpha: 0.15)
+                                        : colorScheme.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(3),
+                                border: Border.all(
+                                  color: isFailed
+                                      ? colorScheme.error.withValues(alpha: 0.3)
+                                      : isCompleted
+                                          ? const Color(0xFF2C5E3B).withValues(alpha: 0.3)
+                                          : colorScheme.primary.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isProcessing) ...[
+                                    SizedBox(
+                                      width: 9,
+                                      height: 9,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.5,
+                                        color: colorScheme.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Text(
+                                    isProcessing
+                                        ? '${video.statusShortLabel} · ${video.effectiveProgress}%'
+                                        : video.statusShortLabel,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.3,
+                                      color: isFailed
+                                          ? colorScheme.error
+                                          : isCompleted
+                                              ? const Color(0xFF2C5E3B)
+                                              : colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (video.category != null && video.category!.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.secondaryContainer.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(3),
+                                  border: Border.all(
+                                    color: colorScheme.secondary.withValues(alpha: 0.3),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  video.category!.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.3,
+                                    color: colorScheme.onSecondaryContainer,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 8),
+
+                            // Descriptive subtitle text
+                            Expanded(
+                              child: Text(
+                                isFailed
+                                    ? (video.errorMessage ?? video.stageMessage ?? 'Processing failed')
+                                    : (video.stageMessage ?? 'Ready to practice'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isFailed
+                                      ? colorScheme.error
+                                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Actions
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isFailed)
+                        IconButton(
+                          icon: const Icon(Icons.refresh_rounded, size: 20),
+                          tooltip: 'Retry',
+                          onPressed: () => mediaLibraryService.retryProcessingTask(
+                            video.taskId ?? video.id,
+                            video.url,
+                          ),
+                        ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 19,
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                        tooltip: 'Delete',
+                        onPressed: () => _confirmDeleteVideo(context, video, mediaLibraryService),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // Linear Progress Bar if processing
+              if (isProcessing) ...[
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: video.effectiveProgress / 100.0,
+                    minHeight: 3,
+                    backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -704,136 +691,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         children: [
           const SizedBox(height: 16),
 
-          // Continue Learning Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-            child: Text(
-              'CONTINUE LEARNING',
-              style: BooksModernist.body(
-                size: 11,
-                weight: FontWeight.w800,
-                color: BooksModernist.accentDark,
-              ),
-            ),
-          ),
-          SizedBox(
-            height: 150,
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: _continueLearningArticles.length,
-              itemBuilder: (context, index) {
-                return CompactArticleCard(
-                  article: _continueLearningArticles[index],
-                  onTap: () => _openReader(_continueLearningArticles[index]),
-                );
-              },
-            ),
-          ),
-
-          // Transcribed Media Section
-          if (mediaLibraryService.processedVideos.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'TRANSCRIBED MEDIA',
-                    style: BooksModernist.body(
-                      size: 11,
-                      weight: FontWeight.w800,
-                      color: BooksModernist.accentDark,
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const TranscribedMediaGridScreen(),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(4),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'View All (${mediaLibraryService.processedVideos.length})',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 2),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: 200,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: mediaLibraryService.processedVideos.length,
-                itemBuilder: (context, index) {
-                  final video = mediaLibraryService.processedVideos[index];
-                  return _buildVideoCard(context, video, mediaLibraryService);
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Imported Section
-          if (mediaLibraryService.importedArticles.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-              child: Text(
-                'IMPORTED',
-                style: BooksModernist.body(
-                  size: 11,
-                  weight: FontWeight.w800,
-                  color: BooksModernist.accentDark,
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 150,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: mediaLibraryService.importedArticles.length,
-                itemBuilder: (context, index) {
-                  final article = mediaLibraryService.importedArticles[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: CompactArticleCard(
-                      article: article,
-                      onTap: () => _openReader(article),
-                      onDelete: () => _confirmDelete(context, article, mediaLibraryService),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
+          // My Content — one merged section instead of three separately
+          // headed strips (Continue Learning / Transcribed Media /
+          // Imported) that overlapped without a clear rule for which one a
+          // given piece of content belonged in. Reading items (continue
+          // learning + imports) share one horizontal strip since they're
+          // the same card type; videos get their own strip right below
+          // since they're a different shape, but under the same header.
+          ..._buildMobileMyContentSection(context, mediaLibraryService),
 
           // New Stories Section Header & Filters
           const SizedBox(height: 12),
@@ -876,6 +741,118 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildMobileMyContentSection(BuildContext context, MediaLibraryService mediaLibraryService) {
+    final readingItems = <Widget>[
+      ..._continueLearningArticles.map(
+        (a) => Padding(
+          padding: const EdgeInsets.only(right: 16.0),
+          child: CompactArticleCard(article: a, onTap: () => _openReader(a)),
+        ),
+      ),
+      ...mediaLibraryService.importedArticles.map(
+        (a) => Padding(
+          padding: const EdgeInsets.only(right: 16.0),
+          child: CompactArticleCard(
+            article: a,
+            onTap: () => _openReader(a),
+            onDelete: () => _confirmDelete(context, a, mediaLibraryService),
+          ),
+        ),
+      ),
+    ];
+    final videos = mediaLibraryService.processedVideos;
+
+    if (readingItems.isEmpty && videos.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+          child: Text(
+            'MY CONTENT',
+            style: BooksModernist.body(size: 11, weight: FontWeight.w800, color: BooksModernist.accentDark),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(6.0),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+            ),
+            child: Text(
+              'Nothing here yet — import an article or video to get started.',
+              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ];
+    }
+
+    return [
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'MY CONTENT',
+              style: BooksModernist.body(size: 11, weight: FontWeight.w800, color: BooksModernist.accentDark),
+            ),
+            if (videos.isNotEmpty)
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TranscribedMediaGridScreen()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'All Videos',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded, size: 16, color: Theme.of(context).colorScheme.primary),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      if (readingItems.isNotEmpty)
+        SizedBox(
+          height: 150,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            children: readingItems,
+          ),
+        ),
+      if (videos.isNotEmpty) ...[
+        if (readingItems.isNotEmpty) const SizedBox(height: 12),
+        SizedBox(
+          height: 200,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: videos.length,
+            itemBuilder: (context, index) => _buildVideoCard(context, videos[index], mediaLibraryService),
+          ),
+        ),
+      ],
+      const SizedBox(height: 16),
+    ];
   }
 
   Widget _buildVideoCard(BuildContext context, ProcessedVideo video, MediaLibraryService mediaLibraryService) {
@@ -999,15 +976,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                     const SizedBox(width: 3),
                                     Text(
                                       '${video.subtitles.length} cues',
-                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                     ),
                                     if (video.estimatedDurationLabel.isNotEmpty) ...[
                                       const SizedBox(width: 4),
-                                      const Text('•', style: TextStyle(fontSize: 8, color: Colors.white70)),
+                                      const Text('•', style: TextStyle(fontSize: 10, color: Colors.white70)),
                                       const SizedBox(width: 4),
                                       Text(
                                         video.estimatedDurationLabel,
-                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                       ),
                                     ],
                                   ],
@@ -1022,7 +999,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                 ),
                                 child: Text(
                                   '${video.effectiveProgress}%',
-                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                               )
                             else
@@ -1034,7 +1011,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                 ),
                                 child: const Text(
                                   'FAILED',
-                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                               ),
                             if (isCompleted)
@@ -1060,7 +1037,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         video.effectiveTitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, height: 1.2),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, height: 1.2),
                       ),
 
                       // Tags & Status Row
@@ -1079,7 +1056,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 8.5,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.3,
                                   color: colorScheme.onSecondaryContainer,
@@ -1154,7 +1131,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                             video.effectiveTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -1178,7 +1155,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.edit_outlined, size: 19),
-                  title: const Text('Edit Title', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Edit Title', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _showEditTitleDialog(context, video, mediaLibraryService);
@@ -1191,7 +1168,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.label_outline_rounded, size: 19),
-                  title: const Text('Set Category', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Set Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   trailing: video.category?.isNotEmpty == true
                       ? Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1201,7 +1178,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           ),
                           child: Text(
                             video.category!.toUpperCase(),
-                            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: colorScheme.onSecondaryContainer),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSecondaryContainer),
                           ),
                         )
                       : null,
@@ -1217,7 +1194,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.copy_rounded, size: 19),
-                  title: const Text('Copy Link', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Copy Link', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     Clipboard.setData(ClipboardData(text: video.url));
@@ -1233,7 +1210,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: Icon(Icons.refresh_rounded, size: 19, color: colorScheme.primary),
-                  title: const Text('Submit URL Again', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Submit URL Again', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     mediaLibraryService.submitMediaProcessingTaskInBackground(video.url);
@@ -1249,7 +1226,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: Icon(Icons.delete_outline_rounded, size: 19, color: colorScheme.error),
-                  title: Text('Delete Lesson', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: colorScheme.error)),
+                  title: Text('Delete Lesson', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.error)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _confirmDeleteVideo(context, video, mediaLibraryService);
@@ -1341,7 +1318,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         children: [
                           Icon(Icons.history_rounded, size: 13, color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 4),
-                          const Text('Recent Categories:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          const Text('Recent Categories:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const SizedBox(height: 5),
@@ -1351,7 +1328,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         children: recentCategories.map((cat) {
                           final isSelected = selected.toLowerCase() == cat.toLowerCase();
                           return ChoiceChip(
-                            label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                            label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                             selected: isSelected,
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
@@ -1367,7 +1344,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       ),
                       const SizedBox(height: 10),
                     ],
-                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 5),
                     Wrap(
                       spacing: 5,
@@ -1375,7 +1352,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       children: remainingPresets.map((cat) {
                         final isSelected = selected.toLowerCase() == cat.toLowerCase();
                         return ChoiceChip(
-                          label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                          label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                           selected: isSelected,
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
