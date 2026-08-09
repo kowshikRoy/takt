@@ -211,8 +211,14 @@ class HomeScreen extends StatelessWidget {
     final headerBg = Theme.of(context).cardColor;
     final rustAccent = const Color(0xFF8C2D19);
 
+    // Desktop's nav rail already has its own "Sync Account" button that
+    // opens this exact same dialog — showing the cloud icon here too would
+    // just be a second control for the same action. Mobile has no such
+    // rail, so this icon stays there as the only entry point.
+    final bool isDesktop = MediaQuery.sizeOf(context).width > 700;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 14),
       decoration: BoxDecoration(
         color: headerBg,
         boxShadow: [
@@ -223,7 +229,18 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      // Capped and centered to line up with the CappedWidth content column
+      // below. The 20px horizontal inset has to live *inside* the cap (not
+      // as the outer Container's own padding, which was the previous bug) —
+      // the content column below applies its horizontal Padding(20) inside
+      // its CappedWidth(1000) too, so this is the only way both edges land
+      // on the same x position instead of the header sitting 20px further
+      // out than the card below it.
+      child: CappedWidth(
+        maxWidth: 1000,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Flexible(
@@ -273,7 +290,7 @@ class HomeScreen extends StatelessWidget {
                         'GUTEN MORGEN!',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.8,
                           color: inkColor,
@@ -285,7 +302,7 @@ class HomeScreen extends StatelessWidget {
                             'Level ${gamification.level}',
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: inkColor.withValues(alpha: 0.7),
                             ),
@@ -300,21 +317,23 @@ class HomeScreen extends StatelessWidget {
           ),
           Row(
             children: [
-              Consumer<AuthService>(
-                builder: (context, auth, _) {
-                  return IconButton(
-                    icon: Icon(
-                      auth.isAuthenticated
-                          ? Icons.cloud_done_rounded
-                          : Icons.cloud_queue_rounded,
-                      color: inkColor,
-                    ),
-                    tooltip: 'Cloud Sync & Account',
-                    onPressed: () => AuthSyncDialog.show(context),
-                  );
-                },
-              ),
-              const SizedBox(width: 4),
+              if (!isDesktop) ...[
+                Consumer<AuthService>(
+                  builder: (context, auth, _) {
+                    return IconButton(
+                      icon: Icon(
+                        auth.isAuthenticated
+                            ? Icons.cloud_done_rounded
+                            : Icons.cloud_queue_rounded,
+                        color: inkColor,
+                      ),
+                      tooltip: 'Cloud Sync & Account',
+                      onPressed: () => AuthSyncDialog.show(context),
+                    );
+                  },
+                ),
+                const SizedBox(width: 4),
+              ],
               Consumer<ProfileService>(
                 builder: (context, profileService, _) {
                   return Container(
@@ -353,6 +372,8 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ],
+        ),
+        ),
       ),
     );
   }
@@ -621,7 +642,7 @@ class HomeScreen extends StatelessWidget {
                                     ? 'Daily Review: $dueCount Due Now'
                                     : 'Daily Review (Unlock at 5 words)',
                                 style: TextStyle(
-                                  fontSize: 13.5,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: inkColor,
                                 ),
@@ -632,7 +653,7 @@ class HomeScreen extends StatelessWidget {
                                     ? 'Review your personalized Study Deck'
                                     : '$savedCount of 5 words in Study Deck so far',
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 12,
                                   color: inkColor.withValues(alpha: 0.65),
                                 ),
                               ),
@@ -990,7 +1011,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitlePhrasesHub ??
                           '1.000+ Redemittel für Gastronomie, Small Talk & Alltag',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1064,7 +1085,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitleGrammarLessons ??
                           'Formulas, matrices, and teacher tips',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1138,7 +1159,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitleVocabFlashcards ??
                           'Review your saved vocabulary cards',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1212,7 +1233,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitleCompoundPuzzle ??
                           'Build massive words',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1286,7 +1307,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitleSpeakingPracticeCard ??
                           'Speech Shadowing',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1363,7 +1384,7 @@ class HomeScreen extends StatelessWidget {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1521,7 +1542,7 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
                   Text(
                     'Kapitel ${_resumeChapter!.chapterNumber}',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: bannerText,
                     ),
