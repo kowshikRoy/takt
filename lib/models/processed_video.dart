@@ -228,14 +228,16 @@ class ProcessedVideo {
       statusEnum = ProcessingStatus.finalizing;
     }
 
-    final subList = (json['subtitles'] as List<dynamic>? ?? []).map((cue) {
-      return SubtitleCue(
-        start: (cue['start'] as num).toDouble(),
-        end: (cue['end'] as num).toDouble(),
-        original: cue['original'] as String,
-        translated: cue['translated'] as String,
-      );
-    }).toList();
+    final subList = SubtitleCue.mergeFragmentedCues(
+      (json['subtitles'] as List<dynamic>? ?? []).map((cue) {
+        return SubtitleCue(
+          start: (cue['start'] as num).toDouble(),
+          end: (cue['end'] as num).toDouble(),
+          original: cue['original'] as String? ?? '',
+          translated: cue['translated'] as String? ?? '',
+        );
+      }).toList(),
+    );
 
     final urlStr = json['url'] as String? ?? '';
     String? thumb = json['thumbnail'] as String?;

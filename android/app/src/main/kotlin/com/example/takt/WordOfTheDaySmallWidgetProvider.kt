@@ -20,7 +20,7 @@ class WordOfTheDaySmallWidgetProvider : HomeWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_NEXT_WORD) {
+        if (intent.action == ACTION_NEXT_WORD || intent.action == Intent.ACTION_USER_PRESENT) {
             val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
             val jsonStr = prefs.getString("widget_words_json", null)
 

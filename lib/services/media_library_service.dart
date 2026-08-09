@@ -480,14 +480,16 @@ class MediaLibraryService extends ChangeNotifier {
         final title = resultData['title'] as String?;
         final subtitlesRaw = resultData['subtitles'] as List<dynamic>? ?? [];
 
-        List<SubtitleCue> subtitles = subtitlesRaw.map((cue) {
-          return SubtitleCue(
-            start: (cue['start'] as num).toDouble(),
-            end: (cue['end'] as num).toDouble(),
-            original: (cue['original'] as String?) ?? '',
-            translated: (cue['translated'] as String?) ?? '',
-          );
-        }).toList();
+        List<SubtitleCue> subtitles = SubtitleCue.mergeFragmentedCues(
+          subtitlesRaw.map((cue) {
+            return SubtitleCue(
+              start: (cue['start'] as num).toDouble(),
+              end: (cue['end'] as num).toDouble(),
+              original: (cue['original'] as String?) ?? '',
+              translated: (cue['translated'] as String?) ?? '',
+            );
+          }).toList(),
+        );
 
         // Translate missing cues locally via On-Device ML Kit
         final onDeviceAI = OnDeviceAIService();

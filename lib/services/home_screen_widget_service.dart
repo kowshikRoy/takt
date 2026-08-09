@@ -164,6 +164,47 @@ class HomeScreenWidgetService {
         } catch (_) {}
       }
 
+      // Helper to resolve rich multi-definitions for each card
+      Future<String> resolveRichDefinitions({
+        required String word,
+        String? primary,
+        List<String>? existingDefs,
+      }) async {
+        final List<String> defs = [];
+        if (existingDefs != null && existingDefs.isNotEmpty) {
+          defs.addAll(existingDefs.map((d) => d.trim()).where((d) => d.isNotEmpty));
+        }
+        if (primary != null && primary.trim().isNotEmpty && !defs.any((d) => d.toLowerCase() == primary.trim().toLowerCase())) {
+          defs.insert(0, primary.trim());
+        }
+
+        // If we only have 0 or 1 definition, lookup offline database for additional senses
+        if (defs.length <= 1) {
+          try {
+            final dbEntries = await dict.lookupWordFast(word);
+            for (final entry in dbEntries) {
+              final entryDefs = entry['definitions'];
+              if (entryDefs is List) {
+                for (final d in entryDefs) {
+                  final s = d?.toString().trim() ?? '';
+                  if (s.isNotEmpty && !defs.any((existing) => existing.toLowerCase() == s.toLowerCase())) {
+                    defs.add(s);
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (defs.isEmpty) return 'word, term';
+        if (defs.length == 1) return defs.first;
+
+        // Formats multiple definitions as numbered lines:
+        // 1. primary definition
+        // 2. secondary definition
+        return defs.take(4).toList().asMap().entries.map((e) => '${e.key + 1}. ${e.value}').join('\n');
+      }
+
       // Build a swipeable deck of words (due words + saved words + curated fallbacks)
       final List<Map<String, String>> deck = [];
       final Set<String> seenWords = {};
@@ -194,13 +235,23 @@ class HomeScreenWidgetService {
       }
 
       // Add featured or first word
-      addCard(word: wordStr, definition: definition, cefr: cefr, article: article);
+      final featuredRichDef = await resolveRichDefinitions(
+        word: wordStr,
+        primary: definition,
+        existingDefs: featuredWord?.definitions,
+      );
+      addCard(word: wordStr, definition: featuredRichDef, cefr: cefr, article: article);
 
       // Add due review words
       for (final due in dueWords.take(5)) {
+        final dueRichDef = await resolveRichDefinitions(
+          word: due.word,
+          primary: due.primaryDefinition,
+          existingDefs: due.definitions,
+        );
         addCard(
           word: due.word,
-          definition: due.primaryDefinition,
+          definition: dueRichDef,
           cefr: 'B1',
           article: due.article,
         );
@@ -209,9 +260,14 @@ class HomeScreenWidgetService {
       // Add saved vocabulary words
       final allSaved = await vocab.getSavedWords();
       for (final saved in allSaved.take(8)) {
+        final savedRichDef = await resolveRichDefinitions(
+          word: saved.word,
+          primary: saved.primaryDefinition,
+          existingDefs: saved.definitions,
+        );
         addCard(
           word: saved.word,
-          definition: saved.primaryDefinition,
+          definition: savedRichDef,
           cefr: 'B1',
           article: saved.article,
         );
@@ -219,11 +275,11 @@ class HomeScreenWidgetService {
 
       // Fallback curated words if deck is small
       final curated = [
-        {'word': 'die Uhr', 'def': 'clock, watch, o\'clock', 'cefr': 'A1'},
-        {'word': 'das Ziel', 'def': 'goal, target, destination', 'cefr': 'B1'},
-        {'word': 'die Entscheidung', 'def': 'decision, determination', 'cefr': 'B2'},
-        {'word': 'die Entwicklung', 'def': 'development, progress', 'cefr': 'B1'},
-        {'word': 'der Erfolg', 'def': 'success, achievement', 'cefr': 'A2'},
+        {'word': 'die Uhr', 'def': '1. clock, watch\n2. o\'clock (time)', 'cefr': 'A1'},
+        {'word': 'das Ziel', 'def': '1. goal, objective\n2. destination, target', 'cefr': 'B1'},
+        {'word': 'die Entscheidung', 'def': '1. decision, choice\n2. determination, ruling', 'cefr': 'B2'},
+        {'word': 'die Entwicklung', 'def': '1. development, evolution\n2. progress, advance', 'cefr': 'B1'},
+        {'word': 'der Erfolg', 'def': '1. success, achievement\n2. hit, victory', 'cefr': 'A2'},
       ];
       for (final item in curated) {
         if (deck.length >= 8) break;
