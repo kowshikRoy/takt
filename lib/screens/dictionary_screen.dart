@@ -12,6 +12,7 @@ import '../theme/books_modernist_style.dart';
 import '../services/discovery_service.dart';
 import '../widgets/vocab_status_pills.dart';
 import '../widgets/word_edit_sheet.dart';
+import '../widgets/base_form_tooltip_link.dart';
 import 'word_detail_screen.dart';
 
 class DictionaryScreen extends StatefulWidget {
@@ -1423,6 +1424,48 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     return '';
   }
 
+  /// Grammatical labels that mark a definition as an inflected-form gloss
+  /// (noun cases/plural, and verb person/tense/mood forms) rather than an
+  /// ordinary dictionary sense.
+  static const _grammaticalFormKeywords = [
+    'strong', 'weak', 'mixed', 'inflection', 'participle', 'plural',
+    'genitive', 'dative', 'accusative', 'nominative', 'singular',
+    'degree', 'comparative', 'superlative',
+    'person', 'present', 'past', 'imperative', 'subjunctive',
+    'indicative', 'preterite', 'perfect', 'tense',
+  ];
+
+  /// If [d] is an inflected-form gloss (e.g. "plural of Temperatur",
+  /// "genitive singular of Haus", "third-person singular present of
+  /// gehen"), splits it into the leading grammatical label and the base
+  /// word it points to, so the base word can be rendered as a tappable
+  /// lookup instead of dead text.
+  ({String prefix, String baseWord})? _parseFormOfDefinition(
+    String d,
+    String headword,
+  ) {
+    final trimmed = d.trim();
+    if (trimmed.isEmpty) return null;
+
+    final match = RegExp(
+      r'^(.*\bof\s+)([A-ZÄÖÜa-zäöüß][\wäöüÄÖÜß-]*)[.:\s]*$',
+      caseSensitive: false,
+    ).firstMatch(trimmed);
+    if (match == null) return null;
+
+    final prefix = match.group(1)!;
+    final lowerPrefix = prefix.toLowerCase();
+    final looksLikeFormOf =
+        _grammaticalFormKeywords.any((k) => lowerPrefix.contains(k));
+    if (!looksLikeFormOf) return null;
+
+    final baseWord = match.group(2)!.trim();
+    if (baseWord.isEmpty || baseWord.toLowerCase() == headword.toLowerCase()) {
+      return null;
+    }
+    return (prefix: prefix, baseWord: baseWord);
+  }
+
   Widget _buildMainCard(BuildContext context, Map<String, dynamic> wordData) {
     final colorScheme = Theme.of(context).colorScheme;
     final word = wordData['word']?.toString() ?? '';
@@ -1602,15 +1645,37 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
-                                    child: Text(
-                                      d,
-                                      textAlign: TextAlign.left,
-                                      style: BooksModernist.body(
+                                    child: Builder(builder: (context) {
+                                      final defStyle = BooksModernist.body(
                                         size: 14.5,
                                         weight: FontWeight.w600,
                                         color: colorScheme.onSurface,
-                                      ),
-                                    ),
+                                      );
+                                      final formOf = _parseFormOfDefinition(d, word);
+                                      if (formOf == null) {
+                                        return Text(
+                                          d,
+                                          textAlign: TextAlign.left,
+                                          style: defStyle,
+                                        );
+                                      }
+                                      return Text.rich(
+                                        TextSpan(
+                                          style: defStyle,
+                                          children: [
+                                            TextSpan(text: formOf.prefix),
+                                            WidgetSpan(
+                                              alignment: PlaceholderAlignment.baseline,
+                                              baseline: TextBaseline.alphabetic,
+                                              child: BaseFormTooltipLink(
+                                                baseWord: formOf.baseWord,
+                                                style: defStyle,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
                                   ),
                                   if (badges.isNotEmpty) ...[
                                     const SizedBox(width: 8),

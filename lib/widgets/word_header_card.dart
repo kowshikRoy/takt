@@ -9,6 +9,7 @@ import '../services/goethe_curriculum_service.dart';
 import 'vocab_status_pills.dart';
 import 'noun_headword_title.dart';
 import 'edit_word_dialog.dart';
+import 'base_form_tooltip_link.dart';
 
 class WordHeaderCard extends StatelessWidget {
   final Map<String, dynamic> wordData;
@@ -224,6 +225,46 @@ class WordHeaderCard extends StatelessWidget {
       return [data['definition'].toString().trim()];
     }
     return [];
+  }
+
+  /// Grammatical labels that mark a definition as an inflected-form gloss
+  /// (noun cases/plural, and verb person/tense/mood forms) rather than an
+  /// ordinary dictionary sense.
+  static const _grammaticalFormKeywords = [
+    'strong', 'weak', 'mixed', 'inflection', 'participle', 'plural',
+    'genitive', 'dative', 'accusative', 'nominative', 'singular',
+    'degree', 'comparative', 'superlative',
+    'person', 'present', 'past', 'imperative', 'subjunctive',
+    'indicative', 'preterite', 'perfect', 'tense',
+  ];
+
+  /// If [d] is an inflected-form gloss (e.g. "plural of Temperatur",
+  /// "genitive singular of Haus", "third-person singular present of
+  /// gehen"), splits it into the leading grammatical label and the base
+  /// word it points to, so the base word can be rendered as a tappable
+  /// lookup instead of dead text.
+  ({String prefix, String baseWord})? _parseFormOfDefinition(String d) {
+    final trimmed = d.trim();
+    if (trimmed.isEmpty) return null;
+
+    final match = RegExp(
+      r'^(.*\bof\s+)([A-ZÄÖÜa-zäöüß][\wäöüÄÖÜß-]*)[.:\s]*$',
+      caseSensitive: false,
+    ).firstMatch(trimmed);
+    if (match == null) return null;
+
+    final prefix = match.group(1)!;
+    final lowerPrefix = prefix.toLowerCase();
+    final looksLikeFormOf =
+        _grammaticalFormKeywords.any((k) => lowerPrefix.contains(k));
+    if (!looksLikeFormOf) return null;
+
+    final baseWord = match.group(2)!.trim();
+    final headword = (wordData['word']?.toString() ?? '').trim();
+    if (baseWord.isEmpty || baseWord.toLowerCase() == headword.toLowerCase()) {
+      return null;
+    }
+    return (prefix: prefix, baseWord: baseWord);
   }
 
   String _extractSingleSentence(String rawText, String targetWord) {
@@ -549,15 +590,34 @@ class WordHeaderCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            d,
-                            style: BooksModernist.body(
+                          child: Builder(builder: (context) {
+                            final defStyle = BooksModernist.body(
                               size: 14.5,
                               weight: FontWeight.w600,
                               color: colorScheme.onSurface,
                               context: context,
-                            ),
-                          ),
+                            );
+                            final formOf = _parseFormOfDefinition(d);
+                            if (formOf == null) {
+                              return Text(d, style: defStyle);
+                            }
+                            return Text.rich(
+                              TextSpan(
+                                style: defStyle,
+                                children: [
+                                  TextSpan(text: formOf.prefix),
+                                  WidgetSpan(
+                                    alignment: PlaceholderAlignment.baseline,
+                                    baseline: TextBaseline.alphabetic,
+                                    child: BaseFormTooltipLink(
+                                      baseWord: formOf.baseWord,
+                                      style: defStyle,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
                         ),
                         if (badges.isNotEmpty) ...[
                           const SizedBox(width: 8),
