@@ -32,7 +32,6 @@ class WordOfTheDayWidgetProvider : HomeWidgetProvider() {
 
             // Bind values to RemoteViews
             views.setTextViewText(R.id.widget_word_title, word)
-            views.setTextViewText(R.id.widget_word_ipa, ipa)
             views.setTextViewText(R.id.widget_word_definition, definition)
             views.setTextViewText(R.id.widget_cefr_badge, cefr)
             views.setTextViewText(R.id.widget_streak_text, streak)

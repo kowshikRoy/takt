@@ -114,19 +114,21 @@ void main() {
     });
 
     testWidgets('PhraseCatalogScreen renders title and search bar', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       SharedPreferences.setMockInitialValues({});
       final phraseService = PhraseService();
-      await phraseService.init();
+      phraseService.setPhrasesForTesting([testPhrase]);
 
       await tester.pumpWidget(createWrapper(const PhraseCatalogScreen(), phraseService));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('ALLTAGSSPRACHE'), findsOneWidget);
       expect(find.text('Phrasen & Redemittel'), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
-
-      await tester.pumpWidget(Container());
     });
   });
 }

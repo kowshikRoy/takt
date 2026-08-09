@@ -173,6 +173,117 @@ def parse_vtt_timestamp(ts: str) -> float:
         return 0.0
     return 0.0
 
+_ABBREVIATIONS = {
+    "z.b.", "d.h.", "u.a.", "bzw.", "ca.", "usw.", "dr.", "prof.",
+    "nr.", "str.", "jan.", "feb.", "mrz.", "apr.", "jun.", "jul.",
+    "aug.", "sept.", "okt.", "nov.", "dez.", "mio.", "mrd.", "evtl.",
+    "vgl.", "inkl.", "exkl.", "min.", "std.", "usf.", "abs.", "art.",
+    "st.", "vs.", "etc.", "co.", "inc.", "ltd.", "hr.", "fr.",
+}
+
+def is_sentence_terminal(text: str) -> bool:
+    """Checks if a subtitle fragment ends with terminal sentence punctuation (not an abbreviation)."""
+    clean = text.rstrip("\"'»«”’)")
+    if not clean:
+        return False
+    if clean.endswith(('.', '!', '?', '…', '?!', '!?')):
+        words = clean.split()
+        if not words:
+            return False
+        last_word = words[-1].lower()
+        if last_word in _ABBREVIATIONS:
+            return False
+        # Ordinal numbers or date notations like "1.", "2024."
+        if re.match(r'^\d+\.$', last_word):
+            return False
+        return True
+    return False
+
+def merge_cues_into_sentences(
+    cues: list[SubtitleCue],
+    max_duration: float = 12.0,
+    max_chars: int = 180,
+    max_pause_gap: float = 1.8
+) -> list[SubtitleCue]:
+    """
+    Merges fragmented subtitle cues (from Whisper or auto-captions) into complete, natural sentences.
+    - Groups consecutive fragments until a sentence-final terminator (. ! ? …) is reached.
+    - Connects trailing clauses starting with lowercase words (conjunctions, verbs, adjectives).
+    - Honors max_duration and max_chars to keep individual subtitles reader-friendly.
+    - Preserves exact start timestamp of the first chunk and end timestamp of the final chunk.
+    - Concatenates translations alongside original German text when available.
+    """
+    if not cues:
+        return []
+
+    merged: list[SubtitleCue] = []
+    current_group: list[SubtitleCue] = []
+
+    def flush_group():
+        if not current_group:
+            return
+        start_time = current_group[0].start
+        end_time = current_group[-1].end
+
+        combined_original = " ".join(c.original.strip() for c in current_group if c.original.strip())
+        combined_original = re.sub(r'\s+([,.:;!?])', r'\1', combined_original)
+        combined_original = re.sub(r'\s+', ' ', combined_original).strip()
+
+        translations = [c.translated.strip() for c in current_group if c.translated and c.translated.strip()]
+        combined_translated = " ".join(translations) if translations else ""
+        if combined_translated:
+            combined_translated = re.sub(r'\s+([,.:;!?])', r'\1', combined_translated)
+            combined_translated = re.sub(r'\s+', ' ', combined_translated).strip()
+
+        if combined_original:
+            merged.append(SubtitleCue(
+                start=round(start_time, 2),
+                end=max(round(start_time + 0.5, 2), round(end_time, 2)),
+                original=combined_original,
+                translated=combined_translated
+            ))
+        current_group.clear()
+
+    for cue in cues:
+        cue_text = cue.original.strip()
+        if not cue_text:
+            continue
+
+        if not current_group:
+            current_group.append(cue)
+            continue
+
+        prev_cue = current_group[-1]
+        prev_text = prev_cue.original.strip()
+
+        group_duration = cue.end - current_group[0].start
+        group_char_count = sum(len(c.original) for c in current_group) + len(cue_text) + 1
+        pause_gap = cue.start - prev_cue.end
+
+        prev_is_terminal = is_sentence_terminal(prev_text)
+        first_char = cue_text[0] if cue_text else ''
+        starts_lowercase = first_char.islower()
+
+        should_merge = False
+
+        if not prev_is_terminal:
+            if group_duration <= max_duration and group_char_count <= max_chars and pause_gap <= max_pause_gap:
+                should_merge = True
+            elif starts_lowercase and group_duration <= max_duration * 1.3:
+                should_merge = True
+        else:
+            if starts_lowercase and pause_gap <= 0.8 and group_duration <= max_duration:
+                should_merge = True
+
+        if should_merge:
+            current_group.append(cue)
+        else:
+            flush_group()
+            current_group.append(cue)
+
+    flush_group()
+    return merged
+
 def process_vtt_content(content: str) -> list[SubtitleCue]:
     """Parses a VTT subtitle string and returns a list of clean cues."""
     subtitles = []
@@ -210,7 +321,7 @@ def process_vtt_content(content: str) -> list[SubtitleCue]:
             print(f"Skipping invalid VTT cue: '{cue}' due to error: {e}")
             continue
             
-    return subtitles
+    return merge_cues_into_sentences(subtitles)
 
 def process_vtt_file(file_path: str) -> list[SubtitleCue]:
     """Parses a VTT subtitle file and returns a list of clean cues."""
@@ -244,8 +355,9 @@ def fetch_youtube_transcript(url: str) -> list[SubtitleCue]:
                 original=clean_text,
                 translated=""
             ))
-        print(f"Successfully fetched {len(subtitles)} captions via youtube_transcript_api.fetch for video {video_id}!")
-        return subtitles
+        merged_cues = merge_cues_into_sentences(subtitles)
+        print(f"Successfully fetched {len(merged_cues)} sentence-merged captions via youtube_transcript_api.fetch for video {video_id}!")
+        return merged_cues
     except Exception as e:
         print(f"youtube_transcript_api error: {e}")
         return []
@@ -269,7 +381,7 @@ def parse_srt_content(srt_text: str) -> list[SubtitleCue]:
                 clean_text = re.sub(r'\s+', ' ', clean_text)
                 if clean_text:
                     subtitles.append(SubtitleCue(start=start_sec, end=end_sec, original=clean_text, translated=""))
-    return subtitles
+    return merge_cues_into_sentences(subtitles)
 
 def parse_youtube_xml_captions(xml_text: str) -> list[SubtitleCue]:
     """Parses YouTube format 3 XML captions into clean SubtitleCue list."""
@@ -300,7 +412,7 @@ def parse_youtube_xml_captions(xml_text: str) -> list[SubtitleCue]:
                 ))
     except Exception as e:
         print(f"XML caption parse error: {e}")
-    return cues
+    return merge_cues_into_sentences(cues)
 
 def fetch_innertube_transcript_api(url: str) -> list[SubtitleCue]:
     """Extracts YouTube subtitles directly via YouTube's InnerTube get_transcript endpoint (100% reliable on GCP Cloud Run Data Center IPs)."""
@@ -356,8 +468,9 @@ def fetch_innertube_transcript_api(url: str) -> list[SubtitleCue]:
                         e_sec = round(int(end_ms) / 1000.0, 2)
                         clean_text = text.encode().decode('unicode-escape').strip()
                         cues.append(SubtitleCue(start=s_sec, end=e_sec, original=clean_text, translated=clean_text))
-                    print(f"InnerTube get_transcript API successfully extracted {len(cues)} clean cues for video {video_id}!")
-                    return cues
+                    merged_cues = merge_cues_into_sentences(cues)
+                    print(f"InnerTube get_transcript API successfully extracted {len(merged_cues)} sentence-merged cues for video {video_id}!")
+                    return merged_cues
     except Exception as e:
         print(f"InnerTube get_transcript error: {e}")
     return []
@@ -1060,7 +1173,7 @@ def transcribe_and_translate(audio_path: str):
             translated=""  # Client device translates locally via Google ML Kit
         ))
         
-    return subtitles
+    return merge_cues_into_sentences(subtitles)
 
 def transcribe_speech(audio_path: str) -> str:
     """Transcribes a short spoken-German recording into a plain text string."""
@@ -1318,10 +1431,11 @@ async def process_media_task(task_id: str, url: str):
                     thumbnail = f"https://i.ytimg.com/vi/{vid_match.group(1)}/hqdefault.jpg"
 
         update_task_stage(task_id, "Finalizing media lesson...", 95)
+        final_subtitles = merge_cues_into_sentences(subtitles)
         response_data = MediaResponse(
             video_url=media_url,
             media_type=media_type,
-            subtitles=subtitles,
+            subtitles=final_subtitles,
             title=title or "German Dialogue Lesson",
             thumbnail=thumbnail,
         )

@@ -50,7 +50,45 @@ def inspect_word(word, db_path=None):
     words = c.fetchall()
 
     if not words:
-        print("No entry found in 'words' table.")
+        print("No entry found in 'words' table (local database).")
+        print("\nChecking WiktAPI (Wiktionary Online Fallback)...")
+        try:
+            import urllib.request
+            import urllib.parse
+            import json
+
+            url = f"https://api.wiktapi.dev/v1/en/word/{urllib.parse.quote(word)}?lang=de"
+            req = urllib.request.Request(url, headers={'User-Agent': 'TaktApp/1.0', 'Accept': 'application/json'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode('utf-8'))
+                    entries = data.get('entries', [])
+                    if entries:
+                        print(f"Found {len(entries)} entry/entries in Wiktionary API:")
+                        for idx, entry in enumerate(entries, 1):
+                            sounds = entry.get('sounds', [])
+                            ipa = next((s.get('ipa') for s in sounds if s.get('ipa')), 'N/A')
+                            print(f"\n[Online Sense #{idx}] Word: {word}")
+                            print(f"  IPA: {ipa}")
+                            senses = entry.get('senses', [])
+                            for s in senses:
+                                tags = s.get('tags', [])
+                                glosses = s.get('glosses', [])
+                                form_of = s.get('form_of', [])
+                                if tags:
+                                    print(f"  Tags: {', '.join(tags)}")
+                                if form_of:
+                                    print(f"  Form Of: {', '.join(f.get('word', '') for f in form_of)}")
+                                if glosses:
+                                    print("  Definitions:")
+                                    for g in glosses:
+                                        print(f"    - {g}")
+                    else:
+                        print("No entries returned from WiktAPI.")
+                else:
+                    print(f"WiktAPI returned status {response.status}.")
+        except Exception as e:
+            print(f"Could not connect to WiktAPI: {e}")
         conn.close()
         return
 

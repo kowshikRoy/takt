@@ -18,6 +18,7 @@
             android:id="@+id/widget_app_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="@font/spline_sans"
             android:text="TAKT"
             android:textColor="#8C2D19"
             android:textSize="11sp"
@@ -29,9 +30,10 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:background="@drawable/widget_cefr_badge_bg"
-            android:paddingLeft="6dp"
+            android:fontFamily="@font/spline_sans"
+            android:paddingLeft="7dp"
             android:paddingTop="2dp"
-            android:paddingRight="6dp"
+            android:paddingRight="7dp"
             android:paddingBottom="2dp"
             android:text="B1"
             android:textColor="#1565C0"
@@ -48,9 +50,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/widget_chip_bg"
-            android:paddingLeft="6dp"
+            android:fontFamily="@font/spline_sans"
+            android:paddingLeft="8dp"
             android:paddingTop="2dp"
-            android:paddingRight="6dp"
+            android:paddingRight="8dp"
             android:paddingBottom="2dp"
             android:text="🔥 3"
             android:textColor="#1E1B18"
@@ -63,9 +66,10 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
             android:background="@drawable/widget_chip_bg"
-            android:paddingLeft="6dp"
+            android:fontFamily="@font/spline_sans"
+            android:paddingLeft="8dp"
             android:paddingTop="2dp"
-            android:paddingRight="6dp"
+            android:paddingRight="8dp"
             android:paddingBottom="2dp"
             android:text="⚡ 0"
             android:textColor="#8C2D19"
@@ -73,38 +77,27 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Main Word & Translation -->
+    <!-- Main Word & Translation Area (Centrally Spaced) -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="vertical">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/widget_word_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:baselineAligned="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/widget_word_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="das Wort"
-                android:textColor="#1E1B18"
-                android:textSize="19sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/widget_word_ipa"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="/vɔʁt/"
-                android:textColor="#78716C"
-                android:textSize="12sp" />
-        </LinearLayout>
+            android:ellipsize="end"
+            android:fontFamily="@font/spline_sans"
+            android:maxLines="1"
+            android:text="das Wort"
+            android:textColor="#1A1614"
+            android:textSize="22sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_word_definition"
@@ -112,6 +105,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:ellipsize="end"
+            android:fontFamily="@font/spline_sans"
             android:maxLines="1"
             android:text="word, term"
             android:textColor="#8C2D19"
@@ -119,25 +113,28 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Example / Context Sentence -->
+    <!-- Example / Context Sentence Box -->
     <LinearLayout
         android:id="@+id/widget_example_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
         android:background="@drawable/widget_chip_bg"
         android:orientation="vertical"
-        android:padding="6dp">
+        android:paddingLeft="10dp"
+        android:paddingTop="6dp"
+        android:paddingRight="10dp"
+        android:paddingBottom="6dp">
 
         <TextView
             android:id="@+id/widget_example_de"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
+            android:fontFamily="@font/spline_sans"
             android:maxLines="1"
             android:text="Ein Bild sagt mehr als tausend Worte."
-            android:textColor="#1E1B18"
-            android:textSize="11sp"
+            android:textColor="#2C2825"
+            android:textSize="12sp"
             android:textStyle="italic" />
 
         <TextView
@@ -146,9 +143,10 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="1dp"
             android:ellipsize="end"
+            android:fontFamily="@font/spline_sans"
             android:maxLines="1"
             android:text="A picture is worth a thousand words."
-            android:textColor="#78716C"
+            android:textColor="#706A64"
             android:textSize="11sp" />
     </LinearLayout>
 

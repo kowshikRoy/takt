@@ -166,8 +166,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 // Responsive Grid for Stories — column count scales with
                 // WindowClass instead of a hardcoded 2, so this ~65%-width
                 // pane uses the extra room on Large desktop viewports.
+                // childAspectRatio taken from origin/main's fix (0.78, up
+                // from 0.85) — same tweak, just carried onto this widget
+                // since main's version predates the switch to ResponsiveGrid.
                 ResponsiveGrid(
-                  childAspectRatio: 0.85,
+                  childAspectRatio: 0.78,
                   mediumColumns: 2,
                   expandedColumns: 2,
                   largeColumns: 3,

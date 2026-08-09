@@ -51,17 +51,25 @@
                 android:resource="@xml/word_of_the_day_widget_info" />
         </receiver>
 
-        <!-- Small (2x2) Word of the Day Widget -->
+        <!-- Small (2x1) Word of the Day Stack Widget -->
         <receiver
             android:name=".WordOfTheDaySmallWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.takt.ACTION_NEXT_WORD" />
+                <action android:name="android.intent.action.USER_PRESENT" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/word_of_the_day_small_widget_info" />
         </receiver>
+
+        <!-- RemoteViewsService for swipeable stack widget -->
+        <service
+            android:name=".WordWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
 
         <!-- Disable Impeller backend if hardware buffer allocation / gralloc fails on Qualcomm/Samsung devices -->
         <meta-data

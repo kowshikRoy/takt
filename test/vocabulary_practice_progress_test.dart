@@ -275,6 +275,9 @@ void main() {
       expect(find.text('MASTERY PTS'), findsOneWidget);
       expect(find.text('LEVEL'), findsOneWidget);
       expect(find.text('STREAK'), findsOneWidget);
+
+      await tester.pumpWidget(Container());
+      await tester.pump(const Duration(seconds: 11));
     });
   });
 }
