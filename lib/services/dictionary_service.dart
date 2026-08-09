@@ -1215,6 +1215,16 @@ class DictionaryService {
       candidateWords.add(lower);
     }
 
+    // German casing is meaningful (nouns are capitalized), so the same query
+    // is tried under a few casings. A candidate that resolves to a specific
+    // part of speech (e.g. the "Schule" noun sense) is trustworthy enough to
+    // return immediately. But a candidate that only resolves to the generic
+    // 'word' POS — e.g. a stray inflected-form stub Wiktionary indexes under
+    // the lowercase spelling ("schule" → "Inflection of schuien") — is kept
+    // only as a last-resort fallback so a later, better-cased candidate
+    // (still to be tried) can override it instead of winning by default.
+    Map<String, dynamic>? weakFallback;
+
     for (final candidate in candidateWords) {
       try {
         final uri = Uri.parse(
@@ -1416,7 +1426,7 @@ class DictionaryService {
                 }
               } catch (_) {}
 
-              return {
+              final resultMap = {
                 'id': cachedId ?? -1,
                 'word': resolvedWord,
                 'base_form': baseForm ?? resolvedWord,
@@ -1435,6 +1445,11 @@ class DictionaryService {
                 'sourceLabel': 'Wiktionary',
                 'isWiktionaryFallback': true,
               };
+
+              if (pos != 'word') {
+                return resultMap;
+              }
+              weakFallback ??= resultMap;
             }
           }
         }
@@ -1443,7 +1458,7 @@ class DictionaryService {
       }
     }
 
-    return null;
+    return weakFallback;
   }
 
   /// Direct client-side Google Translate NMT Fallback (0 Backend Server Required)
