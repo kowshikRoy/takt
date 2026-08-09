@@ -751,7 +751,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
           Text(
             label.toUpperCase(),
             style: TextStyle(
-              fontSize: 9.5,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
               color: colorScheme.onSurfaceVariant,
@@ -1066,7 +1066,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                       Text(
                         regularity.label,
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: regularity.color,
                           letterSpacing: 0.3,

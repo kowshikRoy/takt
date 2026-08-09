@@ -142,7 +142,7 @@ class PhraseDetailSheet extends StatelessWidget {
                         child: Text(
                           phrase.german,
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.w900,
                             fontFamily: 'serif',
                             height: 1.25,

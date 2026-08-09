@@ -193,7 +193,7 @@ class _MainScaffoldState extends State<MainScaffold>
                                       Text(
                                         label,
                                         style: TextStyle(
-                                          fontSize: 15,
+                                          fontSize: 16,
                                           fontWeight: isSelected
                                               ? FontWeight.bold
                                               : FontWeight.w500,

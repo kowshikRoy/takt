@@ -138,7 +138,7 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
                         AppLocalizations.of(context)?.labelLessonCompletedStatus ??
                             'Abgeschlossen',
                         style: const TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF16A34A),
                         ),
@@ -192,7 +192,7 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
                           lesson.level,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 11.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
                           ),
@@ -202,7 +202,7 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
                       Text(
                         lesson.category,
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: inkColor.withValues(alpha: 0.65),
                         ),
@@ -234,7 +234,7 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
                     Text(
                       lesson.summary,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 14,
                         height: 1.45,
                         color: inkColor.withValues(alpha: 0.8),
                       ),
@@ -292,7 +292,7 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
                       : (AppLocalizations.of(context)?.actionCompleteLesson ??
                           'Lektion verstanden & abschließen'),
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

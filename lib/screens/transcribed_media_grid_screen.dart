@@ -53,7 +53,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
           children: [
             const Text(
               'Transcribed Media',
-              style: TextStyle(fontSize: 17.5, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             Consumer<MediaLibraryService>(
               builder: (ctx, mediaService, child) {
@@ -509,15 +509,15 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                                     const SizedBox(width: 3),
                                     Text(
                                       '${video.subtitles.length} cues',
-                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                     ),
                                     if (video.estimatedDurationLabel.isNotEmpty) ...[
                                       const SizedBox(width: 4),
-                                      const Text('•', style: TextStyle(fontSize: 8, color: Colors.white70)),
+                                      const Text('•', style: TextStyle(fontSize: 10, color: Colors.white70)),
                                       const SizedBox(width: 4),
                                       Text(
                                         video.estimatedDurationLabel,
-                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                       ),
                                     ],
                                   ],
@@ -532,7 +532,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                                 ),
                                 child: Text(
                                   '${video.effectiveProgress}%',
-                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                               )
                             else
@@ -544,7 +544,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                                 ),
                                 child: const Text(
                                   'FAILED',
-                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                               ),
                             if (isCompleted)
@@ -570,7 +570,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                         video.effectiveTitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, height: 1.2),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, height: 1.2),
                       ),
 
                       // Tags & Status Row
@@ -589,7 +589,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 8.5,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.3,
                                   color: colorScheme.onSecondaryContainer,
@@ -702,7 +702,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                             video.effectiveTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -726,7 +726,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.edit_outlined, size: 19),
-                  title: const Text('Edit Title', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Edit Title', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _showEditTitleDialog(context, video, mediaLibraryService);
@@ -739,7 +739,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.label_outline_rounded, size: 19),
-                  title: const Text('Set Category', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Set Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   trailing: video.category?.isNotEmpty == true
                       ? Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -749,7 +749,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                           ),
                           child: Text(
                             video.category!.toUpperCase(),
-                            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: colorScheme.onSecondaryContainer),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSecondaryContainer),
                           ),
                         )
                       : null,
@@ -765,7 +765,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.copy_rounded, size: 19),
-                  title: const Text('Copy Link', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Copy Link', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     Clipboard.setData(ClipboardData(text: video.url));
@@ -781,7 +781,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: Icon(Icons.refresh_rounded, size: 19, color: colorScheme.primary),
-                  title: const Text('Submit URL Again', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Submit URL Again', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     mediaLibraryService.submitMediaProcessingTaskInBackground(video.url);
@@ -797,7 +797,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: Icon(Icons.delete_outline_rounded, size: 19, color: colorScheme.error),
-                  title: Text('Delete Lesson', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: colorScheme.error)),
+                  title: Text('Delete Lesson', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.error)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _confirmDeleteVideo(context, video, mediaLibraryService);
@@ -889,7 +889,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                         children: [
                           Icon(Icons.history_rounded, size: 13, color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 4),
-                          const Text('Recent Categories:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          const Text('Recent Categories:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const SizedBox(height: 5),
@@ -899,7 +899,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                         children: recentCategories.map((cat) {
                           final isSelected = selected.toLowerCase() == cat.toLowerCase();
                           return ChoiceChip(
-                            label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                            label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                             selected: isSelected,
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
@@ -915,7 +915,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                       ),
                       const SizedBox(height: 10),
                     ],
-                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 5),
                     Wrap(
                       spacing: 5,
@@ -923,7 +923,7 @@ class _TranscribedMediaGridScreenState extends State<TranscribedMediaGridScreen>
                       children: remainingPresets.map((cat) {
                         final isSelected = selected.toLowerCase() == cat.toLowerCase();
                         return ChoiceChip(
-                          label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                          label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                           selected: isSelected,
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           visualDensity: const VisualDensity(horizontal: -2, vertical: -4),

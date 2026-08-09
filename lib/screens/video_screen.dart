@@ -929,7 +929,7 @@ class _VideoScreenState extends State<VideoScreen>
                             child: Text(
                               'Article Mode',
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.primary,
                               ),
@@ -1091,7 +1091,7 @@ class _VideoScreenState extends State<VideoScreen>
                                             child: Text(
                                               isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'AUDIO STREAM',
                                               style: TextStyle(
-                                                fontSize: 9,
+                                                fontSize: 10,
                                                 fontWeight: FontWeight.w700,
                                                 letterSpacing: 0.5,
                                                 color: isGeminiAudio ? const Color(0xFFA78BFA) : Theme.of(context).colorScheme.primary,
@@ -1284,7 +1284,7 @@ class _VideoScreenState extends State<VideoScreen>
                           Text(
                             isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'GERMAN DIALOGUE',
                             style: TextStyle(
-                              fontSize: 9.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,
                               color: isGeminiAudio ? const Color(0xFFA78BFA) : colorScheme.primary,
@@ -1303,7 +1303,7 @@ class _VideoScreenState extends State<VideoScreen>
                       child: Text(
                         '${_subtitles.length} Sentences',
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withValues(alpha: 0.7),
                         ),
@@ -1314,7 +1314,7 @@ class _VideoScreenState extends State<VideoScreen>
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                     height: 1.2,
@@ -1731,7 +1731,7 @@ class _VideoScreenState extends State<VideoScreen>
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -1824,7 +1824,7 @@ class _VideoScreenState extends State<VideoScreen>
                                 item.germanWord,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 17,
+                                  fontSize: 18,
                                   color: colorScheme.primary,
                                 ),
                               ),
@@ -1979,7 +1979,7 @@ class _VideoScreenState extends State<VideoScreen>
               const SizedBox(height: 12),
               Text(
                 summary,
-                style: TextStyle(fontSize: 15, height: 1.5, color: colorScheme.onSurface),
+                style: TextStyle(fontSize: 16, height: 1.5, color: colorScheme.onSurface),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -2221,7 +2221,7 @@ class _VideoScreenState extends State<VideoScreen>
                           Text(
                             item.primaryDefinition,
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: colorScheme.primary),
                           ),
                           const SizedBox(height: 16),
                           Container(
@@ -2571,7 +2571,7 @@ class _VideoScreenState extends State<VideoScreen>
                       child: Text(
                         vocab.word,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
                         ),
@@ -2586,7 +2586,7 @@ class _VideoScreenState extends State<VideoScreen>
                         ),
                         child: Text(
                           vocab.pos!.toUpperCase(),
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -2604,7 +2604,7 @@ class _VideoScreenState extends State<VideoScreen>
                           ),
                           child: Text(
                             vocab.difficultyLabel,
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: cefrColors.foreground),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: cefrColors.foreground),
                           ),
                         );
                       },

@@ -330,7 +330,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              fontSize: 15,
+              fontSize: 16,
             ),
           ),
           const SizedBox(height: 32),
@@ -413,7 +413,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 16,
               ),
             ),
           ),
@@ -599,7 +599,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     title,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -660,7 +660,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              fontSize: 15,
+              fontSize: 16,
               height: 1.4,
             ),
           ),

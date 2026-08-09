@@ -79,7 +79,7 @@ class ExceptionsCard extends StatelessWidget {
                   ex.ruleName,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14.5,
+                    fontSize: 14,
                     color: inkColor,
                   ),
                 ),
@@ -87,7 +87,7 @@ class ExceptionsCard extends StatelessWidget {
                 Text(
                   ex.description,
                   style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     height: 1.45,
                     color: inkColor.withValues(alpha: 0.85),
                   ),

@@ -397,7 +397,7 @@ class WordHeaderCard extends StatelessWidget {
                   child: Text(
                     pos!.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 9.5,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -429,7 +429,7 @@ class WordHeaderCard extends StatelessWidget {
                   Text(
                     "→ ",
                     style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: colorScheme.primary,
                     ),

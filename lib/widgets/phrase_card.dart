@@ -139,7 +139,7 @@ class PhraseCard extends StatelessWidget {
                     child: Text(
                       phrase.german,
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                         fontFamily: 'serif',
                         color: inkColor,

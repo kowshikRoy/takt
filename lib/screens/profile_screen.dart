@@ -173,7 +173,7 @@ class ProfileScreen extends StatelessWidget {
                       child: Text(
                         'LEVEL ${gamification.level}',
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: rustAccent,
                           letterSpacing: 0.5,
@@ -332,7 +332,7 @@ class ProfileScreen extends StatelessWidget {
                       child: Text(
                         value,
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: color,
                         ),
@@ -358,7 +358,7 @@ class ProfileScreen extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 9.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.4,
                   height: 1.15,

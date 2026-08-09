@@ -54,7 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           l10n?.titleSettings.toUpperCase() ?? 'SETTINGS',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            fontSize: 13.5,
+            fontSize: 14,
             letterSpacing: 0.9,
             color: inkColor,
           ),
@@ -78,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               color: inkColor,
             ),
             subtitleTextStyle: TextStyle(
-              fontSize: 11.5,
+              fontSize: 12,
               fontWeight: FontWeight.w400,
               color: inkColor.withValues(alpha: 0.6),
             ),
@@ -123,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 10.5,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.9,
           color: rustAccent,
@@ -165,7 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       auth.username ?? 'Learner',
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: inkColor,
                       ),
@@ -174,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       auth.email ?? 'Offline guest session',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.6),
                       ),
                     ),
@@ -237,7 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: () => AuthSyncDialog.show(context),
                       style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
-                        textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -251,7 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       backgroundColor: rustAccent,
                       foregroundColor: Colors.white,
                       visualDensity: VisualDensity.compact,
-                      textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -299,7 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Theme Mode
           ListTile(
             title: Text(l10n?.labelAppTheme ?? 'App Theme', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
-            subtitle: Text(_getThemeModeName(themeProvider.themeMode), style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+            subtitle: Text(_getThemeModeName(themeProvider.themeMode), style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6))),
             leading: Icon(Icons.brightness_6_rounded, color: rustAccent, size: 20),
             trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
             onTap: () => _showThemeDialog(context, themeProvider),
@@ -320,7 +320,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                Text(_getColorThemeName(themeProvider.colorTheme), style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+                Text(_getColorThemeName(themeProvider.colorTheme), style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6))),
               ],
             ),
             leading: Icon(Icons.color_lens_rounded, color: rustAccent, size: 20),
@@ -332,7 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Typography Font
           ListTile(
             title: Text(l10n?.labelTypography ?? 'Typography', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
-            subtitle: Text(themeProvider.fontFamily, style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+            subtitle: Text(themeProvider.fontFamily, style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6))),
             leading: Icon(Icons.font_download_rounded, color: rustAccent, size: 20),
             trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
             onTap: () => _showFontDialog(context, themeProvider),
@@ -368,7 +368,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Level ', style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+                    Text('Level ', style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6))),
                     Builder(
                       builder: (context) {
                         final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -405,7 +405,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: Text(
                   l10n?.labelWordsPerDay(profileService.dailyWordGoalCount) ??
                       '${profileService.dailyWordGoalCount} words/day',
-                  style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
+                  style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6)),
                 ),
                 leading: Icon(Icons.style_rounded, color: rustAccent, size: 20),
                 trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
@@ -432,7 +432,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   voiceSubtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
+                  style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6)),
                 ),
                 leading: Icon(Icons.record_voice_over_rounded, color: rustAccent, size: 20),
                 trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
@@ -449,7 +449,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   SwitchListTile(
                     title: Text(l10n?.labelSoundEffects ?? 'Sound Effects', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
-                    subtitle: Text('Audio cues for correct/incorrect reviews', style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+                    subtitle: Text('Audio cues for correct/incorrect reviews', style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6))),
                     secondary: Icon(Icons.volume_up_rounded, color: rustAccent, size: 20),
                     value: soundService.enabled,
                     onChanged: (val) => soundService.setEnabled(val),
@@ -461,7 +461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: Text('Sound Style', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
                       subtitle: Text(
                         SoundService.availablePacks[soundService.soundPack] ?? 'Marimba (Duolingo Style)',
-                        style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
+                        style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6)),
                       ),
                       trailing: Icon(Icons.chevron_right_rounded, color: inkColor.withValues(alpha: 0.4), size: 18),
                       onTap: () => _showSoundPackDialog(context, soundService),
@@ -480,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: Text(l10n?.labelStreakReminders ?? 'Streak Reminders', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
                 subtitle: Text(
                   l10n?.labelDailyReminderSubtitle ?? 'A daily nudge if you haven\'t practiced yet',
-                  style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
+                  style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6)),
                 ),
                 secondary: Icon(Icons.notifications_active_outlined, color: rustAccent, size: 20),
                 value: notificationService.enabled,
@@ -542,7 +542,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           ListTile(
             title: Text('Version', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
-            subtitle: Text('1.0.0 · Bauhaus Modernist Edition', style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6))),
+            subtitle: Text('1.0.0 · Bauhaus Modernist Edition', style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6))),
             leading: Icon(Icons.info_outline_rounded, color: rustAccent, size: 20),
           ),
         ],
@@ -658,7 +658,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
               foregroundColor: rustAccent,
-              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Close'),
@@ -703,7 +703,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Text(
                         l10n?.titleSelectGermanVoice ?? 'Select German Voice',
                         style: TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: inkColor,
                         ),
@@ -737,7 +737,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               l10n?.labelSystemDefaultVoice ?? 'System Default',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12.5,
+                                fontSize: 13,
                                 color: inkColor,
                               ),
                             ),
@@ -808,7 +808,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     Text(
                                       'Scanning German voices...',
                                       style: TextStyle(
-                                        fontSize: 11.5,
+                                        fontSize: 12,
                                         color: inkColor.withValues(alpha: 0.6),
                                       ),
                                     ),
@@ -823,7 +823,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 l10n?.msgNoVoicesDetected ??
                                     'Using system default voice. No additional voices found on this device.',
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 12,
                                   color: inkColor.withValues(alpha: 0.6),
                                   fontStyle: FontStyle.italic,
                                 ),
@@ -844,7 +844,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   voice.label,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 12.5,
+                                    fontSize: 13,
                                     color: inkColor,
                                   ),
                                 ),
@@ -891,7 +891,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 Text(
                                   l10n?.labelSpeechRate ?? 'Speech Speed',
                                   style: TextStyle(
-                                    fontSize: 11.5,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     color: inkColor,
                                   ),
@@ -923,7 +923,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           child: Text(
                                             opt.$2,
                                             style: TextStyle(
-                                              fontSize: 10.5,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                               color: isCur ? Colors.white : inkColor,
                                             ),
@@ -949,7 +949,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                     style: TextButton.styleFrom(
                       foregroundColor: rustAccent,
-                      textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -994,7 +994,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: SoundService.availablePacks.entries.map((entry) {
             return RadioListTile<String>(
               dense: true,
-              title: Text(entry.value, style: TextStyle(color: inkColor, fontSize: 12.5)),
+              title: Text(entry.value, style: TextStyle(color: inkColor, fontSize: 13)),
               secondary: IconButton(
                 icon: Icon(Icons.volume_up_rounded, color: rustAccent, size: 18),
                 tooltip: 'Preview sound',
@@ -1016,7 +1016,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
               foregroundColor: rustAccent,
-              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Close'),
@@ -1070,7 +1070,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
               foregroundColor: rustAccent,
-              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Close'),
@@ -1124,7 +1124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Expanded(
                       child: Text(
                         _getColorThemeName(thm),
-                        style: TextStyle(color: inkColor, fontSize: 12.5),
+                        style: TextStyle(color: inkColor, fontSize: 13),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1147,7 +1147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
               foregroundColor: rustAccent,
-              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Close'),
@@ -1207,7 +1207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: AppTheme.getButtonTextStyle(
                     fontKey,
                     fontWeight: FontWeight.normal,
-                  ).copyWith(color: inkColor, fontSize: 12.5),
+                  ).copyWith(color: inkColor, fontSize: 13),
                 ),
                 value: fontKey,
                 groupValue: provider.fontFamily,
@@ -1226,7 +1226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
               foregroundColor: rustAccent,
-              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
             child: const Text('Cancel'),
@@ -1250,7 +1250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return RadioListTile<T>(
       dense: true,
       visualDensity: VisualDensity.compact,
-      title: Text(title, style: TextStyle(color: inkColor, fontSize: 12.5, fontWeight: FontWeight.w500)),
+      title: Text(title, style: TextStyle(color: inkColor, fontSize: 13, fontWeight: FontWeight.w500)),
       value: value,
       groupValue: groupValue,
       onChanged: (val) {
@@ -1331,7 +1331,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 8),
                       Text(
                         lvl.$2,
-                        style: TextStyle(fontWeight: FontWeight.bold, color: inkColor, fontSize: 12.5),
+                        style: TextStyle(fontWeight: FontWeight.bold, color: inkColor, fontSize: 13),
                       ),
                     ],
                   ),
@@ -1355,7 +1355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () => Navigator.pop(ctx),
               style: TextButton.styleFrom(
                 foregroundColor: rustAccent,
-                textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               ),
               child: const Text('Close'),
@@ -1500,7 +1500,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                           child: Text(
                                             'Offline German Dictionary',
                                             style: TextStyle(
-                                              fontSize: 13.5,
+                                              fontSize: 14,
                                               fontWeight: FontWeight.bold,
                                               color: inkColor,
                                             ),
@@ -1521,7 +1521,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                               'UPDATE',
                                               style: TextStyle(
                                                 color: Colors.white,
-                                                fontSize: 8.5,
+                                                fontSize: 10,
                                                 fontWeight: FontWeight.bold,
                                                 letterSpacing: 0.5,
                                               ),
@@ -1538,7 +1538,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                           ? 'Installed: $_version • Latest: $latestTag'
                                           : 'Installed: $_version • Size: $_size',
                                       style: TextStyle(
-                                        fontSize: 11.5,
+                                        fontSize: 12,
                                         color: inkColor.withValues(alpha: 0.6),
                                       ),
                                     ),
@@ -1574,7 +1574,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                     backgroundColor: rustAccent,
                                     foregroundColor: Colors.white,
                                     visualDensity: VisualDensity.compact,
-                                    textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4),
                                     ),
@@ -1588,7 +1588,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                   onPressed: _handleUpdateOrRedownload,
                                   style: OutlinedButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
-                                    textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4),
                                     ),
@@ -1621,7 +1621,7 @@ class _DictionaryDatabaseTileState extends State<_DictionaryDatabaseTile> {
                                           ? 'Downloading update... ${(progress * 100).toStringAsFixed(0)}%'
                                           : 'Connecting to GitHub...',
                                       style: TextStyle(
-                                        fontSize: 10.5,
+                                        fontSize: 11,
                                         color: rustAccent,
                                         fontWeight: FontWeight.w600,
                                       ),
