@@ -11,7 +11,6 @@ import '../theme/books_modernist_style.dart';
 import '../services/discovery_service.dart';
 import '../widgets/vocab_status_pills.dart';
 import '../widgets/word_edit_sheet.dart';
-import 'word_detail_screen.dart';
 
 class DictionaryScreen extends StatefulWidget {
   final String? initialSearchQuery;
@@ -257,14 +256,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     if (mounted) {
       final selected = fullWord;
       final wordStr = selected['word']?.toString() ?? resultWord;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => WordDetailScreen(
-            word: wordStr,
-            wordData: selected,
-          ),
-        ),
-      );
+      setState(() {
+        _selectedWord = selected;
+        _wordImageFuture = _dictionaryService.getWordImageUrl(wordStr);
+      });
     }
   }
 
@@ -406,11 +401,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Future<void> _createNewWord() async {
     final savedWord = await WordEditSheet.show(context, isNew: true);
     if (savedWord != null && mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => WordDetailScreen(word: savedWord),
-        ),
-      );
+      _onResultSelected({'word': savedWord});
     }
   }
 
@@ -726,7 +717,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     child: Text(
                       pos.toUpperCase(),
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -894,7 +885,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           ),
         ),
         style: TextStyle(
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: FontWeight.w500,
           color: colorScheme.onSurface,
         ),
@@ -1458,7 +1449,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                               style: TextStyle(
                                 color: colorScheme.primary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 14.5,
+                                fontSize: 14,
                               ),
                             ),
                             Expanded(
@@ -1613,7 +1604,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           Text(
             label.toUpperCase(),
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
               color: colorScheme.onSurfaceVariant,
               letterSpacing: 0.5,
@@ -1947,7 +1938,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                       Text(
                         regularity.label,
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: regularity.color,
                           letterSpacing: 0.3,
@@ -2076,6 +2067,20 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     if (_isVerb(wordData)) {
       return _buildVerbConjugationTable(context, wordData);
     }
+    // Nouns get a synthesized CASE/SINGULAR/PLURAL table (ported from
+    // word_detail_screen.dart's _buildNounDeclensionTable) instead of
+    // falling through to the raw-forms chip list below. That chip list is
+    // only meant for POS without a proper table (adjectives, etc.) — nouns
+    // fell into it too here for a while because this in-place pane didn't
+    // have its own copy of the noun table, unlike WordDetailScreen (the
+    // full-page route this pane replaced as the primary way to view a
+    // word). Since search/browse now stay on this pane instead of pushing
+    // that route, this gap became the thing everyone actually sees.
+    final pos = wordData['pos']?.toString().toLowerCase() ?? '';
+    final gender = wordData['gender']?.toString() ?? '';
+    if (pos == 'noun' || pos == 'n' || pos == 'nouns' || gender.isNotEmpty) {
+      return _buildNounDeclensionTable(context, wordData);
+    }
     final forms = (wordData['forms'] as List?) ?? [];
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -2159,6 +2164,133 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                 ),
               );
             }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Ported verbatim from word_detail_screen.dart's _buildNounDeclensionTable
+  // (see the comment in _buildDeclensionTab above for why this pane needs
+  // its own copy). Synthesizes the four-case singular/plural table from
+  // gender + plural form rather than relying on raw API forms, since those
+  // are inconsistent about which cases they include.
+  Widget _buildNounDeclensionTable(
+    BuildContext context,
+    Map<String, dynamic> wordData,
+  ) {
+    final forms = (wordData['forms'] as List?) ?? [];
+    final colorScheme = Theme.of(context).colorScheme;
+    final word = wordData['word']?.toString() ?? '';
+    final rawGender = wordData['gender']?.toString().toLowerCase() ?? '';
+    final gender = rawGender.startsWith('m')
+        ? 'm'
+        : (rawGender.startsWith('f') ? 'f' : (rawGender.startsWith('n') ? 'n' : ''));
+
+    final plural = wordData['plural']?.toString() ??
+        _findVerbForm(
+          forms,
+          (t) => t.contains('plural') && t.contains('nominative'),
+          fallback: _findVerbForm(forms, (t) => t.contains('plural'), fallback: '$word(e)'),
+        );
+    final cleanPlural = plural.toLowerCase().startsWith('die ')
+        ? plural.substring(4)
+        : plural;
+
+    final cases = ['Nominativ', 'Akkusativ', 'Dativ', 'Genitiv'];
+    final singularArticles = gender == 'm'
+        ? ['der', 'den', 'dem', 'des']
+        : (gender == 'f'
+            ? ['die', 'die', 'der', 'der']
+            : (gender == 'n' ? ['das', 'das', 'dem', 'des'] : ['-', '-', '-', '-']));
+
+    final pluralArticles = ['die', 'die', 'den', 'der'];
+
+    final singularForms = List.generate(4, (i) {
+      if (gender == 'm' || gender == 'n') {
+        if (i == 3) return '${singularArticles[i]} $word(e)s';
+        if (i == 2) return '${singularArticles[i]} $word';
+      }
+      return '${singularArticles[i]} $word';
+    });
+
+    final pluralForms = List.generate(4, (i) {
+      if (i == 2) {
+        final dativePlural = cleanPlural.endsWith('n') || cleanPlural.endsWith('s')
+            ? cleanPlural
+            : '${cleanPlural}n';
+        return '${pluralArticles[i]} $dativePlural';
+      }
+      return '${pluralArticles[i]} $cleanPlural';
+    });
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.table_chart_rounded, size: 16, color: colorScheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                'NOUN DECLENSION TABLE',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 1.1,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4.0),
+            child: Table(
+              border: TableBorder.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                width: 0.8,
+              ),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              columnWidths: const {
+                0: FlexColumnWidth(1.1),
+                1: FlexColumnWidth(1.4),
+                2: FlexColumnWidth(1.4),
+              },
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.4),
+                  ),
+                  children: [
+                    _buildTableCell('CASE', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('SINGULAR', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PLURAL', isHeader: true, colorScheme: colorScheme),
+                  ],
+                ),
+                ...List.generate(4, (index) {
+                  final isAlt = index % 2 == 1;
+                  return TableRow(
+                    decoration: BoxDecoration(
+                      color: isAlt
+                          ? colorScheme.surfaceContainerHigh.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                    ),
+                    children: [
+                      _buildTableCell(cases[index], isBold: true, colorScheme: colorScheme),
+                      _buildTableCell(singularForms[index], isSemiBold: true, colorScheme: colorScheme),
+                      _buildTableCell(pluralForms[index], isSemiBold: true, colorScheme: colorScheme),
+                    ],
+                  );
+                }),
+              ],
+            ),
           ),
         ],
       ),
@@ -2711,7 +2843,7 @@ class _SavedVocabularySheetState extends State<_SavedVocabularySheet> {
                                     child: Text(
                                       item.word,
                                       style: TextStyle(
-                                        fontSize: 15,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: colorScheme.onSurface,
                                       ),
@@ -2729,7 +2861,7 @@ class _SavedVocabularySheetState extends State<_SavedVocabularySheet> {
                                   child: Text(
                                     isMastered ? 'MASTERED' : 'LEARNING',
                                     style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.bold,
                                       color: isMastered ? Colors.amber.shade800 : Colors.green.shade700,
                                     ),
