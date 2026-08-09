@@ -146,7 +146,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
               ? 'Vocabulary Practice (All Words)'
               : 'Daily Review & SRS Practice',
           style: TextStyle(
-            fontSize: 14.5,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.5,
             color: inkColor,
@@ -249,7 +249,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 child: Text(
                   _isPracticingAll ? 'FREE PRACTICE' : 'SRS DUE REVIEW',
                   style: TextStyle(
-                    fontSize: 9.5,
+                    fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.6,
                     color: inkColor,
@@ -274,7 +274,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 child: Text(
                   word.masteryLevelLabel.toUpperCase(),
                   style: TextStyle(
-                    fontSize: 9.5,
+                    fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
                     color: genderColor,
@@ -295,9 +295,14 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Main Flashcard Box
+          // Main Flashcard Box — height-capped and centered so the card
+          // doesn't balloon into a mostly-empty rectangle on tall desktop
+          // viewports; on phones it just shrinks to fit as before.
           Expanded(
-            child: InkWell(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 460),
+                child: InkWell(
               onTap: () {
                 setState(() {
                   _showAnswer = !_showAnswer;
@@ -341,7 +346,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                           child: Text(
                             word.word,
                             style: TextStyle(
-                              fontSize: 30,
+                              fontSize: 32,
                               fontWeight: FontWeight.bold,
                               color: inkColor,
                             ),
@@ -468,7 +473,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                                         label: const Text(
                                           'Explore in Dictionary →',
                                           style: TextStyle(
-                                            fontSize: 11.5,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -490,6 +495,8 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
                 ),
               ),
             ),
@@ -569,12 +576,12 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           ),
           Text(
             sublabel,
             style: const TextStyle(
-              fontSize: 9.5,
+              fontSize: 10,
               fontWeight: FontWeight.w500,
               color: Colors.white70,
             ),
@@ -649,7 +656,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                         : 'Save words from stories, videos, or lookups to build your personalized Study Deck!'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 13,
                   color: inkColor.withValues(alpha: 0.65),
                 ),
               ),
@@ -715,7 +722,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                     icon: const Icon(Icons.style_rounded, size: 16),
                     label: Text(
                       'Practice Entire Study Deck ($totalSaved)',
-                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     style: FilledButton.styleFrom(
                       backgroundColor: rustAccent,
@@ -736,7 +743,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                   icon: const Icon(Icons.arrow_back_rounded, size: 16),
                   label: const Text(
                     'Back to Home',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -764,7 +771,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
         Text(
           value,
           style: TextStyle(
-            fontSize: 13.5,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
             color: inkColor,
           ),
@@ -773,7 +780,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 8.5,
+            fontSize: 10,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
             color: inkColor.withValues(alpha: 0.6),

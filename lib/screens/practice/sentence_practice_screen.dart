@@ -120,9 +120,15 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                 ),
               ),
 
-              // Main Content Area
+              // Main Content Area — capped and centered on desktop so the
+              // Spacer-driven gaps below don't balloon on tall viewports;
+              // shrinks back to the full Expanded height (no visible cap)
+              // on phones.
               Expanded(
-                child: Padding(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 640),
+                    child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0),
                   child: Column(
                     children: [
@@ -326,7 +332,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                                   Text(
                                     _isCorrect ? 'Correct!' : 'Incorrect',
                                     style: TextStyle(
-                                      fontSize: 24,
+                                      fontSize: 22,
                                       fontWeight: FontWeight.bold,
                                       color: _isCorrect
                                           ? Colors.green
@@ -346,7 +352,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                                     Text(
                                       exercise.correctAnswer,
                                       style: TextStyle(
-                                        fontSize: 20,
+                                        fontSize: 22,
                                         fontWeight: FontWeight.bold,
                                         color: Theme.of(
                                           context,
@@ -361,6 +367,8 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                         ),
                       ],
                     ],
+                  ),
+                    ),
                   ),
                 ),
               ),
