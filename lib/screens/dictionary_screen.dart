@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../services/dictionary_service.dart';
+import '../services/goethe_curriculum_service.dart';
 import '../services/vocabulary_service.dart';
 import '../services/tts_service.dart';
 import '../models/saved_word.dart';
@@ -161,9 +162,17 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       if (mounted) {
         setState(() {
           _rawSavedWords = saved;
-          _savedWordIds = saved.map((w) => w.id.toLowerCase().trim()).toSet();
+          _savedWordIds = {
+            for (var w in saved) ...[
+              w.id.toLowerCase().trim(),
+              w.word.toLowerCase().trim(),
+            ]
+          };
           _savedWordCategories = {
-            for (var w in saved) w.id.toLowerCase().trim(): w.category,
+            for (var w in saved) ...{
+              w.id.toLowerCase().trim(): w.category,
+              w.word.toLowerCase().trim(): w.category,
+            }
           };
         });
       }
@@ -1007,11 +1016,28 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             _loadSavedWordStatus();
           },
           onCategoryChanged: (savedWord, newCategory) async {
-            await _setStatus({
-              'word': savedWord.word,
-              'gender': savedWord.gender,
-              'definitions': [savedWord.primaryDefinition],
-            }, newCategory);
+            final updated = SavedWord(
+              id: savedWord.id,
+              word: savedWord.word,
+              baseForm: savedWord.baseForm,
+              pos: savedWord.pos,
+              gender: savedWord.gender,
+              primaryDefinition: savedWord.primaryDefinition,
+              definitions: savedWord.definitions,
+              ipa: savedWord.ipa,
+              contextSentence: savedWord.contextSentence,
+              sourceTitle: savedWord.sourceTitle,
+              contextExamples: savedWord.contextExamples,
+              category: newCategory,
+              interval: savedWord.interval,
+              easeFactor: savedWord.easeFactor,
+              repetitions: savedWord.repetitions,
+              dueDate: savedWord.dueDate,
+              lastReviewed: savedWord.lastReviewed,
+              createdAt: savedWord.createdAt,
+              source: savedWord.source,
+            );
+            await _vocabService.upsertWord(updated);
             _loadSavedWordStatus();
           },
         );
@@ -1209,7 +1235,124 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     );
   }
 
-  String _getCefrLevel(int? freqRank) => DictionaryService.getCefrLevel(freqRank);
+  String _getCefrLevel(int? freqRank, {String? word, String? baseForm}) =>
+      DictionaryService.getCefrLevel(freqRank, word: word, baseForm: baseForm);
+
+  Widget _buildFrequencyMeter(BuildContext context, dynamic freqRaw) {
+    if (freqRaw == null) return const SizedBox.shrink();
+    final stars = DictionaryService.getFrequencyStars(freqRaw);
+    final zipf = DictionaryService.getZipfScore(freqRaw);
+    final label = DictionaryService.getFrequencyLabel(freqRaw);
+    final rank = int.tryParse(freqRaw.toString()) ?? 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final activeColor = stars >= 4 ? Colors.teal : (stars == 3 ? Colors.amber.shade700 : Colors.blueGrey);
+
+    return Tooltip(
+      message: "Frequency Rank: #$rank\nZipf Score: ${zipf.toStringAsFixed(1)} / 7.0\n$label",
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: activeColor.withValues(alpha: isDark ? 0.18 : 0.10),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: activeColor.withValues(alpha: isDark ? 0.35 : 0.25),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(5, (i) {
+                final filled = i < stars;
+                return Container(
+                  width: 3.2,
+                  height: 8.5 + (i * 1.5),
+                  margin: const EdgeInsets.symmetric(horizontal: 1.0),
+                  decoration: BoxDecoration(
+                    color: filled ? activeColor : colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(1.5),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              "Zipf ${zipf.toStringAsFixed(1)}",
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: activeColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnifiedLevelBadge(BuildContext context, dynamic freqRaw, {required String word, String? baseForm}) {
+    final goethe = GoetheCurriculumService.getGoetheLevel(word, baseForm: baseForm);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (goethe != null) {
+      return Tooltip(
+        message: "Certified in official Goethe-Institut $goethe core curriculum",
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: isDark ? 0.20 : 0.12),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: Colors.green.withValues(alpha: isDark ? 0.40 : 0.30),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.verified_rounded, size: 12, color: Colors.green),
+              const SizedBox(width: 3.5),
+              Text(
+                goethe,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Alternative: Statistical CEFR level based on frequency
+    final cefr = _getCefrLevel(freqRaw is int ? freqRaw : int.tryParse(freqRaw?.toString() ?? ''), word: word, baseForm: baseForm);
+    final cefrColors = AppTheme.getCefrColors(cefr, isDark: isDark);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: cefrColors.background,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: cefrColors.border, width: 0.8),
+      ),
+      child: Text(
+        cefr,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: cefrColors.foreground,
+        ),
+      ),
+    );
+  }
 
   /// Renders nothing until (and unless) a real image is found — no
   /// placeholder box for words without one, since most entries (verbs,
@@ -1284,6 +1427,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final word = wordData['word']?.toString() ?? '';
     final pos = wordData['pos']?.toString();
+    final baseForm = wordData['base_form']?.toString();
     final rawGender = wordData['gender']?.toString();
     final gender = _inferGenderIfNull(word, rawGender, pos);
     final ipa = wordData['ipa']?.toString();
@@ -1333,36 +1477,18 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                if (freq != null)
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: Builder(
-                      builder: (context) {
-                        final cefr = _getCefrLevel(freq);
-                        final isDark = Theme.of(context).brightness == Brightness.dark;
-                        final cefrColors = AppTheme.getCefrColors(cefr, isDark: isDark);
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: cefrColors.background,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: cefrColors.border, width: 0.8),
-                          ),
-                          child: Text(
-                            cefr,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: cefrColors.foreground,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (freq != null) _buildFrequencyMeter(context, freq),
+                      _buildUnifiedLevelBadge(context, freq, word: word, baseForm: baseForm),
+                    ],
                   ),
+                ),
 
                 const SizedBox(height: 16),
 
@@ -1442,19 +1568,29 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
                 const SizedBox(height: 16),
 
-                // Clean Arrow Definitions List (Consistent with GlanceWordSheet)
+                // Clean Numbered Definitions List with End-of-Line Sense Badges
                 if (defs.isNotEmpty)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: defs.map((d) {
+                    children: defs.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final d = entry.value.toString();
+                      final contextMatchedIdx = wordData['context_matched_sense_index'] as int?;
+                      final badges = DictionaryService.parseSenseBadges(
+                        d,
+                        idx,
+                        contextMatchedIndex: contextMatchedIdx,
+                      );
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "→ ",
+                              "${idx + 1}. ",
                               style: TextStyle(
                                 color: colorScheme.primary,
                                 fontWeight: FontWeight.bold,
@@ -1462,14 +1598,55 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                               ),
                             ),
                             Expanded(
-                              child: Text(
-                                d.toString(),
-                                textAlign: TextAlign.left,
-                                style: BooksModernist.body(
-                                  size: 14.5,
-                                  weight: FontWeight.w600,
-                                  color: colorScheme.onSurface,
-                                ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      d,
+                                      textAlign: TextAlign.left,
+                                      style: BooksModernist.body(
+                                        size: 14.5,
+                                        weight: FontWeight.w600,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  if (badges.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Wrap(
+                                      spacing: 4,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: badges.map((b) {
+                                        Color tagColor = Colors.grey;
+                                        if (b['type'] == 'primary') tagColor = Colors.teal;
+                                        if (b['type'] == 'context') tagColor = Colors.indigo;
+                                        if (b['type'] == 'colloquial') tagColor = Colors.amber.shade800;
+                                        if (b['type'] == 'figurative') tagColor = Colors.deepPurple;
+                                        if (b['type'] == 'specialized') tagColor = Colors.blue.shade700;
+                                        if (b['type'] == 'archaic') tagColor = Colors.brown;
+
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: tagColor.withValues(alpha: isDark ? 0.16 : 0.08),
+                                            borderRadius: BorderRadius.circular(3),
+                                            border: Border.all(color: tagColor.withValues(alpha: 0.35), width: 0.6),
+                                          ),
+                                          child: Text(
+                                            b['label']!,
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: tagColor,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ],
@@ -2302,6 +2479,16 @@ class _SavedVocabularySheetState extends State<_SavedVocabularySheet> {
   void initState() {
     super.initState();
     _words = List.from(widget.initialWords);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SavedVocabularySheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialWords != widget.initialWords) {
+      setState(() {
+        _words = List.from(widget.initialWords);
+      });
+    }
   }
 
   @override

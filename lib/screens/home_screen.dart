@@ -202,7 +202,6 @@ class HomeScreen extends StatelessWidget {
     final rustAccent = const Color(0xFF8C2D19);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
       decoration: BoxDecoration(
         color: headerBg,
         boxShadow: [
@@ -213,13 +212,17 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Flexible(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -344,7 +347,9 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildDailySessionCard(BuildContext context) {

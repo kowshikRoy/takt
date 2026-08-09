@@ -8,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 import '../config.dart';
 import '../models/saved_word.dart';
 import 'app_logger.dart';
+import 'goethe_curriculum_service.dart';
 import 'native_nlp_service.dart';
 import 'ondevice_ai_service.dart';
 import 'vocabulary_service.dart';
@@ -59,8 +60,16 @@ class DictionaryService {
 
   static const String _dbFileName = "german_dictionary.db";
 
-  /// Maps a frequency rank to its CEFR difficulty level (A1, A2, B1, B2, C1, C2)
-  static String getCefrLevel(dynamic freqRaw, {String fallback = 'B1'}) {
+  /// Maps a frequency rank and optional word to its CEFR difficulty level (A1, A2, B1, B2, C1, C2),
+  /// verified against official Goethe-Institut and TELC core curricula (supports base lemma resolution).
+  static String getCefrLevel(dynamic freqRaw, {String? word, String? baseForm, String fallback = 'B1'}) {
+    // 1. Cross-reference with certified Goethe-Institut core wordlists (word or base lemma)
+    if ((word != null && word.trim().isNotEmpty) || (baseForm != null && baseForm.trim().isNotEmpty)) {
+      final goetheLevel = GoetheCurriculumService.getGoetheLevel(word ?? '', baseForm: baseForm);
+      if (goetheLevel != null) return goetheLevel;
+    }
+
+    // 2. Statistical frequency rank mapping
     final rank = freqRaw != null ? int.tryParse(freqRaw.toString()) : null;
     if (rank == null || rank <= 0) return fallback;
     if (rank <= 600) return 'A1';
@@ -69,6 +78,119 @@ class DictionaryService {
     if (rank <= 8500) return 'B2';
     if (rank <= 15000) return 'C1';
     return 'C2';
+  }
+
+  /// Returns the certified Goethe-Institut curriculum level ('A1', 'A2', 'B1') if verified, or null.
+  static String? getGoetheLevel(String word, {String? baseForm}) =>
+      GoetheCurriculumService.getGoetheLevel(word, baseForm: baseForm);
+
+  /// Returns true if the word or its base lemma is on the official Goethe-Institut core curriculum.
+  static bool isGoetheCertified(String word, {String? baseForm}) =>
+      GoetheCurriculumService.isGoetheCertified(word, baseForm: baseForm);
+
+  /// Computes a standardized Logarithmic Zipf Frequency Score (1.0 to 7.0)
+  /// Zipf Scale: 6.0+ = Top 1,000 Everyday, 5.0-6.0 = Top 5,000 High Frequency,
+  /// 4.0-5.0 = Intermediate, 3.0-4.0 = Upper Intermediate, <3.0 = Rare/Advanced.
+  static double getZipfScore(dynamic freqRaw) {
+    final rank = freqRaw != null ? int.tryParse(freqRaw.toString()) : null;
+    if (rank == null || rank <= 0) return 3.0;
+    if (rank <= 15) return 7.0;
+    if (rank <= 100) return 6.6;
+    if (rank <= 600) return 6.0;
+    if (rank <= 1600) return 5.3;
+    if (rank <= 3800) return 4.6;
+    if (rank <= 8500) return 3.9;
+    if (rank <= 15000) return 3.3;
+    if (rank <= 30000) return 2.6;
+    return 1.8;
+  }
+
+  /// Returns a visual 1 to 5 star rating based on empirical frequency rank.
+  static int getFrequencyStars(dynamic freqRaw) {
+    final rank = freqRaw != null ? int.tryParse(freqRaw.toString()) : null;
+    if (rank == null || rank <= 0) return 2;
+    if (rank <= 600) return 5;
+    if (rank <= 2500) return 4;
+    if (rank <= 7500) return 3;
+    if (rank <= 18000) return 2;
+    return 1;
+  }
+
+  /// Returns a human-friendly frequency category description.
+  static String getFrequencyLabel(dynamic freqRaw) {
+    final rank = freqRaw != null ? int.tryParse(freqRaw.toString()) : null;
+    if (rank == null || rank <= 0) return "General Vocabulary";
+    if (rank <= 600) return "Top 600 Core Everyday";
+    if (rank <= 2500) return "Top 2,500 High Frequency";
+    if (rank <= 7500) return "Intermediate Practical";
+    if (rank <= 18000) return "Upper Intermediate";
+    return "Advanced / Specialized";
+  }
+
+  /// Extracts contextual usage badges from a definition string (e.g. Primary, Context, Colloquial, Figurative, Technical, Archaic).
+  static List<Map<String, String>> parseSenseBadges(
+    String definition,
+    int senseIndex, {
+    int? contextMatchedIndex,
+  }) {
+    final List<Map<String, String>> badges = [];
+    final lower = definition.toLowerCase();
+
+    final isInformal = lower.contains('colloquial') ||
+        lower.contains('slang') ||
+        lower.contains('informal') ||
+        lower.contains('umgangssprachlich') ||
+        lower.contains("getting to the point where") ||
+        lower.contains("just about");
+
+    final isFigurative = lower.contains('figurative') ||
+        lower.contains('metaphorical') ||
+        lower.contains('übertragen') ||
+        lower.contains('idiomatic');
+
+    final isSpecialized = lower.contains('technical') ||
+        lower.contains('medicine') ||
+        lower.contains('medical') ||
+        lower.contains('law') ||
+        lower.contains('legal') ||
+        lower.contains('computing') ||
+        lower.contains('physics') ||
+        lower.contains('botany') ||
+        lower.contains('zoology') ||
+        lower.contains('chemistry') ||
+        lower.contains('rail transport') ||
+        lower.contains('nautical');
+
+    final isArchaic = lower.contains('archaic') ||
+        lower.contains('dated') ||
+        lower.contains('historical') ||
+        lower.contains('veraltet') ||
+        lower.contains('rare');
+
+    // 1. Primary meaning: on sense 0 if not informal/figurative/archaic
+    if (senseIndex == 0 && !isInformal && !isFigurative && !isArchaic) {
+      badges.add({'label': 'Primary', 'type': 'primary'});
+    }
+
+    // 2. Context badge: ONLY shown if the meaning used in context is different from the primary (senseIndex > 0)
+    if (contextMatchedIndex != null && contextMatchedIndex > 0 && senseIndex == contextMatchedIndex) {
+      badges.add({'label': 'Context', 'type': 'context'});
+    }
+
+    if (isInformal) {
+      badges.add({'label': 'Colloquial', 'type': 'colloquial'});
+    }
+    if (isFigurative) {
+      badges.add({'label': 'Figurative', 'type': 'figurative'});
+    }
+    if (isSpecialized) {
+      badges.add({'label': 'Specialized', 'type': 'specialized'});
+    }
+    if (isArchaic) {
+      badges.add({'label': 'Archaic', 'type': 'archaic'});
+    }
+
+    return badges;
   }
 
   Future<String> _getDatabasePath() async {
@@ -487,15 +609,30 @@ class DictionaryService {
   Future<List<Map<String, String?>>> _getExamplesForWord(
     Database db,
     int wordId,
-    String? baseForm,
-  ) async {
+    String? baseForm, {
+    String? word,
+  }) async {
     try {
-      List<Map<String, dynamic>> rows = await db.query(
-        'examples',
-        columns: ['de', 'en'],
-        where: 'word_id = ?',
-        whereArgs: [wordId],
-      );
+      List<Map<String, dynamic>> rows = [];
+      if (word != null && word.trim().isNotEmpty) {
+        rows = await db.rawQuery(
+          '''
+          SELECT de, en FROM examples 
+          WHERE word_id = ? 
+             OR word_id IN (SELECT id FROM words WHERE word = ? COLLATE NOCASE)
+             OR ( ? IS NOT NULL AND word_id IN (SELECT id FROM words WHERE word = ? COLLATE NOCASE OR base_form = ? COLLATE NOCASE) )
+          LIMIT 15
+          ''',
+          [wordId, word.trim(), baseForm, baseForm ?? '', baseForm ?? ''],
+        );
+      } else {
+        rows = await db.query(
+          'examples',
+          columns: ['de', 'en'],
+          where: 'word_id = ?',
+          whereArgs: [wordId],
+        );
+      }
 
       if (rows.isEmpty && baseForm != null && baseForm.isNotEmpty) {
         final baseRows = await db.query(
@@ -642,7 +779,8 @@ class DictionaryService {
     try {
       List<Map<String, dynamic>> results = await db.rawQuery('''
         SELECT w.id, w.word, w.pos, w.gender, w.ipa, w.base_form, w.freq_rank,
-               COALESCE(d.definition, d_base.definition) as definition
+               d.definition as direct_definition,
+               d_base.definition as base_definition
         FROM words w
         LEFT JOIN definitions d ON w.id = d.word_id
         LEFT JOIN words w_base ON w.base_form = w_base.word
@@ -656,7 +794,8 @@ class DictionaryService {
         try {
           results = await db.rawQuery('''
             SELECT w.id, w.word, w.pos, w.gender, w.ipa, w.base_form, w.freq_rank,
-                   COALESCE(d.definition, d_base.definition) as definition
+                   d.definition as direct_definition,
+                   d_base.definition as base_definition
             FROM forms f
             JOIN words w ON f.word_id = w.id
             LEFT JOIN definitions d ON w.id = d.word_id
@@ -1125,6 +1264,8 @@ class DictionaryService {
   List<Map<String, dynamic>> _groupDbResultsByPos(List<Map<String, dynamic>> results, String cleanWord) {
     Map<String, Map<String, dynamic>> groupedByPosKey = {};
     Map<String, int> lowestIdForPosKey = {};
+    Map<String, List<String>> directDefsForPosKey = {};
+    Map<String, List<String>> baseDefsForPosKey = {};
 
     for (var r in results) {
       final id = r['id'] as int;
@@ -1145,15 +1286,50 @@ class DictionaryService {
           'freq_rank': r['freq_rank'] is int ? r['freq_rank'] as int : null,
           'definitions': <String>[],
         };
+        directDefsForPosKey[key] = [];
+        baseDefsForPosKey[key] = [];
       }
 
-      if (r['definition'] != null && r['definition'].toString().trim().isNotEmpty) {
-        final defs = groupedByPosKey[key]!['definitions'] as List<String>;
-        final defStr = r['definition'].toString().trim();
-        if (!defs.contains(defStr)) {
-          defs.add(defStr);
-        }
+      // Direct definition
+      final directDef = (r['direct_definition'] ?? r['definition'])?.toString().trim();
+      if (directDef != null && directDef.isNotEmpty && !directDefsForPosKey[key]!.contains(directDef)) {
+        directDefsForPosKey[key]!.add(directDef);
       }
+
+      // Base definition fallback
+      final baseDef = r['base_definition']?.toString().trim();
+      if (baseDef != null && baseDef.isNotEmpty && !baseDefsForPosKey[key]!.contains(baseDef)) {
+        baseDefsForPosKey[key]!.add(baseDef);
+      }
+    }
+
+    for (var entry in groupedByPosKey.entries) {
+      final key = entry.key;
+      final group = entry.value;
+      final directDefs = directDefsForPosKey[key] ?? [];
+      final baseDefs = baseDefsForPosKey[key] ?? [];
+
+      // If the word has direct definitions, do NOT mix in base form definitions.
+      final defs = directDefs.isNotEmpty ? List<String>.from(directDefs) : List<String>.from(baseDefs);
+
+      // Ensure core literal definitions precede informal idioms/slang
+      defs.sort((a, b) {
+        final aLower = a.toLowerCase();
+        final bLower = b.toLowerCase();
+        final aIsInformal = aLower.contains('(informal)') ||
+            aLower.contains('(colloquial)') ||
+            aLower.contains('(slang)') ||
+            aLower.contains('getting to the point');
+        final bIsInformal = bLower.contains('(informal)') ||
+            bLower.contains('(colloquial)') ||
+            bLower.contains('(slang)') ||
+            bLower.contains('getting to the point');
+        if (!aIsInformal && bIsInformal) return -1;
+        if (aIsInformal && !bIsInformal) return 1;
+        return 0;
+      });
+      group['definitions'] = defs;
+      group['definition'] = defs.isNotEmpty ? defs.first : '';
     }
 
     final list = groupedByPosKey.values.toList();
@@ -1164,32 +1340,16 @@ class DictionaryService {
       if (aHasDefs && !bHasDefs) return -1;
       if (!aHasDefs && bHasDefs) return 1;
 
-      // 2. Prioritize exact case match
-      final aWord = a['word']?.toString() ?? '';
-      final bWord = b['word']?.toString() ?? '';
-      final aExact = aWord == cleanWord;
-      final bExact = bWord == cleanWord;
+      // 2. Exact word match priority (e.g. "weiter" over "weit")
+      final aWord = (a['word'] as String? ?? '').toLowerCase();
+      final bWord = (b['word'] as String? ?? '').toLowerCase();
+      final cleanLower = cleanWord.toLowerCase();
+      final aExact = aWord == cleanLower;
+      final bExact = bWord == cleanLower;
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
 
-      // 3. If query starts with uppercase or noun, prioritize Noun over verb stubs
-      final isCapitalized = cleanWord.isNotEmpty &&
-          cleanWord[0] == cleanWord[0].toUpperCase() &&
-          cleanWord[0] != cleanWord[0].toLowerCase();
-      if (isCapitalized) {
-        final aIsNoun = normalizePos(a['pos']?.toString()) == 'noun';
-        final bIsNoun = normalizePos(b['pos']?.toString()) == 'noun';
-        if (aIsNoun && !bIsNoun) return -1;
-        if (!aIsNoun && bIsNoun) return 1;
-      }
-
-      // 4. Prioritize headwords over inflected forms
-      final aIsHeadword = a['base_form'] == null || a['base_form'] == aWord;
-      final bIsHeadword = b['base_form'] == null || b['base_form'] == bWord;
-      if (aIsHeadword && !bIsHeadword) return -1;
-      if (!aIsHeadword && bIsHeadword) return 1;
-
-      // 5. Frequency rank
+      // 3. Frequency rank
       final aRank = a['freq_rank'] as int? ?? 999999;
       final bRank = b['freq_rank'] as int? ?? 999999;
       return aRank.compareTo(bRank);
@@ -1558,13 +1718,14 @@ class DictionaryService {
                  w.ipa, COALESCE(w.base_form, w_base.word) as base_form,
                  COALESCE(w.verb_class, w_base.verb_class) as verb_class,
                  w.freq_rank,
-                 COALESCE(d.definition, d_base.definition) as definition
+                 d.definition as direct_definition,
+                 d_base.definition as base_definition
           FROM words w
           LEFT JOIN definitions d ON w.id = d.word_id
           LEFT JOIN words w_base ON w.base_form = w_base.word
           LEFT JOIN definitions d_base ON w_base.id = d_base.word_id
           WHERE w.word = ? COLLATE NOCASE OR w.base_form = ? COLLATE NOCASE
-          ORDER BY LENGTH(w.word) ASC, w.id ASC
+          ORDER BY LENGTH(w.word) ASC, w.id ASC, COALESCE(d.id, d_base.id, 0) ASC
         ''', [clean, clean]);
       } catch (_) {
         results = await db.rawQuery('''
@@ -1572,7 +1733,7 @@ class DictionaryService {
           FROM words w
           LEFT JOIN definitions d ON w.id = d.word_id
           WHERE w.word = ? COLLATE NOCASE
-          ORDER BY LENGTH(w.word) ASC, w.id ASC
+          ORDER BY LENGTH(w.word) ASC, w.id ASC, d.id ASC
         ''', [clean]);
       }
       if (results.isEmpty) {
@@ -1688,43 +1849,12 @@ class DictionaryService {
     'an', 'auf', 'aus', 'bei', 'ein', 'mit', 'nach', 'vor', 'zu', 'zurück', 'ab', 'durch', 'über', 'um', 'unter', 'weg', 'weiter'
   };
 
-  static const Set<String> _copulaVerbs = {
-    'bin', 'bist', 'ist', 'sind', 'seid', 'war', 'warst', 'waren', 'wart', 'sei',
-    'wird', 'wirst', 'werden', 'werdet', 'wurde', 'wurdest', 'wurden', 'wurdet',
-  };
-
-  /// Guesses whether [cleanWord] is used as an adjective at its position in
-  /// [contextSentence]: attributive (directly before a capitalized noun) or
-  /// predicate (after a copula verb, at the end of its clause).
-  String? _guessAdjOrVerbPos(String cleanWord, String contextSentence) {
-    final rawTokens = contextSentence.trim().split(RegExp(r'\s+'));
-    final lowerTokens = rawTokens
-        .map((t) => t.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').toLowerCase())
-        .toList();
-    final idx = lowerTokens.indexOf(cleanWord.toLowerCase());
-    if (idx == -1) return null;
-
-    final tappedRaw = rawTokens[idx];
-    final nextRaw = idx + 1 < rawTokens.length ? rawTokens[idx + 1] : '';
-    final nextClean = nextRaw.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '');
-    final prevLower = idx > 0 ? lowerTokens[idx - 1] : '';
-
-    final followedByNoun = nextClean.isNotEmpty && nextClean[0] == nextClean[0].toUpperCase();
-    if (followedByNoun) return 'adj';
-
-    final tappedEndsClause = RegExp(r'[.,!?;]$').hasMatch(tappedRaw.trim());
-    final endsClause = nextClean.isEmpty || RegExp(r'^[.,!?;]').hasMatch(nextRaw.trim()) || tappedEndsClause;
-    if (_copulaVerbs.contains(prevLower) && endsClause) return 'adj';
-
-    return null;
-  }
-
-  /// Performs context-aware word lookup with separable verb re-assembly & gender/POS disambiguation
+  /// Performs context-aware word lookup with separable verb re-assembly & OpenNLP POS matching
   Future<List<Map<String, dynamic>>> lookupContextualWord(String word, {String? contextSentence}) async {
     final cleanWord = word.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim();
     if (cleanWord.isEmpty) return [];
 
-    // 1. Try separable verb re-assembly if sentence is provided
+    // 1. Try separable verb re-assembly if sentence is provided (e.g. "Ich hebe ... ab" -> "abheben")
     if (contextSentence != null && contextSentence.isNotEmpty) {
       final tokens = contextSentence
           .replaceAll(RegExp(r'[^\wäöüÄÖÜß\s]'), '')
@@ -1765,14 +1895,12 @@ class DictionaryService {
       }
     }
 
-    // 2. Fall back to standard lookup for all POS
+    // 2. Fetch candidates from database for all POS
     final results = await lookupWordAllPOS(cleanWord);
     if (results.isEmpty) return [];
 
-    final List<Map<String, dynamic>> working = List<Map<String, dynamic>>.from(results);
-
-    // 3. Native OpenNLP (Android) / NLTagger (iOS) POS Tagging for Context Sentence
-    if (contextSentence != null && contextSentence.trim().isNotEmpty && working.length > 1) {
+    // 3. OpenNLP (Android) / NLTagger (iOS) POS Matching: filter/prioritize matching POS only
+    if (contextSentence != null && contextSentence.trim().isNotEmpty && results.length > 1) {
       try {
         final tagged = await NativeNlpService().getTaggedTokens(contextSentence);
         if (tagged.isNotEmpty) {
@@ -1785,121 +1913,24 @@ class DictionaryService {
           if (rawPos != null && rawPos.isNotEmpty) {
             final normTag = normalizePos(rawPos);
             if (normTag.isNotEmpty && normTag != 'unknown' && normTag != 'word') {
-              working.sort((a, b) {
-                final aPos = normalizePos(a['pos']?.toString());
-                final bPos = normalizePos(b['pos']?.toString());
-                if (aPos == normTag && bPos != normTag) return -1;
-                if (bPos == normTag && aPos != normTag) return 1;
-                return 0;
-              });
-              return working;
+              final matching = results.where((r) => normalizePos(r['pos']?.toString()) == normTag).toList();
+              if (matching.isNotEmpty) {
+                return matching;
+              }
             }
           }
         }
       } catch (_) {}
     }
 
-    // 4. Preceding Article / Determiner -> check if word is Adjective modifying a Noun vs. the Noun itself
-    if (contextSentence != null && working.length > 1) {
-      final rawTokens = contextSentence.trim().split(RegExp(r'\s+'));
-      final lowerTokens = rawTokens
-          .map((t) => t.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').toLowerCase())
-          .toList();
-      final idx = lowerTokens.indexOf(cleanWord.toLowerCase());
-
-      if (idx != -1) {
-        final nextRaw = idx + 1 < rawTokens.length ? rawTokens[idx + 1] : '';
-        final nextClean = nextRaw.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '');
-        final followedByCapitalizedNoun = nextClean.isNotEmpty &&
-            nextClean[0] == nextClean[0].toUpperCase() &&
-            nextClean[0] != nextClean[0].toLowerCase();
-
-        final prevLower = idx > 0 ? lowerTokens[idx - 1] : '';
-        const articlesAndDeterminers = {
-          'der', 'die', 'das', 'den', 'dem', 'des',
-          'ein', 'eine', 'einen', 'einem', 'einer', 'eines',
-          'kein', 'keine', 'keinen', 'keinem', 'keiner', 'keines',
-          'mein', 'meine', 'meinen', 'meinem', 'meiner',
-          'dein', 'deine', 'deinen', 'deinem', 'deiner',
-          'sein', 'seine', 'seinen', 'seinem', 'seiner',
-          'ihr', 'ihre', 'ihren', 'ihrem', 'ihrer',
-          'unser', 'unsere', 'unseren', 'unserem', 'unserer',
-          'euer', 'eure', 'euren', 'eurem', 'eurer',
-          'am', 'im', 'vom', 'zum', 'zur'
-        };
-        final isPrecededByArticle = articlesAndDeterminers.contains(prevLower);
-
-        if (isPrecededByArticle && followedByCapitalizedNoun) {
-          // Attributive Adjective before a Noun (e.g. "der kleine Mann") -> Prioritize ADJ over Noun!
-          working.sort((a, b) {
-            final aIsAdj = normalizePos(a['pos']?.toString()) == 'adj';
-            final bIsAdj = normalizePos(b['pos']?.toString()) == 'adj';
-            if (aIsAdj && !bIsAdj) return -1;
-            if (!aIsAdj && bIsAdj) return 1;
-            return 0;
-          });
-        } else if (isPrecededByArticle && !followedByCapitalizedNoun) {
-          // Preceded by Article and directly heads the noun phrase (e.g. "der Mann") -> Prioritize Noun!
-          working.sort((a, b) {
-            final aIsNoun = normalizePos(a['pos']?.toString()) == 'noun';
-            final bIsNoun = normalizePos(b['pos']?.toString()) == 'noun';
-            if (aIsNoun && !bIsNoun) return -1;
-            if (!aIsNoun && bIsNoun) return 1;
-            return 0;
-          });
-        }
-      }
-    }
-
-    // 4. Gender Disambiguation if sentence contains articles
-    if (contextSentence != null && working.length > 1) {
-      final lowerSentence = contextSentence.toLowerCase();
-      String? expectedGender;
-      if (lowerSentence.contains(RegExp(r'\b(der|den|dem|des)\b'))) {
-        expectedGender = 'masculine';
-      } else if (lowerSentence.contains(RegExp(r'\b(die|einer)\b'))) {
-        expectedGender = 'feminine';
-      } else if (lowerSentence.contains(RegExp(r'\b(das|einem|eines)\b'))) {
-        expectedGender = 'neuter';
-      }
-
-      if (expectedGender != null) {
-        working.sort((a, b) {
-          final gA = (a['gender'] as String?)?.toLowerCase();
-          final gB = (b['gender'] as String?)?.toLowerCase();
-          if (gA == expectedGender || (gA != null && gA.startsWith(expectedGender![0]))) return -1;
-          if (gB == expectedGender || (gB != null && gB.startsWith(expectedGender![0]))) return 1;
-          return 0;
-        });
-      }
-    }
-
-    // 4. Verb vs. Adjective disambiguation via word order context
-    if (contextSentence != null && working.length > 1) {
-      final hasVerb = working.any((r) => (r['pos'] as String?)?.toLowerCase() == 'verb');
-      final hasAdj = working.any((r) => (r['pos'] as String?)?.toLowerCase() == 'adj');
-      if (hasVerb && hasAdj) {
-        final preferredPos = _guessAdjOrVerbPos(cleanWord, contextSentence);
-        if (preferredPos != null) {
-          working.sort((a, b) {
-            final pA = (a['pos'] as String?)?.toLowerCase();
-            final pB = (b['pos'] as String?)?.toLowerCase();
-            if (pA == preferredPos && pB != preferredPos) return -1;
-            if (pB == preferredPos && pA != preferredPos) return 1;
-            return 0;
-          });
-        }
-      }
-    }
-
-    return working;
+    return results;
   }
 
   /// Consolidated word meaning resolution hierarchy:
-  /// 1. User Database (`VocabularyService` saved words matching word & POS)
-  /// 2. German Dictionary Database (`dict.db` SQLite matching word & POS)
-  /// 3. Wiktionary REST API (matching word & POS with auto-caching)
-  /// 4. Online NMT translation (safety net)
+  /// Consolidated word meaning resolution hierarchy:
+  /// 1. German Dictionary Database (`dict.db` SQLite matching word & POS)
+  /// 2. Wiktionary REST API (matching word & POS with auto-caching)
+  /// 3. Online NMT translation (safety net)
   ///
   /// Supports single words, phrases with spaces (e.g. "Platz nehmen", "es gibt"),
   /// and disambiguates multiple meanings across Parts of Speech (noun, verb, adj, etc.).
@@ -1915,65 +1946,7 @@ class DictionaryService {
     final List<Map<String, dynamic>> consolidatedResults = [];
 
     // =========================================================================
-    // STEP 1: Check User Database (SavedWord in VocabularyService)
-    // =========================================================================
-    try {
-      final vocabService = VocabularyService();
-      final savedWords = await vocabService.getSavedWords();
-      final matchingSaved = savedWords.where((sw) {
-        final sameWord = sw.word.toLowerCase().trim() == cleanWord.toLowerCase() ||
-            (sw.baseForm != null && sw.baseForm!.toLowerCase().trim() == cleanWord.toLowerCase());
-        if (!sameWord) return false;
-        if (normPos.isNotEmpty && sw.pos != null && sw.pos!.isNotEmpty) {
-          return normalizePos(sw.pos) == normPos;
-        }
-        return true;
-      }).toList();
-
-      for (final sw in matchingSaved) {
-        final defs = <String>[
-          if (sw.primaryDefinition.isNotEmpty) sw.primaryDefinition,
-          ...sw.definitions.where((d) => d != sw.primaryDefinition && d.isNotEmpty),
-        ];
-
-        final examples = <Map<String, String?>>[];
-        if (sw.contextSentence != null && sw.contextSentence!.isNotEmpty) {
-          examples.add({'de': sw.contextSentence!, 'en': null});
-        }
-        for (final ex in sw.contextExamples) {
-          if (ex.sentence.isNotEmpty && !examples.any((e) => e['de'] == ex.sentence)) {
-            examples.add({'de': ex.sentence, 'en': ex.translation});
-          }
-        }
-
-        final String effectiveSource = sw.source.isNotEmpty ? sw.source : 'user_added';
-        final String effectiveLabel = effectiveSource == 'wiktionary_fetched'
-            ? 'Wiktionary'
-            : (effectiveSource == 'user_edited' ? 'User Edited' : 'Saved in your library');
-
-        consolidatedResults.add({
-          'id': sw.id.hashCode.abs(),
-          'word': sw.word,
-          'pos': sw.pos != null && sw.pos!.isNotEmpty ? sw.pos! : (normPos.isNotEmpty ? normPos : 'word'),
-          'gender': sw.gender,
-          'ipa': sw.ipa,
-          'base_form': sw.baseForm ?? sw.word,
-          'freq_rank': null,
-          'definitions': defs,
-          'definition': sw.primaryDefinition,
-          'examples': examples,
-          'category': sw.category.name,
-          'isFromUserDatabase': true,
-          'source': effectiveSource,
-          'sourceLabel': effectiveLabel,
-        });
-      }
-    } catch (e) {
-      AppLogger.error('Error querying user database in lookupConsolidatedWord', error: e, tag: 'DictionaryService');
-    }
-
-    // =========================================================================
-    // STEP 2: Check German Dictionary Database (SQLite dict.db)
+    // STEP 1: Check German Dictionary Database (SQLite dict.db)
     // =========================================================================
     List<Map<String, dynamic>> dbResults = [];
     if (!kIsWeb) {
@@ -1987,7 +1960,8 @@ class DictionaryService {
                      w.ipa, COALESCE(w.base_form, w_base.word) as base_form,
                      COALESCE(w.verb_class, w_base.verb_class) as verb_class,
                      w.freq_rank,
-                     COALESCE(d.definition, d_base.definition) as definition
+                     d.definition as direct_definition,
+                     d_base.definition as base_definition
               FROM words w
               LEFT JOIN definitions d ON w.id = d.word_id
               LEFT JOIN words w_base ON w.base_form = w_base.word
@@ -2027,7 +2001,12 @@ class DictionaryService {
         final id = enriched['id'] as int?;
         if (id != null && id > 0) {
           final baseForm = (enriched['base_form'] as String?)?.trim();
-          enriched['examples'] = await _getExamplesForWord(db, id, baseForm);
+          enriched['examples'] = await _getExamplesForWord(
+            db,
+            id,
+            baseForm,
+            word: enriched['word']?.toString(),
+          );
           try {
             enriched['forms'] = await db.rawQuery(
               'SELECT f.form, t.tags FROM forms f LEFT JOIN tags t ON f.tag_id = t.id WHERE f.word_id = ? OR f.word_id = (SELECT id FROM words WHERE word = ? AND base_form IS NULL LIMIT 1)',
@@ -2168,20 +2147,236 @@ class DictionaryService {
       } catch (_) {}
     }
 
-    // Priority sorting: Exact requested POS on top
-    if (normPos.isNotEmpty && consolidatedResults.length > 1) {
+    // =========================================================================
+    // STEP 5: Context-Aware Word Sense Disambiguation (WSD)
+    // =========================================================================
+    if (contextSentence != null && contextSentence.trim().isNotEmpty) {
+      final cleanContext = contextSentence.toLowerCase();
+      final contextTokens = cleanContext
+          .replaceAll(RegExp(r'[^\wäöüÄÖÜß\s]'), ' ')
+          .split(RegExp(r'\s+'))
+          .where((t) => t.length > 2 && t != cleanWord.toLowerCase())
+          .toSet();
+
+      int highestScore = 0;
+      int bestIndex = -1;
+
+      for (int i = 0; i < consolidatedResults.length; i++) {
+        final entry = consolidatedResults[i];
+        int score = 0;
+
+        final defs = List<String>.from(entry['definitions'] ?? [entry['definition'] ?? '']);
+        final exs = (entry['examples'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .map((e) => '${e['de'] ?? ''} ${e['en'] ?? ''}')
+            .join(' ')
+            .toLowerCase() ?? '';
+
+        // Check matching sense without mutating dictionary definition order
+        if (defs.length > 1) {
+          int bestDefIdx = -1;
+          int bestDefScore = 0;
+          final rawExs = (entry['examples'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? [];
+
+          for (int dIdx = 0; dIdx < defs.length; dIdx++) {
+            int dScore = 0;
+            final dLower = defs[dIdx].toLowerCase();
+            for (final token in contextTokens) {
+              if (dLower.contains(token)) {
+                dScore += 4;
+              }
+            }
+
+            final dWords = dLower.split(RegExp(r'\W+')).where((w) => w.length > 2).toSet();
+            for (final ex in rawExs) {
+              final exDe = (ex['de'] ?? '').toString().toLowerCase();
+              final exEn = (ex['en'] ?? '').toString().toLowerCase();
+              final bool relatesToDef = dWords.any((w) => exEn.contains(w));
+              if (relatesToDef) {
+                for (final token in contextTokens) {
+                  if (exDe.contains(token)) {
+                    dScore += 3;
+                  }
+                }
+              }
+            }
+
+            if (dScore > bestDefScore) {
+              bestDefScore = dScore;
+              bestDefIdx = dIdx;
+            }
+          }
+          if (bestDefScore > 0) {
+            score += bestDefScore;
+            // Only flag context_matched_sense_index if it differs from the primary definition (index > 0)
+            if (bestDefIdx > 0) {
+              entry['context_matched_sense_index'] = bestDefIdx;
+            }
+          }
+        }
+
+        final allDefsStr = defs.join(' ').toLowerCase();
+        final searchCorpus = '$allDefsStr $exs';
+
+        for (final token in contextTokens) {
+          if (searchCorpus.contains(token)) {
+            score += 2;
+          }
+        }
+
+        // Boost if POS matches contextual hints
+        final posStr = normalizePos(entry['pos']?.toString());
+        if (normPos.isNotEmpty && posStr == normPos) {
+          score += 3;
+        }
+
+        entry['context_match_score'] = score;
+        if (score > highestScore) {
+          highestScore = score;
+          bestIndex = i;
+        }
+      }
+
+      if (highestScore > 0 && bestIndex != -1) {
+        for (int i = 0; i < consolidatedResults.length; i++) {
+          consolidatedResults[i]['is_context_match'] = (i == bestIndex);
+        }
+      }
+    }
+
+    // Priority sorting:
+    // 1. Highest context score / context match on top
+    // 2. Exact requested POS on top
+    // 3. Lowercase query -> Non-Noun over Noun (e.g. 'kleiner' adj over 'Kleiner' noun)
+    // 4. Frequency Rank
+    if (consolidatedResults.length > 1) {
       consolidatedResults.sort((a, b) {
-        final aPos = normalizePos(a['pos']?.toString());
-        final bPos = normalizePos(b['pos']?.toString());
-        final aMatch = aPos == normPos;
-        final bMatch = bPos == normPos;
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
+        final aScore = (a['context_match_score'] as int?) ?? 0;
+        final bScore = (b['context_match_score'] as int?) ?? 0;
+        if (aScore != bScore) return bScore.compareTo(aScore);
+
+        final aContext = a['is_context_match'] == true;
+        final bContext = b['is_context_match'] == true;
+        if (aContext && !bContext) return -1;
+        if (!aContext && bContext) return 1;
+
+        if (normPos.isNotEmpty) {
+          final aPos = normalizePos(a['pos']?.toString());
+          final bPos = normalizePos(b['pos']?.toString());
+          final aMatch = aPos == normPos;
+          final bMatch = bPos == normPos;
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+        }
+
+        final isCleanLower = cleanWord.isNotEmpty && cleanWord[0] == cleanWord[0].toLowerCase();
+        final aIsNoun = normalizePos(a['pos']?.toString()) == 'noun';
+        final bIsNoun = normalizePos(b['pos']?.toString()) == 'noun';
+        if (isCleanLower) {
+          if (!aIsNoun && bIsNoun) return -1;
+          if (aIsNoun && !bIsNoun) return 1;
+        }
+
+        final aRank = a['freq_rank'] as int? ?? 999999;
+        final bRank = b['freq_rank'] as int? ?? 999999;
+        return aRank.compareTo(bRank);
       });
     }
 
     return consolidatedResults;
+  }
+
+  /// Unified Word Hydration Model:
+  /// Transforms a [SavedWord] into the standard word data dictionary format used across
+  /// [WordHeaderCard], [GlanceWordSheet], [VocabularyPracticeScreen], and [WordDetailScreen].
+  ///
+  /// - For user-custom notes (`source == 'user_edited'`), preserves the user's custom definitions.
+  /// - For dictionary-backed words, dynamically merges the latest authoritative definitions,
+  ///   forms, plural, Zipf frequency rank, and IPA from the dictionary database.
+  Future<Map<String, dynamic>> hydrateSavedWord(
+    SavedWord word, {
+    Map<String, dynamic>? preloadedDictData,
+  }) async {
+    final cleanWord = word.word.trim();
+    final effectiveSource = word.source.isNotEmpty ? word.source : 'dictionary_saved';
+    final effectiveLabel = effectiveSource == 'wiktionary_fetched'
+        ? 'Wiktionary'
+        : (effectiveSource == 'user_edited'
+            ? 'Custom Note'
+            : (effectiveSource == 'nmt_translation' ? 'Google Translate' : 'Dictionary'));
+
+    // If custom edited note, respect user's explicit definitions
+    if (effectiveSource == 'user_edited') {
+      final userDefs = word.definitions.isNotEmpty
+          ? List<String>.from(word.definitions)
+          : (word.primaryDefinition.isNotEmpty ? [word.primaryDefinition] : <String>[]);
+      return {
+        'id': word.id.hashCode.abs(),
+        'word': word.word,
+        'base_form': word.baseForm ?? word.word,
+        'pos': word.pos ?? '',
+        'gender': word.gender ?? '',
+        'ipa': word.ipa ?? '',
+        'definitions': userDefs,
+        'definition': userDefs.isNotEmpty ? userDefs.first : word.primaryDefinition,
+        'source': effectiveSource,
+        'sourceLabel': effectiveLabel,
+        'isFromUserDatabase': true,
+        'category': word.category.name,
+        'contextSentence': word.contextSentence,
+        'contextExamples': word.contextExamples,
+      };
+    }
+
+    // Dynamic dictionary resolution
+    Map<String, dynamic>? dictData = preloadedDictData;
+    if (dictData == null) {
+      final entries = await lookupConsolidatedWord(
+        cleanWord,
+        pos: word.pos,
+        contextSentence: word.contextSentence,
+      );
+      if (entries.isNotEmpty) {
+        dictData = entries.first;
+      }
+    }
+
+    final dictDefs = dictData != null && dictData['definitions'] != null
+        ? List<String>.from(dictData['definitions'])
+        : <String>[];
+
+    final defs = dictDefs.isNotEmpty
+        ? dictDefs
+        : (word.definitions.isNotEmpty
+            ? List<String>.from(word.definitions)
+            : (word.primaryDefinition.isNotEmpty ? [word.primaryDefinition] : <String>[]));
+
+    final forms = dictData?['forms'] ?? [];
+    final plural = dictData?['plural'];
+    final freqRank = dictData?['freq_rank'];
+
+    return {
+      'id': dictData?['id'] ?? word.id.hashCode.abs(),
+      'word': word.word,
+      'base_form': dictData?['base_form'] ?? word.baseForm ?? word.word,
+      'pos': word.pos ?? dictData?['pos'] ?? '',
+      'gender': word.gender ?? dictData?['gender'] ?? '',
+      'ipa': dictData?['ipa'] ?? word.ipa ?? '',
+      'definitions': defs,
+      'definition': defs.isNotEmpty ? defs.first : word.primaryDefinition,
+      'forms': forms,
+      if (plural != null) 'plural': plural,
+      if (freqRank != null) 'freq_rank': freqRank,
+      if (dictData?['context_matched_sense_index'] != null)
+        'context_matched_sense_index': dictData!['context_matched_sense_index'],
+      'source': effectiveSource,
+      'sourceLabel': effectiveLabel,
+      'isFromUserDatabase': true,
+      'category': word.category.name,
+      'contextSentence': word.contextSentence,
+      'contextExamples': word.contextExamples,
+      'examples': dictData?['examples'] ?? [],
+    };
   }
 
   Future<List<Map<String, dynamic>>> getRandomNouns({int limit = 10}) async {

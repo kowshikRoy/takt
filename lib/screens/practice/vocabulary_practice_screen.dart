@@ -76,13 +76,10 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
     for (final word in _dueWords) {
       final lower = word.word.toLowerCase().trim();
       if (!_wordDetailsCache.containsKey(lower)) {
-        final details = await _dictionaryService.lookupConsolidatedWord(
-          word.word,
-          contextSentence: word.contextSentence,
-        );
-        if (details.isNotEmpty && mounted) {
+        final hydrated = await _dictionaryService.hydrateSavedWord(word);
+        if (mounted) {
           setState(() {
-            _wordDetailsCache[lower] = details.first;
+            _wordDetailsCache[lower] = hydrated;
           });
         }
       }
@@ -132,6 +129,50 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
     return Colors.indigo;
   }
 
+  Future<void> _confirmRemoveCurrentWord(
+    BuildContext context,
+    SavedWord word,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove from Study Deck?'),
+        content: Text(
+          'Remove "${word.word}" from your saved vocabulary and review queue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF8C2D19),
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _vocabService.removeWord(word.id);
+      setState(() {
+        _dueWords.removeAt(_currentIndex);
+        _showAnswer = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Removed "${word.word}" from Study Deck'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -153,6 +194,18 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
           ),
         ),
         elevation: 0,
+        actions: [
+          if (_dueWords.isNotEmpty && _currentIndex < _dueWords.length)
+            IconButton(
+              icon: Icon(
+                Icons.bookmark_remove_outlined,
+                color: inkColor.withValues(alpha: 0.7),
+                size: 20,
+              ),
+              tooltip: 'Remove from Study Deck',
+              onPressed: () => _confirmRemoveCurrentWord(context, _dueWords[_currentIndex]),
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -176,6 +229,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
   Map<String, dynamic> _wordDataFor(SavedWord word) {
     final lower = word.word.toLowerCase().trim();
     final cached = _wordDetailsCache[lower];
+    if (cached != null) return cached;
 
     final effectiveSource = word.source.isNotEmpty ? word.source : 'dictionary_saved';
     final effectiveLabel = effectiveSource == 'wiktionary_fetched'
@@ -184,24 +238,22 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
             ? 'Custom Note'
             : (effectiveSource == 'nmt_translation' ? 'Google Translate' : 'Dictionary'));
 
-    final forms = cached?['forms'] ?? [];
-    final plural = cached?['plural'] ?? (cached != null ? NounHeadwordTitle.extractPluralForm(cached) : null);
-    final freqRank = cached?['freq_rank'];
+    final userDefs = word.definitions.isNotEmpty
+        ? List<String>.from(word.definitions)
+        : (word.primaryDefinition.isNotEmpty ? [word.primaryDefinition] : <String>[]);
 
     return {
       'word': word.word,
-      'pos': word.pos ?? cached?['pos'],
-      'gender': word.gender ?? cached?['gender'],
-      'ipa': word.ipa ?? cached?['ipa'],
-      'definitions': word.definitions.isNotEmpty
-          ? word.definitions
-          : (cached?['definitions'] ?? [word.primaryDefinition]),
-      'forms': forms,
-      if (plural != null) 'plural': plural,
-      if (freqRank != null) 'freq_rank': freqRank,
+      'base_form': word.baseForm ?? word.word,
+      'pos': word.pos ?? '',
+      'gender': word.gender ?? '',
+      'ipa': word.ipa ?? '',
+      'definitions': userDefs,
+      'definition': userDefs.isNotEmpty ? userDefs.first : word.primaryDefinition,
       'source': effectiveSource,
       'sourceLabel': effectiveLabel,
       'isFromUserDatabase': true,
+      'category': word.category.name,
       'contextSentence': word.contextSentence,
       'contextExamples': word.contextExamples,
     };
@@ -230,6 +282,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
     final cardBg = isDark ? const Color(0xFF221E1A) : const Color(0xFFF2EEE7);
     final genderColor = _getGenderColor(word.gender);
     final example = _exampleFor(word);
+    final wordData = _wordDataFor(word);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
@@ -362,8 +415,35 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                       ],
                     ),
 
+                    if (wordData['pos'] != null && wordData['pos'].toString().trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: inkColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(3),
+                          border: Border.all(
+                            color: inkColor.withValues(alpha: 0.18),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          wordData['pos'].toString().trim().toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                            color: inkColor.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                    ],
+
                     if (word.ipa != null && word.ipa!.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
                         word.ipa!,
                         style: TextStyle(

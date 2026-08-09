@@ -279,5 +279,57 @@ void main() {
       await tester.pumpWidget(Container());
       await tester.pump(const Duration(seconds: 11));
     });
+
+    testWidgets('Removing a word from study deck removes it from database and populates deleted sync IDs',
+        (WidgetTester tester) async {
+      final vocab = VocabularyService();
+      final word = SavedWord(
+        id: 'hund',
+        word: 'Hund',
+        pos: 'noun',
+        gender: 'm',
+        primaryDefinition: 'dog',
+        category: VocabCategory.learning,
+        dueDate: DateTime.now().subtract(const Duration(minutes: 5)),
+      );
+
+      await tester.runAsync(() async {
+        await vocab.upsertWord(word);
+      });
+
+      await tester.pumpWidget(
+        createTestApp(const VocabularyPracticeScreen()),
+      );
+
+      await tester.runAsync(() async {
+        for (int i = 0; i < 50; i++) {
+          await Future.delayed(const Duration(milliseconds: 50));
+          await tester.pump();
+          if (find.text('Hund').evaluate().isNotEmpty) break;
+        }
+      });
+
+      expect(find.text('Hund'), findsOneWidget);
+      expect(find.byIcon(Icons.bookmark_remove_outlined), findsOneWidget);
+
+      // Tap remove icon and confirm
+      await tester.tap(find.byIcon(Icons.bookmark_remove_outlined));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remove from Study Deck?'), findsOneWidget);
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+
+      // Verify removed from database and in sync tombstones
+      await tester.runAsync(() async {
+        final words = await vocab.getSavedWords();
+        expect(words.any((w) => w.word == 'Hund'), isFalse);
+        final tombstones = vocab.getDeletedWordIdsForSync();
+        expect(tombstones.contains('hund'), isTrue);
+      });
+
+      await tester.pumpWidget(Container());
+      await tester.pump(const Duration(seconds: 11));
+    });
   });
 }

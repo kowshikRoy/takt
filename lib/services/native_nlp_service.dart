@@ -138,10 +138,10 @@ class NativeNlpService {
         pos = 'art';
       } else if (prepositions.contains(lower)) {
         pos = 'prep';
-      } else if (articles.contains(prev) || (isCapitalized && !isFirst)) {
-        pos = 'noun';
       } else if (isCapitalized) {
         pos = 'noun';
+      } else if (articles.contains(prev) && !isCapitalized) {
+        pos = 'adj';
       }
 
       if (pos == 'noun') {

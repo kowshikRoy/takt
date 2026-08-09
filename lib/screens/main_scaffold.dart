@@ -7,6 +7,7 @@ import 'discover_screen.dart';
 import 'dictionary_screen.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../services/vocabulary_service.dart';
 import '../theme/breakpoints.dart';
 import '../widgets/auth_sync_dialog.dart';
 import '../widgets/celebration_overlay.dart';
@@ -28,6 +29,7 @@ class _MainScaffoldState extends State<MainScaffold>
     super.initState();
     _selectedIndex = widget.initialIndex;
     WidgetsBinding.instance.addObserver(this);
+    VocabularyService().refreshAndRepairSavedWords();
   }
 
   @override
@@ -345,9 +347,10 @@ class _MainScaffoldState extends State<MainScaffold>
     }
 
     return Scaffold(
-      body: SafeArea(child: _screens[_selectedIndex]),
+      body: _screens[_selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -356,40 +359,45 @@ class _MainScaffoldState extends State<MainScaffold>
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Theme.of(context).cardColor,
-          selectedItemColor: Theme.of(context).colorScheme.primary,
-          unselectedItemColor: Theme.of(context).unselectedWidgetColor,
-          showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 10,
+        child: SafeArea(
+          top: false,
+          bottom: true,
+          child: BottomNavigationBar(
+            elevation: 0,
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.transparent,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            unselectedItemColor: Theme.of(context).unselectedWidgetColor,
+            showUnselectedLabels: true,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+            items: [
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.home),
+                label: AppLocalizations.of(context)?.navHome ?? 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.school),
+                label: AppLocalizations.of(context)?.navLearn ?? 'Learn',
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.menu_book_rounded),
+                label: AppLocalizations.of(context)?.navDictionary ?? 'Dictionary',
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.person),
+                label: AppLocalizations.of(context)?.navProfile ?? 'Profile',
+              ),
+            ],
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 10,
-          ),
-          items: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.home),
-              label: AppLocalizations.of(context)?.navHome ?? 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.school),
-              label: AppLocalizations.of(context)?.navLearn ?? 'Learn',
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.menu_book_rounded),
-              label: AppLocalizations.of(context)?.navDictionary ?? 'Dictionary',
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.person),
-              label: AppLocalizations.of(context)?.navProfile ?? 'Profile',
-            ),
-          ],
         ),
       ),
     );

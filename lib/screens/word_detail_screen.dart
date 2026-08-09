@@ -82,7 +82,14 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
       setState(() {
         _savedWord = currentSaved;
         if (full != null) {
-          _wordDetails = full;
+          if (widget.wordData != null && widget.wordData!['context_matched_sense_index'] != null) {
+            _wordDetails = {
+              ...full,
+              'context_matched_sense_index': widget.wordData!['context_matched_sense_index'],
+            };
+          } else {
+            _wordDetails = full;
+          }
         } else if (_wordDetails == null) {
           _wordDetails = {
             'word': widget.word,

@@ -519,12 +519,6 @@ class VocabularyService extends ChangeNotifier {
       if (word.source == 'user_edited') continue;
 
       final hasContext = word.contextSentence != null && word.contextSentence!.trim().isNotEmpty;
-      final looksStaleDef = word.primaryDefinition.trim().isEmpty ||
-          word.primaryDefinition.trim().toLowerCase() == word.word.trim().toLowerCase();
-
-      if (!forceAll && !looksStaleDef && !hasContext && word.pos != null && word.pos!.isNotEmpty) {
-        continue;
-      }
 
       try {
         List<Map<String, dynamic>> entries;
@@ -551,10 +545,11 @@ class VocabularyService extends ChangeNotifier {
           final posChanged = bestPos != null &&
               bestPos.isNotEmpty &&
               DictionaryService.normalizePos(bestPos) != DictionaryService.normalizePos(word.pos);
-          final defChanged = looksStaleDef && newPrimaryDef.isNotEmpty && newPrimaryDef != word.primaryDefinition;
+          final defsChanged = bestDefs.isNotEmpty &&
+              (newPrimaryDef != word.primaryDefinition || bestDefs.length != word.definitions.length);
           final baseChanged = bestBase != null && bestBase.isNotEmpty && bestBase != word.baseForm;
 
-          if (posChanged || defChanged || baseChanged || forceAll) {
+          if (posChanged || defsChanged || baseChanged || forceAll) {
             final updated = SavedWord(
               id: word.id,
               word: word.word,
