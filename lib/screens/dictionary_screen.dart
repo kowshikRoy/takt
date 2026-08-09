@@ -660,8 +660,52 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          _buildStudyDeckChip(context),
         ],
       ),
+    );
+  }
+
+  Widget _buildStudyDeckChip(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isSelected = _selectedPosFilter == 'saved';
+    return ChoiceChip(
+      showCheckmark: false,
+      avatar: Icon(
+        Icons.style_rounded,
+        size: 13,
+        color: isSelected ? colorScheme.onPrimary : colorScheme.primary,
+      ),
+      label: Text(
+        'Study Deck (${_savedWordIds.length})',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          color: isSelected ? colorScheme.onPrimary : colorScheme.primary,
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: colorScheme.primary,
+      backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.4),
+      visualDensity: VisualDensity.compact,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4.0),
+        side: isSelected
+            ? BorderSide.none
+            : BorderSide(
+                color: colorScheme.primary.withValues(alpha: 0.5),
+                width: 0.8,
+              ),
+      ),
+      onSelected: (selected) {
+        setState(() {
+          _selectedPosFilter = selected ? 'saved' : 'all';
+        });
+        if (_searchController.text.isNotEmpty) {
+          _onSearchChanged(_searchController.text);
+        }
+      },
     );
   }
 
@@ -918,7 +962,6 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       {'id': 'noun', 'label': 'Nouns'},
       {'id': 'verb', 'label': 'Verbs'},
       {'id': 'adj', 'label': 'Adjectives'},
-      {'id': 'saved', 'label': 'Study Deck (${_savedWordIds.length})'},
     ];
 
     final colorScheme = Theme.of(context).colorScheme;
@@ -931,20 +974,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           children: [
             ...filters.map((f) {
               final isSelected = _selectedPosFilter == f['id'];
-              final isSavedChip = f['id'] == 'saved';
               return Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: ChoiceChip(
                   showCheckmark: false,
-                  avatar: isSavedChip
-                      ? Icon(
-                          Icons.style_rounded,
-                          size: 13,
-                          color: isSelected
-                              ? colorScheme.onPrimary
-                              : colorScheme.primary,
-                        )
-                      : null,
                   label: Text(
                     f['label']!,
                     style: TextStyle(
@@ -952,25 +985,17 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected
                           ? colorScheme.onPrimary
-                          : (isSavedChip
-                              ? colorScheme.primary
-                              : colorScheme.onSurface),
+                          : colorScheme.onSurface,
                     ),
                   ),
                   selected: isSelected,
                   selectedColor: colorScheme.primary,
-                  backgroundColor: isSavedChip && !isSelected
-                      ? colorScheme.primaryContainer.withValues(alpha: 0.4)
-                      : colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                  backgroundColor:
+                      colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
                   visualDensity: VisualDensity.compact,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4.0),
-                    side: isSavedChip && !isSelected
-                        ? BorderSide(
-                            color: colorScheme.primary.withValues(alpha: 0.5),
-                            width: 0.8,
-                          )
-                        : BorderSide.none,
+                    side: BorderSide.none,
                   ),
                   onSelected: (selected) {
                     if (selected) {
