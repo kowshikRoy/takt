@@ -410,7 +410,37 @@ class DictionaryService {
             }
           }
 
-          return grouped.values.take(20).toList();
+          final list = grouped.values.take(20).toList();
+          final hasExactMatch = list.any((r) => (r['word']?.toString() ?? '').toLowerCase() == query.toLowerCase());
+
+          if (hasExactMatch) {
+            return list;
+          }
+
+          // If no exact match found in local DB prefix search, attempt live consolidated lookup
+          try {
+            final consolidated = await lookupConsolidatedWord(query);
+            if (consolidated.isNotEmpty) {
+              final exactMatches = consolidated.map((c) => {
+                'id': c['id'] ?? -1,
+                'word': c['word'] ?? query,
+                'pos': c['pos'] ?? 'word',
+                'gender': c['gender'],
+                'ipa': c['ipa'],
+                'base_form': c['base_form'] ?? c['word'],
+                'definition': (c['definitions'] as List?)?.firstOrNull?.toString() ?? c['definition'] ?? '',
+                'definitions': c['definitions'],
+                'isWiktionaryFallback': c['isWiktionaryFallback'] ?? false,
+                'isNmtTranslation': c['isNmtTranslation'] ?? false,
+              }).toList();
+
+              return [...exactMatches, ...list].take(20).toList();
+            }
+          } catch (_) {}
+
+          if (list.isNotEmpty) {
+            return list;
+          }
         } catch (e) {
           AppLogger.error("Local SQLite Search error", error: e, tag: 'DictionaryService');
         }
@@ -824,8 +854,10 @@ class DictionaryService {
     required String pos,
     String? gender,
     String? ipa,
+    String? baseForm,
     required List<String> definitions,
     List<Map<String, String?>> examples = const [],
+    List<Map<String, dynamic>> forms = const [],
   }) async {
     if (kIsWeb) return null;
     try {
@@ -844,12 +876,17 @@ class DictionaryService {
         return existing.first['id'] as int;
       }
 
-      final int wordId = await db.insert('words', {
+      final Map<String, dynamic> row = {
         'word': word,
         'pos': pos,
         'gender': gender,
         'ipa': ipa,
-      });
+      };
+      if (_supportsBaseForm && baseForm != null && baseForm.isNotEmpty) {
+        row['base_form'] = baseForm;
+      }
+
+      final int wordId = await db.insert('words', row);
 
       for (final def in definitions) {
         if (def.trim().isNotEmpty) {
@@ -868,6 +905,36 @@ class DictionaryService {
               'word_id': wordId,
               'de': deText,
               'en': ex['en']?.trim(),
+            });
+          } catch (_) {}
+        }
+      }
+
+      for (final f in forms) {
+        final formText = f['form']?.toString().trim();
+        if (formText != null && formText.isNotEmpty) {
+          try {
+            final rawTags = f['tags'];
+            final tagStr = rawTags is List ? rawTags.join(', ') : (rawTags?.toString() ?? '');
+            int? tagId;
+            if (tagStr.isNotEmpty) {
+              final existingTag = await db.query(
+                'tags',
+                columns: ['id'],
+                where: 'tags = ?',
+                whereArgs: [tagStr],
+                limit: 1,
+              );
+              if (existingTag.isNotEmpty) {
+                tagId = existingTag.first['id'] as int?;
+              } else {
+                tagId = await db.insert('tags', {'tags': tagStr});
+              }
+            }
+            await db.insert('forms', {
+              'word_id': wordId,
+              'form': formText,
+              'tag_id': tagId,
             });
           } catch (_) {}
         }
@@ -1153,7 +1220,10 @@ class DictionaryService {
         final uri = Uri.parse(
           'https://api.wiktapi.dev/v1/en/word/${Uri.encodeComponent(candidate)}?lang=de'
         );
-        final response = await http.get(uri).timeout(const Duration(seconds: 4));
+        final response = await http.get(uri, headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'TaktApp/1.0 (https://github.com/kowshikRoy/takt)',
+        }).timeout(const Duration(seconds: 6));
 
         if (response.statusCode == 200) {
           final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -1163,6 +1233,7 @@ class DictionaryService {
             String? gender;
             String? ipa;
             String? audioUrl;
+            String? baseForm;
             List<String> definitions = [];
             List<Map<String, String?>> examples = [];
             List<Map<String, dynamic>> forms = [];
@@ -1194,7 +1265,7 @@ class DictionaryService {
                   }
                 }
 
-                // Identify Part of Speech
+                // Identify Part of Speech from entry level
                 final rawEntryPos = entry['pos']?.toString().toLowerCase();
                 if (rawEntryPos != null && rawEntryPos.isNotEmpty) {
                   final entryNormPos = normalizePos(rawEntryPos);
@@ -1207,7 +1278,18 @@ class DictionaryService {
                 if (senses != null) {
                   for (final sense in senses) {
                     if (sense is Map<String, dynamic>) {
-                      // Check tags for grammatical gender
+                      // Check form_of for base lemma (e.g. plural of Nachricht -> baseForm: Nachricht)
+                      final formOfList = sense['form_of'] as List<dynamic>?;
+                      if (formOfList != null && formOfList.isNotEmpty) {
+                        for (final fo in formOfList) {
+                          if (fo is Map && fo['word'] != null && fo['word'].toString().trim().isNotEmpty) {
+                            baseForm ??= fo['word'].toString().trim();
+                            break;
+                          }
+                        }
+                      }
+
+                      // Check tags for grammatical gender and POS
                       final tags = (sense['tags'] as List<dynamic>?)?.map((t) => t.toString().toLowerCase()).toList() ?? [];
                       if (gender == null) {
                         if (tags.contains('feminine')) {
@@ -1219,6 +1301,18 @@ class DictionaryService {
                         } else if (tags.contains('neuter')) {
                           gender = 'n';
                           if (pos == 'word') pos = 'noun';
+                        }
+                      }
+
+                      if (pos == 'word') {
+                        if (tags.contains('noun') || tags.contains('nouns')) {
+                          pos = 'noun';
+                        } else if (tags.contains('verb') || tags.contains('verbs')) {
+                          pos = 'verb';
+                        } else if (tags.contains('adjective') || tags.contains('adjectives') || tags.contains('adj')) {
+                          pos = 'adj';
+                        } else if (tags.contains('adverb') || tags.contains('adverbs') || tags.contains('adv')) {
+                          pos = 'adv';
                         }
                       }
 
@@ -1266,12 +1360,26 @@ class DictionaryService {
               }
             }
 
+            // If POS still undetermined, check forms or noun capitalization
+            if (pos == 'word' || pos.isEmpty) {
+              final hasNounForms = forms.any((f) {
+                final fTags = (f['tags'] as List?)?.map((t) => t.toString().toLowerCase()).toList() ?? [];
+                return f['source'] == 'declension' ||
+                    fTags.any((t) => t.contains('nominative') || t.contains('accusative') || t.contains('dative') || t.contains('genitive'));
+              });
+              if (hasNounForms || gender != null) {
+                pos = 'noun';
+              } else if (candidate.isNotEmpty && candidate[0] == candidate[0].toUpperCase() && candidate[0] != candidate[0].toLowerCase()) {
+                pos = 'noun';
+              }
+            }
+
             final resolvedWord = (pos == 'noun' && candidate.isNotEmpty)
                 ? candidate[0].toUpperCase() + candidate.substring(1)
                 : candidate;
 
             if (gender == null && pos == 'noun') {
-              final inferred = _inferGenderIfNull(resolvedWord, null, pos);
+              final inferred = _inferGenderIfNull(resolvedWord, baseForm, pos);
               if (inferred.isNotEmpty) gender = inferred;
             }
 
@@ -1280,8 +1388,11 @@ class DictionaryService {
                 word: resolvedWord,
                 pos: pos,
                 gender: gender,
+                ipa: ipa,
+                baseForm: baseForm,
                 definitions: definitions,
                 examples: examples,
+                forms: forms,
               );
 
               // Auto-save into My Library (VocabularyService) as wiktionary_fetched
@@ -1292,7 +1403,7 @@ class DictionaryService {
                   final newSaved = SavedWord(
                     id: resolvedWord.toLowerCase().trim(),
                     word: resolvedWord,
-                    baseForm: resolvedWord,
+                    baseForm: baseForm ?? resolvedWord,
                     pos: pos,
                     gender: gender,
                     primaryDefinition: definitions.first,
@@ -1308,6 +1419,7 @@ class DictionaryService {
               return {
                 'id': cachedId ?? -1,
                 'word': resolvedWord,
+                'base_form': baseForm ?? resolvedWord,
                 'pos': pos,
                 'gender': gender,
                 'ipa': ipa,
@@ -1464,27 +1576,6 @@ class DictionaryService {
         ''', [clean]);
       }
       if (results.isEmpty) {
-        final onlineResult = await lookupWord(clean);
-        if (onlineResult != null) {
-          final String def = onlineResult['definition'] ??
-              ((onlineResult['definitions'] as List?)?.firstOrNull?.toString() ?? '');
-          final String pos = onlineResult['pos']?.toString() ?? 'word';
-          return [
-            {
-              'id': onlineResult['id'] ?? -1,
-              'word': clean,
-              'pos': pos,
-              'gender': onlineResult['gender'],
-              'ipa': onlineResult['ipa'],
-              'base_form': clean,
-              'freq_rank': onlineResult['freq_rank'] is int ? onlineResult['freq_rank'] as int : null,
-              'definition': def,
-              'definitions': onlineResult['definitions'] ?? [def],
-              'isWiktionaryFallback': onlineResult['isWiktionaryFallback'] ?? false,
-              'isNmtTranslation': onlineResult['isNmtTranslation'] ?? false,
-            }
-          ];
-        }
         return [];
       }
 

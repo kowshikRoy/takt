@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 import '../models/saved_word.dart';
@@ -163,12 +164,82 @@ class HomeScreenWidgetService {
         } catch (_) {}
       }
 
+      // Build a swipeable deck of words (due words + saved words + curated fallbacks)
+      final List<Map<String, String>> deck = [];
+      final Set<String> seenWords = {};
+
+      void addCard({
+        required String word,
+        required String definition,
+        required String cefr,
+        String? article,
+      }) {
+        final cleanWord = word.trim();
+        if (cleanWord.isEmpty || seenWords.contains(cleanWord.toLowerCase())) return;
+        seenWords.add(cleanWord.toLowerCase());
+
+        String displayWord = cleanWord;
+        final isNoun = cleanWord.isNotEmpty && cleanWord[0].toUpperCase() == cleanWord[0] && cleanWord[0].toLowerCase() != cleanWord[0];
+        if (isNoun && article != null && article.isNotEmpty && !cleanWord.toLowerCase().startsWith(RegExp(r'^(der|die|das)\s+'))) {
+          displayWord = '$article $cleanWord';
+        }
+
+        deck.add({
+          'word': displayWord,
+          'definition': definition.isNotEmpty ? definition : 'word, term',
+          'cefr': cefr.isNotEmpty ? cefr : 'B1',
+          'streak': streakText,
+          'deepLink': 'takt://word?term=${Uri.encodeComponent(cleanWord)}',
+        });
+      }
+
+      // Add featured or first word
+      addCard(word: wordStr, definition: definition, cefr: cefr, article: article);
+
+      // Add due review words
+      for (final due in dueWords.take(5)) {
+        addCard(
+          word: due.word,
+          definition: due.primaryDefinition,
+          cefr: 'B1',
+          article: due.article,
+        );
+      }
+
+      // Add saved vocabulary words
+      final allSaved = await vocab.getSavedWords();
+      for (final saved in allSaved.take(8)) {
+        addCard(
+          word: saved.word,
+          definition: saved.primaryDefinition,
+          cefr: 'B1',
+          article: saved.article,
+        );
+      }
+
+      // Fallback curated words if deck is small
+      final curated = [
+        {'word': 'die Uhr', 'def': 'clock, watch, o\'clock', 'cefr': 'A1'},
+        {'word': 'das Ziel', 'def': 'goal, target, destination', 'cefr': 'B1'},
+        {'word': 'die Entscheidung', 'def': 'decision, determination', 'cefr': 'B2'},
+        {'word': 'die Entwicklung', 'def': 'development, progress', 'cefr': 'B1'},
+        {'word': 'der Erfolg', 'def': 'success, achievement', 'cefr': 'A2'},
+      ];
+      for (final item in curated) {
+        if (deck.length >= 8) break;
+        addCard(
+          word: item['word']!,
+          definition: item['def']!,
+          cefr: item['cefr']!,
+        );
+      }
+
       final deepLink = 'takt://word?term=${Uri.encodeComponent(wordStr)}';
+      final deckJson = jsonEncode(deck);
 
       // 2. Save serialized fields to platform shared storage
       await Future.wait([
         HomeWidget.saveWidgetData<String>('widget_word', fullWord),
-        HomeWidget.saveWidgetData<String>('widget_ipa', ipa),
         HomeWidget.saveWidgetData<String>('widget_definition', definition),
         HomeWidget.saveWidgetData<String>('widget_cefr', cefr),
         HomeWidget.saveWidgetData<String>('widget_streak', streakText),
@@ -176,6 +247,7 @@ class HomeScreenWidgetService {
         HomeWidget.saveWidgetData<String>('widget_example_de', exampleDe),
         HomeWidget.saveWidgetData<String>('widget_example_en', exampleEn),
         HomeWidget.saveWidgetData<String>('widget_deep_link', deepLink),
+        HomeWidget.saveWidgetData<String>('widget_words_json', deckJson),
       ]);
 
       // 3. Trigger native widget updates for Medium and Small widgets
@@ -188,7 +260,7 @@ class HomeScreenWidgetService {
         androidName: smallWidgetProvider,
       );
 
-      debugPrint('[HomeScreenWidgetService] Home Screen Widgets successfully updated with "$fullWord" ($cefr, $streakText, $dueCountText)');
+      debugPrint('[HomeScreenWidgetService] Home Screen Widgets successfully updated with ${deck.length} swipeable cards ($fullWord, $streakText, $dueCountText)');
     } catch (e) {
       debugPrint('[HomeScreenWidgetService] Error updating widgets: $e');
     }

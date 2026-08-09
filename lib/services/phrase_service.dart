@@ -31,6 +31,23 @@ class PhraseService extends ChangeNotifier {
   Set<String> get masteredIds => Set.unmodifiable(_masteredIds);
   int get totalCount => _phrases.length;
 
+  @visibleForTesting
+  void setPhrasesForTesting(List<GermanPhrase> phrases) {
+    _phrases = phrases;
+    _isInitialized = true;
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  static void resetForTesting() {
+    _instance._phrases = [];
+    _instance._bookmarkedIds = {};
+    _instance._masteredIds = {};
+    _instance._isInitialized = false;
+    _instance._isLoading = false;
+  }
+
   Future<void> init() async {
     if (_isInitialized) return;
     _isLoading = true;

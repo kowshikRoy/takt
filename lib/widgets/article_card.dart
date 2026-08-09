@@ -34,15 +34,15 @@ class ArticleCard extends StatelessWidget {
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Image
-            SizedBox(
-              height: 160,
-              width: double.infinity,
+            AspectRatio(
+              aspectRatio: 16 / 9,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                   Container(
+                  Container(
                     color: Theme.of(context).colorScheme.surfaceContainerHigh,
                     child: article.imageUrl.startsWith('http')
                         ? CachedNetworkImage(
@@ -60,7 +60,6 @@ class ArticleCard extends StatelessWidget {
                             },
                           ),
                   ),
-                  // Gradient overlay for text readability if needed, or just plain image as per design
                   if (onDelete != null)
                     Positioned(
                       top: 8,
@@ -90,11 +89,12 @@ class ArticleCard extends StatelessWidget {
             ),
             
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              padding: const EdgeInsets.all(12.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                   Row(
+                  Row(
                     children: [
                       _buildLevelBadge(context, article.level),
                       const SizedBox(width: 8),
@@ -108,24 +108,28 @@ class ArticleCard extends StatelessWidget {
                       Icon(
                         article.isLiked ? Icons.favorite : Icons.favorite_border,
                         color: article.isLiked ? Colors.red : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                        size: 20,
+                        size: 18,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
                     article.title,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      height: 1.25,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     article.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                       color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      height: 1.3,
                     ),
-                    maxLines: 3,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],

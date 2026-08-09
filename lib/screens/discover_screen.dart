@@ -168,7 +168,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    childAspectRatio: 0.85,
+                    childAspectRatio: 0.78,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                   ),
