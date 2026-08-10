@@ -348,14 +348,10 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Main Flashcard Box — height-capped and centered so the card
-          // doesn't balloon into a mostly-empty rectangle on tall desktop
-          // viewports; on phones it just shrinks to fit as before.
+          // Main Flashcard Box — fills the available vertical space between
+          // the progress header and the rating buttons, with clean inner scrolling
           Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 460),
-                child: InkWell(
+            child: InkWell(
               onTap: () {
                 setState(() {
                   _showAnswer = !_showAnswer;
@@ -581,8 +577,6 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
                 ),
               ),
             ),
