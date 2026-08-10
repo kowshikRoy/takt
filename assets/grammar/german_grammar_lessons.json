@@ -620,6 +620,978 @@
     ]
   },
   {
+    "id": "lesson_akkusativ",
+    "level": "A1",
+    "title": "Der Akkusativ (The Accusative Case)",
+    "subtitle": "Direct objects, the masculine shift (der → den), accusative pronouns, and DOGFU prepositions",
+    "category": "Kasus & Präpositionen",
+    "summary": "Master the accusative case in German: identify direct objects with 'Wen oder Was?', learn why only the masculine gender changes (der → den, ein → einen, kein → keinen), and use accusative pronouns and DOGFU prepositions.",
+    "sections": [
+      {
+        "id": "akkusativ_sec1_explanation",
+        "type": "explanation",
+        "title": "Was ist der Akkusativ? (Direct Objects)",
+        "explanation_payload": {
+          "text": "The Akkusativ (Accusative Case) is used for the direct object of a sentence—the person or thing directly receiving the action of the verb. You find the accusative by asking: 'Wen oder Was?' (Whom or What?). The golden rule of the German accusative is that ONLY the masculine gender changes! Feminine, neuter, and plural forms remain 100% identical to the nominative.",
+          "bullet_points": [
+            "Maskulin Wandel (The ONLY change!): der → DEN, ein → EINEN, kein → KEINEN, mein → MEINEN.",
+            "Feminin bleibt gleich: die → DIE, eine → EINE, keine → KEINE.",
+            "Neutral bleibt gleich: das → DAS, ein → EIN, kein → KEIN.",
+            "Plural bleibt gleich: die → DIE, keine → KEINE."
+          ]
+        }
+      },
+      {
+        "id": "akkusativ_sec2_table_articles",
+        "type": "table",
+        "title": "Akkusativ Artikel-Matrix: Nominativ vs. Akkusativ",
+        "table_payload": {
+          "headers": ["Genus", "Nominativ (Subjekt)", "Akkusativ (Objekt)", "Unbestimmt (Akk)", "Negativ (Akk)"],
+          "rows": [
+            ["Maskulin (m)", "der Tisch", "DEN Tisch", "EINEN Tisch", "KEINEN Tisch"],
+            ["Feminin (f)", "die Lampe", "DIE Lampe", "EINE Lampe", "KEINE Lampe"],
+            ["Neutral (n)", "das Buch", "DAS Buch", "EIN Buch", "KEIN Buch"],
+            ["Plural (alle)", "die Kinder", "DIE Kinder", "—", "KEINE Kinder"]
+          ],
+          "footnote": "Merk-Reim: 'Der wird den, ein wird einen, kein wird keinen!' Alles andere bleibt gleich."
+        }
+      },
+      {
+        "id": "akkusativ_sec3_table_pronouns",
+        "type": "table",
+        "title": "Personalpronomen im Akkusativ",
+        "table_payload": {
+          "headers": ["Nominativ", "Akkusativ", "Bedeutung", "Beispielsatz"],
+          "rows": [
+            ["ich", "mich", "me", "Er liebt mich."],
+            ["du", "dich", "you", "Ich sehe dich."],
+            ["er", "ihn", "him", "Wir rufen ihn an."],
+            ["sie", "sie", "her", "Ich kenne sie."],
+            ["es", "es", "it", "Ich kaufe es."],
+            ["wir", "uns", "us", "Er besucht uns."],
+            ["ihr", "euch", "you all", "Ich höre euch."],
+            ["sie / Sie", "sie / Sie", "them / You (formal)", "Ich frage Sie."]
+          ],
+          "footnote": "Beachte: Nur 'er → ihn' ändert sich im 3. Person Singular wie der maskuline Artikel 'den'!"
+        }
+      },
+      {
+        "id": "akkusativ_sec4_formula",
+        "type": "formula",
+        "title": "Akkusativ Satzbau-Formel",
+        "formula_payload": {
+          "formula_structure": "Subjekt (Nom) + Verb (Pos 2) + Akkusativ-Objekt (Wen/Was?)",
+          "blocks": [
+            {
+              "position": "Subjekt (Nom)",
+              "label": "Wer?",
+              "example_word": "Ich",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Verb (Pos 2)",
+              "label": "Aktion",
+              "example_word": "kaufe",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Akkusativ (Maskulin)",
+              "label": "Wen/Was? (der → den)",
+              "example_word": "einen neuen Laptop.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "akkusativ_sec5_exceptions",
+        "type": "exceptions",
+        "title": "Feste Akkusativ-Präpositionen (DOGFU) & Verben",
+        "exception_payload": [
+          {
+            "rule_name": "Die DOGFU-Präpositionen verlangen IMMER Akkusativ",
+            "description": "The prepositions Durch, Ohne, Gegen, Für, Um (DOGFU) are always followed by the accusative case, regardless of the verb.",
+            "example_sentences": [
+              "Das Geschenk ist für meinen Vater. (für + Akk)",
+              "Ohne einen Regenschirm gehe ich nicht raus. (ohne + Akk)",
+              "Wir spazieren durch den schönen Park. (durch + Akk)"
+            ]
+          },
+          {
+            "rule_name": "Klassische Akkusativ-Verben des Alltags",
+            "description": "Common everyday verbs that virtually always take an accusative object: haben, brauchen, suchen, finden, kaufen, essen, trinken, sehen, hören, lieben, anrufen.",
+            "example_sentences": [
+              "Ich habe einen Bruder und eine Schwester.",
+              "Wir brauchen einen großen Tisch."
+            ]
+          }
+        ]
+      },
+      {
+        "id": "akkusativ_sec6_examples",
+        "type": "examples",
+        "title": "Beispielsätze mit Akkusativ",
+        "example_payload": [
+          {
+            "german": "Ich trinke morgens immer einen heißen Kaffee.",
+            "english": "I always drink a hot coffee in the morning.",
+            "note": "der Kaffee (m) → 'einen heißen Kaffee' (Akkusativ Objekt).",
+            "highlighted_words": ["trinke", "einen heißen Kaffee"]
+          },
+          {
+            "german": "Suchst du deinen Schlüssel?",
+            "english": "Are you looking for your key?",
+            "note": "der Schlüssel (m) → 'deinen Schlüssel' (Possessiv im Akkusativ).",
+            "highlighted_words": ["Suchst", "deinen Schlüssel"]
+          },
+          {
+            "german": "Wir haben ein schönes Haus und einen großen Garten.",
+            "english": "We have a beautiful house and a big garden.",
+            "note": "das Haus (n) stays 'ein', but der Garten (m) becomes 'einen'.",
+            "highlighted_words": ["ein schönes Haus", "einen großen Garten"]
+          },
+          {
+            "german": "Für wen ist diese Schokolade? – Für dich!",
+            "english": "Whom is this chocolate for? – For you!",
+            "note": "'für' demands accusative pronoun 'dich'.",
+            "highlighted_words": ["Für wen", "Für dich"]
+          }
+        ]
+      },
+      {
+        "id": "akkusativ_sec7_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Der 'haben & brauchen'-Reflex",
+          "content": "Whenever you say 'haben' (to have) or 'brauchen' (to need), immediately set your brain to Accusative mode! If the noun is masculine, it must take 'einen / meinen / keinen': 'Ich habe einen Termin', 'Ich brauche einen Kugelschreiber'.",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_modalverben_praesens",
+    "level": "A1",
+    "title": "Modalverben im Präsens (Present Tense Modal Verbs)",
+    "subtitle": "können, müssen, wollen, dürfen, sollen, möchten and the Satzklammer (Sentence Bracket)",
+    "category": "Verben & Zeiten",
+    "summary": "Learn how modal verbs express ability, obligation, permission, desire, and recommendations in the present tense, master irregular vowel changes in singular forms, and lock the sentence bracket (Modal at Pos 2, Infinitive at the very end).",
+    "sections": [
+      {
+        "id": "modals_pres_sec1_explanation",
+        "type": "explanation",
+        "title": "Die 6 Modalverben und ihre Bedeutung",
+        "explanation_payload": {
+          "text": "Modal verbs modify the meaning of the main action verb. In German present tense, modal verbs follow two universal rules: 1) The singular forms (ich, du, er/sie/es) undergo a vowel change (except sollen and möchten), and 2) The 1st person (ich) and 3rd person (er/sie/es) forms are ALWAYS IDENTICAL and have NO ENDING!",
+          "bullet_points": [
+            "können (can / ability / possibility): 'Ich kann schwimmen.'",
+            "müssen (must / obligation / necessity): 'Ich muss arbeiten.'",
+            "wollen (want / strong intention): 'Ich will Deutsch lernen.'",
+            "dürfen (may / permission / rules): 'Hier darf man parken.'",
+            "sollen (should / recommendation / duty): 'Du sollst schlafen.'",
+            "möchten (would like / polite wish): 'Ich möchte einen Kaffee.'"
+          ]
+        }
+      },
+      {
+        "id": "modals_pres_sec2_table",
+        "type": "table",
+        "title": "Modalverben Konjugations-Matrix (Präsens)",
+        "table_payload": {
+          "headers": ["Pronomen", "können", "müssen", "wollen", "dürfen", "sollen", "möchten"],
+          "rows": [
+            ["ich", "kann", "muss", "will", "darf", "soll", "möchte"],
+            ["du", "kannst", "musst", "willst", "darfst", "sollst", "möchtest"],
+            ["er / sie / es", "kann", "muss", "will", "darf", "soll", "möchte"],
+            ["wir", "können", "müssen", "wollen", "dürfen", "sollen", "möchten"],
+            ["ihr", "könnt", "müsst", "wollt", "dürft", "sollt", "möchtet"],
+            ["sie / Sie", "können", "müssen", "wollen", "dürfen", "sollen", "möchten"]
+          ],
+          "footnote": "Wichtig: 'ich' und 'er/sie/es' haben NIEMALS eine '-t' Endung bei Modalverben!"
+        }
+      },
+      {
+        "id": "modals_pres_sec3_formula",
+        "type": "formula",
+        "title": "Die Satzklammer Formel (Modalverb + Infinitiv)",
+        "formula_payload": {
+          "formula_structure": "Subject (Pos 1) + Modalverb (Pos 2) + Mittelfeld + Infinitiv (SATZENDE)",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Subjekt",
+              "example_word": "Wir",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 2",
+              "label": "Modalverb (konjugiert)",
+              "example_word": "müssen",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Mittelfeld",
+              "label": "Angaben / Objekte",
+              "example_word": "heute noch viel",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "SATZENDE",
+              "label": "Infinitiv (unverändert!)",
+              "example_word": "arbeiten.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "modals_pres_sec4_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Bedeutungsunterschiede: nicht müssen vs. nicht dürfen",
+        "exception_payload": [
+          {
+            "rule_name": "'nicht müssen' vs. 'nicht dürfen' (Crucial Distinction!)",
+            "description": "'nicht müssen' means you don't have to (optional). 'nicht dürfen' means you MUST NOT (strictly forbidden!).",
+            "example_sentences": [
+              "Du musst heute nicht kochen. = You don't have to cook today (optional).",
+              "Hier darf man nicht rauchen! = You must not smoke here (prohibited!).",
+              "Du darfst das Geheimnis nicht verraten! = You must not reveal the secret!"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "modals_pres_sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze mit Modalverben",
+        "example_payload": [
+          {
+            "german": "Ich kann sehr gut Deutsch sprechen und verstehen.",
+            "english": "I can speak and understand German very well.",
+            "note": "Modalverb 'kann' (Pos 2), Infinitives 'sprechen und verstehen' at sentence end.",
+            "highlighted_words": ["kann", "sprechen und verstehen"]
+          },
+          {
+            "german": "Er muss heute bis 19:00 Uhr im Büro arbeiten.",
+            "english": "He has to work in the office until 7:00 PM today.",
+            "note": "Obligation: 'muss' conjugated for 'er'.",
+            "highlighted_words": ["muss", "arbeiten"]
+          },
+          {
+            "german": "Wir möchten gerne zwei Cappuccino bestellen, bitte.",
+            "english": "We would like to order two cappuccinos, please.",
+            "note": "Polite request using 'möchten'.",
+            "highlighted_words": ["möchten", "bestellen"]
+          },
+          {
+            "german": "Hier dürfen Kinder sicher auf der Straße spielen.",
+            "english": "Here children are allowed to play safely on the street.",
+            "note": "Permission: 'dürfen' conjugated for plural 'Kinder'.",
+            "highlighted_words": ["dürfen", "spielen"]
+          }
+        ]
+      },
+      {
+        "id": "modals_pres_sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Der Infinitiv-Magnet am Satzende",
+          "content": "Think of the conjugated modal verb in Position 2 as a magnet that pushes the action verb all the way to the very end of the sentence in its pure dictionary form (-en): 'Ich WILL morgen früh um 7 Uhr AUFSTEHEN.' Never conjugate the second verb!",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_trennbare_verben",
+    "level": "A1",
+    "title": "Trennbare Verben (Separable Verbs)",
+    "subtitle": "How prefixes detach and fly to the absolute end of the sentence",
+    "category": "Verben & Zeiten",
+    "summary": "Understand separable verbs in German: identify detachable prefixes (auf-, an-, ein-, aus-, mit-, ab-, fern-, zu-), conjugate the verb stem at Position 2, and kick the prefix to the end of the sentence.",
+    "sections": [
+      {
+        "id": "trennbare_sec1_explanation",
+        "type": "explanation",
+        "title": "Wie funktionieren trennbare Verben?",
+        "explanation_payload": {
+          "text": "Many German verbs are formed by attaching a prefix to a base verb, changing its meaning entirely (e.g. stehen = to stand, aufstehen = to get up; kaufen = to buy, einkaufen = to grocery shop). In the present tense, the prefix detaches from the verb stem and moves to the ABSOLUTE END of the sentence.",
+          "bullet_points": [
+            "Position 2: The verb stem is conjugated normally according to the subject (ich stehe, du stehst, er steht).",
+            "Satzende (End of Clause): The separated prefix lands at the very last position of the clause.",
+            "Stress Rule: Separable prefixes are ALWAYS stressed when spoken (AUFstehen, EINkaufen, ANrufen)."
+          ]
+        }
+      },
+      {
+        "id": "trennbare_sec2_table",
+        "type": "table",
+        "title": "Die wichtigsten trennbaren Präfixe & Verben",
+        "table_payload": {
+          "headers": ["Präfix", "Bedeutung / Tendenz", "Beispiel-Verb", "Bedeutung", "Beispielsatz"],
+          "rows": [
+            ["auf-", "open / upwards", "aufstehen", "to get up", "Ich stehe um 6:30 Uhr auf."],
+            ["an-", "start / contact", "anrufen", "to call (phone)", "Er ruft seine Mutter an."],
+            ["ein-", "into / inward", "einkaufen", "to shop / buy groceries", "Wir kaufen im Supermarkt ein."],
+            ["aus-", "out / exit", "aussteigen", "to get off (bus/train)", "Sie steigt am Hauptbahnhof aus."],
+            ["mit-", "along / together", "mitkommen", "to come along", "Kommst du heute Abend mit?"],
+            ["fern-", "far (media)", "fernsehen", "to watch TV", "Er sieht jeden Abend fern."],
+            ["vor-", "forward / prepare", "vorbereiten", "to prepare", "Ich bereite die Präsentation vor."],
+            ["zu-", "close / shut", "zumachen", "to close (window/door)", "Machst du bitte die Tür zu?"]
+          ],
+          "footnote": "Merke: Trennbare Präfixe sind beim Sprechen IMMER betont: AUFstehen, EINkaufen, ANrufen!"
+        }
+      },
+      {
+        "id": "trennbare_sec3_formula",
+        "type": "formula",
+        "title": "Trennbare Verben Satzbau-Formel",
+        "formula_payload": {
+          "formula_structure": "Subject (Pos 1) + Verb Stem (Pos 2) + Mittelfeld + PRÄFIX (SATZENDE)",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Subjekt",
+              "example_word": "Jonas",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 2",
+              "label": "Verbstamm (konjugiert)",
+              "example_word": "steht",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Mittelfeld",
+              "label": "Zeit & Ort",
+              "example_word": "jeden Morgen um 7 Uhr",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "SATZENDE",
+              "label": "Präfix (abgetrennt!)",
+              "example_word": "auf.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "trennbare_sec4_exceptions",
+        "type": "exceptions",
+        "title": "Nicht-trennbare Präfixe & Modalverb-Regel",
+        "exception_payload": [
+          {
+            "rule_name": "Nicht-trennbare Präfixe (be-, ge-, er-, ver-, zer-, ent-, emp-, miss-)",
+            "description": "These prefixes NEVER separate and are never stressed: verstehen (Ich verstehe, NOT ich stehe ver), bezahlen (Ich bezahle), bekommen (Ich bekomme).",
+            "example_sentences": [
+              "Ich verstehe die deutsche Grammatik. (verstehen is non-separable)",
+              "Er bezahlt die Rechnung im Restaurant."
+            ]
+          },
+          {
+            "rule_name": "Zusammenbleiben bei Modalverben!",
+            "description": "When paired with a modal verb, the separable verb DOES NOT separate—it stays unified as an infinitive at the end of the sentence!",
+            "example_sentences": [
+              "Ich muss morgen früh aufstehen. (aufstehen stays together!)",
+              "Wir wollen heute nach der Arbeit einkaufen."
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trennbare_sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze aus dem Alltag",
+        "example_payload": [
+          {
+            "german": "Der Zug kommt pünktlich um 14:30 Uhr in Berlin an.",
+            "english": "The train arrives punctually in Berlin at 2:30 PM.",
+            "note": "ankommen: 'kommt' at Pos 2, prefix 'an' at the very end.",
+            "highlighted_words": ["kommt", "an"]
+          },
+          {
+            "german": "Wann stehst du am Wochenende normalerweise auf?",
+            "english": "When do you normally get up on the weekend?",
+            "note": "Question structure with separable verb 'aufstehen'.",
+            "highlighted_words": ["stehst", "auf"]
+          },
+          {
+            "german": "Ich lade dich herzlich zu meiner Geburtstagsparty ein.",
+            "english": "I warmly invite you to my birthday party.",
+            "note": "einladen: 'lade' (Pos 2) + prefix 'ein' (End).",
+            "highlighted_words": ["lade", "ein"]
+          },
+          {
+            "german": "Bitte mach das Licht im Flur aus.",
+            "english": "Please turn off the light in the hallway.",
+            "note": "ausmachen: 'mach' (Pos 1 command) + 'aus' (End).",
+            "highlighted_words": ["mach", "aus"]
+          }
+        ]
+      },
+      {
+        "id": "trennbare_sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Der Betonungs-Trick (The Stress Test)",
+          "content": "How do you know if a verb is separable? Listen to where the voice emphasizes the word! If the prefix is stressed, it separates: 'EIN-kaufen' (separable). If the stem is stressed, it never separates: 'be-ZAH-len', 'ver-STE-hen' (non-separable)!",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_unregelmaessige_verben_praesens",
+    "level": "A1",
+    "title": "Verben mit Vokalwechsel (Stem-Changing Verbs)",
+    "subtitle": "Present tense vowel changes: e → i / ie and a → ä in du and er/sie/es",
+    "category": "Verben & Zeiten",
+    "summary": "Master German stem-changing verbs in the present tense: understand why vowel shifts (e → i, e → ie, a → ä) only affect 'du' and 'er/sie/es', while 'ich', 'wir', 'ihr', and 'sie/Sie' stay regular.",
+    "sections": [
+      {
+        "id": "vokalwechsel_sec1_explanation",
+        "type": "explanation",
+        "title": "Was ist ein Vokalwechsel im Präsens?",
+        "explanation_payload": {
+          "text": "Many strong German verbs change their root vowel in the present tense. Crucially, this vowel shift ONLY occurs in the 2nd person singular ('du') and 3rd person singular ('er/sie/es'). The forms for 'ich', 'wir', 'ihr', and 'sie/Sie' NEVER change their vowel!",
+          "bullet_points": [
+            "Category 1 (e → i): sprechen → du sprichst, er spricht; essen → du isst, er isst; helfen → du hilfst, er hilft; treffen, geben.",
+            "Category 2 (e → ie): lesen → du liest, er liest; sehen → du siehst, er sieht.",
+            "Category 3 (a → ä): fahren → du fährst, er fährt; schlafen → du schläfst, er schläft; waschen, tragen, laufen (au → äu)."
+          ]
+        }
+      },
+      {
+        "id": "vokalwechsel_sec2_table",
+        "type": "table",
+        "title": "Vokalwechsel-Matrix im Präsens",
+        "table_payload": {
+          "headers": ["Muster", "Infinitiv", "ich (normal)", "du (Wechsel!)", "er/sie/es (Wechsel!)", "wir / ihr / sie"],
+          "rows": [
+            ["e → i", "sprechen", "ich spreche", "du sprichst", "er spricht", "wir sprechen, ihr sprecht"],
+            ["e → i", "helfen", "ich helfe", "du hilfst", "er hilft", "wir helfen, ihr helft"],
+            ["e → i", "essen", "ich esse", "du isst", "er isst", "wir essen, ihr esst"],
+            ["e → ie", "sehen", "ich sehe", "du siehst", "er sieht", "wir sehen, ihr seht"],
+            ["e → ie", "lesen", "ich lese", "du liest", "er liest", "wir lesen, ihr lest"],
+            ["a → ä", "fahren", "ich fahre", "du fährst", "er fährt", "wir fahren, ihr fahrt"],
+            ["a → ä", "schlafen", "ich schlafe", "du schläfst", "er schläft", "wir schlafen, ihr schlaft"]
+          ],
+          "footnote": "Achtung: 'ihr' behält IMMER den normalen Stammvokal: ihr sprecht, ihr seht, ihr fahrt!"
+        }
+      },
+      {
+        "id": "vokalwechsel_sec3_formula",
+        "type": "formula",
+        "title": "Vokalwechsel-Formel (Nur du & er/sie/es)",
+        "formula_payload": {
+          "formula_structure": "Infinitiv (f-a-hren) → du f-ä-hrst / er f-ä-hrt  |  aber: ich fahre, ihr fahrt",
+          "blocks": [
+            {
+              "position": "Infinitiv",
+              "label": "Grundform",
+              "example_word": "sprechen",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "1. Person (ich)",
+              "label": "Regulär (e)",
+              "example_word": "ich spreche",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "2. Person (du)",
+              "label": "Vokalwechsel (i)",
+              "example_word": "du sprichst",
+              "color_tag": "primary"
+            },
+            {
+              "position": "3. Person (er)",
+              "label": "Vokalwechsel (i)",
+              "example_word": "er spricht",
+              "color_tag": "accent"
+            },
+            {
+              "position": "2. Plural (ihr)",
+              "label": "Regulär (e)",
+              "example_word": "ihr sprecht",
+              "color_tag": "warning"
+            }
+          ]
+        }
+      },
+      {
+        "id": "vokalwechsel_sec4_exceptions",
+        "type": "exceptions",
+        "title": "Besondere Sonderformen: nehmen & wissen",
+        "exception_payload": [
+          {
+            "rule_name": "Der Spezialfall 'nehmen' (e → imm)",
+            "description": "'nehmen' changes its vowel to 'i' and doubles the 'm': ich nehme, du nimmst, er nimmt, wir nehmen, ihr nehmt, sie nehmen.",
+            "example_sentences": [
+              "Was nimmst du zum Frühstück?",
+              "Er nimmt immer den Bus zur Arbeit."
+            ]
+          },
+          {
+            "rule_name": "Der Spezialfall 'wissen' (Präsens wie ein Modalverb)",
+            "description": "'wissen' has an irregular singular with vowel change (i → ei) and NO ending for ich/er: ich weiß, du weißt, er weiß, wir wissen, ihr wisst, sie wissen.",
+            "example_sentences": [
+              "Ich weiß die Antwort leider nicht.",
+              "Weißt du, wo der Bahnhof ist?"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "vokalwechsel_sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze mit Vokalwechsel",
+        "example_payload": [
+          {
+            "german": "Sprichst du fließend Spanisch? – Nein, aber ich spreche fließend Englisch.",
+            "english": "Do you speak Spanish fluently? – No, but I speak fluent English.",
+            "note": "du sprichst (vowel shift) vs. ich spreche (regular).",
+            "highlighted_words": ["Sprichst du", "spreche"]
+          },
+          {
+            "german": "Er liest jeden Abend vor dem Schlafen ein deutsches Buch.",
+            "english": "He reads a German book every evening before sleeping.",
+            "note": "lesen → er liest (e → ie shift).",
+            "highlighted_words": ["liest"]
+          },
+          {
+            "german": "Fährst du mit dem Fahrrad oder nimmst du das Auto?",
+            "english": "Are you going by bicycle or taking the car?",
+            "note": "fahren → du fährst (a → ä); nehmen → du nimmst (e → imm).",
+            "highlighted_words": ["Fährst", "nimmst"]
+          },
+          {
+            "german": "Das kleine Kind schläft schon seit zwei Stunden tief.",
+            "english": "The little child has already been sleeping deeply for two hours.",
+            "note": "schlafen → es schläft (a → ä).",
+            "highlighted_words": ["schläft"]
+          }
+        ]
+      },
+      {
+        "id": "vokalwechsel_sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Die 'du & er'-Regel",
+          "content": "Never apply the vowel change to 'ich' or 'ihr'! It only ever strikes the 2nd and 3rd person singular: 'Ich esse' (regular), 'Du isst' (change!), 'Er isst' (change!), 'Ihr esst' (regular!).",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_possessivartikel",
+    "level": "A1",
+    "title": "Possessivartikel (Possessive Articles: mein, dein...)",
+    "subtitle": "Expressing ownership in Nominative and Accusative cases",
+    "category": "Nomen & Artikel",
+    "summary": "Master German possessive articles (mein, dein, sein, ihr, unser, euer, ihr/Ihr) in both the Nominative and Accusative cases, and learn the special spelling contraction for 'euer / eure'.",
+    "sections": [
+      {
+        "id": "possessiv_sec1_explanation",
+        "type": "explanation",
+        "title": "Wem gehört was? (Possessivartikel)",
+        "explanation_payload": {
+          "text": "Possessive articles indicate ownership (e.g. my, your, his, our). In German, the possessive word depends on WHO owns the item (ich → mein, du → dein, er/es → sein, sie → ihr, wir → unser, ihr → euer, sie/Sie → ihr/Ihr), while the ending of the word matches the gender, number, and case of the noun being owned (following the exact endings of 'ein / eine')!",
+          "bullet_points": [
+            "Nominativ endings: mein (m), meine (f), mein (n), meine (Plural).",
+            "Akkusativ endings: meinen (m - changed!), meine (f), mein (n), meine (Plural).",
+            "Golden Rule: Possessive articles take the exact same endings as the indefinite article 'ein'!"
+          ]
+        }
+      },
+      {
+        "id": "possessiv_sec2_table",
+        "type": "table",
+        "title": "Possessivartikel Übersicht im Nominativ & Akkusativ",
+        "table_payload": {
+          "headers": ["Besitzer (Pronomen)", "Maskulin (Nom / Akk)", "Feminin (Nom & Akk)", "Neutral (Nom & Akk)", "Plural (Nom & Akk)"],
+          "rows": [
+            ["ich (my)", "mein / meinen", "meine", "mein", "meine"],
+            ["du (your)", "dein / deinen", "deine", "dein", "deine"],
+            ["er / es (his / its)", "sein / seinen", "seine", "sein", "seine"],
+            ["sie (her)", "ihr / ihren", "ihre", "ihr", "ihre"],
+            ["wir (our)", "unser / unseren", "unsere", "unser", "unsere"],
+            ["ihr (your pl.)", "euer / euren", "eure (e drops!)", "euer", "eure"],
+            ["sie (their)", "ihr / ihren", "ihre", "ihr", "ihre"],
+            ["Sie (Your formal)", "Ihr / Ihren", "Ihre", "Ihr", "Ihre"]
+          ],
+          "footnote": "Beachte den Maskulin Akkusativ: meinen, deinen, seinen, ihren, unseren, euren, Ihren!"
+        }
+      },
+      {
+        "id": "possessiv_sec3_formula",
+        "type": "formula",
+        "title": "Besitzer + Nomen-Endung Formel",
+        "formula_payload": {
+          "formula_structure": "Besitzer-Stamm (mein-) + Kasus/Genus Endung (-en) + Nomen (Bruder)",
+          "blocks": [
+            {
+              "position": "Besitzer",
+              "label": "Besitzer-Stamm",
+              "example_word": "mein-",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Endung",
+              "label": "Akkusativ Maskulin Endung",
+              "example_word": "-en",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Nomen",
+              "label": "Objekt",
+              "example_word": "Bruder.",
+              "color_tag": "accent"
+            },
+            {
+              "position": "Ergebnis",
+              "label": "Vollständige Phrase",
+              "example_word": "Ich besuche meinen Bruder.",
+              "color_tag": "warning"
+            }
+          ]
+        }
+      },
+      {
+        "id": "possessiv_sec4_exceptions",
+        "type": "exceptions",
+        "title": "Besonderheit bei 'euer': Der e-Ausfall",
+        "exception_payload": [
+          {
+            "rule_name": "'euer' verliert das Binnen-e vor Endungen",
+            "description": "When 'euer' (your pl.) takes an ending (-e, -en, -em), the middle 'e' drops out: euer + e = EURE (NOT euere), euer + en = EUREN (NOT eueren).",
+            "example_sentences": [
+              "Das ist euer Haus (neutral Nom, no ending).",
+              "Das ist eure Mutter (feminin Nom, e drops!).",
+              "Ich kenne euren Vater sehr gut (maskulin Akk, e drops!)."
+            ]
+          }
+        ]
+      },
+      {
+        "id": "possessiv_sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze mit Possessivartikeln",
+        "example_payload": [
+          {
+            "german": "Das ist mein Vater und das ist meine Mutter.",
+            "english": "That is my father and that is my mother.",
+            "note": "mein Vater (m), meine Mutter (f) in Nominative.",
+            "highlighted_words": ["mein Vater", "meine Mutter"]
+          },
+          {
+            "german": "Hast du deinen Schlüssel und dein Portemonnaie dabei?",
+            "english": "Do you have your key and your wallet with you?",
+            "note": "deinen Schlüssel (m Akk), dein Portemonnaie (n Akk).",
+            "highlighted_words": ["deinen Schlüssel", "dein Portemonnaie"]
+          },
+          {
+            "german": "Wo ist euer Auto? – Unser Auto steht vor der Tür.",
+            "english": "Where is your car? – Our car is in front of the door.",
+            "note": "euer Auto (neutral) vs. unser Auto.",
+            "highlighted_words": ["euer Auto", "Unser Auto"]
+          },
+          {
+            "german": "Frau Weber, ist das Ihre Tasche?",
+            "english": "Mrs. Weber, is that your bag?",
+            "note": "Formal 'Ihre' is always capitalized.",
+            "highlighted_words": ["Ihre Tasche"]
+          }
+        ]
+      },
+      {
+        "id": "possessiv_sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Die 'ein-Endungen'-Regel",
+          "content": "Possessive articles follow the EXACT same endings as 'ein' (ein, eine, ein / einen, eine, ein). If you know 'ein / eine / einen', you automatically know all possessive endings!",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_verneinung_nicht_kein",
+    "level": "A1",
+    "title": "Verneinung: 'nicht' vs. 'kein' (Negation in German)",
+    "subtitle": "When to use 'kein' vs. 'nicht' and the exact sentence position rules",
+    "category": "Satzbau",
+    "summary": "Master German negation: learn when to use 'kein' (negating nouns with indefinite/zero articles) versus 'nicht' (negating verbs, adjectives, specific nouns, or entire sentences), and master where 'nicht' sits in a sentence.",
+    "sections": [
+      {
+        "id": "verneinung_sec1_explanation",
+        "type": "explanation",
+        "title": "Die Grundregel: Wann 'kein' und wann 'nicht'?",
+        "explanation_payload": {
+          "text": "In German, negation uses either 'kein' or 'nicht'. Choosing between them is simple once you know what is being negated:",
+          "bullet_points": [
+            "Use KEIN: When negating a noun that has an indefinite article ('ein/eine') or NO article (zero article / plural / uncountable nouns like Wasser, Zeit, Geld). 'kein' declines like 'ein'.",
+            "Use NICHT: When negating verbs (actions), adjectives, adverbs, proper names, pronouns, or nouns with definite articles ('der/die/das') or possessives ('mein/dein').",
+            "Position of NICHT: Negates the whole verb/sentence → goes to the end. Negates a specific word/phrase → goes directly before that word."
+          ]
+        }
+      },
+      {
+        "id": "verneinung_sec2_table",
+        "type": "table",
+        "title": "Entscheidungs-Matrix: 'kein' vs. 'nicht'",
+        "table_payload": {
+          "headers": ["Was wird verneint?", "Kontext", "Wahl", "Positiver Satz", "Negierter Satz"],
+          "rows": [
+            ["Nomen mit 'ein'", "Unbestimmter Artikel", "KEIN", "Ich habe ein Auto.", "Ich habe KEIN Auto."],
+            ["Nomen ohne Artikel", "Nullartikel / Stoffe", "KEIN", "Ich trinke Kaffee.", "Ich trinke KEINEN Kaffee."],
+            ["Verb / Handlung", "Aktion / Prädikat", "NICHT", "Er schläft jetzt.", "Er schläft jetzt NICHT."],
+            ["Adjektiv / Zustand", "Eigenschaft", "NICHT", "Das Hotel ist teuer.", "Das Hotel ist NICHT teuer."],
+            ["Nomen mit 'der/das'", "Bestimmter Artikel", "NICHT", "Das ist der Chef.", "Das ist NICHT der Chef."],
+            ["Nomen mit 'mein/dein'", "Possessivartikel", "NICHT", "Das ist meine Tasche.", "Das ist NICHT meine Tasche."],
+            ["Präpositionalphrase", "Ort / Richtung", "NICHT", "Ich fahre nach Berlin.", "Ich fahre NICHT nach Berlin."]
+          ],
+          "footnote": "Regel: Wenn im positiven Satz 'ein' oder 'kein Artikel' steht → nutze 'kein'!"
+        }
+      },
+      {
+        "id": "verneinung_sec3_formula",
+        "type": "formula",
+        "title": "Position von 'nicht' im Satz",
+        "formula_payload": {
+          "formula_structure": "Verb verneinen → 'nicht' am Satzende  |  Element verneinen → 'nicht' direkt davor",
+          "blocks": [
+            {
+              "position": "Subjekt + Verb",
+              "label": "Hauptsatz",
+              "example_word": "Ich verstehe",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Objekt",
+              "label": "Kontext",
+              "example_word": "diesen Satz",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Verneinung",
+              "label": "'nicht' am Ende",
+              "example_word": "nicht.",
+              "color_tag": "warning"
+            }
+          ]
+        }
+      },
+      {
+        "id": "verneinung_sec4_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Satzstellungs-Regeln für 'nicht'",
+        "exception_payload": [
+          {
+            "rule_name": "'nicht' vor Adjektiven und Präpositionen",
+            "description": "When negating an adjective or a prepositional phrase, 'nicht' stands DIRECTLY before that specific element, not at the end of the sentence.",
+            "example_sentences": [
+              "Das Essen ist NICHT lecker. (directly before adjective)",
+              "Ich wohne NICHT in München. (directly before prepositional phrase)"
+            ]
+          },
+          {
+            "rule_name": "'nicht' vor dem zweiten Verb (Satzklammer)",
+            "description": "When the sentence has a modal verb, separable prefix, or Perfekt participle, 'nicht' stands directly BEFORE the final verb element!",
+            "example_sentences": [
+              "Ich kann heute NICHT kommen. (before infinitive)",
+              "Er ruft mich heute NICHT an. (before separable prefix)",
+              "Ich habe die Hausaufgabe NICHT gemacht. (before participle)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "verneinung_sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze mit 'nicht' und 'kein'",
+        "example_payload": [
+          {
+            "german": "Ich habe heute leider keine Zeit und kein Geld.",
+            "english": "Unfortunately I have no time and no money today.",
+            "note": "'Zeit' and 'Geld' have zero articles → negated with 'kein'.",
+            "highlighted_words": ["keine Zeit", "kein Geld"]
+          },
+          {
+            "german": "Er spricht nicht schnell, aber sehr deutlich.",
+            "english": "He doesn't speak fast, but very clearly.",
+            "note": "'nicht' stands directly before adverb 'schnell'.",
+            "highlighted_words": ["nicht schnell"]
+          },
+          {
+            "german": "Wir gehen heute Abend nicht ins Restaurant.",
+            "english": "We are not going to the restaurant this evening.",
+            "note": "'nicht' stands before the prepositional phrase 'ins Restaurant'.",
+            "highlighted_words": ["nicht ins Restaurant"]
+          },
+          {
+            "german": "Ich verstehe diese Grammatikregel noch nicht.",
+            "english": "I don't understand this grammar rule yet.",
+            "note": "'nicht' negates the verb understanding.",
+            "highlighted_words": ["noch nicht"]
+          }
+        ]
+      },
+      {
+        "id": "verneinung_sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Die 'ein'-Ersetzungs-Probe",
+          "content": "Simple mental test: Could you put 'a / an' (ein/eine) in the positive version of your sentence? If YES → use 'kein' ('Ich habe ein Auto' → 'Ich habe kein Auto'). If NO → use 'nicht' ('Ich schlafe' → 'Ich schlafe nicht').",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_imperativ",
+    "level": "A1",
+    "title": "Der Imperativ (Commands & Requests)",
+    "subtitle": "How to give instructions and polite requests to du, ihr, and formal Sie",
+    "category": "Satzbau",
+    "summary": "Master the German imperative mood: form commands for informal singular (du: drop pronoun and -st), informal plural (ihr: verb ending -t), and formal (Sie: swap verb and Sie + bitte), plus irregular imperative forms like 'sei!'.",
+    "sections": [
+      {
+        "id": "imperativ_sec1_explanation",
+        "type": "explanation",
+        "title": "Die 3 Formen des Imperativs",
+        "explanation_payload": {
+          "text": "The Imperativ is used for commands, requests, directions, and advice. German has 3 distinct imperative forms depending on whom you are addressing:",
+          "bullet_points": [
+            "1. Informell Singular (du): Take the present-tense 'du'-form, DROP the pronoun 'du', and DROP the ending '-st'! (du kommst → Komm!).",
+            "2. Informell Plural (ihr): Use the regular 'ihr'-form and DROP the pronoun 'ihr'! (ihr kommt → Kommt!).",
+            "3. Formell (Sie): Invert Verb + Sie and always add 'bitte' for politeness! (Kommen Sie bitte!)."
+          ]
+        }
+      },
+      {
+        "id": "imperativ_sec2_table",
+        "type": "table",
+        "title": "Imperativ Konjugations-Matrix",
+        "table_payload": {
+          "headers": ["Infinitiv", "du-Form (Informell Sg)", "ihr-Form (Informell Pl)", "Sie-Form (Formell + bitte)", "Bedeutung"],
+          "rows": [
+            ["kommen", "Komm!", "Kommt!", "Kommen Sie (bitte)!", "Come!"],
+            ["machen", "Mach!", "Macht!", "Machen Sie (bitte)!", "Do / Make!"],
+            ["warten", "Warte! (+e for sound)", "Wartet!", "Warten Sie (bitte)!", "Wait!"],
+            ["sprechen (e→i)", "Sprich! (keeps e→i)", "Sprecht!", "Sprechen Sie (bitte)!", "Speak!"],
+            ["lesen (e→ie)", "Lies!", "Lest!", "Lesen Sie (bitte)!", "Read!"],
+            ["fahren (a→ä)", "Fahr! (loses umlaut!)", "Fahrt!", "Fahren Sie (bitte)!", "Drive / Go!"],
+            ["sein (unregelm.)", "Sei!", "Seid!", "Seien Sie (bitte)!", "Be!"]
+          ],
+          "footnote": "Wichtig: Im du-Imperativ fallen 'du' und die Endung '-st' komplett weg: 'du lernst' → 'Lern!'"
+        }
+      },
+      {
+        "id": "imperativ_sec3_formula",
+        "type": "formula",
+        "title": "Imperativ Bildungs-Formel",
+        "formula_payload": {
+          "formula_structure": "du lern-st → Lern!  |  ihr lernt → Lernt!  |  Sie lernen → Lernen Sie bitte!",
+          "blocks": [
+            {
+              "position": "du-Imperativ",
+              "label": "Stamm (ohne du & -st)",
+              "example_word": "Lern",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Ergänzung",
+              "label": "Objekt",
+              "example_word": "fleißig Deutsch",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Ausrufezeichen",
+              "label": "Befehls-Signal",
+              "example_word": "!",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "imperativ_sec4_exceptions",
+        "type": "exceptions",
+        "title": "Besonderheiten beim Imperativ: Vokalwechsel & 'sein'",
+        "exception_payload": [
+          {
+            "rule_name": "Vokalwechsel: e → i bleibt, aber a → ä verliert den Umlaut!",
+            "description": "Verbs with e → i/ie KEEP their vowel shift (Hilf! Lies!). But verbs with a → ä LOSE their umlaut in the imperative (Fahr! NOT Fähr!; Schlaf! NOT Schläf!).",
+            "example_sentences": [
+              "Gib mir bitte das Salz! (geben → Gib!)",
+              "Fahr vorsichtig auf der Autobahn! (fahren → Fahr!)",
+              "Lies den Text laut vor! (lesen → Lies!)"
+            ]
+          },
+          {
+            "rule_name": "Der unregelmäßige Imperativ von 'sein'",
+            "description": "The verb 'sein' has completely unique imperative forms that must be memorized: du: Sei! | ihr: Seid! | Sie: Seien Sie!",
+            "example_sentences": [
+              "Sei bitte leise! (du)",
+              "Seid pünktlich, Kinder! (ihr)",
+              "Seien Sie bitte vorsichtig! (Sie)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imperativ_sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze für den Alltag",
+        "example_payload": [
+          {
+            "german": "Komm bitte schnell hierher!",
+            "english": "Please come over here quickly!",
+            "note": "du-form: 'kommen' drops '-st' and 'du'.",
+            "highlighted_words": ["Komm"]
+          },
+          {
+            "german": "Kinder, macht jetzt eure Hausaufgaben!",
+            "english": "Children, do your homework now!",
+            "note": "ihr-form addressed to multiple children.",
+            "highlighted_words": ["macht"]
+          },
+          {
+            "german": "Steigen Sie bitte hier ein, die Türen schließen.",
+            "english": "Please board here, the doors are closing.",
+            "note": "Separable verb with formal Sie: 'Steigen Sie ... ein'.",
+            "highlighted_words": ["Steigen Sie", "ein"]
+          },
+          {
+            "german": "Sei nicht so ungeduldig, wir sind gleich da!",
+            "english": "Don't be so impatient, we'll be right there!",
+            "note": "Irregular imperative of 'sein'.",
+            "highlighted_words": ["Sei"]
+          }
+        ]
+      },
+      {
+        "id": "imperativ_sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Höflichkeit mit 'bitte' & 'doch mal'",
+          "content": "Direct commands can sound abrupt in German. Soften them into friendly requests by adding 'bitte' (please), 'mal' (just), or 'doch mal': 'Komm mal her!', 'Hilf mir bitte!', 'Probier doch mal!'",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
     "id": "lesson_numbers_and_age",
     "level": "A1",
     "title": "Numbers, Counting & Age (Zahlen & Alter)",
@@ -791,6 +1763,160 @@
     ]
   },
   {
+    "id": "lesson_praepositionen_zeit_ort",
+    "level": "A1",
+    "title": "Temporale & Lokale Präpositionen (Time & Place)",
+    "subtitle": "am, um, im, von... bis (Time) and in, nach, zu, aus (Place)",
+    "category": "Kasus & Präpositionen",
+    "summary": "Master fundamental German time prepositions (am, um, im, von... bis) and place prepositions (nach, in, zu, aus) to talk accurately about daily schedules, appointments, travel, and origins.",
+    "sections": [
+      {
+        "id": "praep_sec1_explanation",
+        "type": "explanation",
+        "title": "Präpositionen für Zeit und Ort im Alltag",
+        "explanation_payload": {
+          "text": "Prepositions connect elements of time and space in daily conversation. German uses distinct prepositions depending on whether you ask 'Wann?' (When?), 'Wohin?' (Where to?), 'Wo?' (Where?), or 'Woher?' (Where from?):",
+          "bullet_points": [
+            "Wann? (Time): um (exact clock time), am (days, parts of day, dates), im (months, seasons), von... bis (duration).",
+            "Wohin? (Destination): nach (cities, countries without article, nach Hause), in + Akk (countries with article, buildings), zu + Dat (people, institutions).",
+            "Woher? (Origin): aus (cities, countries, buildings), von (people, events)."
+          ]
+        }
+      },
+      {
+        "id": "praep_sec2_table_time",
+        "type": "table",
+        "title": "Temporale Präpositionen (Time Matrix)",
+        "table_payload": {
+          "headers": ["Präposition", "Verwendung", "Signalwörter", "Beispiel"],
+          "rows": [
+            ["um", "Uhrzeiten (Exact clock times)", "um 8 Uhr, um 14:30 Uhr, um Mitternacht", "Der Film beginnt um 20:15 Uhr."],
+            ["am (an + dem)", "Tage, Tageszeiten, Daten", "am Montag, am Morgen, am 15. Mai, am Wochenende", "Am Samstag habe ich frei."],
+            ["im (in + dem)", "Monate, Jahreszeiten, Jahre", "im Juli, im Sommer, im Winter, im Jahr 2026", "Im August fahren wir in Urlaub."],
+            ["von ... bis", "Zeitspanne (Duration)", "von 9 bis 17 Uhr, von Montag bis Freitag", "Ich arbeite von 8 bis 16 Uhr."],
+            ["ab", "Startzeitpunkt (From ... on)", "ab morgen, ab 1. Januar, ab 9 Uhr", "Ab nächster Woche lerne ich täglich."]
+          ],
+          "footnote": "Ausnahme bei Tageszeiten: 'in der Nacht' (feminin) nutzt 'in', NICHT 'am'!"
+        }
+      },
+      {
+        "id": "praep_sec3_table_place",
+        "type": "table",
+        "title": "Lokale Präpositionen (Place Matrix: Wohin & Woher)",
+        "table_payload": {
+          "headers": ["Frage", "Präposition", "Kontext / Regel", "Beispiel"],
+          "rows": [
+            ["Wohin?", "nach", "Städte, Länder (ohne Artikel), 'nach Hause'", "Ich fliege nach Berlin / nach Spanien / nach Hause."],
+            ["Wohin?", "in (+ Akk)", "Länder mit Artikel (die Schweiz), Gebäude", "Wir fahren in die Schweiz / in die Türkei / ins Kino."],
+            ["Wohin?", "zu (+ Dat)", "Personen, Institutionen, Firmen", "Ich gehe zum Arzt / zu meiner Mutter / zu Aldi."],
+            ["Woher?", "aus", "Herkunft: Städte, Länder, Gebäude", "Ich komme aus Spanien / aus dem Büro."],
+            ["Woher?", "von", "Herkunft von Personen, Events", "Ich komme gerade vom Arzt / von der Arbeit."],
+            ["Wo?", "in / bei", "Standort in Gebäuden / bei Personen", "Ich bin im Supermarkt / bei einer Freundin / zu Hause."]
+          ],
+          "footnote": "Merkformel: 'nach Hause' (Richtung nach Hause) vs. 'zu Hause' (Standort daheim)!"
+        }
+      },
+      {
+        "id": "praep_sec4_formula",
+        "type": "formula",
+        "title": "Zeit-Angaben Satzbau-Formel",
+        "formula_payload": {
+          "formula_structure": "Wann? (am / um / im) + Verb (Pos 2) + Subjekt + Mittelfeld",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Zeitangabe (Wann?)",
+              "example_word": "Am Wochenende",
+              "color_tag": "warning"
+            },
+            {
+              "position": "Position 2",
+              "label": "Verb (Pos 2)",
+              "example_word": "treffe",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Position 3",
+              "label": "Subjekt",
+              "example_word": "ich",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Mittelfeld",
+              "label": "Ort & Freunde",
+              "example_word": "meine Freunde im Park.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "praep_sec5_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Stolperfallen: nach vs. zu vs. in",
+        "exception_payload": [
+          {
+            "rule_name": "'nach Hause' vs. 'zu Hause'",
+            "description": "Use 'nach Hause' for movement/direction (Wohin? → Ich gehe nach Hause). Use 'zu Hause' for static location (Wo? → Ich bin zu Hause).",
+            "example_sentences": [
+              "Ich bin müde, ich gehe jetzt nach Hause.",
+              "Heute Abend bleibe ich gemütlich zu Hause."
+            ]
+          },
+          {
+            "rule_name": "Länder mit Artikel (in die Schweiz, in die USA)",
+            "description": "Most countries take NO article (nach Deutschland, nach Spanien). But countries with articles take 'in' + Akkusativ: in die Schweiz, in die Türkei, in den Iran, in die USA.",
+            "example_sentences": [
+              "Er reist im Sommer in die Schweiz.",
+              "Sie fliegt nächste Woche in die USA."
+            ]
+          }
+        ]
+      },
+      {
+        "id": "praep_sec6_examples",
+        "type": "examples",
+        "title": "Beispielsätze für Zeit & Ort",
+        "example_payload": [
+          {
+            "german": "Der Deutschkurs beginnt um 9:00 Uhr und endet um 12:30 Uhr.",
+            "english": "The German course starts at 9:00 AM and ends at 12:30 PM.",
+            "note": "Exact times with 'um'.",
+            "highlighted_words": ["um 9:00 Uhr", "um 12:30 Uhr"]
+          },
+          {
+            "german": "Am Freitagabend gehen wir gemeinsam ins Restaurant.",
+            "english": "On Friday evening we are going to the restaurant together.",
+            "note": "'am Freitagabend' (time) + 'ins Restaurant' (place direction in + das).",
+            "highlighted_words": ["Am Freitagabend", "ins Restaurant"]
+          },
+          {
+            "german": "Im Winter schneit es oft in den Bergen.",
+            "english": "In winter it often snows in the mountains.",
+            "note": "Seasons take 'im' (im Winter).",
+            "highlighted_words": ["Im Winter"]
+          },
+          {
+            "german": "Ich muss heute Nachmittag noch dringend zum Arzt gehen.",
+            "english": "I urgently have to go to the doctor this afternoon.",
+            "note": "Going to a person/professional takes 'zu' (zu + dem = zum Arzt).",
+            "highlighted_words": ["zum Arzt"]
+          }
+        ]
+      },
+      {
+        "id": "praep_sec7_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Die Zeit-Pyramide (um → am → im)",
+          "content": "Visualize a pyramid from narrowest to widest time unit: Top (Narrowest point = Clock time) → UM (um 8 Uhr). Middle (Day/Date) → AM (am Montag, am 1. Mai). Base (Wide season/month) → IM (im Sommer, im Juli)!",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
     "id": "lesson_perfekt",
     "level": "A1/A2",
     "title": "Das Perfekt mit 'haben' und 'sein'",
@@ -799,7 +1925,7 @@
     "summary": "The Perfekt is the primary past tense used in spoken German. It uses a helping verb (haben or sein) at Position 2 and a Partizip II at the end of the sentence.",
     "sections": [
       {
-        "id": "sec1_explanation",
+        "id": "perfekt_sec1_explanation",
         "type": "explanation",
         "title": "Wann benutzt man 'haben' und wann 'sein'?",
         "explanation_payload": {
@@ -811,7 +1937,7 @@
         }
       },
       {
-        "id": "sec2_formula",
+        "id": "perfekt_sec2_formula",
         "type": "formula",
         "title": "Die Satzklammer (The Sentence Bracket)",
         "formula_payload": {
@@ -845,7 +1971,7 @@
         }
       },
       {
-        "id": "sec3_table",
+        "id": "perfekt_sec3_table",
         "type": "table",
         "title": "Partizip II Bildung (Forming the Participle)",
         "table_payload": {
@@ -861,7 +1987,7 @@
         }
       },
       {
-        "id": "sec4_exceptions",
+        "id": "perfekt_sec4_exceptions",
         "type": "exceptions",
         "title": "Wichtige Ausnahmen: Nicht-trennbare Präfixe",
         "exception_payload": [
@@ -877,7 +2003,7 @@
         ]
       },
       {
-        "id": "sec5_examples",
+        "id": "perfekt_sec5_examples",
         "type": "examples",
         "title": "Beispielsätze (Example Sentences)",
         "example_payload": [
@@ -902,7 +2028,7 @@
         ]
       },
       {
-        "id": "sec6_tip",
+        "id": "perfekt_sec6_tip",
         "type": "tip",
         "title": "Lehrer-Tipp (Teacher's Tip)",
         "tip_payload": {

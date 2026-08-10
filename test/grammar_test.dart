@@ -212,7 +212,7 @@ void main() {
 
       final content = file.readAsStringSync();
       final List<dynamic> jsonList = jsonDecode(content);
-      expect(jsonList.length, greaterThanOrEqualTo(9));
+      expect(jsonList.length, equals(17));
 
       final seenIds = <String>{};
       for (final item in jsonList) {
@@ -242,12 +242,25 @@ void main() {
         }
       }
 
-      // Check all 5 A1 lessons are present
+      // Check all 13 A1/A1-A2 lessons are present
       expect(seenIds.contains('lesson_svo_sentence_structure'), isTrue);
       expect(seenIds.contains('lesson_personal_pronouns'), isTrue);
       expect(seenIds.contains('lesson_question_formation'), isTrue);
       expect(seenIds.contains('lesson_noun_genders_articles'), isTrue);
+      expect(seenIds.contains('lesson_akkusativ'), isTrue);
+      expect(seenIds.contains('lesson_modalverben_praesens'), isTrue);
+      expect(seenIds.contains('lesson_trennbare_verben'), isTrue);
+      expect(seenIds.contains('lesson_unregelmaessige_verben_praesens'), isTrue);
+      expect(seenIds.contains('lesson_possessivartikel'), isTrue);
+      expect(seenIds.contains('lesson_verneinung_nicht_kein'), isTrue);
+      expect(seenIds.contains('lesson_imperativ'), isTrue);
       expect(seenIds.contains('lesson_numbers_and_age'), isTrue);
+      expect(seenIds.contains('lesson_praepositionen_zeit_ort'), isTrue);
+      expect(seenIds.contains('lesson_perfekt'), isTrue);
+      // A2/B1 lessons
+      expect(seenIds.contains('lesson_modalverben_praeteritum'), isTrue);
+      expect(seenIds.contains('lesson_nebensatz_weil'), isTrue);
+      expect(seenIds.contains('lesson_wechselpraepositionen'), isTrue);
     });
   });
 }
