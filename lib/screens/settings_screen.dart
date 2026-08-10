@@ -4,6 +4,7 @@ import 'package:takt/l10n/app_localizations.dart';
 import '../theme/theme_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/dictionary_service.dart';
+import '../services/gemini_api_key_store.dart';
 import '../services/profile_service.dart';
 import '../services/sound_service.dart';
 import '../services/notification_service.dart';
@@ -103,6 +104,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // 4. DATA & STORAGE CARD
                 _buildSectionTitle(context, l10n?.sectionDataStorage ?? 'DATA & STORAGE', rustAccent),
                 _buildDataStorageCard(context, inkColor, cardBg, rustAccent),
+                const SizedBox(height: 20),
+
+                // 4b. AI & PROCESSING CARD
+                _buildSectionTitle(context, 'AI & PROCESSING', rustAccent),
+                _buildAiCard(context, inkColor, cardBg, rustAccent),
                 const SizedBox(height: 20),
 
                 // 5. ABOUT CARD
@@ -520,6 +526,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       child: const _DictionaryDatabaseTile(),
+    );
+  }
+
+  Widget _buildAiCard(
+    BuildContext context,
+    Color inkColor,
+    Color cardBg,
+    Color rustAccent,
+  ) {
+    return Material(
+      color: cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: BorderSide(
+          color: inkColor.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: const _GeminiApiKeyTile(),
     );
   }
 
@@ -1363,6 +1388,144 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+class _GeminiApiKeyTile extends StatefulWidget {
+  const _GeminiApiKeyTile();
+
+  @override
+  State<_GeminiApiKeyTile> createState() => _GeminiApiKeyTileState();
+}
+
+class _GeminiApiKeyTileState extends State<_GeminiApiKeyTile> {
+  String? _apiKey;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadKey();
+  }
+
+  Future<void> _loadKey() async {
+    final key = await GeminiApiKeyStore.getKey();
+    if (mounted) {
+      setState(() {
+        _apiKey = key;
+        _loading = false;
+      });
+    }
+  }
+
+  String get _subtitleText {
+    if (_loading) return 'Loading…';
+    final key = _apiKey;
+    if (key == null || key.isEmpty) return 'Not set — using shared key';
+    final last4 = key.length > 4 ? key.substring(key.length - 4) : key;
+    return '••••$last4';
+  }
+
+  Future<void> _showEditDialog(BuildContext context) async {
+    final controller = TextEditingController(text: _apiKey ?? '');
+    var obscure = true;
+    final theme = Theme.of(context);
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          title: const Text('Gemini API Key'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                obscureText: obscure,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'API Key',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                      size: 20,
+                    ),
+                    onPressed: () => setDialogState(() => obscure = !obscure),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "Optional — used to transcribe videos with your own Gemini quota when "
+                "official subtitles aren't available. Get one at aistudio.google.com.",
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            if (_apiKey != null && _apiKey!.isNotEmpty)
+              TextButton(
+                onPressed: () async {
+                  await GeminiApiKeyStore.setKey(null);
+                  if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                  if (mounted) setState(() => _apiKey = null);
+                },
+                style: TextButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  foregroundColor: theme.colorScheme.error,
+                ),
+                child: const Text('Clear'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final value = controller.text.trim();
+                await GeminiApiKeyStore.setKey(value.isEmpty ? null : value);
+                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                if (mounted) setState(() => _apiKey = value.isEmpty ? null : value);
+              },
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
+    final rustAccent = isDark ? const Color(0xFFE05338) : const Color(0xFF8C2D19);
+
+    return ListTile(
+      leading: Icon(Icons.vpn_key_rounded, color: rustAccent, size: 20),
+      title: Text(
+        'Gemini API Key',
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor),
+      ),
+      subtitle: Text(
+        _subtitleText,
+        style: TextStyle(fontSize: 11.5, color: inkColor.withValues(alpha: 0.6)),
+      ),
+      onTap: () => _showEditDialog(context),
     );
   }
 }

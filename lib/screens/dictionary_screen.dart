@@ -1264,62 +1264,6 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   String _getCefrLevel(int? freqRank, {String? word, String? baseForm}) =>
       DictionaryService.getCefrLevel(freqRank, word: word, baseForm: baseForm);
 
-  Widget _buildFrequencyMeter(BuildContext context, dynamic freqRaw) {
-    if (freqRaw == null) return const SizedBox.shrink();
-    final stars = DictionaryService.getFrequencyStars(freqRaw);
-    final zipf = DictionaryService.getZipfScore(freqRaw);
-    final label = DictionaryService.getFrequencyLabel(freqRaw);
-    final rank = int.tryParse(freqRaw.toString()) ?? 0;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final activeColor = stars >= 4 ? Colors.teal : (stars == 3 ? Colors.amber.shade700 : Colors.blueGrey);
-
-    return Tooltip(
-      message: "Frequency Rank: #$rank\nZipf Score: ${zipf.toStringAsFixed(1)} / 7.0\n$label",
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: activeColor.withValues(alpha: isDark ? 0.18 : 0.10),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: activeColor.withValues(alpha: isDark ? 0.35 : 0.25),
-            width: 0.8,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(5, (i) {
-                final filled = i < stars;
-                return Container(
-                  width: 3.2,
-                  height: 8.5 + (i * 1.5),
-                  margin: const EdgeInsets.symmetric(horizontal: 1.0),
-                  decoration: BoxDecoration(
-                    color: filled ? activeColor : colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(1.5),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              "Zipf ${zipf.toStringAsFixed(1)}",
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: activeColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildUnifiedLevelBadge(BuildContext context, dynamic freqRaw, {required String word, String? baseForm}) {
     final goethe = GoetheCurriculumService.getGoetheLevel(word, baseForm: baseForm);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1417,6 +1361,13 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   }
 
   String _inferGenderIfNull(String wordStr, String? rawGender, String? pos) {
+    // A known non-noun POS (adj, verb, ...) must never show a gender/article
+    // — this overrides even an explicit `rawGender` value, since stale or
+    // mis-tagged data (e.g. a saved word predating a dictionary fix) must
+    // not resurrect a bogus article just because some gender string is present.
+    final posLower = pos?.toLowerCase().trim() ?? '';
+    if (posLower.isNotEmpty && !posLower.contains('noun')) return '';
+
     if (rawGender != null && rawGender.trim().isNotEmpty) {
       final g = rawGender.trim().toLowerCase();
       if (g == 'masculine' || g == 'm') return 'm';
@@ -1552,7 +1503,6 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     runSpacing: 4,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      if (freq != null) _buildFrequencyMeter(context, freq),
                       _buildUnifiedLevelBadge(context, freq, word: word, baseForm: baseForm),
                     ],
                   ),

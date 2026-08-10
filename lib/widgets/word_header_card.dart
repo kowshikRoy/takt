@@ -22,6 +22,7 @@ class WordHeaderCard extends StatelessWidget {
   final String? ipa;
   final bool showStatusPills;
   final VoidCallback? onWordEdited;
+  final bool showSpeakerButton;
 
   WordHeaderCard({
     super.key,
@@ -35,21 +36,33 @@ class WordHeaderCard extends StatelessWidget {
     this.ipa,
     this.showStatusPills = true,
     this.onWordEdited,
+    this.showSpeakerButton = true,
   });
 
   final TtsService _ttsService = TtsService();
 
-  String _inferGenderIfNull(String wordStr, String? rawGender, String? pos) {
+  static String _inferGenderIfNull(String wordStr, String? rawGender, String? pos) {
+    // A known non-noun POS (adj, verb, ...) must never show a gender/article
+    // — German verbs/adjectives don't have grammatical gender, full stop.
+    // This overrides even an explicit `rawGender` value: stale or mis-tagged
+    // data (e.g. a saved word whose gender field predates a dictionary fix)
+    // must not resurrect a bogus "Der/Die/Das" just because some gender
+    // string happens to be present.
+    final posLower = pos?.toLowerCase().trim() ?? '';
+    final posKnownNonNoun = posLower.isNotEmpty && !posLower.contains('noun');
+    if (posKnownNonNoun) return '';
+
     if (rawGender != null && rawGender.trim().isNotEmpty) {
       final g = rawGender.trim().toLowerCase();
       if (g == 'masculine' || g == 'm') return 'm';
       if (g == 'feminine' || g == 'f') return 'f';
       if (g == 'neuter' || g == 'n') return 'n';
     }
-    final isNoun =
-        pos == null ||
+    // Capitalization is only a useful noun hint when the POS is genuinely
+    // unknown (already excluded the known-non-noun case above).
+    final isNoun = pos == null ||
         pos.isEmpty ||
-        pos.toLowerCase().contains('noun') ||
+        posLower.contains('noun') ||
         (wordStr.isNotEmpty && wordStr[0] == wordStr[0].toUpperCase());
 
     if (!isNoun) return '';
@@ -90,71 +103,40 @@ class WordHeaderCard extends StatelessWidget {
     return Colors.teal;
   }
 
-  String _getArticle(String gender) {
+  String _getArticle(String gender) => _getArticleStatic(gender);
+
+  static String _getArticleStatic(String gender) {
     if (gender == 'm') return 'Der';
     if (gender == 'f') return 'Die';
     if (gender == 'n') return 'Das';
     return '';
   }
 
+  /// Builds the text to speak for a word's header: "Der/Die/Das Word, die
+  /// Plural" when it's a noun with a known gender and plural, or just the
+  /// bare word otherwise. Shared by the header's own speaker button and by
+  /// callers (e.g. the review/practice screen) that want to auto-play the
+  /// same thing when a card flips to reveal its answer.
+  static String buildSpeakText(Map<String, dynamic> wordData) {
+    final word = wordData['word']?.toString() ?? '';
+    final pos = wordData['pos']?.toString();
+    final rawGender = wordData['gender']?.toString();
+    final gender = _inferGenderIfNull(word, rawGender, pos);
+    final article = _getArticleStatic(gender);
+    if (article.isEmpty) return word;
+
+    final resolvedPlural = NounHeadwordTitle.extractPluralForm(wordData);
+    if (resolvedPlural != null && resolvedPlural.isNotEmpty) {
+      final pluralStr = resolvedPlural.toLowerCase().startsWith('die ')
+          ? resolvedPlural
+          : 'die $resolvedPlural';
+      return '$article $word, $pluralStr';
+    }
+    return '$article $word';
+  }
+
   String _getCefrLevel(dynamic freqRaw, {String? word, String? baseForm}) =>
       DictionaryService.getCefrLevel(freqRaw, word: word, baseForm: baseForm);
-
-  Widget _buildFrequencyMeter(BuildContext context, dynamic freqRaw) {
-    if (freqRaw == null) return const SizedBox.shrink();
-    final stars = DictionaryService.getFrequencyStars(freqRaw);
-    final zipf = DictionaryService.getZipfScore(freqRaw);
-    final label = DictionaryService.getFrequencyLabel(freqRaw);
-    final rank = int.tryParse(freqRaw.toString()) ?? 0;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final activeColor = stars >= 4 ? Colors.teal : (stars == 3 ? Colors.amber.shade700 : Colors.blueGrey);
-
-    return Tooltip(
-      message: "Frequency Rank: #$rank\nZipf Score: ${zipf.toStringAsFixed(1)} / 7.0\n$label",
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: activeColor.withValues(alpha: isDark ? 0.18 : 0.10),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: activeColor.withValues(alpha: isDark ? 0.35 : 0.25),
-            width: 0.8,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(5, (i) {
-                final filled = i < stars;
-                return Container(
-                  width: 3.0,
-                  height: 8.0 + (i * 1.5),
-                  margin: const EdgeInsets.symmetric(horizontal: 0.8),
-                  decoration: BoxDecoration(
-                    color: filled ? activeColor : colorScheme.onSurfaceVariant.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(1.5),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              "Zipf ${zipf.toStringAsFixed(1)}",
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.bold,
-                color: activeColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildUnifiedLevelBadge(BuildContext context, dynamic freqRaw, {required String word, String? baseForm}) {
     final goethe = GoetheCurriculumService.getGoetheLevel(word, baseForm: baseForm);
@@ -426,8 +408,15 @@ class WordHeaderCard extends StatelessWidget {
 
     final genderColor = _getGenderColor(gender);
     final article = _getArticle(gender);
-    final resolvedPlural =
-        pluralForm ?? NounHeadwordTitle.extractPluralForm(wordData);
+    // A known non-noun POS (adj, verb, ...) must never show a "die ..." plural
+    // header — adjectives/verbs have their own "plural"-tagged inflection
+    // forms (e.g. "weiße" for the adjective "weiß") that aren't noun plurals.
+    final posLowerForPlural = pos?.toLowerCase().trim() ?? '';
+    final isKnownNonNoun =
+        posLowerForPlural.isNotEmpty && !posLowerForPlural.contains('noun');
+    final resolvedPlural = isKnownNonNoun
+        ? null
+        : (pluralForm ?? NounHeadwordTitle.extractPluralForm(wordData));
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -466,30 +455,18 @@ class WordHeaderCard extends StatelessWidget {
                 fontSize: 22,
               ),
             ),
-            const SizedBox(width: 6),
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: Icon(Icons.volume_up_rounded, size: 20, color: genderColor),
-              onPressed: () {
-                String textToSpeak = word;
-                if (article.isNotEmpty) {
-                  if (resolvedPlural != null && resolvedPlural.isNotEmpty) {
-                    final pluralStr =
-                        resolvedPlural.toLowerCase().startsWith('die ')
-                        ? resolvedPlural
-                        : 'die $resolvedPlural';
-                    textToSpeak = '$article $word, $pluralStr';
-                  } else {
-                    textToSpeak = '$article $word';
-                  }
-                }
-                _ttsService.speak(textToSpeak, lang: 'de-DE');
-              },
-            ),
+            if (showSpeakerButton) ...[
+              const SizedBox(width: 6),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(Icons.volume_up_rounded, size: 20, color: genderColor),
+                onPressed: () {
+                  _ttsService.speak(buildSpeakText(wordData), lang: 'de-DE');
+                },
+              ),
+            ],
             const SizedBox(width: 8),
-            _buildFrequencyMeter(context, freq),
-            const SizedBox(width: 6),
             _buildUnifiedLevelBadge(
               context,
               freq,

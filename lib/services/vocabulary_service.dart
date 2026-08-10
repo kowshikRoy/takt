@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -601,7 +602,9 @@ class VocabularyService extends ChangeNotifier {
   Future<List<SavedWord>> getDueWords() async {
     if (kIsWeb) {
       final now = DateTime.now();
-      return _inMemoryWords.values.where((w) => w.category == VocabCategory.learning && now.isAfter(w.dueDate)).toList();
+      final due = _inMemoryWords.values.where((w) => w.category == VocabCategory.learning && now.isAfter(w.dueDate)).toList()
+        ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      return _shuffleWithinDueDateDayBuckets(due);
     }
     final db = await database;
     if (db == null) return [];
@@ -612,7 +615,35 @@ class VocabularyService extends ChangeNotifier {
       whereArgs: [VocabCategory.learning.name, nowIso],
       orderBy: 'dueDate ASC',
     );
-    return res.map((m) => SavedWord.fromMap(m)).toList();
+    final words = res.map((m) => SavedWord.fromMap(m)).toList();
+    return _shuffleWithinDueDateDayBuckets(words);
+  }
+
+  /// Groups already dueDate-ASC-sorted [words] by the calendar day of their
+  /// dueDate, then shuffles within each day. Words due on the same (or an
+  /// equally overdue) day are effectively tied for review priority, so their
+  /// relative order shouldn't be a fixed DB/insertion order that repeats
+  /// identically every session — but days are still visited oldest-first,
+  /// so the most-overdue words are still reviewed first overall.
+  List<SavedWord> _shuffleWithinDueDateDayBuckets(List<SavedWord> words) {
+    if (words.length <= 1) return words;
+    final random = Random();
+    final dayOrder = <DateTime>[];
+    final buckets = <DateTime, List<SavedWord>>{};
+    for (final w in words) {
+      final day = DateTime(w.dueDate.year, w.dueDate.month, w.dueDate.day);
+      final bucket = buckets.putIfAbsent(day, () {
+        dayOrder.add(day);
+        return <SavedWord>[];
+      });
+      bucket.add(w);
+    }
+    final result = <SavedWord>[];
+    for (final day in dayOrder) {
+      final bucket = buckets[day]!..shuffle(random);
+      result.addAll(bucket);
+    }
+    return result;
   }
 
   Future<void> recordReview(String id, ReviewRating rating) async {

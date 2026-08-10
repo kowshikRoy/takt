@@ -8,6 +8,8 @@ import '../models/processed_video.dart';
 import '../models/processing_status.dart';
 import '../models/subtitle_cue.dart';
 import 'backend_service.dart';
+import 'gemini_api_key_store.dart';
+import 'gemini_transcription_service.dart';
 import 'ondevice_ai_service.dart';
 import 'app_logger.dart';
 import 'sync_service.dart';
@@ -24,6 +26,7 @@ class MediaLibraryService extends ChangeNotifier {
 
   final BackendService _backendService = BackendService();
   final Map<String, Timer> _pollingTimers = {};
+  final Set<String> _transcribingTaskIds = {};
 
   List<Article> _importedArticles = [];
   List<ProcessedVideo> _processedVideos = [];
@@ -437,6 +440,45 @@ class MediaLibraryService extends ChangeNotifier {
       final index = _processedVideos.indexWhere(
         (v) => v.taskId == taskId || v.id == taskId || normalizeMediaUrl(v.url) == normalized,
       );
+
+      if (statusStr == 'awaiting_client_transcription') {
+        if (_transcribingTaskIds.contains(taskId)) return;
+        _transcribingTaskIds.add(taskId);
+
+        if (index != -1) {
+          final current = _processedVideos[index];
+          _processedVideos[index] = ProcessedVideo(
+            id: taskId,
+            taskId: taskId,
+            url: originalUrl,
+            status: ProcessingStatus.transcribing,
+            stageMessage: 'Transcribing with your Gemini key...',
+            progressPercentage: progressPct > 0 ? progressPct : current.progressPercentage,
+            subtitles: current.subtitles,
+            videoUrl: current.videoUrl,
+            mediaType: current.mediaType,
+            thumbnail: current.thumbnail,
+            title: current.title,
+            category: current.category,
+          );
+          notifyListeners();
+        }
+
+        try {
+          final apiKey = await GeminiApiKeyStore.getKey();
+          if (apiKey == null) {
+            // Shouldn't happen — the client said it could transcribe when submitting —
+            // but resume with no subtitles so the backend falls back to Whisper.
+            await _backendService.resumeMediaTask(taskId, []);
+          } else {
+            final result = await GeminiTranscriptionService.transcribeYoutube(originalUrl, apiKey);
+            await _backendService.resumeMediaTask(taskId, result.subtitles, title: result.title);
+          }
+        } finally {
+          _transcribingTaskIds.remove(taskId);
+        }
+        return;
+      }
 
       if (statusStr == 'processing' || statusStr == 'downloading' || statusStr == 'transcribing' || statusStr == 'pending') {
         if (index != -1) {

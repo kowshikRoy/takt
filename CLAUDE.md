@@ -76,6 +76,27 @@ doesn't mint a new URL) and reports the new revision (e.g. `omniscribe-00038-sg6
 of traffic. The whole rollout (Cloud Build + Cloud Run revision + traffic switch) typically takes
 several minutes — run it in the background and poll/tail rather than blocking on it.
 
+### Distributing Test Builds (Firebase App Distribution)
+App is in testing phase (not published to Play Store), so builds are pushed to testers directly —
+useful when a phone isn't on the same network as the dev machine (see "Quick APK install" below).
+Requires `firebase login` once (interactive, run outside Claude Code if using the `!` shell —
+`firebase login` needs a real TTY; `firebase login:ci` is the fallback for headless shells).
+The Android app is already registered in Firebase (`book-search-472921`, app id
+`1:184475424927:android:c8079539a49dcba4d42aaa`); `release` builds sign with the debug keystore
+(see `android/app/build.gradle.kts`), so no release signing setup is needed for test builds.
+```bash
+flutter build apk --release
+firebase appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk \
+  --app 1:184475424927:android:c8079539a49dcba4d42aaa \
+  --project book-search-472921 \
+  --groups "testers" \
+  --release-notes "Describe what changed in this build."
+```
+Testers get an email/notification with an install link — no shared WiFi network needed, but this
+is a multi-minute round trip (build + upload + manual install on the phone), not a hot-reload loop.
+Manage the tester list: `firebase appdistribution:testers:add <email> --group-alias testers`
+(current group alias: `testers`).
+
 ### Web App Deployment (Firebase Hosting)
 The Flutter **web app** (`flutter build web`) is a separate deploy target from the omniscribe
 Cloud Run service above — the omniscribe URL is API-only (no `/` route, so it 404s if opened in

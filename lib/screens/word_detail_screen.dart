@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../theme/books_modernist_style.dart';
 import '../services/dictionary_service.dart';
@@ -369,6 +370,22 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
     return false;
   }
 
+  bool _isAdjective(Map<String, dynamic> wordData) {
+    final pos = wordData['pos']?.toString().toLowerCase() ?? '';
+    if (pos == 'adj' || pos == 'adjective' || pos == 'adjectives') return true;
+    final rawForms = wordData['forms'];
+    if (rawForms is List) {
+      for (final f in rawForms) {
+        if (f is! Map) continue;
+        final tags = (f['tags'] ?? '').toString().toLowerCase();
+        if (tags.contains('comparative') || tags.contains('superlative') || tags.contains('predicative')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   Widget _buildExamplesTab(
       BuildContext context, Map<String, dynamic> wordData) {
     final rawDictExamples = (wordData['examples'] as List?) ?? [];
@@ -653,15 +670,32 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
           .toList();
     }
     if (rawTags is String) {
-      if (rawTags.contains(',')) {
-        return rawTags
+      final trimmed = rawTags.trim();
+      if (trimmed.isEmpty) return [];
+      // The DB stores tags as a JSON array, e.g. '["masculine","nominative"]'.
+      // Decode it properly rather than naively splitting on commas, which
+      // leaves stray brackets/quotes in each piece.
+      if (trimmed.startsWith('[')) {
+        try {
+          final decoded = jsonDecode(trimmed);
+          if (decoded is List) {
+            return decoded
+                .map((e) => e.toString().trim())
+                .where((s) => s.isNotEmpty)
+                .toList();
+          }
+        } catch (_) {
+          // fall through to comma-split below
+        }
+      }
+      if (trimmed.contains(',')) {
+        return trimmed
             .split(',')
             .map((e) => e.trim())
             .where((s) => s.isNotEmpty)
             .toList();
       }
-      final trimmed = rawTags.trim();
-      return trimmed.isNotEmpty ? [trimmed] : [];
+      return [trimmed];
     }
     return [rawTags.toString()];
   }
@@ -1282,10 +1316,170 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
     );
   }
 
+  Widget _buildAdjectiveDeclensionTable(
+    BuildContext context,
+    Map<String, dynamic> wordData,
+  ) {
+    final forms = (wordData['forms'] as List?) ?? [];
+    final colorScheme = Theme.of(context).colorScheme;
+    final baseForm = wordData['base_form']?.toString().trim();
+    final positive = (baseForm != null && baseForm.isNotEmpty)
+        ? baseForm
+        : (wordData['word']?.toString() ?? '');
+
+    bool isPositiveTag(String t) => !t.contains('comparative') && !t.contains('superlative');
+
+    String declined(String genderTag, {bool plural = false, required String caseTag}) {
+      return _findVerbForm(
+        forms,
+        (t) =>
+            isPositiveTag(t) &&
+            t.contains(caseTag) &&
+            (plural ? t.contains('plural') : (t.contains(genderTag) && t.contains('singular'))),
+        fallback: '-',
+      );
+    }
+
+    final cases = ['Nominativ', 'Akkusativ', 'Dativ', 'Genitiv'];
+    final caseTags = ['nominative', 'accusative', 'dative', 'genitive'];
+    final genderColumns = ['masculine', 'feminine', 'neuter'];
+
+    // Comparative/superlative predicative forms (the plain, undeclined forms
+    // used after "sein"/"werden", e.g. "Er ist glühender/am glühendsten").
+    final comparative = _findVerbForm(
+      forms,
+      (t) => t.contains('comparative') && t.contains('predicative'),
+      fallback: _findVerbForm(forms, (t) => t.contains('comparative') && !t.contains('plural'), fallback: '-'),
+    );
+    final superlative = _findVerbForm(
+      forms,
+      (t) => t.contains('superlative') && t.contains('predicative'),
+      fallback: '-',
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.table_chart_rounded, size: 16, color: colorScheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                'ADJECTIVE DECLENSION TABLE',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 1.1,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMiniVerbStat(context, label: 'Positive', value: positive),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMiniVerbStat(context, label: 'Comparative', value: comparative),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMiniVerbStat(
+                  context,
+                  label: 'Superlative',
+                  value: superlative != '-' ? 'am $superlative' : '-',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'STRONG/ATTRIBUTIVE DECLENSION (POSITIVE)',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4.0),
+            child: Table(
+              border: TableBorder.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                width: 0.8,
+              ),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              columnWidths: const {
+                0: FlexColumnWidth(0.95),
+                1: FlexColumnWidth(1.15),
+                2: FlexColumnWidth(1.1),
+                3: FlexColumnWidth(1.15),
+                4: FlexColumnWidth(1.0),
+              },
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.4),
+                  ),
+                  children: [
+                    _buildTableCell('CASE', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('MASC.', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('FEM.', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('NEUT.', isHeader: true, colorScheme: colorScheme),
+                    _buildTableCell('PLURAL', isHeader: true, colorScheme: colorScheme),
+                  ],
+                ),
+                ...List.generate(4, (index) {
+                  final isAlt = index % 2 == 1;
+                  final caseTag = caseTags[index];
+                  return TableRow(
+                    decoration: BoxDecoration(
+                      color: isAlt
+                          ? colorScheme.surfaceContainerHigh.withValues(alpha: 0.3)
+                          : Colors.transparent,
+                    ),
+                    children: [
+                      _buildTableCell(cases[index], isBold: true, colorScheme: colorScheme),
+                      ...genderColumns.map((g) => _buildTableCell(
+                            declined(g, caseTag: caseTag),
+                            isSemiBold: true,
+                            colorScheme: colorScheme,
+                          )),
+                      _buildTableCell(
+                        declined('', plural: true, caseTag: caseTag),
+                        isSemiBold: true,
+                        colorScheme: colorScheme,
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDeclensionTab(
       BuildContext context, Map<String, dynamic> wordData) {
     if (_isVerb(wordData)) {
       return _buildVerbConjugationTable(context, wordData);
+    }
+    if (_isAdjective(wordData)) {
+      return _buildAdjectiveDeclensionTable(context, wordData);
     }
     final pos = wordData['pos']?.toString().toLowerCase() ?? '';
     final gender = wordData['gender']?.toString() ?? '';

@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config.dart';
+import '../models/subtitle_cue.dart';
 import 'app_logger.dart';
+import 'gemini_api_key_store.dart';
 
 class BackendService {
   final String baseUrl = Config.backendUrl;
@@ -25,10 +27,11 @@ class BackendService {
 
   Future<Map<String, dynamic>?> submitMediaUrl(String url) async {
     try {
+      final geminiKey = await GeminiApiKeyStore.getKey();
       final response = await http.post(
         Uri.parse('$baseUrl/submit-media'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'url': url}),
+        body: jsonEncode({'url': url, 'client_can_transcribe': geminiKey != null}),
       ).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         return jsonDecode(utf8.decode(response.bodyBytes));
@@ -37,6 +40,31 @@ class BackendService {
     } catch (e) {
       AppLogger.error("submitMediaUrl error", error: e, tag: 'BackendService');
       return {'error': 'Connection timed out or failed: $e'};
+    }
+  }
+
+  /// Resumes a task the backend paused with status `awaiting_client_transcription`,
+  /// supplying subtitles the client transcribed itself via its own Gemini API key
+  /// (or an empty list to have the backend fall back to server-side Whisper).
+  Future<bool> resumeMediaTask(
+    String taskId,
+    List<SubtitleCue> subtitles, {
+    String? title,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/resume-media'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'task_id': taskId,
+          'subtitles': subtitles.map((c) => c.toJson()).toList(),
+          'title': title,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      AppLogger.error("resumeMediaTask error", error: e, tag: 'BackendService');
+      return false;
     }
   }
 

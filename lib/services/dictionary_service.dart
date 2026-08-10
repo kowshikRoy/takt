@@ -18,6 +18,10 @@ class DictionaryService {
   static Database? _database;
   static Completer<Database>? _dbCompleter;
 
+  // Cached result of checking whether the open DB has `forms`/`tags` tables —
+  // older bundled schema versions (and lightweight test fixtures) may not.
+  static bool? _formsTagsSupported;
+
   // Progress & State Notifiers for On-Demand Database Download UI
   final ValueNotifier<double> downloadProgressNotifier = ValueNotifier<double>(0.0);
   final ValueNotifier<bool> isDownloadingNotifier = ValueNotifier<bool>(false);
@@ -37,6 +41,7 @@ class DictionaryService {
     }
     _database = null;
     _dbCompleter = null;
+    _formsTagsSupported = null;
   }
 
   DictionaryService._internal();
@@ -87,23 +92,6 @@ class DictionaryService {
   /// Returns true if the word or its base lemma is on the official Goethe-Institut core curriculum.
   static bool isGoetheCertified(String word, {String? baseForm}) =>
       GoetheCurriculumService.isGoetheCertified(word, baseForm: baseForm);
-
-  /// Computes a standardized Logarithmic Zipf Frequency Score (1.0 to 7.0)
-  /// Zipf Scale: 6.0+ = Top 1,000 Everyday, 5.0-6.0 = Top 5,000 High Frequency,
-  /// 4.0-5.0 = Intermediate, 3.0-4.0 = Upper Intermediate, <3.0 = Rare/Advanced.
-  static double getZipfScore(dynamic freqRaw) {
-    final rank = freqRaw != null ? int.tryParse(freqRaw.toString()) : null;
-    if (rank == null || rank <= 0) return 3.0;
-    if (rank <= 15) return 7.0;
-    if (rank <= 100) return 6.6;
-    if (rank <= 600) return 6.0;
-    if (rank <= 1600) return 5.3;
-    if (rank <= 3800) return 4.6;
-    if (rank <= 8500) return 3.9;
-    if (rank <= 15000) return 3.3;
-    if (rank <= 30000) return 2.6;
-    return 1.8;
-  }
 
   /// Returns a visual 1 to 5 star rating based on empirical frequency rank.
   static int getFrequencyStars(dynamic freqRaw) {
@@ -1261,11 +1249,71 @@ class DictionaryService {
     return lower;
   }
 
+  /// Checks (and caches) whether the open dictionary DB has `forms` and `tags`
+  /// tables. Older bundled schema versions and reduced test fixtures may lack
+  /// them, so queries that join into them must degrade gracefully rather than
+  /// throwing and silently losing unrelated functionality via a catch-all fallback.
+  Future<bool> _hasFormsTagsSupport(Database db) async {
+    if (_formsTagsSupported != null) return _formsTagsSupported!;
+    try {
+      final res = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('tags','forms')",
+      );
+      _formsTagsSupported = res.length >= 2;
+    } catch (_) {
+      _formsTagsSupported = false;
+    }
+    return _formsTagsSupported!;
+  }
+
+  /// Grammatical tag ordering used to phrase a synthesized "form of" gloss
+  /// (e.g. tags `["participle","past"]` -> "Past participle"). Tags not listed
+  /// sort to the end, alphabetically among themselves.
+  static const List<String> _formTagOrder = [
+    'comparative', 'superlative',
+    'first-person', 'second-person', 'third-person',
+    'present', 'past', 'preterite', 'perfect',
+    'indicative', 'subjunctive', 'subjunctive-ii', 'imperative',
+    'participle', 'infinitive',
+    'nominative', 'genitive', 'dative', 'accusative',
+    'masculine', 'feminine', 'neuter',
+    'singular', 'plural',
+  ];
+
+  /// Turns a raw `tags` JSON array (from the `forms`/`tags` tables, e.g.
+  /// `["participle","past"]`) into a short gloss like "Past participle of treffen",
+  /// so it's phrased as recognizable "X of BaseWord" text for [baseWord].
+  static String? _glossFromFormTags(dynamic rawTagsJson, String baseWord) {
+    if (rawTagsJson == null || baseWord.trim().isEmpty) return null;
+    final str = rawTagsJson.toString().trim();
+    if (str.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(str);
+      if (decoded is! List || decoded.isEmpty) return null;
+      final tags = decoded.map((e) => e.toString()).toList();
+      tags.sort((a, b) {
+        final ia = _formTagOrder.indexOf(a);
+        final ib = _formTagOrder.indexOf(b);
+        final oa = ia == -1 ? _formTagOrder.length : ia;
+        final ob = ib == -1 ? _formTagOrder.length : ib;
+        if (oa != ob) return oa.compareTo(ob);
+        return a.compareTo(b);
+      });
+      final phrase = tags.join(' ');
+      if (phrase.isEmpty) return null;
+      final capitalized = phrase[0].toUpperCase() + phrase.substring(1);
+      return '$capitalized of $baseWord';
+    } catch (_) {
+      return null;
+    }
+  }
+
   List<Map<String, dynamic>> _groupDbResultsByPos(List<Map<String, dynamic>> results, String cleanWord) {
     Map<String, Map<String, dynamic>> groupedByPosKey = {};
     Map<String, int> lowestIdForPosKey = {};
     Map<String, List<String>> directDefsForPosKey = {};
     Map<String, List<String>> baseDefsForPosKey = {};
+    Map<String, String?> formTagsForPosKey = {};
 
     for (var r in results) {
       final id = r['id'] as int;
@@ -1288,6 +1336,7 @@ class DictionaryService {
         };
         directDefsForPosKey[key] = [];
         baseDefsForPosKey[key] = [];
+        formTagsForPosKey[key] = null;
       }
 
       // Direct definition
@@ -1301,6 +1350,9 @@ class DictionaryService {
       if (baseDef != null && baseDef.isNotEmpty && !baseDefsForPosKey[key]!.contains(baseDef)) {
         baseDefsForPosKey[key]!.add(baseDef);
       }
+
+      // Grammatical tags for this exact inflected surface form, if known
+      formTagsForPosKey[key] ??= r['form_tags']?.toString();
     }
 
     for (var entry in groupedByPosKey.entries) {
@@ -1309,8 +1361,23 @@ class DictionaryService {
       final directDefs = directDefsForPosKey[key] ?? [];
       final baseDefs = baseDefsForPosKey[key] ?? [];
 
-      // If the word has direct definitions, do NOT mix in base form definitions.
-      final defs = directDefs.isNotEmpty ? List<String>.from(directDefs) : List<String>.from(baseDefs);
+      List<String> defs;
+      if (directDefs.isNotEmpty) {
+        // The word has its own definitions — never mix in base form definitions.
+        defs = List<String>.from(directDefs);
+      } else if (baseDefs.isNotEmpty) {
+        // No own definitions: this is purely an inflected form of another word.
+        // Prefer a short "Past participle of treffen" style gloss (built from the
+        // forms/tags data) over silently dumping the base word's full definition
+        // list, which reads as if the inflected form had those meanings itself.
+        final baseForm = group['base_form']?.toString();
+        final gloss = (baseForm != null && baseForm.isNotEmpty)
+            ? _glossFromFormTags(formTagsForPosKey[key], baseForm)
+            : null;
+        defs = gloss != null ? [gloss] : List<String>.from(baseDefs);
+      } else {
+        defs = [];
+      }
 
       // Ensure core literal definitions precede informal idioms/slang
       defs.sort((a, b) {
@@ -1330,17 +1397,33 @@ class DictionaryService {
       });
       group['definitions'] = defs;
       group['definition'] = defs.isNotEmpty ? defs.first : '';
+      // Marks whether this sense has genuine definitions of its own, as
+      // opposed to a synthesized "form of X" gloss — later sort/priority
+      // steps (e.g. lookupConsolidatedWord's final ordering) must not let a
+      // bare inflected-form stub outrank a headword with real content just
+      // because they tie on POS/frequency.
+      group['_hasOwnDefinition'] = directDefs.isNotEmpty;
     }
 
     final list = groupedByPosKey.values.toList();
     list.sort((a, b) {
-      // 1. Prioritize senses that actually have definitions over empty stubs
+      String keyOf(Map<String, dynamic> g) =>
+          "${(g['word'] as String? ?? cleanWord).toLowerCase()}_${(g['pos'] as String? ?? '').toLowerCase()}";
+
+      // 1. Prioritize senses with genuine definitions of their own over ones
+      //    that merely inherited/synthesized text from a base word.
+      final aHasOwnDefs = (directDefsForPosKey[keyOf(a)] ?? []).isNotEmpty;
+      final bHasOwnDefs = (directDefsForPosKey[keyOf(b)] ?? []).isNotEmpty;
+      if (aHasOwnDefs && !bHasOwnDefs) return -1;
+      if (!aHasOwnDefs && bHasOwnDefs) return 1;
+
+      // 2. Otherwise, prioritize senses that have any definitions over empty stubs
       final aHasDefs = (a['definitions'] as List?)?.isNotEmpty ?? false;
       final bHasDefs = (b['definitions'] as List?)?.isNotEmpty ?? false;
       if (aHasDefs && !bHasDefs) return -1;
       if (!aHasDefs && bHasDefs) return 1;
 
-      // 2. Exact word match priority (e.g. "weiter" over "weit")
+      // 3. Exact word match priority (e.g. "weiter" over "weit")
       final aWord = (a['word'] as String? ?? '').toLowerCase();
       final bWord = (b['word'] as String? ?? '').toLowerCase();
       final cleanLower = cleanWord.toLowerCase();
@@ -1349,7 +1432,7 @@ class DictionaryService {
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
 
-      // 3. Frequency rank
+      // 4. Frequency rank
       final aRank = a['freq_rank'] as int? ?? 999999;
       final bRank = b['freq_rank'] as int? ?? 999999;
       return aRank.compareTo(bRank);
@@ -1712,6 +1795,7 @@ class DictionaryService {
 
     try {
       List<Map<String, dynamic>> results = [];
+      final hasFormsTags = await _hasFormsTagsSupport(db);
       try {
         results = await db.rawQuery('''
           SELECT w.id, w.word, w.pos, COALESCE(w.gender, w_base.gender) as gender,
@@ -1719,11 +1803,14 @@ class DictionaryService {
                  COALESCE(w.verb_class, w_base.verb_class) as verb_class,
                  w.freq_rank,
                  d.definition as direct_definition,
-                 d_base.definition as base_definition
+                 d_base.definition as base_definition${hasFormsTags ? ',\n                 t_form.tags as form_tags' : ''}
           FROM words w
           LEFT JOIN definitions d ON w.id = d.word_id
           LEFT JOIN words w_base ON w.base_form = w_base.word
           LEFT JOIN definitions d_base ON w_base.id = d_base.word_id
+          ${hasFormsTags ? '''
+          LEFT JOIN forms f_form ON f_form.word_id = w_base.id AND f_form.form = w.word COLLATE NOCASE
+          LEFT JOIN tags t_form ON f_form.tag_id = t_form.id''' : ''}
           WHERE w.word = ? COLLATE NOCASE OR w.base_form = ? COLLATE NOCASE
           ORDER BY LENGTH(w.word) ASC, w.id ASC, COALESCE(d.id, d_base.id, 0) ASC
         ''', [clean, clean]);
@@ -1955,17 +2042,21 @@ class DictionaryService {
         try {
           if (normPos.isNotEmpty) {
             // Targeted POS search in words table
+            final hasFormsTags = await _hasFormsTagsSupport(db);
             final raw = await db.rawQuery('''
               SELECT w.id, w.word, w.pos, COALESCE(w.gender, w_base.gender) as gender,
                      w.ipa, COALESCE(w.base_form, w_base.word) as base_form,
                      COALESCE(w.verb_class, w_base.verb_class) as verb_class,
                      w.freq_rank,
                      d.definition as direct_definition,
-                     d_base.definition as base_definition
+                     d_base.definition as base_definition${hasFormsTags ? ',\n                     t_form.tags as form_tags' : ''}
               FROM words w
               LEFT JOIN definitions d ON w.id = d.word_id
               LEFT JOIN words w_base ON w.base_form = w_base.word
               LEFT JOIN definitions d_base ON w_base.id = d_base.word_id
+              ${hasFormsTags ? '''
+              LEFT JOIN forms f_form ON f_form.word_id = w_base.id AND f_form.form = w.word COLLATE NOCASE
+              LEFT JOIN tags t_form ON f_form.tag_id = t_form.id''' : ''}
               WHERE (w.word = ? COLLATE NOCASE OR w.base_form = ? COLLATE NOCASE)
                 AND (w.pos LIKE ? COLLATE NOCASE OR w.pos LIKE ? COLLATE NOCASE)
               ORDER BY LENGTH(w.word) ASC, w.id ASC
@@ -2019,6 +2110,14 @@ class DictionaryService {
       }
 
       final existingIndex = consolidatedResults.indexWhere((c) {
+        // Must be the same literal word — matching POS alone isn't enough:
+        // a targeted POS search (e.g. pos: 'verb') also matches every
+        // inflected form sharing that POS via base_form (leisten, leistet,
+        // geleistet, ...), which are different words and must not be
+        // collapsed into one entry's definitions.
+        final cWord = (c['word']?.toString() ?? '').toLowerCase().trim();
+        final eWord = (enriched['word']?.toString() ?? '').toLowerCase().trim();
+        if (cWord != eWord) return false;
         final cPos = normalizePos(c['pos']?.toString());
         final ePos = normalizePos(enriched['pos']?.toString());
         return cPos == ePos || cPos == 'word' || cPos.isEmpty;
@@ -2260,6 +2359,16 @@ class DictionaryService {
         if (aContext && !bContext) return -1;
         if (!aContext && bContext) return 1;
 
+        // A sense with genuine definitions of its own must never be
+        // outranked by a bare inflected-form stub (a synthesized "form of X"
+        // gloss) just because they tie on POS/frequency — entries not
+        // produced by the local DB grouping (Wiktionary/NMT results) are
+        // always genuine content, so they default to true here.
+        final aHasOwnDef = a['_hasOwnDefinition'] != false;
+        final bHasOwnDef = b['_hasOwnDefinition'] != false;
+        if (aHasOwnDef && !bHasOwnDef) return -1;
+        if (!aHasOwnDef && bHasOwnDef) return 1;
+
         if (normPos.isNotEmpty) {
           final aPos = normalizePos(a['pos']?.toString());
           final bPos = normalizePos(b['pos']?.toString());
@@ -2351,6 +2460,16 @@ class DictionaryService {
             ? List<String>.from(word.definitions)
             : (word.primaryDefinition.isNotEmpty ? [word.primaryDefinition] : <String>[]));
 
+    // When the fresh lookup succeeded, pos/gender/base_form must come from
+    // that SAME result rather than being independently defaulted against a
+    // persisted field — a saved word's gender can predate a dictionary fix
+    // (or belong to a different sense of a homonym, e.g. "Versuchen" meaning
+    // either the nominalized verb "das Versuchen" or the dative plural of
+    // "der Versuch"), and mixing a stale/mismatched gender with a freshly
+    // fetched but unrelated-sense definition produces incoherent output
+    // (e.g. a neuter article paired with a "dative plural of X" gloss).
+    final usingFreshDictData = dictDefs.isNotEmpty;
+
     final forms = dictData?['forms'] ?? [];
     final plural = dictData?['plural'];
     final freqRank = dictData?['freq_rank'];
@@ -2358,9 +2477,11 @@ class DictionaryService {
     return {
       'id': dictData?['id'] ?? word.id.hashCode.abs(),
       'word': word.word,
-      'base_form': dictData?['base_form'] ?? word.baseForm ?? word.word,
-      'pos': word.pos ?? dictData?['pos'] ?? '',
-      'gender': word.gender ?? dictData?['gender'] ?? '',
+      'base_form': usingFreshDictData
+          ? (dictData?['base_form'] ?? word.baseForm ?? word.word)
+          : (word.baseForm ?? dictData?['base_form'] ?? word.word),
+      'pos': usingFreshDictData ? (dictData?['pos'] ?? word.pos ?? '') : (word.pos ?? dictData?['pos'] ?? ''),
+      'gender': usingFreshDictData ? (dictData?['gender'] ?? '') : (word.gender ?? dictData?['gender'] ?? ''),
       'ipa': dictData?['ipa'] ?? word.ipa ?? '',
       'definitions': defs,
       'definition': defs.isNotEmpty ? defs.first : word.primaryDefinition,

@@ -355,6 +355,14 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 setState(() {
                   _showAnswer = !_showAnswer;
                 });
+                if (_showAnswer) {
+                  // Auto-play the header (article + word + plural, when
+                  // known) the moment the card flips to reveal the answer.
+                  _ttsService.speak(
+                    WordHeaderCard.buildSpeakText(_wordDataFor(word)),
+                    lang: 'de-DE',
+                  );
+                }
                 if (_showAnswer &&
                     (word.contextSentence == null ||
                         word.contextSentence!.isEmpty)) {
@@ -501,16 +509,14 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    Divider(
-                                      height: 16,
-                                      color: inkColor.withValues(alpha: 0.15),
-                                    ),
+                                    const SizedBox(height: 4),
                                     WordHeaderCard(
                                       wordData: _wordDataFor(word),
                                       contextSentence: example.german,
                                       wordImageFuture: _imageFutureFor(word),
                                       ipa: word.ipa,
                                       showStatusPills: false,
+                                      showSpeakerButton: false,
                                       savedWordIds: const {},
                                       savedWordCategories: const {},
                                       onCategorySelected: (_) {},

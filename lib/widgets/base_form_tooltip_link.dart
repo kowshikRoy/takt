@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/dictionary_service.dart';
 
 /// Renders [baseWord] with a dotted underline; tapping it fetches the
-/// word's meaning and shows it in a small popup anchored beneath the text.
+/// word's meaning and shows it in a small popup anchored above the text.
 /// Used for inflected-form glosses like "plural of Temperatur" so the base
 /// word ("Temperatur") is a quick lookup instead of dead text.
 class BaseFormTooltipLink extends StatefulWidget {
@@ -20,7 +20,6 @@ class BaseFormTooltipLink extends StatefulWidget {
 }
 
 class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
-  final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
   String? _meaning;
   bool _loading = false;
@@ -48,8 +47,14 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
 
     String? meaning;
     try {
-      final results =
-          await DictionaryService().lookupConsolidatedWord(widget.baseWord);
+      // lookupWordFast is a single, unenriched SQL query — plenty for a quick
+      // preview and much faster than the full multi-source consolidated lookup.
+      var results = await DictionaryService().lookupWordFast(widget.baseWord);
+      if (results.isEmpty) {
+        // Local miss (or web, where there's no local sqflite DB at all) — fall
+        // back to the slower but more complete lookup (Wiktionary, etc.).
+        results = await DictionaryService().lookupConsolidatedWord(widget.baseWord);
+      }
       if (results.isNotEmpty) {
         final defs = results.first['definitions'];
         if (defs is List && defs.isNotEmpty) {
@@ -70,6 +75,45 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
 
   void _showOverlay() {
     final colorScheme = Theme.of(context).colorScheme;
+
+    const double tooltipMaxWidth = 240;
+    const double horizontalPadding = 12;
+    const double gap = 8;
+    const double estimatedTooltipHeight = 74;
+    final mediaQuery = MediaQuery.of(context);
+    final Size screenSize = mediaQuery.size;
+    final double topSafeArea = mediaQuery.padding.top;
+
+    // Default to just off-screen-left; overwritten below once we can measure
+    // the target word's actual position.
+    double left = horizontalPadding;
+    double? top;
+    double? bottom;
+
+    final renderObject = context.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      final Offset target = renderObject.localToGlobal(Offset.zero);
+      final Size targetSize = renderObject.size;
+
+      final double desiredLeft =
+          target.dx + targetSize.width / 2 - tooltipMaxWidth / 2;
+      final double maxLeft = (screenSize.width - tooltipMaxWidth - horizontalPadding)
+          .clamp(horizontalPadding, screenSize.width);
+      left = desiredLeft.clamp(horizontalPadding, maxLeft);
+
+      final bool roomAbove =
+          target.dy - estimatedTooltipHeight - gap >= topSafeArea;
+      if (roomAbove) {
+        // Preferred: anchor the tooltip's bottom edge just above the word,
+        // letting it grow upward — no need to know its exact height up front.
+        bottom = screenSize.height - target.dy + gap;
+      } else {
+        // Not enough room above (word near the top of the screen) — fall
+        // back below the word instead of clipping off the top.
+        top = target.dy + targetSize.height + gap;
+      }
+    }
+
     _overlayEntry = OverlayEntry(
       builder: (ctx) {
         return Stack(
@@ -80,17 +124,15 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
                 onTap: _removeOverlay,
               ),
             ),
-            CompositedTransformFollower(
-              link: _layerLink,
-              showWhenUnlinked: false,
-              targetAnchor: Alignment.bottomCenter,
-              followerAnchor: Alignment.topCenter,
-              offset: const Offset(0, 6),
+            Positioned(
+              left: left,
+              top: top,
+              bottom: bottom,
               child: Material(
                 color: Colors.transparent,
                 child: ConstrainedBox(
                   constraints:
-                      const BoxConstraints(maxWidth: 240, minWidth: 120),
+                      const BoxConstraints(maxWidth: tooltipMaxWidth, minWidth: 120),
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -152,18 +194,15 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
   @override
   Widget build(BuildContext context) {
     final underlineColor = Theme.of(context).colorScheme.primary;
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: GestureDetector(
-        onTap: _toggleOverlay,
-        child: Text(
-          widget.baseWord,
-          style: widget.style.copyWith(
-            decoration: TextDecoration.underline,
-            decorationStyle: TextDecorationStyle.dotted,
-            decorationColor: underlineColor,
-            decorationThickness: 2.2,
-          ),
+    return GestureDetector(
+      onTap: _toggleOverlay,
+      child: Text(
+        widget.baseWord,
+        style: widget.style.copyWith(
+          decoration: TextDecoration.underline,
+          decorationStyle: TextDecorationStyle.dotted,
+          decorationColor: underlineColor,
+          decorationThickness: 2.2,
         ),
       ),
     );

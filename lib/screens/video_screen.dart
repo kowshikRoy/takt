@@ -17,6 +17,7 @@ import 'package:takt/services/vocabulary_service.dart';
 import 'package:takt/services/tts_service.dart';
 import 'package:takt/theme/app_theme.dart';
 import 'package:provider/provider.dart';
+import 'package:takt/services/gemini_api_key_store.dart';
 import 'package:takt/services/media_library_service.dart';
 import 'package:takt/services/profile_service.dart';
 import 'package:takt/config.dart';
@@ -112,6 +113,12 @@ class _VideoScreenState extends State<VideoScreen>
   String? _localAudioFilePath;
   bool _isPlayingStudioAudio = false;
   bool _isPlayingDialogueTts = false;
+  bool _autoStopEachSentence = false;
+
+  // True once the real video/audio stream has genuinely failed to load (as opposed to
+  // simply not existing by design, e.g. an audio-only Gemini lesson with no video track).
+  bool _videoStreamFailed = false;
+  bool _ttsFallbackTriggered = false;
 
   Future<void> _checkAndDownloadStudioAudio() async {
     final video = widget.processedVideo;
@@ -149,6 +156,13 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
+  /// Where a fresh "Play" tap should resume from: right after whatever sentence was
+  /// last spoken, or the beginning if nothing has played yet (or we already reached the end).
+  int get _dialogueResumeIndex {
+    final next = _currentSubtitleIndex + 1;
+    return (next >= 0 && next < _subtitles.length) ? next : 0;
+  }
+
   Future<void> _startSequentialTts({int startIndex = 0}) async {
     if (_subtitles.isEmpty) return;
     setState(() {
@@ -165,6 +179,11 @@ class _VideoScreenState extends State<VideoScreen>
       await _ttsService.speakAndWait(_subtitles[i].original, lang: 'de-DE');
 
       if (!_isPlayingDialogueTts || !mounted) break;
+
+      // When "stop after each sentence" is on, pause here instead of auto-advancing —
+      // the next Play tap resumes from the following sentence via _dialogueResumeIndex.
+      if (_autoStopEachSentence) break;
+
       // Brief natural pause between dialogue turns
       await Future.delayed(const Duration(milliseconds: 250));
     }
@@ -185,6 +204,16 @@ class _VideoScreenState extends State<VideoScreen>
     }
   }
 
+  /// Starts on-device TTS playback automatically the moment the real video/audio
+  /// stream fails to load, so the lesson keeps going instead of going silent.
+  void _maybeStartTtsFallback() {
+    if (_ttsFallbackTriggered) return;
+    if (_subtitles.isEmpty) return;
+    if (_isPlayingDialogueTts || _isPlayingStudioAudio) return;
+    _ttsFallbackTriggered = true;
+    _startSequentialTts(startIndex: _dialogueResumeIndex);
+  }
+
   Future<void> _toggleDialoguePlayback() async {
     if (_isPlayingStudioAudio) {
       await _audioPlayer.pause();
@@ -196,18 +225,18 @@ class _VideoScreenState extends State<VideoScreen>
         try {
           await _audioPlayer.play(DeviceFileSource(_localAudioFilePath!));
         } catch (_) {
-          _startSequentialTts();
+          _startSequentialTts(startIndex: _dialogueResumeIndex);
         }
       } else if (_directVideoUrl != null && (_directVideoUrl!.contains('/audio/') || _directVideoUrl!.contains('.wav'))) {
         try {
           await _audioPlayer.play(UrlSource(_directVideoUrl!));
         } catch (e) {
           debugPrint('AudioPlayer stream error: $e, falling back to on-device TTS');
-          _startSequentialTts();
+          _startSequentialTts(startIndex: _dialogueResumeIndex);
         }
       } else {
         // 2. Fall back to on-device sequential TTS
-        _startSequentialTts();
+        _startSequentialTts(startIndex: _dialogueResumeIndex);
       }
     }
   }
@@ -318,12 +347,14 @@ class _VideoScreenState extends State<VideoScreen>
           })
           .catchError((error) {
             if (mounted) {
-              if (_subtitles.isEmpty) {
-                setState(() {
+              setState(() {
+                _videoStreamFailed = true;
+                if (_subtitles.isEmpty) {
                   _errorMessage =
                       'Media stream expired or invalid format. Tap Refresh Stream to reload.';
-                });
-              }
+                }
+              });
+              _maybeStartTtsFallback();
             }
           });
       _videoPlayerController?.addListener(_onVideoPlayerUpdate);
@@ -603,10 +634,14 @@ class _VideoScreenState extends State<VideoScreen>
   void _onVideoPlayerUpdate() {
     if (!mounted) return;
     if (_videoPlayerController != null && _videoPlayerController!.value.hasError) {
-      if (_errorMessage == null && _subtitles.isEmpty) {
+      if (!_videoStreamFailed) {
         setState(() {
-          _errorMessage = 'Media stream error or link expired.';
+          _videoStreamFailed = true;
+          if (_errorMessage == null && _subtitles.isEmpty) {
+            _errorMessage = 'Media stream error or link expired.';
+          }
         });
+        _maybeStartTtsFallback();
       }
       return;
     }
@@ -671,10 +706,14 @@ class _VideoScreenState extends State<VideoScreen>
     });
 
     try {
+      final geminiKey = await GeminiApiKeyStore.getKey();
       final response = await http.post(
         Uri.parse('${Config.backendUrl}/submit-media'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'url': _urlController.text}),
+        body: jsonEncode({
+          'url': _urlController.text,
+          'client_can_transcribe': geminiKey != null,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -1171,6 +1210,8 @@ class _VideoScreenState extends State<VideoScreen>
                           setState(() {
                             _isLoading = false;
                             _errorMessage = null;
+                            _videoStreamFailed = false;
+                            _ttsFallbackTriggered = false;
                           });
                           _videoPlayerController?.dispose();
                           _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(_directVideoUrl!));
@@ -1201,6 +1242,12 @@ class _VideoScreenState extends State<VideoScreen>
     final isGeminiAudio = video?.videoUrl?.contains('_dialogue.wav') == true ||
                           video?.videoUrl?.contains('/audio/') == true ||
                           video?.mediaType == 'audio';
+    // A genuine fallback (the real stream failed) gets its own badge/messaging,
+    // distinct from content that's audio-only by design (e.g. a Gemini Studio lesson).
+    final isFallback = _videoStreamFailed;
+    final badgeColor = isFallback ? Colors.orangeAccent : (isGeminiAudio ? const Color(0xFFA78BFA) : colorScheme.primary);
+    final badgeIcon = isFallback ? Icons.record_voice_over_rounded : (isGeminiAudio ? Icons.auto_awesome : Icons.mic_none_rounded);
+    final badgeLabel = isFallback ? '🔊 ON-DEVICE VOICE' : (isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'GERMAN DIALOGUE');
 
     return Container(
       decoration: BoxDecoration(
@@ -1247,14 +1294,10 @@ class _VideoScreenState extends State<VideoScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: isGeminiAudio 
-                            ? const Color(0xFF7C3AED).withValues(alpha: 0.25)
-                            : colorScheme.primary.withValues(alpha: 0.2),
+                        color: badgeColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: isGeminiAudio 
-                              ? const Color(0xFFA78BFA).withValues(alpha: 0.6)
-                              : colorScheme.primary.withValues(alpha: 0.5),
+                          color: badgeColor.withValues(alpha: 0.6),
                           width: 0.8,
                         ),
                       ),
@@ -1262,18 +1305,18 @@ class _VideoScreenState extends State<VideoScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isGeminiAudio ? Icons.auto_awesome : Icons.mic_none_rounded,
+                            badgeIcon,
                             size: 11,
-                            color: isGeminiAudio ? const Color(0xFFA78BFA) : colorScheme.primary,
+                            color: badgeColor,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'GERMAN DIALOGUE',
+                            badgeLabel,
                             style: TextStyle(
                               fontSize: 9.5,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,
-                              color: isGeminiAudio ? const Color(0xFFA78BFA) : colorScheme.primary,
+                              color: badgeColor,
                             ),
                           ),
                         ],
@@ -1308,6 +1351,19 @@ class _VideoScreenState extends State<VideoScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (isFallback) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Original video unavailable — reading the transcript aloud',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.65),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 Row(
                   children: [
                     SizedBox(
@@ -1328,6 +1384,34 @@ class _VideoScreenState extends State<VideoScreen>
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 32,
+                      width: 32,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _autoStopEachSentence = !_autoStopEachSentence;
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: _autoStopEachSentence ? Colors.white.withValues(alpha: 0.15) : null,
+                          foregroundColor: Colors.white,
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        ),
+                        child: Tooltip(
+                          message: _autoStopEachSentence
+                              ? 'Auto-stop after each sentence: On'
+                              : 'Auto-stop after each sentence: Off',
+                          child: Icon(
+                            _autoStopEachSentence ? Icons.pause_circle_filled_rounded : Icons.pause_circle_outline_rounded,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ),
