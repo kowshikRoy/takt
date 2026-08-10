@@ -11,6 +11,7 @@ import '../theme/breakpoints.dart';
 import '../theme/books_modernist_style.dart';
 import '../services/discovery_service.dart';
 import '../widgets/vocab_status_pills.dart';
+import '../widgets/word_edit_sheet.dart';
 import '../widgets/base_form_tooltip_link.dart';
 import 'word_detail_screen.dart';
 
