@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 import '../models/subtitle_cue.dart';
@@ -64,6 +65,34 @@ class BackendService {
       return response.statusCode == 200;
     } catch (e) {
       AppLogger.error("resumeMediaTask error", error: e, tag: 'BackendService');
+      return false;
+    }
+  }
+
+  /// Resumes a task the backend paused with status `awaiting_client_transcription`, supplying
+  /// both the subtitles AND the studio dialogue audio the client generated itself via its own
+  /// Gemini API key — so the server skips its own Gemini TTS call entirely and just aligns
+  /// timestamps to the uploaded audio, letting the client's key cover both Gemini calls.
+  Future<bool> resumeMediaTaskWithAudio(
+    String taskId,
+    List<SubtitleCue> subtitles,
+    Uint8List audioBytes, {
+    String? title,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/resume-media-with-audio'),
+      )
+        ..fields['task_id'] = taskId
+        ..fields['subtitles'] = jsonEncode(subtitles.map((c) => c.toJson()).toList())
+        ..files.add(http.MultipartFile.fromBytes('audio', audioBytes, filename: 'dialogue.wav'));
+      if (title != null) request.fields['title'] = title;
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 120));
+      return streamedResponse.statusCode == 200;
+    } catch (e) {
+      AppLogger.error("resumeMediaTaskWithAudio error", error: e, tag: 'BackendService');
       return false;
     }
   }

@@ -1480,28 +1480,47 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
                     pass
 
 async def _finalize_media_task(task_id: str, url: str, subtitles: list[SubtitleCue], title: str | None,
-                                thumbnail: str | None, media_url: str | None, media_type: str, yt_meta: dict):
+                                thumbnail: str | None, media_url: str | None, media_type: str, yt_meta: dict,
+                                client_audio_path: str | None = None):
     """Shared tail of media processing: studio TTS, thumbnail fallback, caching, and task completion.
-    Used both by the normal completion path and by the client-transcription resume path."""
+    Used both by the normal completion path and by the client-transcription resume path.
+    If `client_audio_path` is set, the client already synthesized studio dialogue audio itself
+    (via its own Gemini key) — skip the server's own Gemini TTS call and just align to it, so a
+    BYOK user's key covers both Gemini calls instead of only transcription."""
     cache_key = get_cache_key(url)
 
-    # Generate high-fidelity German Studio audio with Gemini 2.5 Flash TTS, covering the full transcript
+    # Generate (or reuse client-supplied) high-fidelity German Studio audio, covering the full transcript
     if subtitles and (not media_url or 'youtube.com' in media_url or 'youtu.be' in media_url):
         try:
-            update_task_stage(task_id, "Synthesizing German studio dialogue audio...", 92)
-            dialogue_lines = [s.original for s in subtitles if s.original.strip()]
             audio_filename = f"{task_id}_dialogue.wav"
             audio_path = os.path.join(CACHE_DIR, audio_filename)
-            if await asyncio.to_thread(generate_dialogue_audio_with_gemini, dialogue_lines, audio_path):
+            has_audio = False
+
+            if client_audio_path and os.path.exists(client_audio_path):
+                update_task_stage(task_id, "Synchronizing subtitles with your studio audio...", 92)
+                os.replace(client_audio_path, audio_path)
+                has_audio = True
+            else:
+                update_task_stage(task_id, "Synthesizing German studio dialogue audio...", 92)
+                dialogue_lines = [s.original for s in subtitles if s.original.strip()]
+                has_audio = await asyncio.to_thread(generate_dialogue_audio_with_gemini, dialogue_lines, audio_path)
+
+            if has_audio:
                 app_url = os.environ.get("SERVICE_URL") or "https://omniscribe-184475424927.europe-west4.run.app"
                 media_url = f"{app_url}/audio/{audio_filename}"
                 media_type = "audio"
 
-                # Re-align subtitle timestamps with the synthesized studio audio track
+                # Re-align subtitle timestamps with the studio audio track
                 update_task_stage(task_id, "Synchronizing subtitles with studio audio...", 94)
                 subtitles = await asyncio.to_thread(align_subtitles_to_audio, subtitles, audio_path)
         except Exception as tts_err:
             print(f"Gemini Studio TTS synthesis skipped: {tts_err}")
+    elif client_audio_path and os.path.exists(client_audio_path):
+        # Client-supplied audio wasn't needed after all (e.g. official media_url already set) — clean up.
+        try:
+            os.remove(client_audio_path)
+        except Exception:
+            pass
 
     # Ensure thumbnail is high quality YouTube thumbnail if available
     if not thumbnail or 'picsum.photos' in str(thumbnail):
@@ -1532,10 +1551,12 @@ async def _finalize_media_task(task_id: str, url: str, subtitles: list[SubtitleC
     }
 
 async def _resume_media_task(task_id: str, client_subtitles: list[ClientSubtitleCue],
-                              title_override: str | None, pending: dict):
+                              title_override: str | None, pending: dict, client_audio_path: str | None = None):
     """Resumes a task that was paused for client-side Gemini transcription. If the client
     supplied no subtitles (no key, or Gemini failed on-device), falls back to the same
-    Whisper transcription path the server would have used itself."""
+    Whisper transcription path the server would have used itself. If the client also supplied
+    `client_audio_path` (studio dialogue audio it synthesized itself with its own Gemini key),
+    finalization aligns to that instead of the server generating its own via the shared key."""
     url = pending["url"]
     job_id = pending["job_id"]
     media_filename = pending["media_filename"]
@@ -1563,7 +1584,16 @@ async def _resume_media_task(task_id: str, client_subtitles: list[ClientSubtitle
             update_task_stage(task_id, "Transcribing German speech with Whisper AI...", 85)
             subtitles = await asyncio.to_thread(transcribe_and_translate, downloaded_audio_path)
 
-        await _finalize_media_task(task_id, url, subtitles, title, thumbnail, media_url, media_type, {})
+            # No client transcript means any client-supplied audio can't be aligned — discard it.
+            if client_audio_path and os.path.exists(client_audio_path):
+                try:
+                    os.remove(client_audio_path)
+                except Exception:
+                    pass
+            client_audio_path = None
+
+        await _finalize_media_task(task_id, url, subtitles, title, thumbnail, media_url, media_type, {},
+                                    client_audio_path=client_audio_path)
 
     except Exception as e:
         print(f"Task {task_id} failed during resume: {e}")
@@ -1617,6 +1647,35 @@ async def resume_media(request: ResumeMediaRequest, background_tasks: Background
         raise HTTPException(status_code=404, detail="No pending task awaiting transcription")
     tasks[request.task_id]["status"] = TaskStatus.PROCESSING
     background_tasks.add_task(_resume_media_task, request.task_id, request.subtitles, request.title, pending)
+    return {"ok": True}
+
+@app.post("/resume-media-with-audio")
+async def resume_media_with_audio(
+    background_tasks: BackgroundTasks,
+    task_id: str = Form(...),
+    subtitles: str = Form(...),
+    title: str | None = Form(None),
+    audio: UploadFile = File(...),
+):
+    """Resumes a task paused with status AWAITING_CLIENT_TRANSCRIPTION, using subtitles AND a
+    studio dialogue audio track the client generated itself with its own Gemini API key — so a
+    BYOK user's key covers both the transcription and TTS synthesis calls, not just the former."""
+    pending = pending_tasks.pop(task_id, None)
+    if not pending or task_id not in tasks:
+        raise HTTPException(status_code=404, detail="No pending task awaiting transcription")
+
+    try:
+        parsed_subtitles = [ClientSubtitleCue(**c) for c in json.loads(subtitles)]
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid subtitles payload")
+
+    audio_path = os.path.join(CACHE_DIR, f"{task_id}_client_dialogue.wav")
+    contents = await audio.read()
+    with open(audio_path, "wb") as f:
+        f.write(contents)
+
+    tasks[task_id]["status"] = TaskStatus.PROCESSING
+    background_tasks.add_task(_resume_media_task, task_id, parsed_subtitles, title, pending, audio_path)
     return {"ok": True}
 
 @app.get("/audio/{filename}")

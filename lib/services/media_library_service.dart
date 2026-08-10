@@ -10,6 +10,7 @@ import '../models/subtitle_cue.dart';
 import 'backend_service.dart';
 import 'gemini_api_key_store.dart';
 import 'gemini_transcription_service.dart';
+import 'gemini_tts_service.dart';
 import 'ondevice_ai_service.dart';
 import 'app_logger.dart';
 import 'sync_service.dart';
@@ -387,10 +388,18 @@ class MediaLibraryService extends ChangeNotifier {
     if (_pollingTimers.containsKey(taskId)) return;
 
     int pollAttempts = 0;
-    const maxPollAttempts = 80; // 80 * 3s = 4 minutes maximum polling
+    // 300 * 3s = 15 minutes maximum polling — long enough for the Whisper fallback on long
+    // videos and for the client-side BYOK transcription+TTS pipeline below.
+    const maxPollAttempts = 300;
     final normalized = normalizeMediaUrl(originalUrl);
 
     final timer = Timer.periodic(const Duration(seconds: 3), (t) async {
+      // While actively transcribing/synthesizing client-side with the user's own Gemini key,
+      // that work is already self-bounded by its own per-call timeouts and retries (see
+      // GeminiTranscriptionService/GeminiTtsService) — don't let unrelated timer ticks racing
+      // ahead of it trip the overall timeout and abandon work that's still legitimately running.
+      if (_transcribingTaskIds.contains(taskId)) return;
+
       pollAttempts++;
       if (pollAttempts > maxPollAttempts) {
         t.cancel();
@@ -445,14 +454,18 @@ class MediaLibraryService extends ChangeNotifier {
         if (_transcribingTaskIds.contains(taskId)) return;
         _transcribingTaskIds.add(taskId);
 
-        if (index != -1) {
-          final current = _processedVideos[index];
-          _processedVideos[index] = ProcessedVideo(
+        void updateStage(String message) {
+          final i = _processedVideos.indexWhere(
+            (v) => v.taskId == taskId || v.id == taskId || normalizeMediaUrl(v.url) == normalized,
+          );
+          if (i == -1) return;
+          final current = _processedVideos[i];
+          _processedVideos[i] = ProcessedVideo(
             id: taskId,
             taskId: taskId,
             url: originalUrl,
             status: ProcessingStatus.transcribing,
-            stageMessage: 'Transcribing with your Gemini key...',
+            stageMessage: message,
             progressPercentage: progressPct > 0 ? progressPct : current.progressPercentage,
             subtitles: current.subtitles,
             videoUrl: current.videoUrl,
@@ -464,6 +477,8 @@ class MediaLibraryService extends ChangeNotifier {
           notifyListeners();
         }
 
+        updateStage('Transcribing with your Gemini key...');
+
         try {
           final apiKey = await GeminiApiKeyStore.getKey();
           if (apiKey == null) {
@@ -472,7 +487,39 @@ class MediaLibraryService extends ChangeNotifier {
             await _backendService.resumeMediaTask(taskId, []);
           } else {
             final result = await GeminiTranscriptionService.transcribeYoutube(originalUrl, apiKey);
-            await _backendService.resumeMediaTask(taskId, result.subtitles, title: result.title);
+            if (result.subtitles.isEmpty) {
+              await _backendService.resumeMediaTask(taskId, [], title: result.title);
+            } else {
+              // Also synthesize studio dialogue audio client-side, so this Gemini key covers
+              // both calls instead of only transcription (the server would otherwise spend its
+              // own shared quota on the more expensive TTS synthesis step).
+              updateStage('Generating studio audio with your Gemini key...');
+              final dialogueLines = result.subtitles
+                  .map((s) => s.original)
+                  .where((s) => s.trim().isNotEmpty)
+                  .toList();
+
+              Uint8List? audioBytes;
+              try {
+                audioBytes = await GeminiTtsService.generateDialogueAudio(dialogueLines, apiKey);
+              } catch (e) {
+                AppLogger.error('Client-side Gemini TTS failed', error: e, tag: 'MediaLibraryService');
+              }
+
+              final resumed = audioBytes != null &&
+                  await _backendService.resumeMediaTaskWithAudio(
+                    taskId,
+                    result.subtitles,
+                    audioBytes,
+                    title: result.title,
+                  );
+
+              if (!resumed) {
+                // Audio synthesis (or upload) failed — still hand off the transcript so the
+                // server finishes the job by synthesizing studio audio with its shared key.
+                await _backendService.resumeMediaTask(taskId, result.subtitles, title: result.title);
+              }
+            }
           }
         } finally {
           _transcribingTaskIds.remove(taskId);
