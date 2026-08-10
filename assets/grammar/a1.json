@@ -1,0 +1,540 @@
+[
+  {
+    "id": "lesson_svo_sentence_structure",
+    "level": "A1",
+    "title": "Basic Sentence Structure (SVO)",
+    "subtitle": "How to build standard statements in German",
+    "category": "Satzbau",
+    "summary": "German declarative sentences follow a Subject-Verb-Object (SVO) word order, where the conjugated verb ALWAYS stays at Position 2.",
+    "sections": [
+      {
+        "id": "svo_explanation",
+        "type": "explanation",
+        "title": "Die Grundregel (The Fundamental Rule)",
+        "explanation_payload": {
+          "text": "Standard statements in German follow the exact same core word order as in English: Subject + Verb + Object (SVO).",
+          "bullet_points": [
+            "Position 1: The Subject (Who is doing the action?)",
+            "Position 2: The Conjugated Verb (Action word - strictly locked in Pos 2!)",
+            "Position 3: Object or additional information"
+          ]
+        }
+      },
+      {
+        "id": "svo_formula",
+        "type": "formula",
+        "title": "Satzbau-Formel (Word Order Formula)",
+        "formula_payload": {
+          "formula_structure": "Subject (Pos 1) + Verb (Pos 2) + Object (Pos 3)",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Subjekt",
+              "example_word": "Ich",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 2",
+              "label": "Verb (Pos 2)",
+              "example_word": "lerne",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Position 3",
+              "label": "Objekt",
+              "example_word": "Deutsch.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "svo_examples",
+        "type": "examples",
+        "title": "Beispielsätze (Example Sentences)",
+        "example_payload": [
+          {
+            "german": "Ich lerne Deutsch.",
+            "english": "I learn German.",
+            "note": "Ich (Subject) + lerne (Verb) + Deutsch (Object)",
+            "highlighted_words": [
+              "Ich",
+              "lerne",
+              "Deutsch"
+            ]
+          },
+          {
+            "german": "Ich trinke Wasser.",
+            "english": "I drink water.",
+            "note": "Verb 'trinke' is at Position 2.",
+            "highlighted_words": [
+              "trinke"
+            ]
+          },
+          {
+            "german": "Ich esse Brot.",
+            "english": "I eat bread.",
+            "note": "Verb 'esse' is at Position 2.",
+            "highlighted_words": [
+              "esse"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "lesson_personal_pronouns",
+    "level": "A1",
+    "title": "Personal Pronouns (Personalpronomen)",
+    "subtitle": "Learning I, you, he, she, it, we, they",
+    "category": "Pronomen & Verben",
+    "summary": "Personal pronouns replace nouns. German distinguishes between informal 'du' (singular you), 'ihr' (plural you), and formal 'Sie'.",
+    "sections": [
+      {
+        "id": "pronouns_table",
+        "type": "table",
+        "title": "Personalpronomen Übersicht",
+        "table_payload": {
+          "headers": [
+            "Person",
+            "Deutsch",
+            "English",
+            "Usage Note"
+          ],
+          "rows": [
+            [
+              "1st Singular",
+              "ich",
+              "I",
+              "Always lowercase unless at sentence start"
+            ],
+            [
+              "2nd Singular",
+              "du",
+              "you (informal)",
+              "Used with friends, family, children"
+            ],
+            [
+              "3rd Singular (M)",
+              "er",
+              "he",
+              "Replaces masculine nouns (der Tisch → er)"
+            ],
+            [
+              "3rd Singular (F)",
+              "sie",
+              "she",
+              "Replaces feminine nouns (die Katze → sie)"
+            ],
+            [
+              "3rd Singular (N)",
+              "es",
+              "it",
+              "Replaces neuter nouns (das Haus → es)"
+            ],
+            [
+              "1st Plural",
+              "wir",
+              "we",
+              "Plural 'we'"
+            ],
+            [
+              "2nd Plural",
+              "ihr",
+              "you all (informal)",
+              "Addressing 2+ friends/family members"
+            ],
+            [
+              "3rd Plural",
+              "sie",
+              "they",
+              "Lowercase 's'"
+            ],
+            [
+              "Formal",
+              "Sie",
+              "You (formal)",
+              "Capital 'S'! Used for strangers, adults, bosses"
+            ]
+          ],
+          "footnote": "Pay attention to 'sie/Sie': 'sie' can mean 'she' or 'they', while capital 'Sie' means formal 'you'!"
+        }
+      },
+      {
+        "id": "pronouns_examples",
+        "type": "examples",
+        "title": "Beispielsätze mit Pronomen",
+        "example_payload": [
+          {
+            "german": "Ich bin müde.",
+            "english": "I am tired.",
+            "note": "'ich' paired with verb 'bin'",
+            "highlighted_words": [
+              "Ich",
+              "bin"
+            ]
+          },
+          {
+            "german": "Du lernst Deutsch.",
+            "english": "You learn German.",
+            "note": "'du' takes the '-st' verb ending.",
+            "highlighted_words": [
+              "Du",
+              "lernst"
+            ]
+          },
+          {
+            "german": "Er hat ein Auto.",
+            "english": "He has a car.",
+            "note": "'er' paired with 'hat'.",
+            "highlighted_words": [
+              "Er",
+              "hat"
+            ]
+          },
+          {
+            "german": "Wir gehen ins Kino.",
+            "english": "We are going to the cinema.",
+            "note": "'wir' takes infinitive ending '-en'.",
+            "highlighted_words": [
+              "Wir",
+              "gehen"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "lesson_question_formation",
+    "level": "A1",
+    "title": "Question Formation (Fragesätze)",
+    "subtitle": "How to ask Yes/No questions and W-Questions in German",
+    "category": "Satzbau",
+    "summary": "To ask a Yes/No question, swap the Subject and Verb (VSO). To ask a W-Question, start with a question word (Was, Woher, Wie) followed immediately by the verb.",
+    "sections": [
+      {
+        "id": "questions_explanation",
+        "type": "explanation",
+        "title": "Zwei Arten von Fragen (Two Types of Questions)",
+        "explanation_payload": {
+          "text": "In German, questions are built in two ways depending on whether you want a Yes/No answer or specific information:",
+          "bullet_points": [
+            "1. Ja/Nein-Fragen (Yes/No Questions): Swap Subject and Verb! The verb jumps to Position 1 (VSO).",
+            "2. W-Fragen (Information Questions): Start with a W-Word (Was, Woher, Wie, Wo), then Verb at Position 2, then Subject."
+          ]
+        }
+      },
+      {
+        "id": "questions_formula_yn",
+        "type": "formula",
+        "title": "Ja/Nein-Fragen (VSO Structure)",
+        "formula_payload": {
+          "formula_structure": "Verb (Pos 1) + Subject (Pos 2) + Object (Pos 3)?",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Verb (Kicker)",
+              "example_word": "Sprichst",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Position 2",
+              "label": "Subjekt",
+              "example_word": "du",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 3",
+              "label": "Objekt",
+              "example_word": "Deutsch?",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "questions_formula_w",
+        "type": "formula",
+        "title": "W-Fragen Structure",
+        "formula_payload": {
+          "formula_structure": "Fragewort + Verb (Pos 2) + Subject + ...?",
+          "blocks": [
+            {
+              "position": "W-Wort",
+              "label": "Fragewort",
+              "example_word": "Woher",
+              "color_tag": "warning"
+            },
+            {
+              "position": "Position 2",
+              "label": "Verb",
+              "example_word": "kommst",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Position 3",
+              "label": "Subjekt",
+              "example_word": "du?",
+              "color_tag": "neutral"
+            }
+          ]
+        }
+      },
+      {
+        "id": "questions_examples",
+        "type": "examples",
+        "title": "Frage & Antwort Beispiele",
+        "example_payload": [
+          {
+            "german": "Sprichst du Deutsch? – Ja, ein bisschen.",
+            "english": "Do you speak German? – Yes, a little bit.",
+            "note": "Verb 'Sprichst' at Position 1.",
+            "highlighted_words": [
+              "Sprichst",
+              "du"
+            ]
+          },
+          {
+            "german": "Woher kommst du? – Ich komme aus Spanien.",
+            "english": "Where are you from? – I come from Spain.",
+            "note": "Question word 'Woher' + Verb 'kommst' at Pos 2.",
+            "highlighted_words": [
+              "Woher",
+              "kommst"
+            ]
+          },
+          {
+            "german": "Hat sie Hunger? – Ja, sie hat Hunger.",
+            "english": "Is she hungry? – Yes, she is hungry.",
+            "note": "Flipped from 'Sie hat Hunger' → 'Hat sie Hunger?'",
+            "highlighted_words": [
+              "Hat",
+              "sie"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "lesson_noun_genders_articles",
+    "level": "A1",
+    "title": "Noun Genders & Definite Articles",
+    "subtitle": "Mastering Der, Die, Das",
+    "category": "Nomen & Artikel",
+    "summary": "Every German noun is assigned one of three genders: Masculine (der), Feminine (die), or Neuter (das). Always learn the article together with the noun!",
+    "sections": [
+      {
+        "id": "articles_explanation",
+        "type": "explanation",
+        "title": "Die drei Geschlechter (The Three Genders)",
+        "explanation_payload": {
+          "text": "Unlike English, which uses 'the' for everything, German nouns have grammatical gender. The gender doesn't always reflect biological gender—it is purely grammatical!",
+          "bullet_points": [
+            "der = Masculine (e.g. der Tisch / the table)",
+            "die = Feminine (e.g. die Katze / the cat)",
+            "das = Neuter (e.g. das Haus / the house)",
+            "Golden Rule: Never memorize 'Tisch' alone. Always memorize 'der Tisch'!"
+          ]
+        }
+      },
+      {
+        "id": "articles_table",
+        "type": "table",
+        "title": "Bestimmte Artikel Übersicht",
+        "table_payload": {
+          "headers": [
+            "Genus (Gender)",
+            "Artikel",
+            "Beispiel Wort",
+            "Bedeutung"
+          ],
+          "rows": [
+            [
+              "Maskulin",
+              "der",
+              "der Tisch",
+              "the table"
+            ],
+            [
+              "Feminin",
+              "die",
+              "die Katze",
+              "the cat"
+            ],
+            [
+              "Neutral",
+              "das",
+              "das Haus",
+              "the house"
+            ],
+            [
+              "Plural (All genders)",
+              "die",
+              "die Bücher",
+              "the books"
+            ]
+          ],
+          "footnote": "Note: ALL plural nouns in German use 'die' in the Nominative case!"
+        }
+      },
+      {
+        "id": "articles_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp für Vokabeln",
+        "tip_payload": {
+          "title": "Lerne Nomen immer mit Farbe!",
+          "content": "Use color-coding in your app/flashcards: Blue for 'der' (Masculine), Red for 'die' (Feminine), and Green for 'das' (Neuter). Your brain connects colors to genders much faster!",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_numbers_and_age",
+    "level": "A1",
+    "title": "German Numbers & Age",
+    "subtitle": "Counting from 1–20 and giving personal details",
+    "category": "Wortschatz & Alltag",
+    "summary": "Learn German numbers 1–20, notice the '-zehn' pattern for teen numbers, and learn how to ask and state age.",
+    "sections": [
+      {
+        "id": "numbers_table_1_10",
+        "type": "table",
+        "title": "Zahlen 1 bis 10",
+        "table_payload": {
+          "headers": [
+            "Zahl",
+            "Deutsch",
+            "Zahl",
+            "Deutsch"
+          ],
+          "rows": [
+            [
+              "1",
+              "eins",
+              "6",
+              "sechs"
+            ],
+            [
+              "2",
+              "zwei",
+              "7",
+              "sieben"
+            ],
+            [
+              "3",
+              "drei",
+              "8",
+              "acht"
+            ],
+            [
+              "4",
+              "vier",
+              "9",
+              "neun"
+            ],
+            [
+              "5",
+              "fünf",
+              "10",
+              "zehn"
+            ]
+          ],
+          "footnote": null
+        }
+      },
+      {
+        "id": "numbers_table_11_20",
+        "type": "table",
+        "title": "Zahlen 11 bis 20 (The '-zehn' Pattern)",
+        "table_payload": {
+          "headers": [
+            "Zahl",
+            "Deutsch",
+            "Muster (Pattern)"
+          ],
+          "rows": [
+            [
+              "11",
+              "elf",
+              "Irregular - memorize"
+            ],
+            [
+              "12",
+              "zwölf",
+              "Irregular - memorize"
+            ],
+            [
+              "13",
+              "dreizehn",
+              "drei (3) + zehn (10)"
+            ],
+            [
+              "14",
+              "vierzehn",
+              "vier (4) + zehn (10)"
+            ],
+            [
+              "15",
+              "fünfzehn",
+              "fünf (5) + zehn (10)"
+            ],
+            [
+              "16",
+              "sechzehn",
+              "sechs (drops 's') + zehn"
+            ],
+            [
+              "17",
+              "siebzehn",
+              "sieben (drops 'en') + zehn"
+            ],
+            [
+              "18",
+              "achtzehn",
+              "acht (8) + zehn (10)"
+            ],
+            [
+              "19",
+              "neunzehn",
+              "neun (9) + zehn (10)"
+            ],
+            [
+              "20",
+              "zwanzig",
+              "Ends in '-zig'"
+            ]
+          ],
+          "footnote": "Notice: 13 through 19 literally combine the base digit + zehn!"
+        }
+      },
+      {
+        "id": "age_examples",
+        "type": "examples",
+        "title": "Alter und Nummer angeben (Age & Phone Numbers)",
+        "example_payload": [
+          {
+            "german": "Wie alt bist du? – Ich bin 19 (neunzehn).",
+            "english": "How old are you? – I am 19 years old.",
+            "note": "Use 'Ich bin + [Zahl]' to state age.",
+            "highlighted_words": [
+              "Wie alt",
+              "Ich bin"
+            ]
+          },
+          {
+            "german": "Meine Nummer ist eins, zwei, drei, vier, fünf, sechs.",
+            "english": "My number is one, two, three, four, five, six.",
+            "note": "Phone numbers are spoken digit by digit in German.",
+            "highlighted_words": [
+              "Meine Nummer ist"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
