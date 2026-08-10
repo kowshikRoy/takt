@@ -123,27 +123,38 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
 
   Future<void> _setStatus(
       Map<String, dynamic> wordData, VocabCategory category) async {
-    final wordStr = wordData['word']?.toString() ?? widget.word;
+    final rawWord = wordData['word']?.toString() ?? widget.word;
+    final baseForm = (wordData['base_form'] as String?)?.trim();
+    // Resolve lemma: If base_form is available, use it as the main headword
+    final wordStr = (baseForm != null && baseForm.isNotEmpty && baseForm.toLowerCase() != rawWord.toLowerCase())
+        ? baseForm
+        : rawWord;
     final wordId = wordStr.toLowerCase().trim();
+    final rawWordLower = rawWord.toLowerCase().trim();
     final widgetWordLower = widget.word.toLowerCase().trim();
     final currentCategory = _savedWordCategories[wordId] ??
+        _savedWordCategories[rawWordLower] ??
         _savedWordCategories[widgetWordLower] ??
         _savedWord?.category;
 
-    if (currentCategory == category) {
+    if (currentCategory == category ||
+        (category == VocabCategory.reviewLater && currentCategory == VocabCategory.learning)) {
       await _vocabService.removeWord(_savedWord?.id ?? wordId);
       await _vocabService.removeWord(wordStr);
+      await _vocabService.removeWord(rawWord);
       await _vocabService.removeWord(widget.word);
       setState(() {
         _savedWord = null;
         _savedWordIds.remove(wordId);
         _savedWordCategories.remove(wordId);
+        _savedWordIds.remove(rawWordLower);
+        _savedWordCategories.remove(rawWordLower);
         _savedWordIds.remove(widgetWordLower);
         _savedWordCategories.remove(widgetWordLower);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Removed "$wordStr" from Study Deck')),
+          SnackBar(content: Text('Removed "$wordStr" from saved vocabulary')),
         );
       }
     } else {
@@ -153,6 +164,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
       final saved = SavedWord(
         id: wordId,
         word: wordStr,
+        baseForm: baseForm ?? wordStr,
         pos: wordData['pos']?.toString(),
         gender: wordData['gender']?.toString(),
         primaryDefinition: primaryDef,
@@ -169,7 +181,17 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
         _savedWord = updated ?? saved;
         _savedWordIds.add(wordId);
         _savedWordCategories[wordId] = category;
+        _savedWordIds.add(rawWordLower);
+        _savedWordCategories[rawWordLower] = category;
+        _savedWordIds.add(widgetWordLower);
+        _savedWordCategories[widgetWordLower] = category;
       });
+      if (mounted) {
+        final label = category == VocabCategory.mastered ? 'Known' : 'Study Deck';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Saved "$wordStr" to $label')),
+        );
+      }
     }
   }
 
@@ -198,20 +220,6 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
         ),
         centerTitle: false,
         actions: [
-          if (_wordDetails != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 4.0),
-              child: Center(
-                child: VocabStatusPills(
-                  iconOnly: true,
-                  currentCategory: _savedWordCategories[widget.word.toLowerCase().trim()] ??
-                      (_savedWordIds.contains(widget.word.toLowerCase().trim())
-                          ? VocabCategory.reviewLater
-                          : null),
-                  onCategorySelected: (category) => _setStatus(_wordDetails!, category),
-                ),
-              ),
-            ),
           IconButton(
             icon: Icon(Icons.edit_outlined, color: colorScheme.onSurface),
             tooltip: 'Edit word',
@@ -233,7 +241,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                       WordHeaderCard(
                         wordData: _wordDetails!,
                         contextSentence: _savedWord?.contextSentence,
-                        showStatusPills: false,
+                        showStatusPills: true,
                         savedWordIds: _savedWordIds,
                         savedWordCategories: _savedWordCategories,
                         onCategorySelected: (category) =>

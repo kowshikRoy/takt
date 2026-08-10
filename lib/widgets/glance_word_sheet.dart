@@ -107,7 +107,17 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
       contextSentence: widget.contextSentence,
     );
 
-    final saved = await _vocabService.getSavedWordByWord(word);
+    SavedWord? saved = await _vocabService.getSavedWordByWord(word) ??
+        await _vocabService.getSavedWord(word.toLowerCase());
+
+    if (saved == null && dbDetails.isNotEmpty) {
+      final base = (dbDetails.first['base_form'] as String?)?.trim();
+      if (base != null && base.isNotEmpty) {
+        saved = await _vocabService.getSavedWordByWord(base) ??
+            await _vocabService.getSavedWord(base.toLowerCase());
+      }
+    }
+
     if (mounted) {
       setState(() {
         if (dbDetails.isNotEmpty) {
@@ -132,11 +142,15 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
 
   Future<void> _setCategory(VocabCategory category) async {
     final activeDetails = _detailsList.isNotEmpty ? _detailsList[_selectedSenseIndex] : <String, dynamic>{};
-    final wordStr = activeDetails['word']?.toString() ?? widget.word;
+    final rawWord = activeDetails['word']?.toString() ?? widget.word;
+    final baseForm = (activeDetails['base_form'] as String?)?.trim();
+    // Resolve lemma: If base_form is available, use it as the main headword
+    final wordStr = (baseForm != null && baseForm.isNotEmpty && baseForm.toLowerCase() != rawWord.toLowerCase())
+        ? baseForm
+        : rawWord;
     final gender = activeDetails['gender']?.toString();
     final pos = activeDetails['pos']?.toString();
     final ipa = activeDetails['ipa']?.toString();
-    final baseForm = activeDetails['base_form']?.toString();
 
     List<String> defs = [];
     if (activeDetails['definitions'] != null) {
@@ -149,7 +163,7 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
     final newSaved = SavedWord(
       id: id,
       word: wordStr,
-      baseForm: baseForm,
+      baseForm: baseForm ?? wordStr,
       pos: pos,
       gender: gender,
       primaryDefinition: primaryDef,
@@ -175,9 +189,17 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
 
   Future<void> _toggleCategory(VocabCategory category) async {
     HapticFeedback.selectionClick();
-    if (_savedWord != null && _savedWord!.category == category) {
-      final wordStr = widget.word.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim().toLowerCase();
-      await _vocabService.removeWord(wordStr);
+    final isMatching = _savedWord != null &&
+        (_savedWord!.category == category ||
+            (category == VocabCategory.reviewLater && _savedWord!.category == VocabCategory.learning));
+
+    if (isMatching) {
+      final cleanWord = widget.word.replaceAll(RegExp(r'[^\wäöüÄÖÜß]'), '').trim().toLowerCase();
+      if (_savedWord != null) {
+        await _vocabService.removeWord(_savedWord!.id);
+        await _vocabService.removeWord(_savedWord!.word);
+      }
+      await _vocabService.removeWord(cleanWord);
       if (mounted) {
         setState(() {
           _savedWord = null;

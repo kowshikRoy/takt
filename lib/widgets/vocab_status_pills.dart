@@ -13,6 +13,12 @@ class VocabStatusPills extends StatelessWidget {
     this.iconOnly = false,
   });
 
+  bool get isInDeck =>
+      currentCategory == VocabCategory.reviewLater ||
+      currentCategory == VocabCategory.learning;
+
+  bool get isKnown => currentCategory == VocabCategory.mastered;
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -20,28 +26,23 @@ class VocabStatusPills extends StatelessWidget {
       children: [
         _buildPill(
           context: context,
-          label: 'Deck',
-          tooltip: 'Add to Study Deck',
+          label: isInDeck ? 'In Deck' : 'Study Deck',
+          tooltip: isInDeck ? 'Remove from Study Deck' : 'Add to Study Deck',
           icon: Icons.style_outlined,
           activeIcon: Icons.style_rounded,
+          isActive: isInDeck,
+          activeColor: Colors.amber.shade800,
           category: VocabCategory.reviewLater,
         ),
-        SizedBox(width: iconOnly ? 4 : 8),
+        SizedBox(width: iconOnly ? 6 : 10),
         _buildPill(
           context: context,
-          label: 'Learning',
-          tooltip: 'Mark as Learning',
-          icon: Icons.psychology_outlined,
-          activeIcon: Icons.psychology_rounded,
-          category: VocabCategory.learning,
-        ),
-        SizedBox(width: iconOnly ? 4 : 8),
-        _buildPill(
-          context: context,
-          label: 'Known',
-          tooltip: 'Mark as Known',
+          label: isKnown ? 'Known ✓' : 'Known',
+          tooltip: isKnown ? 'Mark as Not Known' : 'Mark as Known',
           icon: Icons.check_circle_outline_rounded,
           activeIcon: Icons.check_circle_rounded,
+          isActive: isKnown,
+          activeColor: Colors.green.shade700,
           category: VocabCategory.mastered,
         ),
       ],
@@ -54,28 +55,27 @@ class VocabStatusPills extends StatelessWidget {
     required String tooltip,
     required IconData icon,
     required IconData activeIcon,
+    required bool isActive,
+    required Color activeColor,
     required VocabCategory category,
   }) {
-    final bool isActive = currentCategory == category;
     final colorScheme = Theme.of(context).colorScheme;
-
-    final Color activeBg = category == VocabCategory.mastered
-        ? Colors.green.shade700
-        : (category == VocabCategory.learning
-            ? colorScheme.primary
-            : Colors.amber.shade800);
 
     Widget pillContent = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       padding: iconOnly
-          ? const EdgeInsets.all(6)
-          : const EdgeInsets.symmetric(vertical: 8),
+          ? const EdgeInsets.symmetric(horizontal: 10, vertical: 8)
+          : const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       decoration: BoxDecoration(
-        color: isActive ? activeBg : colorScheme.surfaceContainerHigh,
+        color: isActive
+            ? activeColor.withValues(alpha: 0.15)
+            : colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isActive ? activeBg : colorScheme.outlineVariant.withValues(alpha: 0.5),
-          width: isActive ? 1.5 : 1.0,
+          color: isActive
+              ? activeColor
+              : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: isActive ? 1.6 : 1.0,
         ),
       ),
       child: Row(
@@ -84,20 +84,21 @@ class VocabStatusPills extends StatelessWidget {
         children: [
           Icon(
             isActive ? activeIcon : icon,
-            size: iconOnly ? 16 : 14,
-            color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+            size: iconOnly ? 18 : 16,
+            color: isActive ? activeColor : colorScheme.onSurfaceVariant,
           ),
           if (!iconOnly) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             Flexible(
               child: Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                  color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
+                  color: isActive ? activeColor : colorScheme.onSurface,
+                  letterSpacing: 0.2,
                 ),
               ),
             ),

@@ -406,6 +406,11 @@ class WordHeaderCard extends StatelessWidget {
     final defs = _extractDefinitions(wordData);
     final wordId = word.toLowerCase().trim();
 
+    final baseForm = (wordData['base_form'] as String?)?.trim();
+    final baseWordId = (baseForm != null && baseForm.isNotEmpty)
+        ? baseForm.toLowerCase().trim()
+        : wordId;
+
     final genderColor = _getGenderColor(gender);
     final article = _getArticle(gender);
     // A known non-noun POS (adj, verb, ...) must never show a "die ..." plural
@@ -524,17 +529,6 @@ class WordHeaderCard extends StatelessWidget {
               ],
               const Spacer(),
               _buildMeaningSourceBadge(context, wordData),
-              if (showStatusPills) ...[
-                const SizedBox(width: 8),
-                VocabStatusPills(
-                  iconOnly: true,
-                  currentCategory: savedWordCategories[wordId] ??
-                      (savedWordIds.contains(wordId)
-                          ? VocabCategory.reviewLater
-                          : null),
-                  onCategorySelected: onCategorySelected,
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 8),
@@ -681,6 +675,20 @@ class WordHeaderCard extends StatelessWidget {
                 _buildContextSentence(context, contextSentence!, word),
               ],
             ),
+          ),
+        ],
+
+        // Vocabulary Status Bar (Study Deck & Known)
+        if (showStatusPills) ...[
+          const SizedBox(height: 16),
+          VocabStatusPills(
+            iconOnly: false,
+            currentCategory: savedWordCategories[wordId] ??
+                savedWordCategories[baseWordId] ??
+                (savedWordIds.contains(wordId) || savedWordIds.contains(baseWordId)
+                    ? VocabCategory.reviewLater
+                    : null),
+            onCategorySelected: onCategorySelected,
           ),
         ],
       ],
