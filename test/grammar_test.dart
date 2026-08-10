@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -201,6 +202,52 @@ void main() {
       // Duplicate mark returns false
       final markedAgain = await service.markLessonCompleted('lesson_modalverben_praeteritum');
       expect(markedAgain, isFalse);
+    });
+  });
+
+  group('assets/grammar/german_grammar_lessons.json Content & Schema Validation', () {
+    test('all lessons in assets file parse cleanly and satisfy schema constraints', () {
+      final file = File('assets/grammar/german_grammar_lessons.json');
+      expect(file.existsSync(), isTrue);
+
+      final content = file.readAsStringSync();
+      final List<dynamic> jsonList = jsonDecode(content);
+      expect(jsonList.length, greaterThanOrEqualTo(9));
+
+      final seenIds = <String>{};
+      for (final item in jsonList) {
+        final Map<String, dynamic> lessonMap = item as Map<String, dynamic>;
+        final lesson = GrammarLesson.fromJson(lessonMap);
+
+        // ID must be unique and valid
+        expect(lesson.id, isNotEmpty);
+        expect(seenIds.contains(lesson.id), isFalse, reason: 'Duplicate ID: ${lesson.id}');
+        seenIds.add(lesson.id);
+
+        // Core fields must not be empty
+        expect(lesson.title, isNotEmpty);
+        expect(lesson.subtitle, isNotEmpty);
+        expect(lesson.level, isNotEmpty);
+        expect(lesson.category, isNotEmpty);
+        expect(lesson.summary, isNotEmpty);
+        expect(lesson.sections, isNotEmpty);
+
+        // Every section should correctly pattern match and serialize
+        for (final section in lesson.sections) {
+          expect(section.id, isNotEmpty);
+          expect(section.type, isNotEmpty);
+          final reserialized = section.toJson();
+          expect(reserialized['id'], section.id);
+          expect(reserialized['type'], section.type);
+        }
+      }
+
+      // Check all 5 A1 lessons are present
+      expect(seenIds.contains('lesson_svo_sentence_structure'), isTrue);
+      expect(seenIds.contains('lesson_personal_pronouns'), isTrue);
+      expect(seenIds.contains('lesson_question_formation'), isTrue);
+      expect(seenIds.contains('lesson_noun_genders_articles'), isTrue);
+      expect(seenIds.contains('lesson_numbers_and_age'), isTrue);
     });
   });
 }

@@ -1,5 +1,919 @@
 [
   {
+    "id": "lesson_svo_sentence_structure",
+    "level": "A1",
+    "title": "Basic Sentence Structure (SVO & Verb-Zweit-Regel)",
+    "subtitle": "The fundamental Verb-at-Position-2 rule and standard word order",
+    "category": "Satzbau",
+    "summary": "Master the most essential rule of German syntax: in declarative sentences (statements), the conjugated verb is strictly locked at Position 2 (V2 Rule), while subjects and time adverbs can move.",
+    "sections": [
+      {
+        "id": "svo_sec1_explanation",
+        "type": "explanation",
+        "title": "Die goldene Verb-Zweit-Regel (The V2 Rule)",
+        "explanation_payload": {
+          "text": "In German declarative statements, word order revolves around one absolute law: The conjugated verb MUST be at Position 2 (Verb-Zweit-Stellung). While standard statements start with Subject + Verb + Object (SVO) just like English, German is flexible with Position 1—if you put time, place, or an object first, the verb stays at Position 2 and the Subject moves right behind it (Inversion).",
+          "bullet_points": [
+            "Position 1 (Vorfeld): The element in focus — usually the Subject (Ich), a Time expression (Heute), or Place (In Berlin).",
+            "Position 2 (Verb-Position): The conjugated action verb — STRICTLY LOCKED here in all normal statements!",
+            "Position 3 / Mittelfeld: The Subject (if not at Pos 1), followed by Objects and additional information."
+          ]
+        }
+      },
+      {
+        "id": "svo_sec2_formula_standard",
+        "type": "formula",
+        "title": "Standard SVO-Formel (Subject at Pos 1)",
+        "formula_payload": {
+          "formula_structure": "Subject (Pos 1) + Conjugated Verb (Pos 2) + Object / Complement (Pos 3)",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Subjekt",
+              "example_word": "Ich",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 2",
+              "label": "Verb (Pos 2)",
+              "example_word": "lerne",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Position 3",
+              "label": "Objekt / Angaben",
+              "example_word": "heute Deutsch.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "svo_sec3_formula_inversion",
+        "type": "formula",
+        "title": "Inversions-Formel (Time / Place at Pos 1)",
+        "formula_payload": {
+          "formula_structure": "Time/Place (Pos 1) + Conjugated Verb (Pos 2) + Subject (Pos 3) + Object",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Zeitangabe",
+              "example_word": "Heute",
+              "color_tag": "warning"
+            },
+            {
+              "position": "Position 2",
+              "label": "Verb (Pos 2)",
+              "example_word": "lerne",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Position 3",
+              "label": "Subjekt (Inversion)",
+              "example_word": "ich",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Mittelfeld",
+              "label": "Objekt",
+              "example_word": "Deutsch.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "svo_sec4_table",
+        "type": "table",
+        "title": "Satzglieder & Positionen Matrix",
+        "table_payload": {
+          "headers": ["Satzfokus", "Position 1", "Position 2 (Verb)", "Position 3", "Mittelfeld & Objekt"],
+          "rows": [
+            ["Standard (Subjekt)", "Ich", "trinke", "morgens", "immer einen Kaffee."],
+            ["Zeit im Fokus", "Morgens", "trinke", "ich", "immer einen Kaffee."],
+            ["Ort im Fokus", "In Berlin", "wohnt", "meine Familie", "seit zwei Jahren."],
+            ["Objekt im Fokus", "Diesen Film", "finde", "ich", "sehr spannend."]
+          ],
+          "footnote": "Egal was auf Position 1 steht: Das konjugierte Verb bleibt IMMER unverrückbar auf Position 2!"
+        }
+      },
+      {
+        "id": "svo_sec5_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Stolperfalle: Position-0-Konnektoren (ADUSO)",
+        "exception_payload": [
+          {
+            "rule_name": "ADUSO Conjunctions occupy Position 0!",
+            "description": "The coordinating conjunctions Aber, Denn, Und, Sondern, Oder (ADUSO) connect main clauses and take Position 0. They DO NOT count as Position 1 and do not trigger inversion.",
+            "example_sentences": [
+              "Ich lerne Deutsch, denn [0] ich [1] wohne [2] in Frankfurt.",
+              "Er ist müde, aber [0] er [1] arbeitet [2] fleißig weiter.",
+              "Wir bleiben zu Hause und [0] wir [1] kochen [2] gemeinsam."
+            ]
+          }
+        ]
+      },
+      {
+        "id": "svo_sec6_examples",
+        "type": "examples",
+        "title": "Beispielsätze aus dem Alltag",
+        "example_payload": [
+          {
+            "german": "Ich lerne jeden Tag neue Wörter.",
+            "english": "I learn new words every day.",
+            "note": "Standard SVO: Subject 'Ich' (Pos 1) + Verb 'lerne' (Pos 2).",
+            "highlighted_words": ["Ich", "lerne"]
+          },
+          {
+            "german": "Heute lerne ich Deutsch mit Takt.",
+            "english": "Today I am learning German with Takt.",
+            "note": "Inversion: Time 'Heute' (Pos 1) + Verb 'lerne' (Pos 2) + Subject 'ich' (Pos 3).",
+            "highlighted_words": ["Heute", "lerne", "ich"]
+          },
+          {
+            "german": "Am Wochenende fahren wir nach München.",
+            "english": "On the weekend we are driving to Munich.",
+            "note": "Prepositional phrase 'Am Wochenende' fills Position 1; verb 'fahren' stays in Position 2.",
+            "highlighted_words": ["Am Wochenende", "fahren", "wir"]
+          },
+          {
+            "german": "Ich trinke keinen Kaffee, sondern ich trinke Tee.",
+            "english": "I don't drink coffee, but rather I drink tea.",
+            "note": "'sondern' occupies Position 0, followed by standard SVO.",
+            "highlighted_words": ["sondern", "ich", "trinke"]
+          }
+        ]
+      },
+      {
+        "id": "svo_sec7_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Die 2-Finger-Zählmethode",
+          "content": "Whenever you start a sentence with anything other than the subject (like 'Gestern...', 'Manchmal...', 'Hier...'), immediately place the verb next! Count on your fingers: [1: Gestern] [2: habe] [3: ich]... Never say 'Gestern ich habe...'!",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_personal_pronouns",
+    "level": "A1",
+    "title": "Personal Pronouns & Regular Verb Endings",
+    "subtitle": "Mastering ich, du, er/sie/es, wir, ihr, sie/Sie and the present tense formula",
+    "category": "Pronomen & Verben",
+    "summary": "Learn all 9 German personal pronouns in the Nominative case and master the regular verb conjugation pattern (-e, -st, -t, -en, -t, -en) with stem changes and phonetic rules.",
+    "sections": [
+      {
+        "id": "pronouns_sec1_explanation",
+        "type": "explanation",
+        "title": "Personalpronomen und Verben im Präsens",
+        "explanation_payload": {
+          "text": "Personal pronouns replace nouns (e.g. 'der Tisch' → 'er', 'die Frau' → 'sie'). In German, verbs change their ending depending on WHO is performing the action. To conjugate a regular verb, remove '-en' from the infinitive to find the stem (Verbstamm), then attach the personal ending matching the pronoun.",
+          "bullet_points": [
+            "Informal vs. Formal: Use 'du' for 1 friend/child, 'ihr' for 2+ friends/children, and capital 'Sie' for adults, strangers, and professional settings.",
+            "3rd Person Genders: 'er' replaces masculine nouns (der Mann → er), 'sie' replaces feminine nouns (die Frau → sie), 'es' replaces neuter nouns (das Kind → es).",
+            "Verb Endings Pattern: The classic rhyme: -e, -st, -t, -en, -t, -en!"
+          ]
+        }
+      },
+      {
+        "id": "pronouns_sec2_table",
+        "type": "table",
+        "title": "Personalpronomen & Konjugations-Matrix",
+        "table_payload": {
+          "headers": ["Person", "Pronomen", "Bedeutung", "Endung", "Beispiel (lernen)", "Beispiel (wohnen)"],
+          "rows": [
+            ["1. Person Singular", "ich", "I", "-e", "ich lerne", "ich wohne"],
+            ["2. Person Singular", "du", "you (informal)", "-st", "du lernst", "du wohnst"],
+            ["3. Person Sg. (M)", "er", "he", "-t", "er lernt", "er wohnt"],
+            ["3. Person Sg. (F)", "sie", "she", "-t", "sie lernt", "sie wohnt"],
+            ["3. Person Sg. (N)", "es", "it", "-t", "es lernt", "es wohnt"],
+            ["1. Person Plural", "wir", "we", "-en", "wir lernen", "wir wohnen"],
+            ["2. Person Plural", "ihr", "you all (informal)", "-t", "ihr lernt", "ihr wohnt"],
+            ["3. Person Plural", "sie", "they", "-en", "sie lernen", "sie wohnen"],
+            ["Höflichkeitsform", "Sie", "You (formal)", "-en", "Sie lernen", "Sie wohnen"]
+          ],
+          "footnote": "Merk-Reim für die Endungen: E - ST - T - EN - T - EN (E-St-T-En-T-En)!"
+        }
+      },
+      {
+        "id": "pronouns_sec3_formula",
+        "type": "formula",
+        "title": "Verbstamm + Personalendung Formel",
+        "formula_payload": {
+          "formula_structure": "Infinitiv (lern-en) → Verbstamm (lern-) + Endung (-st) = du lernst",
+          "blocks": [
+            {
+              "position": "Infinitiv",
+              "label": "Grundform",
+              "example_word": "wohnen",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Verbstamm",
+              "label": "Stamm (-en weg)",
+              "example_word": "wohn-",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Endung",
+              "label": "Personalendung",
+              "example_word": "-st",
+              "color_tag": "accent"
+            },
+            {
+              "position": "Ergebnis",
+              "label": "Konjugiertes Verb",
+              "example_word": "du wohnst",
+              "color_tag": "warning"
+            }
+          ]
+        }
+      },
+      {
+        "id": "pronouns_sec4_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Besonderheiten beim Verbstamm",
+        "exception_payload": [
+          {
+            "rule_name": "Stamm auf -t oder -d (z.B. arbeiten, finden)",
+            "description": "When the verb stem ends in -t or -d, add an extra '-e-' before '-st' and '-t' to make it pronounceable.",
+            "example_sentences": [
+              "du arbeitest (NOT du arbeitst)",
+              "er arbeitet / ihr arbeitet",
+              "du findest / er findet"
+            ]
+          },
+          {
+            "rule_name": "Stamm auf -s, -ß, -z (z.B. heißen, reisen)",
+            "description": "When the stem ends in a sibilant (-s, -ß, -z), the 'du' form takes only '-t' instead of '-st'.",
+            "example_sentences": [
+              "du heißt (NOT du heißst)",
+              "du reist / du tanzt"
+            ]
+          },
+          {
+            "rule_name": "Die Grundpfeiler: 'sein' & 'haben'",
+            "description": "The two essential irregular verbs must be memorized completely.",
+            "example_sentences": [
+              "sein: ich bin, du bist, er ist, wir sind, ihr seid, sie/Sie sind",
+              "haben: ich habe, du hast, er hat, wir haben, ihr habt, sie/Sie haben"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "pronouns_sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze mit allen Personalpronomen",
+        "example_payload": [
+          {
+            "german": "Ich lerne seit drei Monaten Deutsch.",
+            "english": "I have been learning German for three months.",
+            "note": "'ich' takes the '-e' ending.",
+            "highlighted_words": ["Ich", "lerne"]
+          },
+          {
+            "german": "Woher kommst du und wo wohnst du?",
+            "english": "Where are you from and where do you live?",
+            "note": "'du' takes the '-st' ending.",
+            "highlighted_words": ["du", "kommst", "wohnst"]
+          },
+          {
+            "german": "Er arbeitet heute im Homeoffice.",
+            "english": "He is working from home today.",
+            "note": "'er' with stem ending in -t inserts '-e-': 'arbeitet'.",
+            "highlighted_words": ["Er", "arbeitet"]
+          },
+          {
+            "german": "Wir haben heute Abend viel Zeit.",
+            "english": "We have plenty of time this evening.",
+            "note": "'wir' takes regular infinitive ending '-en'.",
+            "highlighted_words": ["Wir", "haben"]
+          },
+          {
+            "german": "Wie heißen Sie, Herr Müller?",
+            "english": "What is your name, Mr. Müller?",
+            "note": "Formal 'Sie' is always capitalized and takes '-en'.",
+            "highlighted_words": ["heißen", "Sie"]
+          }
+        ]
+      },
+      {
+        "id": "pronouns_sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Das 'sie/Sie'-Trio sofort unterscheiden",
+          "content": "Look at the verb ending and capitalization: 'sie lernt' (ending -t) = she; 'sie lernen' (lowercase + ending -en) = they; 'Sie lernen' (capitalized + ending -en) = formal You. The verb ending always clarifies the subject!",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_question_formation",
+    "level": "A1",
+    "title": "Question Formation: Ja/Nein & W-Fragen",
+    "subtitle": "How to build Yes/No questions, W-Questions, and using 'Doch!'",
+    "category": "Satzbau",
+    "summary": "Master asking questions in German: Ja/Nein-Fragen (verb jumps to Position 1), W-Fragen (Question word + Verb at Position 2), and how to answer negative questions with the magic word 'Doch!'.",
+    "sections": [
+      {
+        "id": "questions_sec1_explanation",
+        "type": "explanation",
+        "title": "Die zwei Fragetypen im Deutschen",
+        "explanation_payload": {
+          "text": "German questions are structured in two clear ways depending on the type of answer expected:",
+          "bullet_points": [
+            "1. Ja/Nein-Fragen (Yes/No Questions): The conjugated verb jumps to Position 1 (Verb-Erst-Stellung / VSO). Answer with Ja, Nein, or Doch.",
+            "2. W-Fragen (Information Questions): Start with a W-Word (Was, Woher, Wie, Wo) at Position 1, followed immediately by the Verb at Position 2, then the Subject.",
+            "3. The Magic Word 'Doch!': If asked a negative question ('Trinkst du keinen Kaffee?'), use 'Doch!' to contradict the negative and say 'Yes I do!'."
+          ]
+        }
+      },
+      {
+        "id": "questions_sec2_table",
+        "type": "table",
+        "title": "Die 8 wichtigsten W-Fragewörter",
+        "table_payload": {
+          "headers": ["W-Wort", "Bedeutung", "Funktion", "Beispiel-Frage", "Beispiel-Antwort"],
+          "rows": [
+            ["Was?", "What?", "Things / Actions", "Was machst du?", "Ich koche Pasta."],
+            ["Wer?", "Who?", "Persons (Subject)", "Wer ist das?", "Das ist mein Kollege Lukas."],
+            ["Wo?", "Where?", "Location (static)", "Wo wohnst du?", "Ich wohne in Hamburg."],
+            ["Woher?", "Where from?", "Origin / Source", "Woher kommst du?", "Ich komme aus Spanien."],
+            ["Wohin?", "Where to?", "Destination / Direction", "Wohin fährst du?", "Ich fahre nach Wien."],
+            ["Wann?", "When?", "Time / Date", "Wann beginnt der Kurs?", "Um Punkt 9 Uhr."],
+            ["Wie?", "How?", "Manner / Description", "Wie heißt du?", "Ich heiße Anna."],
+            ["Warum?", "Why?", "Reason / Cause", "Warum lernst du Deutsch?", "Weil ich in Berlin lebe."]
+          ],
+          "footnote": "Merkhilfe: Wo (Standort), Woher (Herkunft mit 'aus'), Wohin (Zielrichtung mit 'nach/in')!"
+        }
+      },
+      {
+        "id": "questions_sec3_formula_yn",
+        "type": "formula",
+        "title": "Ja/Nein-Frage Formel (VSO-Struktur)",
+        "formula_payload": {
+          "formula_structure": "Verb (Pos 1) + Subject (Pos 2) + Object / Complement (Pos 3)?",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Verb (Pos 1)",
+              "example_word": "Sprichst",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Position 2",
+              "label": "Subjekt",
+              "example_word": "du",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 3",
+              "label": "Objekt",
+              "example_word": "Deutsch?",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "questions_sec4_formula_w",
+        "type": "formula",
+        "title": "W-Frage Formel (W-Wort + Verb Pos 2)",
+        "formula_payload": {
+          "formula_structure": "W-Fragewort (Pos 1) + Verb (Pos 2) + Subject (Pos 3) + ...?",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Fragewort",
+              "example_word": "Woher",
+              "color_tag": "warning"
+            },
+            {
+              "position": "Position 2",
+              "label": "Verb (Pos 2)",
+              "example_word": "kommst",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Position 3",
+              "label": "Subjekt",
+              "example_word": "du?",
+              "color_tag": "neutral"
+            }
+          ]
+        }
+      },
+      {
+        "id": "questions_sec5_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Sonderregel: Die Antwort 'Doch!'",
+        "exception_payload": [
+          {
+            "rule_name": "Mit 'Doch' eine verneinte Frage bejahen",
+            "description": "If a question contains a negation ('nicht' or 'kein'), you CANNOT answer with 'Ja' to mean 'Yes I do'. Use 'Doch!' to overturn the negation.",
+            "example_sentences": [
+              "Frage: Trinkst du keinen Kaffee? → Antwort: Doch! (Ich trinke gerne Kaffee.)",
+              "Frage: Hast du heute keine Zeit? → Antwort: Doch, ich habe Zeit!",
+              "Frage: Kommst du heute nicht? → Antwort: Nein, ich komme nicht. (Bestätigt Verneinung)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "questions_sec6_examples",
+        "type": "examples",
+        "title": "Frage & Antwort Mini-Dialoge",
+        "example_payload": [
+          {
+            "german": "Sprichst du Deutsch? – Ja, ich lerne es gerade.",
+            "english": "Do you speak German? – Yes, I am currently learning it.",
+            "note": "Ja/Nein question: Verb 'Sprichst' in Position 1.",
+            "highlighted_words": ["Sprichst", "du"]
+          },
+          {
+            "german": "Woher kommen Sie? – Ich komme aus der Schweiz.",
+            "english": "Where are you from? – I come from Switzerland.",
+            "note": "W-Frage: 'Woher' (Pos 1) + Verb 'kommen' (Pos 2) + 'Sie' (Pos 3).",
+            "highlighted_words": ["Woher", "kommen", "Sie"]
+          },
+          {
+            "german": "Hast du heute keinen Hunger? – Doch, ich habe großen Hunger!",
+            "english": "Aren't you hungry today? – Yes, I am very hungry!",
+            "note": "'Doch!' contradicts the negative question.",
+            "highlighted_words": ["keinen", "Doch"]
+          },
+          {
+            "german": "Wohin fahrt ihr im Sommer? – Wir fahren an die Ostsee.",
+            "english": "Where are you going in summer? – We are going to the Baltic Sea.",
+            "note": "'Wohin' asks for direction/destination.",
+            "highlighted_words": ["Wohin", "fahrt"]
+          }
+        ]
+      },
+      {
+        "id": "questions_sec7_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Wo vs. Woher vs. Wohin merken",
+          "content": "Pair the question word with the typical preposition in the answer: 'Wo? → in / bei' (Wo bist du? – Im Büro), 'Woher? → aus / von' (Woher kommst du? – Aus Spanien), 'Wohin? → nach / zu' (Wohin gehst du? – Nach Hause).",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_noun_genders_articles",
+    "level": "A1",
+    "title": "Noun Genders & Articles (Der, Die, Das)",
+    "subtitle": "Definite, Indefinite, and Negative Articles in the Nominative + Noun Suffix Secrets",
+    "category": "Nomen & Artikel",
+    "summary": "Master the three German grammatical genders (der, die, das), learn indefinite articles (ein/eine), negative articles (kein/keine), and discover reliable suffix patterns that tell you the gender automatically.",
+    "sections": [
+      {
+        "id": "articles_sec1_explanation",
+        "type": "explanation",
+        "title": "Die drei Genera und Artikel-Arten",
+        "explanation_payload": {
+          "text": "Unlike English which only uses 'the' and 'a', every German noun has a grammatical gender: Masculine (der), Feminine (die), or Neuter (das). In addition, German nouns are ALWAYS capitalized without exception (der Tisch, die Lampe, das Buch).",
+          "bullet_points": [
+            "Bestimmter Artikel (Definite): der (m), die (f), das (n), Plural: die (for all genders).",
+            "Unbestimmter Artikel (Indefinite): ein (m), eine (f), ein (n). No plural form exists for 'ein'!",
+            "Negativartikel (Negative): kein (m), keine (f), kein (n), Plural: keine (all genders).",
+            "Golden Rule: Always learn the noun together with its article and plural form: 'der Tisch, -e'!"
+          ]
+        }
+      },
+      {
+        "id": "articles_sec2_table_articles",
+        "type": "table",
+        "title": "Artikel-Übersicht im Nominativ",
+        "table_payload": {
+          "headers": ["Genus", "Bestimmt (the)", "Unbestimmt (a/an)", "Negativ (no/none)", "Beispiel Singular", "Beispiel Plural"],
+          "rows": [
+            ["Maskulin (m)", "der", "ein", "kein", "der Tisch / ein Tisch", "die Tische / keine Tische"],
+            ["Feminin (f)", "die", "eine", "keine", "die Lampe / eine Lampe", "die Lampen / keine Lampen"],
+            ["Neutral (n)", "das", "ein", "kein", "das Buch / ein Buch", "die Bücher / keine Bücher"],
+            ["Plural (alle)", "die", "— (keine Form)", "keine", "die Kinder", "keine Kinder"]
+          ],
+          "footnote": "Achtung: Unbestimmte Artikel ('ein/eine') haben KEINE Pluralform! Für Negation im Plural nutzt man 'keine'."
+        }
+      },
+      {
+        "id": "articles_sec3_table_suffixes",
+        "type": "table",
+        "title": "Suffix-Geheimnisse: Wie man das Geschlecht erkennt",
+        "table_payload": {
+          "headers": ["Genus", "Typische Endungen", "Zuverlässigkeit", "Beispiele"],
+          "rows": [
+            ["Feminin (die)", "-ung, -heit, -keit, -schaft, -tion, -tät, -ei, -ik, -in", "~99% sicher!", "die Zeitung, die Freiheit, die Möglichkeit, die Nation"],
+            ["Neutral (das)", "-chen, -lein, -tum, -ment, -um, Verb-Nomen (-en)", "~95% sicher!", "das Mädchen, das Dokument, das Museum, das Essen"],
+            ["Maskulin (der)", "-ismus, -ling, -or, -ist, -ant, Tage, Monate, Jahreszeiten", "~90% sicher!", "der Optimismus, der Schmetterling, der Motor, der Montag"]
+          ],
+          "footnote": "Lerne besonders die femininen Endungen (-ung, -heit, -keit, -schaft, -tion) — sie sind fast ausnahmslos feminin!"
+        }
+      },
+      {
+        "id": "articles_sec4_formula",
+        "type": "formula",
+        "title": "Satzbau mit Artikeln",
+        "formula_payload": {
+          "formula_structure": "Artikel + Nomen (Subjekt) + Verb (Pos 2) + Adjektiv / Prädikat",
+          "blocks": [
+            {
+              "position": "Artikel",
+              "label": "Artikel (Bestimmt/Unbestimmt)",
+              "example_word": "Das / Ein",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Nomen",
+              "label": "Nomen (Groß!)",
+              "example_word": "Haus",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Verb",
+              "label": "Verb (Pos 2)",
+              "example_word": "ist",
+              "color_tag": "accent"
+            },
+            {
+              "position": "Prädikat",
+              "label": "Eigenschaft",
+              "example_word": "sehr schön.",
+              "color_tag": "warning"
+            }
+          ]
+        }
+      },
+      {
+        "id": "articles_sec5_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Ausnahmen & Die Komposita-Regel",
+        "exception_payload": [
+          {
+            "rule_name": "Grammatisches vs. Biologisches Geschlecht: 'das Mädchen'",
+            "description": "Because '-chen' is a diminutive neuter suffix, all words with '-chen' are grammatically NEUTER (das Mädchen, das Brötchen, das Hähnchen), regardless of biology.",
+            "example_sentences": [
+              "Das Mädchen lernt fleißig Deutsch.",
+              "Das Brötchen schmeckt frisch."
+            ]
+          },
+          {
+            "rule_name": "Zusammengesetzte Nomen (Komposita): Das letzte Wort entscheidet!",
+            "description": "In compound nouns, the LAST noun ALWAYS determines the gender and the plural form of the whole compound word.",
+            "example_sentences": [
+              "die Hand + der Schuh = DER Handschuh (the glove)",
+              "das Auto + die Tür = DIE Autotür (the car door)",
+              "der Tisch + das Tuch = DAS Tischtuch (the tablecloth)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "articles_sec6_examples",
+        "type": "examples",
+        "title": "Beispielsätze mit Artikeln",
+        "example_payload": [
+          {
+            "german": "Das ist ein Tisch. Der Tisch ist modern.",
+            "english": "That is a table. The table is modern.",
+            "note": "First mentioned with indefinite 'ein', then referenced with definite 'der'.",
+            "highlighted_words": ["ein Tisch", "Der Tisch"]
+          },
+          {
+            "german": "Ich habe eine Frage, aber ich habe keine Antwort.",
+            "english": "I have a question, but I have no answer.",
+            "note": "Feminine noun 'Frage' takes 'eine'; negation takes 'keine'.",
+            "highlighted_words": ["eine Frage", "keine Antwort"]
+          },
+          {
+            "german": "Das Mädchen liest die Zeitung im Wohnzimmer.",
+            "english": "The girl is reading the newspaper in the living room.",
+            "note": "'das Mädchen' (neuter suffix -chen), 'die Zeitung' (feminine suffix -ung).",
+            "highlighted_words": ["Das Mädchen", "die Zeitung"]
+          },
+          {
+            "german": "Der Apfelbaum steht in unserem Garten.",
+            "english": "The apple tree stands in our garden.",
+            "note": "Compound noun: der Apfel + der Baum → DER Apfelbaum.",
+            "highlighted_words": ["Der Apfelbaum"]
+          }
+        ]
+      },
+      {
+        "id": "articles_sec7_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Die 3-Farben-Methode für Vokabeln",
+          "content": "Never learn a noun without its article! Color-code your vocabulary: BLUE for 'der' (der Tisch), RED for 'die' (die Lampe), and GREEN for 'das' (das Buch). In German, the article is an inseparable part of the word.",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_numbers_and_age",
+    "level": "A1",
+    "title": "Numbers, Counting & Age (Zahlen & Alter)",
+    "subtitle": "Mastering 0–100, the reversed tens/ones rule, and telling age & prices",
+    "category": "Wortschatz & Alltag",
+    "summary": "Master German numbers from 0 to 100, understand the teen pattern (-zehn) and the famous inverted compound pattern (eins-und-zwanzig = one-and-twenty), and learn to state age, prices, and telephone numbers.",
+    "sections": [
+      {
+        "id": "numbers_sec1_explanation",
+        "type": "explanation",
+        "title": "Das deutsche Zahlensystem im Überblick",
+        "explanation_payload": {
+          "text": "The German number system has three core building blocks:",
+          "bullet_points": [
+            "1. Grundzahlen (0–12): Unique root words that must be memorized (null, eins, zwei, drei ... elf, zwölf).",
+            "2. Teen Numbers (13–19): Combine digit + 'zehn' (dreizehn, vierzehn...). Notice: 16 (sechzehn) and 17 (siebzehn) drop letters!",
+            "3. Tens Numbers (20–90): End in '-zig' (zwanzig, vierzig...), except for 30 which is 'dreißig' (with 'ß').",
+            "4. The Reverse Rule (21–99): In German, you say the ONES digit first, then 'und', then the TENS digit (24 = vier-und-zwanzig = four-and-twenty)!"
+          ]
+        }
+      },
+      {
+        "id": "numbers_sec2_table_1_20",
+        "type": "table",
+        "title": "Zahlen 0 bis 20 Übersicht",
+        "table_payload": {
+          "headers": ["Zahl", "Deutsch", "Zahl", "Deutsch", "Muster / Besonderheit"],
+          "rows": [
+            ["0", "null", "11", "elf", "Unregelmäßig (memorize)"],
+            ["1", "eins", "12", "zwölf", "Unregelmäßig (memorize)"],
+            ["2", "zwei", "13", "dreizehn", "drei (3) + zehn (10)"],
+            ["3", "drei", "14", "vierzehn", "vier (4) + zehn (10)"],
+            ["4", "vier", "15", "fünfzehn", "fünf (5) + zehn (10)"],
+            ["5", "fünf", "16", "sechzehn", "sechs verliert das '-s'!"],
+            ["6", "sechs", "17", "siebzehn", "sieben verliert das '-en'!"],
+            ["7", "sieben", "18", "achtzehn", "acht (8) + zehn (10)"],
+            ["8", "acht", "19", "neunzehn", "neun (9) + zehn (10)"],
+            ["9", "neun", "20", "zwanzig", "Beginn der Zehnerzahlen (-zig)"],
+            ["10", "zehn", "100", "(ein)hundert", "Hunderterzahl"]
+          ],
+          "footnote": "Achtung bei 16 (sechzehn) und 17 (siebzehn): Das -s bzw. -en fällt weg!"
+        }
+      },
+      {
+        "id": "numbers_sec3_table_tens",
+        "type": "table",
+        "title": "Zehnerzahlen & Zusammensetzungen (21–99)",
+        "table_payload": {
+          "headers": ["Zehnerzahl", "Deutsch", "Zusammensetzung", "Deutsch", "Aussprache-Tipp"],
+          "rows": [
+            ["20", "zwanzig", "21", "einundzwanzig", "ein + und + zwanzig (ohne -s!)"],
+            ["30", "dreißig", "35", "fünfunddreißig", "Einzige Zehnerzahl mit '-ßig'!"],
+            ["40", "vierzig", "42", "zweiundvierzig", "zwei + und + vierzig"],
+            ["50", "fünfzig", "58", "achtundfünfzig", "acht + und + fünfzig"],
+            ["60", "sechzig", "64", "vierundsechzig", "sechzig (ohne -s!)"],
+            ["70", "siebzig", "77", "siebenundsiebzig", "siebzig (ohne -en!)"],
+            ["80", "achtzig", "83", "dreiundachtzig", "drei + und + achtzig"],
+            ["90", "neunzig", "99", "neunundneunzig", "neun + und + neunzig"]
+          ],
+          "footnote": "Zahlen unter 1 Million werden im Deutschen als EIN einziges Wort zusammengeschrieben: fünfunddreißig!"
+        }
+      },
+      {
+        "id": "numbers_sec4_formula",
+        "type": "formula",
+        "title": "Zusammengesetzte Zahlen Formel (21–99)",
+        "formula_payload": {
+          "formula_structure": "Einer-Zahl + und + Zehner-Zahl (z.B. 4 + und + 20 = vierundzwanzig)",
+          "blocks": [
+            {
+              "position": "Einer",
+              "label": "Einer-Stelle (1–9)",
+              "example_word": "vier",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Konnektor",
+              "label": "und",
+              "example_word": "und",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Zehner",
+              "label": "Zehner-Stelle",
+              "example_word": "zwanzig",
+              "color_tag": "accent"
+            },
+            {
+              "position": "Ergebnis",
+              "label": "Gesamtzahl (24)",
+              "example_word": "vierundzwanzig",
+              "color_tag": "warning"
+            }
+          ]
+        }
+      },
+      {
+        "id": "numbers_sec5_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Ausnahmen beim Zählen",
+        "exception_payload": [
+          {
+            "rule_name": "'eins' verliert das '-s' in Zusammensetzungen",
+            "description": "Alone the number is 'eins', but inside compound numbers it drops the '-s' to become 'ein'.",
+            "example_sentences": [
+              "21 = einundzwanzig (NOT einsundzwanzig)",
+              "31 = einunddreißig / 101 = einhunderteins"
+            ]
+          },
+          {
+            "rule_name": "'dreißig' mit scharfem 'ß'",
+            "description": "30 is the ONLY tens number spelled with '-ßig' (dreißig). All others use '-zig' (zwanzig, vierzig, fünfzig, sechzig...).",
+            "example_sentences": [
+              "30 = dreißig (NOT dreizig)",
+              "130 = einhundertdreißig"
+            ]
+          },
+          {
+            "rule_name": "Lautausfall bei 16, 17, 60, 70",
+            "description": "6 (sechs) drops '-s' in 16 (sechzehn) and 60 (sechzig). 7 (sieben) drops '-en' in 17 (siebzehn) and 70 (siebzig).",
+            "example_sentences": [
+              "16 = sechzehn / 60 = sechzig",
+              "17 = siebzehn / 70 = siebzig"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "numbers_sec6_examples",
+        "type": "examples",
+        "title": "Alter, Telefonnummern & Preise im Alltag",
+        "example_payload": [
+          {
+            "german": "Wie alt bist du? – Ich bin 24 (vierundzwanzig) Jahre alt.",
+            "english": "How old are you? – I am 24 years old.",
+            "note": "Stating age uses 'sein' + [Zahl] + (Jahre alt).",
+            "highlighted_words": ["Wie alt", "Ich bin 24"]
+          },
+          {
+            "german": "Meine Handynummer ist 0176 543219.",
+            "english": "My mobile number is 0176 543219.",
+            "note": "Phone numbers in German are spoken digit by digit: null, eins, sieben, sechs...",
+            "highlighted_words": ["Meine Handynummer ist"]
+          },
+          {
+            "german": "Das Buch kostet 14,90 Euro (vierzehn Euro neunzig).",
+            "english": "The book costs 14.90 Euros (fourteen euros ninety).",
+            "note": "Prices place the currency word between euros and cents.",
+            "highlighted_words": ["14,90 Euro", "vierzehn Euro neunzig"]
+          },
+          {
+            "german": "In unserem Deutschkurs sind 18 (achtzehn) Teilnehmer.",
+            "english": "In our German class there are 18 participants.",
+            "note": "Quantities: 'achtzehn' modifying plural noun 'Teilnehmer'.",
+            "highlighted_words": ["18", "achtzehn"]
+          }
+        ]
+      },
+      {
+        "id": "numbers_sec7_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Die Uhrzeiger-Regel: Von rechts nach links lesen!",
+          "content": "In English you say 'twenty-four' (tens then ones). In German you say 'vierundzwanzig' (four-and-twenty). When reading a 2-digit number, look at the last digit first, say it, add 'und', and then say the tens digit: 24 = 4 and 20 (vier-und-zwanzig)!",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "lesson_perfekt",
+    "level": "A1/A2",
+    "title": "Das Perfekt mit 'haben' und 'sein'",
+    "subtitle": "Speaking about completed actions in the past",
+    "category": "Verben & Zeiten",
+    "summary": "The Perfekt is the primary past tense used in spoken German. It uses a helping verb (haben or sein) at Position 2 and a Partizip II at the end of the sentence.",
+    "sections": [
+      {
+        "id": "sec1_explanation",
+        "type": "explanation",
+        "title": "Wann benutzt man 'haben' und wann 'sein'?",
+        "explanation_payload": {
+          "text": "The choice between 'haben' and 'sein' depends on the nature of the main verb:",
+          "bullet_points": [
+            "SEIN: Used for verbs of MOVEMENT from A to B (fahren, gehen, fliegen, kommen) or CHANGE OF STATE (einschlafen, aufstehen, passieren). Also used with 'sein' and 'bleiben'.",
+            "HABEN: Used for all transitive verbs (verbs taking an object), reflexive verbs, and static actions (arbeiten, lernen, essen, kaufen)."
+          ]
+        }
+      },
+      {
+        "id": "sec2_formula",
+        "type": "formula",
+        "title": "Die Satzklammer (The Sentence Bracket)",
+        "formula_payload": {
+          "formula_structure": "Subject + Hilfsverb (haben/sein) + ... + Partizip II (Satzende)",
+          "blocks": [
+            {
+              "position": "Position 1",
+              "label": "Subjekt",
+              "example_word": "Jonas",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Position 2",
+              "label": "haben / sein",
+              "example_word": "hat",
+              "color_tag": "primary"
+            },
+            {
+              "position": "Mittelfeld",
+              "label": "Angaben / Objekte",
+              "example_word": "ein neues Hobby",
+              "color_tag": "neutral"
+            },
+            {
+              "position": "Satzende",
+              "label": "Partizip II",
+              "example_word": "gefunden.",
+              "color_tag": "accent"
+            }
+          ]
+        }
+      },
+      {
+        "id": "sec3_table",
+        "type": "table",
+        "title": "Partizip II Bildung (Forming the Participle)",
+        "table_payload": {
+          "headers": ["Verb Type", "Pattern", "Beispiel Infinitiv", "Partizip II"],
+          "rows": [
+            ["Regelmäßig (Regular)", "ge + Stamm + t", "lernen", "gelernt"],
+            ["Unregelmäßig (Irregular)", "ge + Stamm + en", "finden", "gefunden"],
+            ["Trennbare Verben (Separable)", "Präfix + ge + Stamm + t/en", "einkaufen", "eingekauft"],
+            ["Nicht-trennbare Verben", "KEIN ge-! Stamm + t/en", "beenden", "beendet"],
+            ["Verben auf -ieren", "KEIN ge-! Stamm + t", "studieren", "studiert"]
+          ],
+          "footnote": "Remember: Verben ending in '-ieren' NEVER get a 'ge-' prefix!"
+        }
+      },
+      {
+        "id": "sec4_exceptions",
+        "type": "exceptions",
+        "title": "Wichtige Ausnahmen: Nicht-trennbare Präfixe",
+        "exception_payload": [
+          {
+            "rule_name": "Prefixes that block 'ge-'",
+            "description": "Verbs starting with be-, ge-, er-, ver-, zer-, ent-, emp-, miss- DO NOT take 'ge-' in Partizip II.",
+            "example_sentences": [
+              "beenden → hat beendet (NOT gebeendet)",
+              "besuchen → hat besucht (NOT gebesucht)",
+              "verstehen → hat verstanden (NOT geverstanden)"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sec5_examples",
+        "type": "examples",
+        "title": "Beispielsätze (Example Sentences)",
+        "example_payload": [
+          {
+            "german": "Ich habe heute morgen einen Kaffee getrunken.",
+            "english": "I drank a coffee this morning.",
+            "note": "Static action with direct object → uses 'haben'.",
+            "highlighted_words": ["habe", "getrunken"]
+          },
+          {
+            "german": "Gestern sind wir nach Berlin gefahren.",
+            "english": "Yesterday we drove to Berlin.",
+            "note": "Movement from A to B → uses 'sein' ('sind').",
+            "highlighted_words": ["sind", "gefahren"]
+          },
+          {
+            "german": "Um wie viel Uhr bist du aufgestanden?",
+            "english": "At what time did you get up?",
+            "note": "Change of state ('aufstehen') + separable verb ('auf-ge-standen').",
+            "highlighted_words": ["bist", "aufgestanden"]
+          }
+        ]
+      },
+      {
+        "id": "sec6_tip",
+        "type": "tip",
+        "title": "Lehrer-Tipp (Teacher's Tip)",
+        "tip_payload": {
+          "title": "Bewegung von A nach B",
+          "content": "For 'sein', it's not just any movement—it must be a movement from Point A to Point B! 'Ich bin nach Spanien geflogen' (A to B) uses SEIN, but 'Ich habe im Pool geschwommen' (staying in the pool) uses HABEN.",
+          "is_warning": false
+        }
+      }
+    ]
+  },
+  {
     "id": "lesson_modalverben_praeteritum",
     "level": "A2",
     "title": "Modalverben im Präteritum",
@@ -214,129 +1128,6 @@
         "tip_payload": {
           "title": "Kurzantwort auf 'Warum?'",
           "content": "If someone asks 'Warum isst du nichts?' (Why aren't you eating?), you don't need to repeat the main clause. You can answer directly starting with 'weil': 'Weil ich keinen Hunger habe.'",
-          "is_warning": false
-        }
-      }
-    ]
-  },
-  {
-    "id": "lesson_perfekt",
-    "level": "A1/A2",
-    "title": "Das Perfekt mit 'haben' und 'sein'",
-    "subtitle": "Speaking about completed actions in the past",
-    "category": "Verben & Zeiten",
-    "summary": "The Perfekt is the primary past tense used in spoken German. It uses a helping verb (haben or sein) at Position 2 and a Partizip II at the end of the sentence.",
-    "sections": [
-      {
-        "id": "sec1_explanation",
-        "type": "explanation",
-        "title": "Wann benutzt man 'haben' und wann 'sein'?",
-        "explanation_payload": {
-          "text": "The choice between 'haben' and 'sein' depends on the nature of the main verb:",
-          "bullet_points": [
-            "SEIN: Used for verbs of MOVEMENT from A to B (fahren, gehen, fliegen, kommen) or CHANGE OF STATE (einschlafen, aufstehen, passieren). Also used with 'sein' and 'bleiben'.",
-            "HABEN: Used for all transitive verbs (verbs taking an object), reflexive verbs, and static actions (arbeiten, lernen, essen, kaufen)."
-          ]
-        }
-      },
-      {
-        "id": "sec2_formula",
-        "type": "formula",
-        "title": "Die Satzklammer (The Sentence Bracket)",
-        "formula_payload": {
-          "formula_structure": "Subject + Hilfsverb (haben/sein) + ... + Partizip II (Satzende)",
-          "blocks": [
-            {
-              "position": "Position 1",
-              "label": "Subjekt",
-              "example_word": "Jonas",
-              "color_tag": "neutral"
-            },
-            {
-              "position": "Position 2",
-              "label": "haben / sein",
-              "example_word": "hat",
-              "color_tag": "primary"
-            },
-            {
-              "position": "Mittelfeld",
-              "label": "Angaben / Objekte",
-              "example_word": "ein neues Hobby",
-              "color_tag": "neutral"
-            },
-            {
-              "position": "Satzende",
-              "label": "Partizip II",
-              "example_word": "gefunden.",
-              "color_tag": "accent"
-            }
-          ]
-        }
-      },
-      {
-        "id": "sec3_table",
-        "type": "table",
-        "title": "Partizip II Bildung (Forming the Participle)",
-        "table_payload": {
-          "headers": ["Verb Type", "Pattern", "Beispiel Infinitiv", "Partizip II"],
-          "rows": [
-            ["Regelmäßig (Regular)", "ge + Stamm + t", "lernen", "gelernt"],
-            ["Unregelmäßig (Irregular)", "ge + Stamm + en", "finden", "gefunden"],
-            ["Trennbare Verben (Separable)", "Präfix + ge + Stamm + t/en", "einkaufen", "eingekauft"],
-            ["Nicht-trennbare Verben", "KEIN ge-! Stamm + t/en", "beenden", "beendet"],
-            ["Verben auf -ieren", "KEIN ge-! Stamm + t", "studieren", "studiert"]
-          ],
-          "footnote": "Remember: Verben ending in '-ieren' NEVER get a 'ge-' prefix!"
-        }
-      },
-      {
-        "id": "sec4_exceptions",
-        "type": "exceptions",
-        "title": "Wichtige Ausnahmen: Nicht-trennbare Präfixe",
-        "exception_payload": [
-          {
-            "rule_name": "Prefixes that block 'ge-'",
-            "description": "Verbs starting with be-, ge-, er-, ver-, zer-, ent-, emp-, miss- DO NOT take 'ge-' in Partizip II.",
-            "example_sentences": [
-              "beenden → hat beendet (NOT gebeendet)",
-              "besuchen → hat besucht (NOT gebesucht)",
-              "verstehen → hat verstanden (NOT geverstanden)"
-            ]
-          }
-        ]
-      },
-      {
-        "id": "sec5_examples",
-        "type": "examples",
-        "title": "Beispielsätze (Example Sentences)",
-        "example_payload": [
-          {
-            "german": "Ich habe heute morgen einen Kaffee getrunken.",
-            "english": "I drank a coffee this morning.",
-            "note": "Static action with direct object → uses 'haben'.",
-            "highlighted_words": ["habe", "getrunken"]
-          },
-          {
-            "german": "Gestern sind wir nach Berlin gefahren.",
-            "english": "Yesterday we drove to Berlin.",
-            "note": "Movement from A to B → uses 'sein' ('sind').",
-            "highlighted_words": ["sind", "gefahren"]
-          },
-          {
-            "german": "Um wie viel Uhr bist du aufgestanden?",
-            "english": "At what time did you get up?",
-            "note": "Change of state ('aufstehen') + separable verb ('auf-ge-standen').",
-            "highlighted_words": ["bist", "aufgestanden"]
-          }
-        ]
-      },
-      {
-        "id": "sec6_tip",
-        "type": "tip",
-        "title": "Lehrer-Tipp (Teacher's Tip)",
-        "tip_payload": {
-          "title": "Bewegung von A nach B",
-          "content": "For 'sein', it's not just any movement—it must be a movement from Point A to Point B! 'Ich bin nach Spanien geflogen' (A to B) uses SEIN, but 'Ich habe im Pool geschwommen' (staying in the pool) uses HABEN.",
           "is_warning": false
         }
       }
