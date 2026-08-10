@@ -113,8 +113,14 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                       children: [
                         _buildHeader(context),
                         Expanded(
-                          child: SingleChildScrollView(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) => SingleChildScrollView(
                             padding: const EdgeInsets.fromLTRB(24, 8, 24, 128),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight - 128,
+                              ),
+                              child: Center(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -136,7 +142,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Theme.of(context).colorScheme.onSurface,
-                                    fontSize: 24,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -204,7 +210,10 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                                   ),
                               ],
                             ),
-                          ),
+                            ),
+                            ),
+                            ),
+                            ),
                         ),
                       ],
                     ),
@@ -322,7 +331,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
               'You completed $_totalQuestions compound word puzzles.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
@@ -349,7 +358,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                       Text(
                         '$_score / $_totalQuestions',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
                         ),
@@ -374,7 +383,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                       Text(
                         '$accuracy%',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.secondary,
                         ),
@@ -586,7 +595,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                           child: Text(
                             _currentWord.part1,
                             style: TextStyle(
-                              fontSize: 30,
+                              fontSize: 32,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
                               color: Theme.of(
@@ -618,7 +627,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                             child: Text(
                               _currentWord.part2,
                               style: TextStyle(
-                                fontSize: 30,
+                                fontSize: 32,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
                                 color: Theme.of(
@@ -929,7 +938,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
                           _currentWord.fullMeaning,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 24,
+                            fontSize: 22,
                             color: Theme.of(context).colorScheme.onSurface,
                             height: 1.0,
                           ),

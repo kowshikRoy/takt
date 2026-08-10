@@ -372,7 +372,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected
                           ? Colors.white
@@ -479,7 +479,7 @@ class _GenderRulesGuideScreenState extends State<GenderRulesGuideScreen> {
                         rule.title,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 16,
                         ),
                       ),
                       const SizedBox(height: 2),

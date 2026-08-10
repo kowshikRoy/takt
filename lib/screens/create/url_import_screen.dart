@@ -7,6 +7,7 @@ import '../../models/processing_status.dart';
 import '../../services/media_library_service.dart';
 import '../video_screen.dart';
 import '../transcribed_media_grid_screen.dart';
+import '../../widgets/capped_width.dart';
 
 class UrlImportScreen extends StatefulWidget {
   const UrlImportScreen({super.key});
@@ -153,13 +154,15 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
+          child: CappedWidth(
+          maxWidth: 600,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
             Text(
               'Enter any Video, Audio, or Article URL (YouTube, Facebook Reels, TikTok, MP4/MP3, or Web Articles).',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
@@ -450,6 +453,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
             ),
           ],
         ),
+          ),
       ),
     ),
   );
@@ -495,7 +499,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                             video.effectiveTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -519,7 +523,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.edit_outlined, size: 19),
-                  title: const Text('Edit Title', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Edit Title', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _showEditTitleDialog(context, video, mediaLibraryService);
@@ -532,7 +536,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.label_outline_rounded, size: 19),
-                  title: const Text('Set Category', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Set Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   trailing: video.category?.isNotEmpty == true
                       ? Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -542,7 +546,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                           ),
                           child: Text(
                             video.category!.toUpperCase(),
-                            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: colorScheme.onSecondaryContainer),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSecondaryContainer),
                           ),
                         )
                       : null,
@@ -558,7 +562,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: const Icon(Icons.copy_rounded, size: 19),
-                  title: const Text('Copy Link', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Copy Link', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     Clipboard.setData(ClipboardData(text: video.url));
@@ -574,7 +578,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: Icon(Icons.refresh_rounded, size: 19, color: colorScheme.primary),
-                  title: const Text('Submit URL Again', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  title: const Text('Submit URL Again', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _urlController.text = video.url;
@@ -591,7 +595,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                   visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                   leading: Icon(Icons.delete_outline_rounded, size: 19, color: colorScheme.error),
-                  title: Text('Delete Lesson', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: colorScheme.error)),
+                  title: Text('Delete Lesson', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.error)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     mediaLibraryService.deleteProcessedVideo(video.id);
@@ -686,7 +690,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                         children: [
                           Icon(Icons.history_rounded, size: 13, color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 4),
-                          const Text('Recent Categories:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          const Text('Recent Categories:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const SizedBox(height: 5),
@@ -696,7 +700,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                         children: recentCategories.map((cat) {
                           final isSelected = selected.toLowerCase() == cat.toLowerCase();
                           return ChoiceChip(
-                            label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                            label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                             selected: isSelected,
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
@@ -712,7 +716,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                       ),
                       const SizedBox(height: 10),
                     ],
-                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    const Text('Preset Suggestions:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 5),
                     Wrap(
                       spacing: 5,
@@ -720,7 +724,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                       children: remainingPresets.map((cat) {
                         final isSelected = selected.toLowerCase() == cat.toLowerCase();
                         return ChoiceChip(
-                          label: Text(cat, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                          label: Text(cat, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
                           selected: isSelected,
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           visualDensity: const VisualDensity(horizontal: -2, vertical: -4),

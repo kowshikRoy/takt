@@ -123,7 +123,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
               Text(
                 l10n?.subtitleDailyDiscovery ?? 'Tap a word to add it to your review list',
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 12,
                   color: inkColor.withValues(alpha: 0.65),
                 ),
               ),
@@ -326,7 +326,7 @@ class _TodayWordsCardState extends State<TodayWordsCard> {
                   : (l10n?.actionDiscoverMore ?? 'DISCOVER\nMORE'),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.0,
                 color: inkColor,

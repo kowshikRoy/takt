@@ -95,7 +95,7 @@ class VocabStatusPills extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 12,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
                   color: isActive ? Colors.white : colorScheme.onSurfaceVariant,
                 ),

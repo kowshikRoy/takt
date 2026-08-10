@@ -308,7 +308,7 @@ class _SpeakingPracticeScreenState extends State<SpeakingPracticeScreen> {
         Text(
           '${result.score}%',
           style: TextStyle(
-            fontSize: 48,
+            fontSize: 32,
             fontWeight: FontWeight.bold,
             color: passed ? theme.colorScheme.primary : theme.colorScheme.error,
           ),

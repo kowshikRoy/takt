@@ -166,7 +166,7 @@ class _PhrasePracticeScreenState extends State<PhrasePracticeScreen> {
         title: Text(
           'Phrasen-Trainer',
           style: TextStyle(
-            fontSize: 17,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
             color: inkColor,
           ),
@@ -255,7 +255,7 @@ class _PhrasePracticeScreenState extends State<PhrasePracticeScreen> {
                 Text(
                   current.prompt,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: inkColor,
                     height: 1.3,
@@ -286,7 +286,7 @@ class _PhrasePracticeScreenState extends State<PhrasePracticeScreen> {
                           child: Text(
                             current.speakerContext!,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: inkColor,
                             ),
@@ -386,7 +386,7 @@ class _PhrasePracticeScreenState extends State<PhrasePracticeScreen> {
                               child: Text(
                                 option,
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: textColor,
                                 ),
@@ -480,7 +480,7 @@ class _PhrasePracticeScreenState extends State<PhrasePracticeScreen> {
                       ? 'FINISH SESSION'
                       : 'CONTINUE',
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.0,
                   ),
@@ -533,7 +533,7 @@ class _PhrasePracticeScreenState extends State<PhrasePracticeScreen> {
             Text(
               '$_score / ${_exercises.length} Correct ($pct%)',
               style: TextStyle(
-                fontSize: 26,
+                fontSize: 28,
                 fontWeight: FontWeight.w900,
                 color: inkColor,
               ),

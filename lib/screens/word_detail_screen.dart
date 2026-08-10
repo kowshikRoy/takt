@@ -9,6 +9,7 @@ import '../widgets/word_header_card.dart';
 import '../widgets/word_edit_sheet.dart';
 import '../widgets/vocab_status_pills.dart';
 import '../widgets/interactive_german_text.dart';
+import '../widgets/capped_width.dart';
 
 class WordDetailScreen extends StatefulWidget {
   final String word;
@@ -223,7 +224,9 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
+                child: CappedWidth(
+                  maxWidth: 760,
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (_wordDetails != null)
@@ -244,6 +247,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                       _buildTabContent(context, _wordDetails!),
                     ],
                   ],
+                ),
                 ),
               ),
       ),
@@ -788,7 +792,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
           Text(
             label.toUpperCase(),
             style: TextStyle(
-              fontSize: 9.5,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
               color: colorScheme.onSurfaceVariant,
@@ -1103,7 +1107,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                       Text(
                         regularity.label,
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: regularity.color,
                           letterSpacing: 0.3,

@@ -7,6 +7,7 @@ import '../services/profile_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/auth_sync_dialog.dart';
+import '../widgets/capped_width.dart';
 import 'app_entry_point.dart';
 import 'main_scaffold.dart';
 
@@ -72,7 +73,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: CappedWidth(
+          maxWidth: 480,
+          child: Column(
           children: [
             // Top Bar with Logo and Skip Button
             Padding(
@@ -300,7 +303,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
           ],
         ),
-      ),
+          ),
+        ),
     );
   }
 
@@ -326,7 +330,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              fontSize: 15,
+              fontSize: 16,
             ),
           ),
           const SizedBox(height: 32),
@@ -409,7 +413,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 16,
               ),
             ),
           ),
@@ -595,7 +599,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     title,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -656,7 +660,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              fontSize: 15,
+              fontSize: 16,
               height: 1.4,
             ),
           ),

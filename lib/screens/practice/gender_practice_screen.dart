@@ -1171,17 +1171,23 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
           ),
         ),
 
-        // Main Noun Card + Article Buttons — kept in a single top-aligned
-        // scroll flow (rather than the card centered separately from a
-        // bottom-pinned button row) so the buttons sit directly below the
-        // card instead of pinned to the screen's bottom edge with a large
-        // gap in between.
+        // Main Noun Card + Article Buttons — kept in a single scroll flow
+        // (rather than the card centered separately from a bottom-pinned
+        // button row) so the buttons sit directly below the card instead of
+        // pinned to the screen's bottom edge with a large gap in between.
+        // The LayoutBuilder+ConstrainedBox+Center trio centers that group
+        // vertically when it fits the viewport, and falls back to normal
+        // top-anchored scrolling when it doesn't (small screens).
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-            child: SingleChildScrollView(
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              child: Column(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Animate(
@@ -1636,7 +1642,7 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                                 label: const Text(
                                   'Next Word',
                                   style: TextStyle(
-                                    fontSize: 17,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1673,6 +1679,9 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
                     ),
                   ),
                 ],
+                ),
+                ),
+              ),
               ),
             ),
           ),

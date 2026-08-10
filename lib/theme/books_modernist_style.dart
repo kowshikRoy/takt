@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'theme_provider.dart';
+import 'app_theme.dart';
 
 /// Visual identity for the Books feature using the user's preferred font family.
 class BooksModernist {
@@ -107,6 +108,27 @@ class BooksModernist {
 
   static TextStyle mono({double size = 12.5, Color? color}) =>
       GoogleFonts.robotoMono(fontSize: size, color: color ?? text);
+
+  /// The Books feature keeps a fixed "print textbook" surface (`bg`,
+  /// `surface`, `text`) regardless of the app's light/dark setting — but
+  /// widgets in these screens also read `Theme.of(context).colorScheme.*`
+  /// for secondary text/dividers/highlights. Left alone, those resolve
+  /// against the *ambient* app theme, so in dark mode `onSurface` comes
+  /// back near-white and goes invisible on this always-light background.
+  /// Wrap each Books/reading screen's Scaffold in
+  /// `Theme(data: BooksModernist.readingTheme(context), child: ...)` so
+  /// every `Theme.of(context)` lookup inside resolves against a theme
+  /// that's actually paired with this fixed light surface.
+  static ThemeData readingTheme(BuildContext context) {
+    String fontFamily = 'Spline Sans';
+    AppColorTheme colorTheme = AppColorTheme.modernist;
+    try {
+      final provider = Provider.of<ThemeProvider>(context, listen: false);
+      fontFamily = provider.fontFamily;
+      colorTheme = provider.colorTheme;
+    } catch (_) {}
+    return AppTheme.lightTheme(fontFamily, colorTheme);
+  }
 }
 
 /// `grayscale(1) contrast(1.08)` equivalent — the design filters every book

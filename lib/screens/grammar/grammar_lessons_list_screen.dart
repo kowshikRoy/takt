@@ -173,7 +173,7 @@ class _GrammarLessonsListScreenState extends State<GrammarLessonsListScreen> {
                                     l10n?.sectionStructuredRoadmap ??
                                         'STRUCTURED GRAMMAR ROADMAP',
                                     style: const TextStyle(
-                                      fontSize: 10.5,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 1.1,
                                       color: rustAccent,
@@ -208,7 +208,7 @@ class _GrammarLessonsListScreenState extends State<GrammarLessonsListScreen> {
                                 child: Text(
                                   '${(progress * 100).toInt()}%',
                                   style: const TextStyle(
-                                    fontSize: 12.5,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: rustAccent,
                                   ),
@@ -247,7 +247,7 @@ class _GrammarLessonsListScreenState extends State<GrammarLessonsListScreen> {
                         hintText: l10n?.hintSearchGrammar ??
                             'Suche (z.B. Modalverben, weil, Perfekt)...',
                         hintStyle: TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 14,
                           color: inkColor.withValues(alpha: 0.5),
                         ),
                         prefixIcon: Icon(
@@ -310,7 +310,7 @@ class _GrammarLessonsListScreenState extends State<GrammarLessonsListScreen> {
                               selectedColor: rustAccent,
                               backgroundColor: cardBg,
                               labelStyle: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: isSelected ? Colors.white : inkColor,
                               ),
@@ -538,7 +538,7 @@ class _GrammarLessonsListScreenState extends State<GrammarLessonsListScreen> {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: 12.5,
+                                      fontSize: 13,
                                       height: 1.4,
                                       color: inkColor.withValues(alpha: 0.75),
                                     ),
@@ -558,7 +558,7 @@ class _GrammarLessonsListScreenState extends State<GrammarLessonsListScreen> {
                                             ) ??
                                             '${lesson.sections.length} Bausteine (Structure, Tables, Rules)',
                                         style: TextStyle(
-                                          fontSize: 11.5,
+                                          fontSize: 12,
                                           color: inkColor.withValues(alpha: 0.6),
                                         ),
                                       ),

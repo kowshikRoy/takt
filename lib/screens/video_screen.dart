@@ -23,6 +23,7 @@ import 'package:takt/services/profile_service.dart';
 import 'package:takt/config.dart';
 import 'package:takt/widgets/glance_word_sheet.dart';
 import 'package:takt/l10n/app_localizations.dart';
+import 'package:takt/theme/breakpoints.dart';
 
 class KeyMediaVocab {
   final String word;
@@ -967,7 +968,7 @@ class _VideoScreenState extends State<VideoScreen>
                             child: Text(
                               'Article Mode',
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.primary,
                               ),
@@ -1002,8 +1003,15 @@ class _VideoScreenState extends State<VideoScreen>
   }
 
   Widget _buildVideoPlayer(BuildContext context) {
+    // This route is pushed on the root Navigator (no ancestor width cap), so
+    // MediaQuery's width is the real available width — but on a wide desktop
+    // monitor that's still too wide for a single video player: cap it and
+    // center it like a letterboxed player instead of stretching edge-to-edge.
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final bool isWideViewport = WindowClass.of(context).isAtLeastMedium;
+    final double cappedWidth =
+        isWideViewport ? (screenWidth < 960 ? screenWidth : 960) : screenWidth;
     double playerHeight;
     bool isPortraitVideo = false;
 
@@ -1017,8 +1025,9 @@ class _VideoScreenState extends State<VideoScreen>
 
       if (isPortraitVideo) {
         playerHeight = screenHeight * 0.42;
+        if (playerHeight > 480) playerHeight = 480;
       } else {
-        playerHeight = screenWidth * 9 / 16;
+        playerHeight = cappedWidth * 9 / 16;
         if (playerHeight > 320) playerHeight = 320;
       }
     } else {
@@ -1027,8 +1036,12 @@ class _VideoScreenState extends State<VideoScreen>
     }
 
     return Container(
-      height: playerHeight,
       width: screenWidth,
+      color: Colors.black,
+      alignment: Alignment.center,
+      child: Container(
+      height: playerHeight,
+      width: cappedWidth,
       color: Colors.black,
       child: ClipRect(
         child: (_videoPlayerController?.value.isInitialized ?? false)
@@ -1117,7 +1130,7 @@ class _VideoScreenState extends State<VideoScreen>
                                             child: Text(
                                               isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'AUDIO STREAM',
                                               style: TextStyle(
-                                                fontSize: 9,
+                                                fontSize: 10,
                                                 fontWeight: FontWeight.w700,
                                                 letterSpacing: 0.5,
                                                 color: isGeminiAudio ? const Color(0xFFA78BFA) : Theme.of(context).colorScheme.primary,
@@ -1158,6 +1171,7 @@ class _VideoScreenState extends State<VideoScreen>
             : _subtitles.isNotEmpty
                 ? _buildModernDialogueHeader(context)
                 : _buildErrorOrRefreshBox(context),
+      ),
       ),
     );
   }
@@ -1313,7 +1327,7 @@ class _VideoScreenState extends State<VideoScreen>
                           Text(
                             badgeLabel,
                             style: TextStyle(
-                              fontSize: 9.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,
                               color: badgeColor,
@@ -1332,7 +1346,7 @@ class _VideoScreenState extends State<VideoScreen>
                       child: Text(
                         '${_subtitles.length} Sentences',
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: Colors.white.withValues(alpha: 0.7),
                         ),
@@ -1343,7 +1357,7 @@ class _VideoScreenState extends State<VideoScreen>
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                     height: 1.2,
@@ -1801,7 +1815,7 @@ class _VideoScreenState extends State<VideoScreen>
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -1894,7 +1908,7 @@ class _VideoScreenState extends State<VideoScreen>
                                 item.germanWord,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 17,
+                                  fontSize: 18,
                                   color: colorScheme.primary,
                                 ),
                               ),
@@ -2049,7 +2063,7 @@ class _VideoScreenState extends State<VideoScreen>
               const SizedBox(height: 12),
               Text(
                 summary,
-                style: TextStyle(fontSize: 15, height: 1.5, color: colorScheme.onSurface),
+                style: TextStyle(fontSize: 16, height: 1.5, color: colorScheme.onSurface),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -2291,7 +2305,7 @@ class _VideoScreenState extends State<VideoScreen>
                           Text(
                             item.primaryDefinition,
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: colorScheme.primary),
                           ),
                           const SizedBox(height: 16),
                           Container(
@@ -2641,7 +2655,7 @@ class _VideoScreenState extends State<VideoScreen>
                       child: Text(
                         vocab.word,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
                         ),
@@ -2656,7 +2670,7 @@ class _VideoScreenState extends State<VideoScreen>
                         ),
                         child: Text(
                           vocab.pos!.toUpperCase(),
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -2674,7 +2688,7 @@ class _VideoScreenState extends State<VideoScreen>
                           ),
                           child: Text(
                             vocab.difficultyLabel,
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: cefrColors.foreground),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: cefrColors.foreground),
                           ),
                         );
                       },

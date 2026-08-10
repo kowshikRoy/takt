@@ -25,6 +25,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:takt/l10n/app_localizations.dart';
 import 'books/book_detail_screen.dart';
 import 'books/textbook_unit_screen.dart';
+import '../widgets/capped_width.dart';
+import '../theme/breakpoints.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback? onOpenLearnTab;
@@ -62,6 +64,11 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 20),
 
+              CappedWidth(
+                maxWidth: 1000,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               // Daily Session Section
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -184,6 +191,9 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -201,6 +211,12 @@ class HomeScreen extends StatelessWidget {
     final headerBg = Theme.of(context).cardColor;
     final rustAccent = const Color(0xFF8C2D19);
 
+    // Desktop's nav rail already has its own "Sync Account" button that
+    // opens this exact same dialog — showing the cloud icon here too would
+    // just be a second control for the same action. Mobile has no such
+    // rail, so this icon stays there as the only entry point.
+    final bool isDesktop = MediaQuery.sizeOf(context).width > 700;
+
     return Container(
       decoration: BoxDecoration(
         color: headerBg,
@@ -212,17 +228,22 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+      // Capped and centered to line up with the CappedWidth content column
+      // below. The 20px horizontal inset lives inside the cap so both edges
+      // land on the same x position on wide desktop screens.
       child: SafeArea(
         bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+        child: CappedWidth(
+          maxWidth: 1000,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -266,7 +287,7 @@ class HomeScreen extends StatelessWidget {
                         'GUTEN MORGEN!',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.8,
                           color: inkColor,
@@ -278,7 +299,7 @@ class HomeScreen extends StatelessWidget {
                             'Level ${gamification.level}',
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: inkColor.withValues(alpha: 0.7),
                             ),
@@ -293,21 +314,23 @@ class HomeScreen extends StatelessWidget {
           ),
           Row(
             children: [
-              Consumer<AuthService>(
-                builder: (context, auth, _) {
-                  return IconButton(
-                    icon: Icon(
-                      auth.isAuthenticated
-                          ? Icons.cloud_done_rounded
-                          : Icons.cloud_queue_rounded,
-                      color: inkColor,
-                    ),
-                    tooltip: 'Cloud Sync & Account',
-                    onPressed: () => AuthSyncDialog.show(context),
-                  );
-                },
-              ),
-              const SizedBox(width: 4),
+              if (!isDesktop) ...[
+                Consumer<AuthService>(
+                  builder: (context, auth, _) {
+                    return IconButton(
+                      icon: Icon(
+                        auth.isAuthenticated
+                            ? Icons.cloud_done_rounded
+                            : Icons.cloud_queue_rounded,
+                        color: inkColor,
+                      ),
+                      tooltip: 'Cloud Sync & Account',
+                      onPressed: () => AuthSyncDialog.show(context),
+                    );
+                  },
+                ),
+                const SizedBox(width: 4),
+              ],
               Consumer<ProfileService>(
                 builder: (context, profileService, _) {
                   return Container(
@@ -346,6 +369,8 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ],
+        ),
+        ),
       ),
     ),
   ),
@@ -616,7 +641,7 @@ class HomeScreen extends StatelessWidget {
                                     ? 'Daily Review: $dueCount Due Now'
                                     : 'Daily Review (Unlock at 5 words)',
                                 style: TextStyle(
-                                  fontSize: 13.5,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: inkColor,
                                 ),
@@ -627,7 +652,7 @@ class HomeScreen extends StatelessWidget {
                                     ? 'Review your personalized Study Deck'
                                     : '$savedCount of 5 words in Study Deck so far',
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 12,
                                   color: inkColor.withValues(alpha: 0.65),
                                 ),
                               ),
@@ -985,7 +1010,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitlePhrasesHub ??
                           '1.000+ Redemittel für Gastronomie, Small Talk & Alltag',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1059,7 +1084,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitleGrammarLessons ??
                           'Formulas, matrices, and teacher tips',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1133,7 +1158,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitleVocabFlashcards ??
                           'Review your saved vocabulary cards',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1207,7 +1232,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitleCompoundPuzzle ??
                           'Build massive words',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1281,7 +1306,7 @@ class HomeScreen extends StatelessWidget {
                       AppLocalizations.of(context)?.subtitleSpeakingPracticeCard ??
                           'Speech Shadowing',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1358,7 +1383,7 @@ class HomeScreen extends StatelessWidget {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12,
                         color: inkColor.withValues(alpha: 0.65),
                       ),
                     ),
@@ -1422,11 +1447,40 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final inkColor = isDark ? const Color(0xFFEDE8E1) : const Color(0xFF1E1B18);
 
+    // At Medium+, lay book rows out side-by-side instead of one very wide
+    // banner row each. Each row's height is content-driven (truncated
+    // title/subtitle text), so a width-aware Wrap fits better than a
+    // fixed-aspect-ratio GridView here.
+    final windowClass = WindowClass.of(context);
+    final columns = windowClass.isAtLeastLarge
+        ? 3
+        : windowClass.isAtLeastExpanded
+            ? 2
+            : 1;
+
     return Column(
       children: [
         if (_resumeChapter != null && _resumeBookTitle != null)
           _buildResumeBanner(context),
-        ...books.map((book) => _buildBookRow(context, book, inkColor)),
+        if (columns == 1)
+          ...books.map((book) => _buildBookRow(context, book, inkColor))
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 16.0;
+              final itemWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+              return Wrap(
+                spacing: gap,
+                runSpacing: 4,
+                children: books
+                    .map((book) => SizedBox(
+                          width: itemWidth,
+                          child: _buildBookRow(context, book, inkColor),
+                        ))
+                    .toList(),
+              );
+            },
+          ),
       ],
     );
   }
@@ -1487,7 +1541,7 @@ class _CourseBooksSectionState extends State<_CourseBooksSection> {
                   Text(
                     'Kapitel ${_resumeChapter!.chapterNumber}',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: bannerText,
                     ),

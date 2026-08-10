@@ -70,7 +70,7 @@ class ExampleSentencesCard extends StatelessWidget {
           TextSpan(
             text: plainSegment,
             style: TextStyle(
-              fontSize: 15.5,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: inkColor,
             ),
@@ -98,7 +98,7 @@ class ExampleSentencesCard extends StatelessWidget {
             child: Text(
               matchedText,
               style: const TextStyle(
-                fontSize: 14.5,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF8C2D19),
               ),
@@ -115,7 +115,7 @@ class ExampleSentencesCard extends StatelessWidget {
         TextSpan(
           text: text.substring(start),
           style: TextStyle(
-            fontSize: 15.5,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
             color: inkColor,
           ),
@@ -246,7 +246,7 @@ class ExampleSentencesCard extends StatelessWidget {
                   Text(
                     example.english,
                     style: TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 14,
                       color: inkColor.withValues(alpha: 0.75),
                       height: 1.35,
                     ),

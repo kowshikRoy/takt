@@ -154,7 +154,7 @@ class SentenceFormulaCard extends StatelessWidget {
                             child: Text(
                               block.position.toUpperCase(),
                               style: TextStyle(
-                                fontSize: 9.5,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.8,
                                 color: text,
@@ -174,7 +174,7 @@ class SentenceFormulaCard extends StatelessWidget {
                           Text(
                             block.label,
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: text.withValues(alpha: 0.85),
                             ),
@@ -224,7 +224,7 @@ class SentenceFormulaCard extends StatelessWidget {
                     child: Text(
                       payload.formulaStructure,
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'monospace',
                         color: inkColor.withValues(alpha: 0.9),

@@ -1,6 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// The app's font-size scale. Prefer `Theme.of(context).textTheme.*` (which
+/// is built from exactly these values in [AppTheme._buildTextTheme]) over
+/// reaching for one of these constants directly — they exist so any
+/// hardcoded `fontSize:` that can't use a TextTheme role still snaps to a
+/// value on the shared scale instead of inventing a new one.
+///
+/// Nothing in the app should render smaller than [micro] (10px) — text
+/// below that is not reliably readable, even for secondary/meta labels.
+abstract class AppFontSize {
+  /// Tiny status pills, CEFR/POS tags, badge text. The accessibility floor —
+  /// never go smaller than this, even for "decorative" labels.
+  static const double micro = 10;
+
+  /// All-caps section labels ("DAILY SESSION", "MY CONTENT") and small
+  /// secondary chips. Maps to [TextTheme.labelMedium].
+  static const double label = 11;
+
+  /// Secondary / meta text: subtitles, timestamps, helper text.
+  /// Maps to [TextTheme.bodySmall].
+  static const double meta = 12;
+
+  /// Default paragraph / reading body text. Maps to [TextTheme.bodyMedium].
+  static const double body = 13;
+
+  /// Emphasized text: list item titles, card titles, button labels.
+  /// Maps to [TextTheme.titleSmall].
+  static const double emphasized = 14;
+
+  /// Section headings within a screen (card headers, word-detail headword).
+  /// Maps to [TextTheme.titleMedium].
+  static const double heading = 16;
+
+  /// Screen-level titles (AppBar titles, dialog titles).
+  /// Maps to [TextTheme.titleLarge].
+  static const double screenTitle = 18;
+
+  /// Large headings, prominent stat numbers. Maps to [TextTheme.headlineSmall].
+  static const double large = 22;
+
+  /// Display / hero text — onboarding headlines, big feature numbers.
+  /// Maps to [TextTheme.headlineLarge].
+  static const double display = 28;
+}
+
 enum AppColorTheme {
   classic,
   retroTeal,
@@ -190,18 +234,22 @@ class AppTheme {
         color: colorScheme.onSurface,
       ),
       headlineSmall: baseTheme.headlineSmall?.copyWith(
+        fontSize: AppFontSize.large,
         fontWeight: FontWeight.w600,
         color: colorScheme.onSurface,
       ),
       titleLarge: baseTheme.titleLarge?.copyWith(
+        fontSize: AppFontSize.screenTitle,
         fontWeight: FontWeight.w600,
         color: colorScheme.onSurface,
       ),
       titleMedium: baseTheme.titleMedium?.copyWith(
+        fontSize: AppFontSize.heading,
         fontWeight: FontWeight.w600,
         color: colorScheme.onSurface,
       ),
       titleSmall: baseTheme.titleSmall?.copyWith(
+        fontSize: AppFontSize.emphasized,
         fontWeight: FontWeight.w600,
         color: colorScheme.onSurfaceVariant,
       ),
@@ -211,16 +259,25 @@ class AppTheme {
         color: colorScheme.onSurface,
       ),
       bodyMedium: baseTheme.bodyMedium?.copyWith(
-        fontSize: 14,
+        fontSize: AppFontSize.body,
         height: 1.5,
         color: colorScheme.onSurface,
       ),
       bodySmall: baseTheme.bodySmall?.copyWith(
+        fontSize: AppFontSize.meta,
         color: colorScheme.onSurfaceVariant,
       ),
       labelLarge: baseTheme.labelLarge?.copyWith(
         fontWeight: FontWeight.bold,
         letterSpacing: 0.5,
+      ),
+      labelMedium: baseTheme.labelMedium?.copyWith(
+        fontSize: AppFontSize.label,
+        color: colorScheme.onSurfaceVariant,
+      ),
+      labelSmall: baseTheme.labelSmall?.copyWith(
+        fontSize: AppFontSize.micro,
+        color: colorScheme.onSurfaceVariant,
       ),
     );
   }

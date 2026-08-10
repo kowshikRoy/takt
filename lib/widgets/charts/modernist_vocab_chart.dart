@@ -274,7 +274,7 @@ class _ModernistVocabChartState extends State<ModernistVocabChart> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 12,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               color: isSelected ? Colors.white : inkColor.withValues(alpha: 0.8),
             ),
@@ -499,7 +499,7 @@ class _ModernistVocabChartPainter extends CustomPainter {
         text: tooltipText,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 10.5,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
           height: 1.3,
         ),

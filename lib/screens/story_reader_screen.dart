@@ -16,6 +16,7 @@ import '../models/article_model.dart';
 import '../models/saved_word.dart';
 import '../widgets/glance_word_sheet.dart';
 import '../theme/books_modernist_style.dart';
+import '../widgets/capped_width.dart';
 
 class _TappedWordData {
   final String word;
@@ -440,7 +441,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
       scaffoldBg = isDark ? const Color(0xFF262220) : const Color(0xFFF6F0E6);
     }
 
-    return PopScope(
+    return Theme(
+      data: BooksModernist.readingTheme(context),
+      child: PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
         _ttsService.stop();
@@ -458,7 +461,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
                         children: [
                           // 1. Sharp Bordered Textbook Page Card Container (Identical to TextbookUnitScreen)
                           Expanded(
-                            child: Container(
+                            child: CappedWidth(
+                              maxWidth: 760,
+                              child: Container(
                               margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
                               decoration: BoxDecoration(
                                 color: _isSepiaMode
@@ -493,6 +498,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
                                   ),
                                 ),
                               ),
+                              ),
                             ),
                           ),
                         ],
@@ -501,6 +507,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -1204,7 +1211,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
                       child: Text(
                         vocab.word,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
                         ),
@@ -1219,7 +1226,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
                         ),
                         child: Text(
                           vocab.pos!.toUpperCase(),
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -1237,7 +1244,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
                           ),
                           child: Text(
                             vocab.difficultyLabel,
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: cefrColors.foreground),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: cefrColors.foreground),
                           ),
                         );
                       },
@@ -2102,7 +2109,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
                     autofocus: true,
                     minLines: 2,
                     maxLines: 6,
-                    style: _getReaderTextStyle(sheetContext).copyWith(fontSize: 15),
+                    style: _getReaderTextStyle(sheetContext).copyWith(fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Paragraph text…',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
@@ -2371,7 +2378,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
                                   child: Text(
                                     result.translatedSentence,
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 16,
                                       height: 1.4,
                                       color: Theme.of(context).colorScheme.onSurface,
                                     ),
@@ -2434,7 +2441,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
                                   children: [
                                     Text(
                                       token.word,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                     ),
                                     const SizedBox(width: 8),
                                     Container(

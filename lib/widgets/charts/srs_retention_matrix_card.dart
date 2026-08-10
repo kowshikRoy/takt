@@ -133,7 +133,7 @@ class SrsRetentionMatrixCard extends StatelessWidget {
             child: Text(
               stage.title,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: inkColor.withValues(alpha: 0.85),
               ),
@@ -166,7 +166,7 @@ class SrsRetentionMatrixCard extends StatelessWidget {
               '${stage.count} ($percent%)',
               textAlign: TextAlign.end,
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: inkColor.withValues(alpha: 0.7),
               ),

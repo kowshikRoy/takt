@@ -74,7 +74,7 @@ class ExplanationCard extends StatelessWidget {
             Text(
               payload.text,
               style: TextStyle(
-                fontSize: 14.5,
+                fontSize: 14,
                 height: 1.55,
                 color: inkColor.withValues(alpha: 0.9),
               ),
@@ -113,7 +113,7 @@ class ExplanationCard extends StatelessWidget {
                           child: Text(
                             point,
                             style: TextStyle(
-                              fontSize: 13.5,
+                              fontSize: 14,
                               height: 1.45,
                               color: inkColor.withValues(alpha: 0.85),
                             ),
