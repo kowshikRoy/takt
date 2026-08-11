@@ -1615,6 +1615,22 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
     );
   }
 
+  /// Looks up a short "pos + first definition" summary for each related/synonym word
+  /// via the cheap SQLite-only lookup (not the full Wiktionary/NMT/WSD pipeline) — this
+  /// tab can show up to ~16 words at once, so a fast local-only query per word keeps it
+  /// responsive instead of firing several slow network fallbacks back to back.
+  Future<Map<String, Map<String, dynamic>?>> _fetchRelatedWordSummaries(List<String> words) async {
+    final results = await Future.wait(words.map((w) async {
+      try {
+        final res = await _dictionaryService.lookupWordFast(w);
+        return MapEntry(w, res.isNotEmpty ? res.first : null);
+      } catch (_) {
+        return MapEntry(w, null);
+      }
+    }));
+    return Map.fromEntries(results);
+  }
+
   Widget _buildRelatedTab(
       BuildContext context, Map<String, dynamic> wordData) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -1645,69 +1661,136 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
       );
     }
 
-    Widget buildSection(String title, List<String> words) {
-      if (words.isEmpty) return const SizedBox.shrink();
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurfaceVariant,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: words.map((w) {
-                return InkWell(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => WordDetailScreen(word: w),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: colorScheme.primary.withValues(alpha: 0.3)),
-                    ),
-                    child: Text(
-                      w,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      );
-    }
+    return FutureBuilder<Map<String, Map<String, dynamic>?>>(
+      future: _fetchRelatedWordSummaries([...synonyms, ...related]),
+      builder: (context, snapshot) {
+        final summaries = snapshot.data ?? const {};
+        final loading = snapshot.connectionState != ConnectionState.done;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          buildSection('SYNONYMS', synonyms),
-          buildSection('RELATED WORDS', related),
-        ],
-      ),
+        Widget buildSection(String title, List<String> words) {
+          if (words.isEmpty) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...words.map((w) {
+                  final summary = summaries[w];
+                  final pos = summary?['pos']?.toString().trim();
+                  final defs = summary?['definitions'];
+                  final meaning = (defs is List && defs.isNotEmpty)
+                      ? DictionaryService.shortenMeaning(defs.first.toString())
+                      : null;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => WordDetailScreen(word: w),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: colorScheme.primary.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    w,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                                if (pos != null && pos.isNotEmpty) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      pos,
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ] else if (loading) ...[
+                                  const SizedBox(width: 6),
+                                  SizedBox(
+                                    width: 10,
+                                    height: 10,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (meaning != null && meaning.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                meaning,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              buildSection('SYNONYMS', synonyms),
+              buildSection('RELATED WORDS', related),
+            ],
+          ),
+        );
+      },
     );
   }
 }

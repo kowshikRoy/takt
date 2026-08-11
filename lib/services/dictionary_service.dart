@@ -1281,6 +1281,21 @@ class DictionaryService {
     return curated.length <= maxResults ? curated : curated.sublist(0, maxResults);
   }
 
+  /// Shortens a raw definition down to a single digestible clause: strips bracketed
+  /// grammar notes, keeps only the first comma/semicolon-separated item, and truncates
+  /// to [maxLength] characters — used for compact "word — short meaning" displays like
+  /// the Related tab, where a full multi-sense definition would overflow.
+  static String shortenMeaning(String raw, {int maxLength = 60}) {
+    var clean = raw.trim();
+    clean = clean.replaceAll(RegExp(r'\s*\([^)]*\)\s*'), ' ').trim();
+    final parts = clean.split(RegExp(r'[,;]\s*')).where((s) => s.trim().isNotEmpty).toList();
+    clean = parts.isNotEmpty ? parts.first : clean;
+    if (clean.length > maxLength) {
+      clean = '${clean.substring(0, maxLength - 3)}...';
+    }
+    return clean;
+  }
+
   /// Checks (and caches) whether the open dictionary DB has `forms` and `tags`
   /// tables. Older bundled schema versions and reduced test fixtures may lack
   /// them, so queries that join into them must degrade gracefully rather than

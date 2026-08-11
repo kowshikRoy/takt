@@ -76,4 +76,51 @@ void main() {
       expect(curated.first['word'], 'Wagen');
     });
   });
+
+  group('DictionaryService.shortenMeaning', () {
+    test('keeps a short definition unchanged', () {
+      expect(DictionaryService.shortenMeaning('car'), 'car');
+    });
+
+    test('strips bracketed grammar notes', () {
+      expect(
+        DictionaryService.shortenMeaning('good (having a pleasant taste)'),
+        'good',
+      );
+    });
+
+    test('keeps only the first comma-separated sense', () {
+      expect(
+        DictionaryService.shortenMeaning('all right, fair, proper'),
+        'all right',
+      );
+    });
+
+    test('keeps only the first semicolon-separated sense', () {
+      expect(
+        DictionaryService.shortenMeaning('house; home; building'),
+        'house',
+      );
+    });
+
+    test('truncates a long single-clause definition to maxLength with an ellipsis', () {
+      final longDefinition =
+          'a very long and unusually detailed definition that goes on for quite a while';
+
+      final result = DictionaryService.shortenMeaning(longDefinition, maxLength: 30);
+
+      expect(result.length, 30);
+      expect(result.endsWith('...'), isTrue);
+    });
+
+    test('respects a custom maxLength', () {
+      final result = DictionaryService.shortenMeaning('abcdefghij', maxLength: 5);
+      expect(result, 'ab...');
+    });
+
+    test('does not truncate a clause that already fits within maxLength', () {
+      final result = DictionaryService.shortenMeaning('short', maxLength: 60);
+      expect(result, 'short');
+    });
+  });
 }
