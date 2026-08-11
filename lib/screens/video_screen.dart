@@ -227,19 +227,17 @@ class _VideoScreenState extends State<VideoScreen>
     // Extract Key Vocabulary from Subtitle Cues
     _extractKeyVocabulary();
 
+    // True only when the backend genuinely couldn't resolve a playable stream and handed back
+    // the plain youtube.com/youtu.be page link instead — VideoPlayer can't play that, so this
+    // is the one case that should go straight to the on-device TTS fallback. A resolved direct
+    // stream (video or audio-only — video_player plays audio-only sources fine, no separate
+    // audio player needed) always takes priority over on-device narration.
     final isWebPageUrl = _directVideoUrl != null &&
         (_directVideoUrl!.contains('youtube.com/watch') ||
          _directVideoUrl!.contains('youtu.be/') ||
          _directVideoUrl!.contains('youtube.com/shorts'));
 
-    // Some extracted streams are audio-only by nature of the source, not because of any
-    // studio narration step — still needs the plain-audio player rather than VideoPlayer.
-    final isAudioUrl = _directVideoUrl != null &&
-        (_directVideoUrl!.contains('.wav') ||
-         _directVideoUrl!.contains('.mp3') ||
-         video.mediaType == 'audio');
-
-    if (_directVideoUrl != null && _directVideoUrl!.isNotEmpty && !isWebPageUrl && !isAudioUrl) {
+    if (_directVideoUrl != null && _directVideoUrl!.isNotEmpty && !isWebPageUrl) {
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(_directVideoUrl!),
       );
@@ -268,6 +266,11 @@ class _VideoScreenState extends State<VideoScreen>
             }
           });
       _videoPlayerController?.addListener(_onVideoPlayerUpdate);
+    } else if (isWebPageUrl) {
+      // No playable stream at all — skip straight to on-device narration instead of leaving
+      // the lesson silent with no video player and no explicit fallback trigger.
+      _videoStreamFailed = true;
+      _maybeStartTtsFallback();
     }
   }
 
