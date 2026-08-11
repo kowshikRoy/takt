@@ -601,6 +601,20 @@ def fetch_innertube_media_data(url: str):
                 audio_fmts = [f for f in adaptive_formats if 'audio' in f.get('mimeType', '') and f.get('url')]
                 audio_stream_url = audio_fmts[0].get('url') if audio_fmts else None
 
+                # Progressive formats are muxed audio+video in one file — directly playable.
+                # Prefer these for `playable_url` so the client gets a real stream URL instead
+                # of the plain youtube.com/youtu.be page link (which VideoPlayer can't play at
+                # all, silently forcing every InnerTube-resolved video onto the on-device TTS
+                # fallback even when a perfectly good stream was found). If no muxed stream is
+                # available, fall back to the audio-only stream — subtitles stay in sync either
+                # way since they're timestamp-driven, not tied to a video track.
+                progressive_fmts = [f for f in streaming_data.get('formats', []) if f.get('url')]
+                playable_url = progressive_fmts[-1].get('url') if progressive_fmts else None
+                resolved_media_type = 'video'
+                if not playable_url and audio_stream_url:
+                    playable_url = audio_stream_url
+                    resolved_media_type = 'audio'
+
                 cues = []
                 tracks = res.get('captions', {}).get('playerCaptionsTracklistRenderer', {}).get('captionTracks', [])
                 if tracks:
@@ -610,17 +624,18 @@ def fetch_innertube_media_data(url: str):
                         vtt_res = requests.get(b_url, headers=headers, timeout=5)
                         if vtt_res.status_code == 200:
                             cues = parse_youtube_xml_captions(vtt_res.text)
-                
+
                 if not cues:
                     cues = fetch_innertube_transcript_api(url)
-                
-                print(f"InnerTube {profile['name']} SUCCESS: '{title}' (cues: {len(cues)}, direct audio: {bool(audio_stream_url)})")
+
+                print(f"InnerTube {profile['name']} SUCCESS: '{title}' (cues: {len(cues)}, direct audio: {bool(audio_stream_url)}, playable: {bool(playable_url)})")
                 return {
                     'title': title,
                     'thumbnail': thumbnail,
                     'subtitles': cues,
                     'audio_stream_url': audio_stream_url,
-                    'url': url,
+                    'url': playable_url or url,
+                    'media_type': resolved_media_type if playable_url else None,
                 }
             except Exception as e:
                 print(f"InnerTube profile {profile['name']} error: {e}")
@@ -1179,6 +1194,7 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
         subtitles = []
         audio_stream_url = None
         media_info = {}
+        innertube_media_type = None
         if innertube_data:
             if innertube_data.get('title') and innertube_data['title'] not in ['German Lesson', 'Media']:
                 title = innertube_data['title']
@@ -1187,6 +1203,7 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
             subtitles = innertube_data.get('subtitles') or []
             media_url = innertube_data['url']
             audio_stream_url = innertube_data.get('audio_stream_url')
+            innertube_media_type = innertube_data.get('media_type')
         else:
             update_task_stage(task_id, "Extracting video title & thumbnail...", 35)
             media_info = await asyncio.to_thread(get_media_info, url)
@@ -1257,7 +1274,11 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
         except Exception as e:
             print(f"Could not fetch subtitles, falling back to transcription. Error: {e}")
 
-        media_type = 'video'
+        # `innertube_media_type` reflects what `media_url` actually points to when InnerTube
+        # resolved a real playable stream (audio-only if no muxed video format was available) —
+        # only relevant when subtitles were already found and the Whisper/get_media_type path
+        # below never runs to determine it for us.
+        media_type = innertube_media_type or 'video'
         if not subtitles:
             # 0. If the client holds its own Gemini key, pause here and let it transcribe
             #    directly instead of spending the server's shared Gemini quota.
@@ -1271,6 +1292,7 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
                     "media_url": media_url,
                     "media_info": media_info,
                     "audio_stream_url": audio_stream_url,
+                    "media_type": innertube_media_type,
                 }
                 update_task_stage(task_id, "Waiting for on-device Gemini transcription...", 80)
                 tasks[task_id]["status"] = TaskStatus.AWAITING_CLIENT_TRANSCRIPTION
@@ -1372,7 +1394,11 @@ async def _resume_media_task(task_id: str, client_subtitles: list[ClientSubtitle
         SubtitleCue(start=c.start, end=c.end, original=c.original, translated=c.translated or "")
         for c in client_subtitles
     ]
-    media_type = 'video'
+    # Reflects what `media_url` actually points to when InnerTube resolved a real playable
+    # stream before pausing (audio-only if no muxed video format was available) — only relevant
+    # when the client supplied subtitles directly, since the Whisper path below determines it
+    # itself via get_media_type() otherwise.
+    media_type = pending.get("media_type") or 'video'
 
     try:
         if not subtitles:
