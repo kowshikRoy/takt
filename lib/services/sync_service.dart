@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -16,12 +17,90 @@ class SyncService extends ChangeNotifier {
   SyncService._internal();
 
   bool _isSyncing = false;
+  bool _rerunRequested = false;
+  Timer? _debounceTimer;
   DateTime? _lastSyncedAt;
   String? _syncError;
+
+  bool _statsSyncing = false;
+  bool _statsRerunRequested = false;
+  Timer? _statsDebounceTimer;
 
   bool get isSyncing => _isSyncing;
   DateTime? get lastSyncedAt => _lastSyncedAt;
   String? get syncError => _syncError;
+
+  /// Debounced entry point for automatic sync triggers fired off the back of
+  /// local mutations (word saved, review recorded, lesson completed, ...).
+  /// Bursts of these - e.g. reviewing a stack of flashcards in a row - are
+  /// coalesced into a single sync a couple seconds after the last mutation,
+  /// instead of one full upload/download pair per mutation.
+  void requestSync({Duration debounce = const Duration(seconds: 2)}) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(debounce, () {
+      syncNow();
+    });
+  }
+
+  /// Debounced entry point for streak/activity updates specifically. Runs
+  /// independently of [requestSync]/[syncNow] and posts only `stats` +
+  /// `streak_freezes` - no vocabulary/articles/media - so a streak update
+  /// reaches the server in one small request instead of waiting behind the
+  /// heavier vocabulary sync's DB reads and payload build.
+  void requestQuickStatsSync({Duration debounce = const Duration(milliseconds: 800)}) {
+    _statsDebounceTimer?.cancel();
+    _statsDebounceTimer = Timer(debounce, () {
+      quickSyncStats();
+    });
+  }
+
+  /// Pushes just the current streak/activity stats to the backend. The
+  /// backend treats every `SyncPayload` field as optional and only touches
+  /// the fields present in the body, so omitting vocabulary/articles/media
+  /// here is a no-op on the server for those collections, not a wipe.
+  Future<bool> quickSyncStats() async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) return false;
+
+    if (_statsSyncing) {
+      _statsRerunRequested = true;
+      return false;
+    }
+
+    _statsDebounceTimer?.cancel();
+    _statsSyncing = true;
+
+    try {
+      final token = await auth.getIdToken();
+      final headers = {
+        'Content-Type': 'application/json',
+        'x-auth-token': token ?? '',
+      };
+      final response = await http
+          .post(
+            Uri.parse('${Config.backendUrl}/api/sync'),
+            headers: headers,
+            body: jsonEncode({
+              'streak_freezes': ProfileService().streakFreezes,
+              'stats': {
+                'activity_dates': ProfileService().activityDates.toList(),
+                'best_streak': ProfileService().bestStreak,
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+      return response.statusCode == 200;
+    } catch (e) {
+      AppLogger.error("Quick stats sync error", error: e, tag: 'SyncService');
+      return false;
+    } finally {
+      _statsSyncing = false;
+      if (_statsRerunRequested) {
+        _statsRerunRequested = false;
+        unawaited(quickSyncStats());
+      }
+    }
+  }
 
   /// Syncs vocabulary between local app and GCP Cloud backend
   Future<bool> syncNow() async {
@@ -32,6 +111,16 @@ class SyncService extends ChangeNotifier {
       return false;
     }
 
+    // A sync is already in flight. Starting another one now would overlap
+    // GET/POST pairs and risk a stale snapshot clobbering a fresher one on
+    // the server, so just flag that one more pass is needed once this one
+    // finishes rather than racing it.
+    if (_isSyncing) {
+      _rerunRequested = true;
+      return false;
+    }
+
+    _debounceTimer?.cancel();
     _isSyncing = true;
     _syncError = null;
     notifyListeners();
@@ -59,11 +148,9 @@ class SyncService extends ChangeNotifier {
       if (remoteData.containsKey('vocabulary') &&
           remoteData['vocabulary'] is List) {
         final List remoteVocab = remoteData['vocabulary'];
-        for (final rItem in remoteVocab) {
-          if (rItem is Map<String, dynamic>) {
-            await vocabService.mergeWordFromSync(rItem);
-          }
-        }
+        await vocabService.mergeWordsFromSync(
+          remoteVocab.whereType<Map<String, dynamic>>().toList(),
+        );
       }
 
       if (remoteData['streak_freezes'] is int) {
@@ -97,9 +184,14 @@ class SyncService extends ChangeNotifier {
         }
       }
 
-      // 3. Push updated local state to GCP backend
-      final updatedLocalWords = await vocabService.getAllSavedWords();
-      final vocabPayload = updatedLocalWords.map((w) => w.toJson()).toList();
+      // 3. Push updated local state to GCP backend. Only words that changed
+      // since the last successful sync are uploaded - the backend upserts
+      // by id/word onto whatever it already has, so a delta is enough and
+      // keeps the payload from growing with the whole vocabulary on every
+      // single review.
+      final dirtyLocalWords = await vocabService.getDirtyWordsForSync();
+      final vocabPayload = dirtyLocalWords.map((w) => w.toJson()).toList();
+      final dirtyWordIdsSnapshot = dirtyLocalWords.map((w) => w.id).toList();
       final deletedVocabPayload = vocabService.getDeletedWordIdsForSync();
       final articlesPayload = await MediaLibraryService().getArticlesForSync();
       final mediaPayload = MediaLibraryService().getMediaForSync();
@@ -129,23 +221,25 @@ class SyncService extends ChangeNotifier {
           .timeout(const Duration(seconds: 15));
 
       if (postResponse.statusCode == 200) {
-        await vocabService.clearDeletedWordIds();
+        await vocabService.clearDirtyWordIds(dirtyWordIdsSnapshot);
+        await vocabService.clearDeletedWordIds(deletedVocabPayload);
         _lastSyncedAt = DateTime.now();
-        _isSyncing = false;
-        notifyListeners();
         return true;
       } else {
         _syncError = "Sync failed (Status ${postResponse.statusCode})";
-        _isSyncing = false;
-        notifyListeners();
         return false;
       }
     } catch (e) {
       AppLogger.error("Sync error", error: e, tag: 'SyncService');
       _syncError = e.toString();
+      return false;
+    } finally {
       _isSyncing = false;
       notifyListeners();
-      return false;
+      if (_rerunRequested) {
+        _rerunRequested = false;
+        unawaited(syncNow());
+      }
     }
   }
 }

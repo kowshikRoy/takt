@@ -690,7 +690,7 @@ class MediaLibraryService extends ChangeNotifier {
 
     // 4. Trigger cloud sync to update remote database immediately
     try {
-      unawaited(SyncService().syncNow());
+      SyncService().requestSync();
     } catch (_) {}
   }
 
@@ -792,7 +792,7 @@ class MediaLibraryService extends ChangeNotifier {
     await _saveImportedArticles();
 
     try {
-      unawaited(SyncService().syncNow());
+      SyncService().requestSync();
     } catch (_) {}
   }
 
@@ -855,7 +855,7 @@ class MediaLibraryService extends ChangeNotifier {
     await _saveImportedArticles();
 
     try {
-      unawaited(SyncService().syncNow());
+      SyncService().requestSync();
     } catch (_) {}
   }
 

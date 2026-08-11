@@ -1944,6 +1944,12 @@ try:
 except Exception:
     db = None
 SYNC_COLLECTION = "user_sync"
+# Articles/media are stored in their own per-user document, separate from
+# SYNC_COLLECTION. Full article text and video subtitle transcripts are the
+# main driver of per-user document size (far more than vocabulary/stats), so
+# keeping them off the main sync doc keeps it well clear of Firestore's
+# 1MiB-per-document cap and means a stats-only sync never has to touch them.
+SYNC_CONTENT_COLLECTION = "user_sync_content"
 
 if firebase_admin:
     try:
@@ -1992,17 +1998,19 @@ def get_me(authorization: str = Header(None), x_auth_token: str = Header(None)):
 def get_sync(authorization: str = Header(None), x_auth_token: str = Header(None)):
     user_id = get_current_user_id(authorization, x_auth_token)
     doc = db.collection(SYNC_COLLECTION).document(user_id).get()
-    if not doc.exists:
-        return {
-            "vocabulary": [], "articles": [], "media": [], "stats": {},
-            "xp_events": [], "streak_freezes": 1, "curriculum_progress": [],
-            "updated_at": "",
-        }
-    data = doc.to_dict()
+    data = doc.to_dict() if doc.exists else {}
+
+    content_doc = db.collection(SYNC_CONTENT_COLLECTION).document(user_id).get()
+    content_data = content_doc.to_dict() if content_doc.exists else {}
+
     return {
         "vocabulary": data.get("vocabulary", []),
-        "articles": data.get("articles", []),
-        "media": data.get("media", []),
+        # Articles/media live in SYNC_CONTENT_COLLECTION now; fall back to
+        # the legacy inline fields on the main doc for a user who hasn't
+        # posted since this split shipped, so their old content isn't
+        # dropped on first read.
+        "articles": content_data.get("articles", data.get("articles", [])),
+        "media": content_data.get("media", data.get("media", [])),
         "stats": data.get("stats", {}),
         "xp_events": data.get("xp_events", []),
         "streak_freezes": data.get("streak_freezes", 1),
@@ -2015,6 +2023,16 @@ def post_sync(payload: SyncPayload, authorization: str = Header(None), x_auth_to
     user_id = get_current_user_id(authorization, x_auth_token)
     now = datetime.utcnow().isoformat()
     sync_ref = db.collection(SYNC_COLLECTION).document(user_id)
+    content_ref = db.collection(SYNC_CONTENT_COLLECTION).document(user_id)
+
+    # Only read/write the (potentially large) content doc when this payload
+    # actually touches articles/media - a stats-only quick sync shouldn't
+    # have to transact against article text / subtitle transcripts it never
+    # asked to change.
+    touches_content = bool(
+        payload.articles is not None or payload.media is not None or
+        payload.deleted_article_ids or payload.deleted_media_ids
+    )
 
     @firestore.transactional
     def merge_sync(transaction):
@@ -2022,22 +2040,34 @@ def post_sync(payload: SyncPayload, authorization: str = Header(None), x_auth_to
         existing = snapshot.to_dict() if snapshot.exists else {}
 
         existing_vocab = existing.get("vocabulary", [])
-        existing_articles = existing.get("articles", [])
-        existing_media = existing.get("media", [])
         existing_stats = existing.get("stats", {})
         existing_xp_events = existing.get("xp_events", [])
         existing_streak_freezes = existing.get("streak_freezes", 1)
         existing_curriculum = existing.get("curriculum_progress", [])
 
+        existing_articles = existing_media = None
+        if touches_content:
+            content_snapshot = content_ref.get(transaction=transaction)
+            content_existing = content_snapshot.to_dict() if content_snapshot.exists else {}
+            existing_articles = content_existing.get("articles", existing.get("articles", []))
+            existing_media = content_existing.get("media", existing.get("media", []))
+
         existing_vocab, existing_articles, existing_media, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum = _merge_sync_payload(
             payload, existing_vocab, existing_articles, existing_media, existing_stats, existing_xp_events, existing_streak_freezes, existing_curriculum
         )
 
+        # Articles/media are no longer written onto the main doc - omitting
+        # them here also drops any legacy inline copy the next time this
+        # user syncs, so the main doc naturally shrinks post-migration.
         transaction.set(sync_ref, {
-            "vocabulary": existing_vocab, "articles": existing_articles, "media": existing_media, "stats": existing_stats,
+            "vocabulary": existing_vocab, "stats": existing_stats,
             "xp_events": existing_xp_events, "streak_freezes": existing_streak_freezes,
             "curriculum_progress": existing_curriculum, "updated_at": now,
         })
+        if touches_content:
+            transaction.set(content_ref, {
+                "articles": existing_articles, "media": existing_media, "updated_at": now,
+            })
         return existing_vocab, existing_xp_events
 
     existing_vocab, existing_xp_events = merge_sync(db.transaction())

@@ -5,6 +5,7 @@ import 'auth_service.dart';
 import 'analytics_service.dart';
 import 'app_logger.dart';
 import 'home_screen_widget_service.dart';
+import 'sync_service.dart';
 
 class ProfileService extends ChangeNotifier {
   static final ProfileService _instance = ProfileService._internal();
@@ -369,9 +370,30 @@ class ProfileService extends ChangeNotifier {
       await _checkStreakMilestones(prefs);
       await _checkDailyGoalXp(prefs);
       notifyListeners();
+      _requestQuickStatsSync();
     } catch (e) {
       AppLogger.error(
         "Error initializing profile",
+        error: e,
+        tag: 'ProfileService',
+      );
+    }
+  }
+
+  /// Kicks off a lightweight streak/stats-only cloud sync when the user is
+  /// authenticated. Decoupled from the heavier vocabulary sync so a streak
+  /// update (earned/consumed freeze, today's activity date) reaches the
+  /// server promptly instead of waiting behind vocabulary DB reads. Any
+  /// failure here (offline, auth not ready) must never propagate, since this
+  /// is a nice-to-have on top of the already-persisted local state.
+  void _requestQuickStatsSync() {
+    try {
+      if (AuthService().isAuthenticated) {
+        SyncService().requestQuickStatsSync();
+      }
+    } catch (e) {
+      AppLogger.error(
+        "Quick stats sync trigger skipped",
         error: e,
         tag: 'ProfileService',
       );
@@ -448,6 +470,7 @@ class ProfileService extends ChangeNotifier {
       await prefs.setInt(_keyTodaySaved, _todayWordsSaved);
       await _checkStreakMilestones(prefs);
       await _checkDailyGoalXp(prefs);
+      _requestQuickStatsSync();
     } catch (e) {
       AppLogger.error("Error saving activity", error: e, tag: 'ProfileService');
     }

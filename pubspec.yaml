@@ -70,6 +70,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   sqflite_common_ffi: ^2.3.0
+  # Used directly by widget tests to mock Firebase Core/Auth (see
+  # test/vocabulary_practice_progress_test.dart, test/daily_challenge_screen_test.dart) —
+  # declared explicitly rather than relying on them as transitive deps of firebase_core/firebase_auth.
+  firebase_core_platform_interface: ^6.0.0
+  firebase_auth_platform_interface: ^7.7.3
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

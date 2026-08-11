@@ -157,7 +157,7 @@ class CurriculumService extends ChangeNotifier {
 
     // Trigger sync per design doc §6: "after completing a lesson node".
     try {
-      SyncService().syncNow().catchError((_) => false);
+      SyncService().requestSync();
     } catch (_) {}
   }
 

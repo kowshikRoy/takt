@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'practice/daily_challenge_screen.dart';
 import 'practice/gender_practice_screen.dart';
 import 'practice/compound_practice_screen.dart';
 import 'practice/sentence_practice_screen.dart';
@@ -650,6 +651,62 @@ class HomeScreen extends StatelessWidget {
                                 isUnlocked
                                     ? 'Review your personalized Study Deck'
                                     : '$savedCount of 5 words in Study Deck so far',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: inkColor.withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 16,
+                          color: inkColor.withValues(alpha: 0.6),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Daily Challenge — one combined session pulling from vocabulary,
+                // gender, compound-word, and sentence-case practice instead of
+                // requiring four separate screen visits.
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const DailyChallengeScreen()),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(3),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: rustAccent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(color: rustAccent.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.bolt_rounded, color: rustAccent, size: 24),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Daily Challenge',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: inkColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'A mixed quiz: vocabulary, gender, compounds & grammar',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: inkColor.withValues(alpha: 0.65),

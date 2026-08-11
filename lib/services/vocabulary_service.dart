@@ -20,9 +20,11 @@ class VocabularyService extends ChangeNotifier {
   static const String _legacyStorageKey = 'user_vocabulary_list';
   static const String _webStorageKey = 'user_vocabulary_json_v1';
   static const String _deletedStorageKey = 'takt_deleted_vocabulary_ids';
+  static const String _dirtyStorageKey = 'takt_dirty_vocabulary_ids';
 
   final Map<String, SavedWord> _inMemoryWords = {};
   Set<String> _deletedWordIds = {};
+  Set<String> _dirtyWordIds = {};
   List<SavedWord> _cachedSavedWords = [];
   List<SavedWord> _cachedDueWords = [];
 
@@ -33,12 +35,20 @@ class VocabularyService extends ChangeNotifier {
 
   List<String> getDeletedWordIdsForSync() => _deletedWordIds.toList();
 
-  Future<void> clearDeletedWordIds() async {
-    _deletedWordIds.clear();
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_deletedStorageKey);
-    } catch (_) {}
+  /// Clears deletion tombstones. Pass the exact [ids] that were just
+  /// uploaded so a deletion made while that upload was in flight isn't
+  /// silently dropped; omit to wipe the whole set.
+  Future<void> clearDeletedWordIds([Iterable<String>? ids]) async {
+    if (ids == null) {
+      _deletedWordIds.clear();
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_deletedStorageKey);
+      } catch (_) {}
+      return;
+    }
+    _deletedWordIds.removeAll(ids);
+    await _persistDeletedWordIds();
   }
 
   Future<void> _loadDeletedWordIds() async {
@@ -53,6 +63,73 @@ class VocabularyService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_deletedStorageKey, _deletedWordIds.toList());
+    } catch (_) {}
+  }
+
+  /// Words changed locally (saved/edited/reviewed) since the last successful
+  /// sync - i.e. the only ones that need uploading. Kept separate from
+  /// "everything saved" so a sync only pushes what actually changed instead
+  /// of the whole vocabulary every time.
+  Future<List<SavedWord>> getDirtyWordsForSync() async {
+    if (_dirtyWordIds.isEmpty) return [];
+    if (kIsWeb) {
+      return _inMemoryWords.values
+          .where((w) => _dirtyWordIds.contains(w.id))
+          .toList();
+    }
+    final db = await database;
+    if (db == null) {
+      return _inMemoryWords.values
+          .where((w) => _dirtyWordIds.contains(w.id))
+          .toList();
+    }
+    const chunkSize = 500;
+    final ids = _dirtyWordIds.toList();
+    final result = <SavedWord>[];
+    for (var i = 0; i < ids.length; i += chunkSize) {
+      final chunk = ids.sublist(i, i + chunkSize > ids.length ? ids.length : i + chunkSize);
+      final placeholders = List.filled(chunk.length, '?').join(',');
+      final res = await db.query(
+        'saved_words',
+        where: 'id IN ($placeholders)',
+        whereArgs: chunk,
+      );
+      result.addAll(res.map((m) => SavedWord.fromMap(m)));
+    }
+    return result;
+  }
+
+  /// Clears dirty flags for the exact [ids] that were just uploaded, leaving
+  /// any word dirtied *during* that upload (e.g. another review came in
+  /// mid-request) still flagged for the next sync.
+  Future<void> clearDirtyWordIds(Iterable<String> ids) async {
+    _dirtyWordIds.removeAll(ids);
+    await _persistDirtyWordIds();
+  }
+
+  Future<void> _loadDirtyWordIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!prefs.containsKey(_dirtyStorageKey)) {
+        // First run under delta sync: nothing has been flagged dirty yet,
+        // but any vocabulary saved before this feature shipped may never
+        // have been uploaded as a delta, so seed the dirty set with
+        // everything currently on-device to make sure it still reaches the
+        // server on the next sync.
+        final existingIds = (await getAllSavedWords()).map((w) => w.id).toSet();
+        _dirtyWordIds = existingIds;
+        await _persistDirtyWordIds();
+        return;
+      }
+      final list = prefs.getStringList(_dirtyStorageKey) ?? [];
+      _dirtyWordIds = list.toSet();
+    } catch (_) {}
+  }
+
+  Future<void> _persistDirtyWordIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_dirtyStorageKey, _dirtyWordIds.toList());
     } catch (_) {}
   }
 
@@ -139,6 +216,7 @@ class VocabularyService extends ChangeNotifier {
       }
     }
 
+    await _loadDirtyWordIds();
     await refreshCache();
 
     // Auto-sync if user is authenticated
@@ -154,7 +232,7 @@ class VocabularyService extends ChangeNotifier {
   void _triggerCloudSync() {
     try {
       if (AuthService().isAuthenticated) {
-        SyncService().syncNow();
+        SyncService().requestSync();
       }
     } catch (e) {
       AppLogger.error("Cloud sync trigger skipped", error: e, tag: 'VocabularyService');
@@ -343,6 +421,8 @@ class VocabularyService extends ChangeNotifier {
     }
 
     if (triggerSync) {
+      _dirtyWordIds.add(wordToSave.id);
+      await _persistDirtyWordIds();
       _triggerCloudSync();
     }
     unawaited(HomeScreenWidgetService().updateWidgetData());
@@ -380,25 +460,48 @@ class VocabularyService extends ChangeNotifier {
     }
   }
 
-  /// Merges a word coming from the cloud into local storage.
-  Future<void> mergeWordFromSync(Map<String, dynamic> jsonMap) async {
-    final incoming = SavedWord.fromJson(jsonMap);
-    final cleanId = incoming.id.trim().toLowerCase();
-    final cleanWord = incoming.word.trim().toLowerCase();
+  /// Merges a batch of words coming from the cloud into local storage. Loads
+  /// the local vocabulary once instead of doing 1-2 DB round-trips per
+  /// remote item - matters because the server always returns the *full*
+  /// remote vocabulary on GET, regardless of how much was uploaded as a
+  /// delta. Only refreshes the cache once at the end, not per word.
+  Future<void> mergeWordsFromSync(List<Map<String, dynamic>> remoteItems) async {
+    if (remoteItems.isEmpty) return;
 
-    // Do not resurrect words marked as deleted locally
-    if (_deletedWordIds.contains(incoming.id) ||
-        _deletedWordIds.contains(cleanId) ||
-        _deletedWordIds.contains(incoming.word) ||
-        _deletedWordIds.contains(cleanWord)) {
-      return;
+    final localById = <String, SavedWord>{};
+    final localByWord = <String, SavedWord>{};
+    for (final w in await getAllSavedWords()) {
+      localById[w.id.trim().toLowerCase()] = w;
+      localByWord[w.word.trim().toLowerCase()] = w;
     }
 
-    final existing = await getSavedWord(incoming.id) ?? await getSavedWordByWord(incoming.word);
-    if (existing != null && _isAtLeastAsAdvanced(existing, incoming)) {
-      return;
+    bool anyChanged = false;
+    for (final jsonMap in remoteItems) {
+      final incoming = SavedWord.fromJson(jsonMap);
+      final cleanId = incoming.id.trim().toLowerCase();
+      final cleanWord = incoming.word.trim().toLowerCase();
+
+      // Do not resurrect words marked as deleted locally
+      if (_deletedWordIds.contains(incoming.id) ||
+          _deletedWordIds.contains(cleanId) ||
+          _deletedWordIds.contains(incoming.word) ||
+          _deletedWordIds.contains(cleanWord)) {
+        continue;
+      }
+
+      final existing = localById[cleanId] ?? localByWord[cleanWord];
+      if (existing != null && _isAtLeastAsAdvanced(existing, incoming)) {
+        continue;
+      }
+      await upsertWord(incoming, notify: false, triggerSync: false);
+      localById[cleanId] = incoming;
+      localByWord[cleanWord] = incoming;
+      anyChanged = true;
     }
-    await upsertWord(incoming, notify: true, triggerSync: false);
+
+    if (anyChanged) {
+      await refreshCache();
+    }
   }
 
   /// True if [local]'s review progress is at or ahead of [remote]'s, based
@@ -444,6 +547,12 @@ class VocabularyService extends ChangeNotifier {
     _deletedWordIds.add(idOrWord);
     _deletedWordIds.add(clean);
     await _persistDeletedWordIds();
+
+    // A word deleted before it was ever uploaded doesn't need to be pushed
+    // anymore - drop any leftover dirty flag for it.
+    if (_dirtyWordIds.remove(idOrWord) | _dirtyWordIds.remove(clean)) {
+      await _persistDirtyWordIds();
+    }
 
     await refreshCache();
     _triggerCloudSync();
