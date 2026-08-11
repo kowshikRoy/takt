@@ -1249,6 +1249,38 @@ class DictionaryService {
     return lower;
   }
 
+  /// Curates raw synonym/related-word rows (from the local `relations` table or a
+  /// Wiktionary fallback response) down to a small, prioritized set instead of dumping
+  /// every row a dictionary source ever listed: synonyms are kept ahead of broader
+  /// "related" terms, the headword itself and duplicates (case-insensitive) are dropped,
+  /// and the result is capped to [maxResults].
+  static List<Map<String, String>> curateRelatedWords({
+    required List<String> synonyms,
+    required List<String> related,
+    required String headword,
+    int maxResults = 8,
+  }) {
+    final headwordKey = headword.trim().toLowerCase();
+    final seen = <String>{};
+    final curated = <Map<String, String>>[];
+
+    void addAll(List<String> words, String type) {
+      for (final raw in words) {
+        final word = raw.trim();
+        if (word.isEmpty) continue;
+        final key = word.toLowerCase();
+        if (key == headwordKey || seen.contains(key)) continue;
+        seen.add(key);
+        curated.add({'word': word, 'type': type});
+      }
+    }
+
+    addAll(synonyms, 'synonym');
+    addAll(related, 'related');
+
+    return curated.length <= maxResults ? curated : curated.sublist(0, maxResults);
+  }
+
   /// Checks (and caches) whether the open dictionary DB has `forms` and `tags`
   /// tables. Older bundled schema versions and reduced test fixtures may lack
   /// them, so queries that join into them must degrade gracefully rather than
@@ -1490,6 +1522,8 @@ class DictionaryService {
             List<String> definitions = [];
             List<Map<String, String?>> examples = [];
             List<Map<String, dynamic>> forms = [];
+            List<String> synonyms = [];
+            List<String> antonyms = [];
 
             for (final entry in entries) {
               if (entry is Map<String, dynamic>) {
@@ -1607,6 +1641,20 @@ class DictionaryService {
                           }
                         }
                       }
+
+                      // Extract synonyms/antonyms (each a list of {"word": "..."} entries)
+                      void collectWordList(String key, List<String> into) {
+                        final raw = sense[key] as List<dynamic>?;
+                        if (raw == null) return;
+                        for (final item in raw) {
+                          final w = (item is Map ? item['word'] : item)?.toString().trim();
+                          if (w != null && w.isNotEmpty && !into.contains(w)) {
+                            into.add(w);
+                          }
+                        }
+                      }
+                      collectWordList('synonyms', synonyms);
+                      collectWordList('antonyms', antonyms);
                     }
                   }
                 }
@@ -1669,6 +1717,12 @@ class DictionaryService {
                 }
               } catch (_) {}
 
+              final curatedRelated = curateRelatedWords(
+                synonyms: synonyms,
+                related: const [],
+                headword: resolvedWord,
+              );
+
               final resultMap = {
                 'id': cachedId ?? -1,
                 'word': resolvedWord,
@@ -1681,8 +1735,11 @@ class DictionaryService {
                 'definitions': definitions,
                 'forms': forms,
                 'examples': examples,
-                'synonyms': <String>[],
-                'antonyms': <String>[],
+                'synonyms': curatedRelated
+                    .where((c) => c['type'] == 'synonym')
+                    .map((c) => c['word']!)
+                    .toList(),
+                'antonyms': antonyms,
                 'related': <String>[],
                 'source': 'wiktionary_fetched',
                 'sourceLabel': 'Wiktionary',
@@ -2405,6 +2462,45 @@ class DictionaryService {
         final bRank = b['freq_rank'] as int? ?? 999999;
         return aRank.compareTo(bRank);
       });
+    }
+
+    // Enrich the top results with synonym/related-word data from the local `relations`
+    // table (populated at DB-build time from Wiktionary sense data). Results that
+    // already carry synonym data — e.g. a Wiktionary fallback entry — are left as-is.
+    if (!kIsWeb) {
+      final relDb = await database;
+      if (relDb != null) {
+        for (final result in consolidatedResults.take(3)) {
+          final existingSynonyms = result['synonyms'];
+          if (existingSynonyms is List && existingSynonyms.isNotEmpty) continue;
+          final wordId = int.tryParse(result['id']?.toString() ?? '');
+          if (wordId == null || wordId < 0) continue;
+          try {
+            final relRows = await relDb.rawQuery(
+              'SELECT relation_type, related_word FROM relations WHERE word_id = ?',
+              [wordId],
+            );
+            if (relRows.isEmpty) continue;
+            final rawSynonyms = relRows
+                .where((r) => r['relation_type'] == 'synonym')
+                .map((r) => r['related_word'].toString())
+                .toList();
+            final rawRelated = relRows
+                .where((r) => r['relation_type'] != 'synonym')
+                .map((r) => r['related_word'].toString())
+                .toList();
+            final curated = curateRelatedWords(
+              synonyms: rawSynonyms,
+              related: rawRelated,
+              headword: result['word']?.toString() ?? cleanWord,
+            );
+            result['synonyms'] = curated.where((c) => c['type'] == 'synonym').map((c) => c['word']!).toList();
+            result['related'] = curated.where((c) => c['type'] == 'related').map((c) => c['word']!).toList();
+          } catch (_) {
+            // Older cached DB without a `relations` table — degrade silently.
+          }
+        }
+      }
     }
 
     return consolidatedResults;

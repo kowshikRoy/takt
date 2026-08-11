@@ -1618,13 +1618,95 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
   Widget _buildRelatedTab(
       BuildContext context, Map<String, dynamic> wordData) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Center(
-        child: Text(
-          'No related words available.',
-          style: TextStyle(color: colorScheme.onSurfaceVariant),
+    final synonyms = ((wordData['synonyms'] as List?) ?? [])
+        .map((w) => w.toString())
+        .where((w) => w.trim().isNotEmpty)
+        .toList();
+    final related = ((wordData['related'] as List?) ?? [])
+        .map((w) => w.toString())
+        .where((w) => w.trim().isNotEmpty)
+        .toList();
+
+    if (synonyms.isEmpty && related.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.hub_outlined, size: 36, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+              const SizedBox(height: 8),
+              Text(
+                'No related words available.',
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
+      );
+    }
+
+    Widget buildSection(String title, List<String> words) {
+      if (words.isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurfaceVariant,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: words.map((w) {
+                return InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => WordDetailScreen(word: w),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: colorScheme.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      w,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          buildSection('SYNONYMS', synonyms),
+          buildSection('RELATED WORDS', related),
+        ],
       ),
     );
   }
