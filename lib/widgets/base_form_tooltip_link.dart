@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/dictionary_service.dart';
+import '../services/haptic_service.dart';
 
-/// Renders [baseWord] with a dotted underline; tapping it fetches the
-/// word's meaning and shows it in a small popup anchored above the text.
-/// Used for inflected-form glosses like "plural of Temperatur" so the base
-/// word ("Temperatur") is a quick lookup instead of dead text.
+/// Renders [baseWord] highlighted (bold + primary color + dotted underline)
+/// alongside its bracketed meaning inline (e.g. "Haus (house, building)").
+/// Tapping it triggers haptic feedback and displays an anchored popup tooltip.
 class BaseFormTooltipLink extends StatefulWidget {
   final String baseWord;
   final TextStyle style;
@@ -20,9 +20,37 @@ class BaseFormTooltipLink extends StatefulWidget {
 }
 
 class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
+  static final Map<String, String> _meaningCache = {};
+
   OverlayEntry? _overlayEntry;
   String? _meaning;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final key = widget.baseWord.toLowerCase().trim();
+    if (_meaningCache.containsKey(key)) {
+      _meaning = _meaningCache[key];
+    } else {
+      _fetchMeaning();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant BaseFormTooltipLink oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.baseWord.toLowerCase().trim() !=
+        widget.baseWord.toLowerCase().trim()) {
+      final key = widget.baseWord.toLowerCase().trim();
+      if (_meaningCache.containsKey(key)) {
+        _meaning = _meaningCache[key];
+      } else {
+        _meaning = null;
+        _fetchMeaning();
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -35,48 +63,71 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
     _overlayEntry = null;
   }
 
+  static String _cleanShortMeaning(String raw) {
+    var clean = raw.trim();
+    // Remove bracketed grammar or lengthy parentheticals e.g. "(male or unspecified gender)"
+    clean = clean.replaceAll(RegExp(r'\s*\([^)]*\)\s*'), ' ').trim();
+    // Take the first 1-2 comma/semicolon items
+    final parts = clean.split(RegExp(r'[,;]\s*')).where((s) => s.trim().isNotEmpty).toList();
+    if (parts.length > 2) {
+      clean = '${parts[0]}, ${parts[1]}';
+    }
+    if (clean.length > 36) {
+      clean = '${clean.substring(0, 33)}...';
+    }
+    return clean;
+  }
+
+  Future<void> _fetchMeaning() async {
+    final key = widget.baseWord.toLowerCase().trim();
+    if (key.isEmpty) return;
+
+    try {
+      var results = await DictionaryService().lookupWordFast(widget.baseWord);
+      if (results.isEmpty) {
+        results = await DictionaryService().lookupConsolidatedWord(widget.baseWord);
+      }
+      String? found;
+      if (results.isNotEmpty) {
+        final defs = results.first['definitions'];
+        if (defs is List && defs.isNotEmpty) {
+          found = defs.first.toString();
+        } else if (results.first['definition'] != null) {
+          found = results.first['definition'].toString();
+        }
+      }
+      if (found != null && found.isNotEmpty) {
+        _meaningCache[key] = found;
+        if (mounted) {
+          setState(() {
+            _meaning = found;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _toggleOverlay() async {
     if (_overlayEntry != null) {
       _removeOverlay();
       return;
     }
 
-    _loading = true;
-    _meaning = null;
+    _loading = _meaning == null;
     _showOverlay();
 
-    String? meaning;
-    try {
-      // lookupWordFast is a single, unenriched SQL query — plenty for a quick
-      // preview and much faster than the full multi-source consolidated lookup.
-      var results = await DictionaryService().lookupWordFast(widget.baseWord);
-      if (results.isEmpty) {
-        // Local miss (or web, where there's no local sqflite DB at all) — fall
-        // back to the slower but more complete lookup (Wiktionary, etc.).
-        results = await DictionaryService().lookupConsolidatedWord(widget.baseWord);
-      }
-      if (results.isNotEmpty) {
-        final defs = results.first['definitions'];
-        if (defs is List && defs.isNotEmpty) {
-          meaning = defs.first.toString();
-        } else if (results.first['definition'] != null) {
-          meaning = results.first['definition'].toString();
-        }
-      }
-    } catch (_) {
-      // fall through to "No definition found."
+    if (_meaning == null) {
+      await _fetchMeaning();
+      if (!mounted) return;
+      _loading = false;
+      _overlayEntry?.markNeedsBuild();
     }
-
-    if (!mounted) return;
-    _loading = false;
-    _meaning = meaning ?? 'No definition found.';
-    _overlayEntry?.markNeedsBuild();
   }
 
   void _showOverlay() {
     final colorScheme = Theme.of(context).colorScheme;
 
-    const double tooltipMaxWidth = 240;
+    const double tooltipMaxWidth = 260;
     const double horizontalPadding = 12;
     const double gap = 8;
     const double estimatedTooltipHeight = 74;
@@ -84,8 +135,6 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
     final Size screenSize = mediaQuery.size;
     final double topSafeArea = mediaQuery.padding.top;
 
-    // Default to just off-screen-left; overwritten below once we can measure
-    // the target word's actual position.
     double left = horizontalPadding;
     double? top;
     double? bottom;
@@ -104,12 +153,8 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
       final bool roomAbove =
           target.dy - estimatedTooltipHeight - gap >= topSafeArea;
       if (roomAbove) {
-        // Preferred: anchor the tooltip's bottom edge just above the word,
-        // letting it grow upward — no need to know its exact height up front.
         bottom = screenSize.height - target.dy + gap;
       } else {
-        // Not enough room above (word near the top of the screen) — fall
-        // back below the word instead of clipping off the top.
         top = target.dy + targetSize.height + gap;
       }
     }
@@ -132,7 +177,7 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
                 color: Colors.transparent,
                 child: ConstrainedBox(
                   constraints:
-                      const BoxConstraints(maxWidth: tooltipMaxWidth, minWidth: 120),
+                      const BoxConstraints(maxWidth: tooltipMaxWidth, minWidth: 140),
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -154,7 +199,7 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
                         Text(
                           widget.baseWord,
                           style: TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
                             color: colorScheme.onInverseSurface,
                           ),
@@ -171,7 +216,7 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
                           )
                         else
                           Text(
-                            _meaning ?? '',
+                            _meaning ?? 'No definition found.',
                             style: TextStyle(
                               fontSize: 12,
                               color: colorScheme.onInverseSurface
@@ -193,18 +238,45 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
 
   @override
   Widget build(BuildContext context) {
-    final underlineColor = Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final highlightColor = colorScheme.primary;
+
     return GestureDetector(
-      onTap: _toggleOverlay,
-      child: Text(
-        widget.baseWord,
-        style: widget.style.copyWith(
-          decoration: TextDecoration.underline,
-          decorationStyle: TextDecorationStyle.dotted,
-          decorationColor: underlineColor,
-          decorationThickness: 2.2,
+      onTap: () {
+        AppHaptics.selection();
+        _toggleOverlay();
+      },
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: widget.baseWord,
+              style: widget.style.copyWith(
+                fontWeight: FontWeight.bold,
+                color: highlightColor,
+                decoration: TextDecoration.underline,
+                decorationStyle: TextDecorationStyle.dotted,
+                decorationColor: highlightColor.withValues(alpha: 0.6),
+                decorationThickness: 1.8,
+              ),
+            ),
+            if (_meaning != null &&
+                _meaning!.isNotEmpty &&
+                _meaning != 'No definition found.') ...[
+              TextSpan(
+                text: ' (${_cleanShortMeaning(_meaning!)})',
+                style: widget.style.copyWith(
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface.withValues(alpha: 0.72),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
 }
+

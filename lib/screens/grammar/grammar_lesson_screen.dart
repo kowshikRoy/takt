@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:takt/l10n/app_localizations.dart';
 import '../../models/grammar_lesson.dart';
 import '../../services/grammar_service.dart';
+import '../../services/haptic_service.dart';
 import '../../theme/books_modernist_style.dart';
 import '../../widgets/capped_width.dart';
 import '../../widgets/grammar/explanation_card.dart';
@@ -34,6 +35,7 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
   }
 
   Future<void> _handleComplete() async {
+    AppHaptics.success();
     final success = await _grammarService.markLessonCompleted(widget.lesson.id);
     if (!mounted) return;
 

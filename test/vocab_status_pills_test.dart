@@ -66,5 +66,28 @@ void main() {
       expect(find.text('Study Deck'), findsOneWidget);
       expect(find.text('Known ✓'), findsOneWidget);
     });
+
+    testWidgets('renders Deck, Known, and Explore in a single line when onExplore is provided', (tester) async {
+      bool explored = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VocabStatusPills(
+              currentCategory: null,
+              onCategorySelected: (_) {},
+              onExplore: () => explored = true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Deck'), findsOneWidget);
+      expect(find.text('Known'), findsOneWidget);
+      expect(find.text('Explore'), findsOneWidget);
+
+      await tester.tap(find.text('Explore'));
+      await tester.pumpAndSettle();
+      expect(explored, isTrue);
+    });
   });
 }

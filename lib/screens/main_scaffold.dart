@@ -8,6 +8,7 @@ import 'dictionary_screen.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import '../services/vocabulary_service.dart';
+import '../services/haptic_service.dart';
 import '../theme/breakpoints.dart';
 import '../widgets/auth_sync_dialog.dart';
 import '../widgets/celebration_overlay.dart';
@@ -54,6 +55,9 @@ class _MainScaffoldState extends State<MainScaffold>
   ];
 
   void _onItemTapped(int index) {
+    if (_selectedIndex != index) {
+      AppHaptics.selection();
+    }
     setState(() {
       _selectedIndex = index;
     });

@@ -256,40 +256,27 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
             onCategorySelected: _toggleCategory,
             contextSentence: widget.contextSentence,
             onWordEdited: () => _loadSavedState(),
-          ),
-
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                final wordToExplore = word;
-                final wordDataToPass = Map<String, dynamic>.from(activeDetails);
-                Navigator.of(context).push(
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        WordDetailScreen(
-                      word: wordToExplore,
-                      wordData: wordDataToPass,
-                    ),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
-                    },
-                    transitionDuration: const Duration(milliseconds: 200),
+            onExplore: () {
+              final wordToExplore = word;
+              final wordDataToPass = Map<String, dynamic>.from(activeDetails);
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      WordDetailScreen(
+                    word: wordToExplore,
+                    wordData: wordDataToPass,
                   ),
-                );
-              },
-              icon: const Icon(Icons.menu_book_rounded, size: 18),
-              label: const Text('Explore in Dictionary →'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              ),
-            ),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 200),
+                ),
+              );
+            },
           ),
         ],
       ).animate().fade(duration: 200.ms).slideY(begin: 0.1, end: 0),

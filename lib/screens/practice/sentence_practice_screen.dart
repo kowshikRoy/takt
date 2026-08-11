@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/sentence_exercise.dart';
 import '../../services/sentence_practice_service.dart';
 import '../../services/sound_service.dart';
+import '../../services/haptic_service.dart';
 import '../../services/profile_service.dart';
 import '../../widgets/capped_width.dart';
 
@@ -39,13 +40,16 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
 
     if (_isCorrect) {
       SoundService().playCorrect();
+      AppHaptics.success();
     } else {
       SoundService().playIncorrect();
+      AppHaptics.error();
     }
   }
 
   void _nextExercise() {
     if (_currentIndex < _exercises.length - 1) {
+      AppHaptics.light();
       setState(() {
         _currentIndex++;
         _selectedOption = null;
@@ -53,6 +57,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
         _isCorrect = false;
       });
     } else {
+      AppHaptics.heavy();
       // Finished
       Navigator.of(context).pop();
     }
@@ -536,6 +541,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
   }) {
     return OutlinedButton(
       onPressed: () {
+        AppHaptics.selection();
         setState(() {
           _selectedOption = text;
         });

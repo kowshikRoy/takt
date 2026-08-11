@@ -4,6 +4,7 @@ import '../../services/vocabulary_service.dart';
 import '../../services/dictionary_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/sound_service.dart';
+import '../../services/haptic_service.dart';
 import '../../services/profile_service.dart';
 import '../../services/gamification_service.dart';
 import '../../theme/app_theme.dart';
@@ -102,11 +103,15 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
     if (_dueWords.isEmpty || _currentIndex >= _dueWords.length) return;
     final currentWord = _dueWords[_currentIndex];
 
-    // 1. Auditory feedback
+    // 1. Auditory & Haptic feedback
     if (rating == ReviewRating.again) {
       SoundService().playIncorrect();
-    } else {
+      AppHaptics.error();
+    } else if (rating == ReviewRating.good || rating == ReviewRating.easy) {
       SoundService().playCorrect();
+      AppHaptics.success();
+    } else {
+      AppHaptics.light();
     }
 
     // 2. Persist SRS Review in VocabularyService & ProfileService
@@ -115,6 +120,10 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
 
     // 3. Move to next card
     if (mounted) {
+      final isLastCard = _currentIndex + 1 >= _dueWords.length;
+      if (isLastCard) {
+        AppHaptics.heavy();
+      }
       setState(() {
         _showAnswer = false;
         _currentIndex++;
@@ -353,6 +362,7 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
           Expanded(
             child: InkWell(
               onTap: () {
+                AppHaptics.medium();
                 setState(() {
                   _showAnswer = !_showAnswer;
                 });

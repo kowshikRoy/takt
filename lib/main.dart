@@ -18,6 +18,7 @@ import 'services/profile_service.dart';
 import 'services/gamification_service.dart';
 import 'services/curriculum_service.dart';
 import 'services/sound_service.dart';
+import 'services/haptic_service.dart';
 import 'services/notification_service.dart';
 import 'services/book_guide_service.dart';
 import 'services/discovery_service.dart';
@@ -68,6 +69,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => GamificationService()),
             ChangeNotifierProvider(create: (_) => CurriculumService()),
             ChangeNotifierProvider(create: (_) => SoundService()),
+            ChangeNotifierProvider(create: (_) => HapticService()),
             ChangeNotifierProvider(create: (_) => NotificationService()),
             ChangeNotifierProvider(create: (_) => BookGuideService()),
             ChangeNotifierProvider(create: (_) => DiscoveryService()),

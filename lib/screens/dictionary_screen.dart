@@ -1409,22 +1409,41 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     'degree', 'comparative', 'superlative',
     'person', 'present', 'past', 'imperative', 'subjunctive',
     'indicative', 'preterite', 'perfect', 'tense',
+    'equivalent', 'diminutive', 'spelling', 'form', 'agent',
+    'gerund', 'nominalization', 'verbal', 'synonym', 'abbreviation',
   ];
 
   /// If [d] is an inflected-form gloss (e.g. "plural of Temperatur",
   /// "genitive singular of Haus", "third-person singular present of
-  /// gehen"), splits it into the leading grammatical label and the base
-  /// word it points to, so the base word can be rendered as a tappable
-  /// lookup instead of dead text.
-  ({String prefix, String baseWord})? _parseFormOfDefinition(
+  /// gehen", "inflection of schön:"), splits it into the leading grammatical label,
+  /// the base word it points to, and any optional trailing qualifier.
+  ({String prefix, String baseWord, String? suffix})? _parseFormOfDefinition(
     String d,
     String headword,
   ) {
     final trimmed = d.trim();
     if (trimmed.isEmpty) return null;
 
+    // Pattern 1: "inflection of <base>[: ...]"
+    final matchInflection = RegExp(
+      r'^(inflection\s+of\s+)([A-ZÄÖÜa-zäöüß][\wäöüÄÖÜß-]*)(?:[:\s\n]([\s\S]*))?$',
+      caseSensitive: false,
+    ).firstMatch(trimmed);
+    if (matchInflection != null) {
+      final baseWord = matchInflection.group(2)!.trim();
+      if (baseWord.isNotEmpty && baseWord.toLowerCase() != headword.toLowerCase()) {
+        final suffix = matchInflection.group(3)?.trim();
+        return (
+          prefix: matchInflection.group(1)!,
+          baseWord: baseWord,
+          suffix: (suffix != null && suffix.isNotEmpty) ? ': $suffix' : null,
+        );
+      }
+    }
+
+    // Pattern 2: "<prefix...> of <base>[: ...]"
     final match = RegExp(
-      r'^(.*\bof\s+)([A-ZÄÖÜa-zäöüß][\wäöüÄÖÜß-]*)[.:\s]*$',
+      r'^(.*\bof\s+)([A-ZÄÖÜa-zäöüß][\wäöüÄÖÜß-]*)(?:[:\s]([\s\S]*))?$',
       caseSensitive: false,
     ).firstMatch(trimmed);
     if (match == null) return null;
@@ -1439,7 +1458,12 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     if (baseWord.isEmpty || baseWord.toLowerCase() == headword.toLowerCase()) {
       return null;
     }
-    return (prefix: prefix, baseWord: baseWord);
+    final suffix = match.group(3)?.trim();
+    return (
+      prefix: prefix,
+      baseWord: baseWord,
+      suffix: (suffix != null && suffix.isNotEmpty) ? ': $suffix' : null,
+    );
   }
 
   Widget _buildMainCard(BuildContext context, Map<String, dynamic> wordData) {
@@ -1647,6 +1671,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                                 style: defStyle,
                                               ),
                                             ),
+                                            if (formOf.suffix != null)
+                                              TextSpan(
+                                                text: ' ${formOf.suffix}',
+                                                style: defStyle.copyWith(
+                                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                                  fontSize: (defStyle.fontSize ?? 14.5) * 0.92,
+                                                ),
+                                              ),
                                           ],
                                         ),
                                       );

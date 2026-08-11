@@ -5,6 +5,7 @@ import '../../services/dictionary_service.dart';
 import '../../services/vocabulary_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/sound_service.dart';
+import '../../services/haptic_service.dart';
 import '../../models/saved_word.dart';
 import '../../widgets/capped_width.dart';
 import 'gender_rules_guide_screen.dart';
@@ -747,8 +748,10 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
 
     if (isCorrect) {
       SoundService().playCorrect();
+      AppHaptics.success();
     } else {
       SoundService().playIncorrect();
+      AppHaptics.error();
     }
 
     // Speak German article + noun + plural (e.g. "das Haus, die Häuser"),

@@ -7,6 +7,7 @@ import '../services/dictionary_service.dart';
 import '../services/gemini_api_key_store.dart';
 import '../services/profile_service.dart';
 import '../services/sound_service.dart';
+import '../services/haptic_service.dart';
 import '../services/notification_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
@@ -474,6 +475,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ],
+              );
+            },
+          ),
+          Divider(height: 1, indent: 56, color: inkColor.withValues(alpha: 0.1)),
+
+          // Haptic Feedback
+          Consumer<HapticService>(
+            builder: (context, hapticService, _) {
+              return SwitchListTile(
+                title: Text('Haptic Feedback', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: inkColor)),
+                subtitle: Text('Tactile vibrations for taps, card flips, and practice reviews', style: TextStyle(fontSize: 12, color: inkColor.withValues(alpha: 0.6))),
+                secondary: Icon(Icons.vibration_rounded, color: rustAccent, size: 20),
+                value: hapticService.enabled,
+                onChanged: (val) {
+                  hapticService.setEnabled(val);
+                  if (val) AppHaptics.medium();
+                },
               );
             },
           ),

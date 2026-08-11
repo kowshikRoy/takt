@@ -6,6 +6,7 @@ import '../models/saved_word.dart';
 import '../services/tts_service.dart';
 import '../services/dictionary_service.dart';
 import '../services/goethe_curriculum_service.dart';
+import '../services/haptic_service.dart';
 import 'vocab_status_pills.dart';
 import 'noun_headword_title.dart';
 import 'edit_word_dialog.dart';
@@ -22,6 +23,7 @@ class WordHeaderCard extends StatelessWidget {
   final String? ipa;
   final bool showStatusPills;
   final VoidCallback? onWordEdited;
+  final VoidCallback? onExplore;
   final bool showSpeakerButton;
 
   WordHeaderCard({
@@ -36,6 +38,7 @@ class WordHeaderCard extends StatelessWidget {
     this.ipa,
     this.showStatusPills = true,
     this.onWordEdited,
+    this.onExplore,
     this.showSpeakerButton = true,
   });
 
@@ -210,27 +213,48 @@ class WordHeaderCard extends StatelessWidget {
   }
 
   /// Grammatical labels that mark a definition as an inflected-form gloss
-  /// (noun cases/plural, and verb person/tense/mood forms) rather than an
-  /// ordinary dictionary sense.
+  /// (noun cases/plural, verb person/tense/mood, adjective degrees, and derivations)
+  /// rather than an ordinary dictionary sense.
   static const _grammaticalFormKeywords = [
     'strong', 'weak', 'mixed', 'inflection', 'participle', 'plural',
     'genitive', 'dative', 'accusative', 'nominative', 'singular',
     'degree', 'comparative', 'superlative',
     'person', 'present', 'past', 'imperative', 'subjunctive',
     'indicative', 'preterite', 'perfect', 'tense',
+    'equivalent', 'diminutive', 'spelling', 'form', 'agent',
+    'gerund', 'nominalization', 'verbal', 'synonym', 'abbreviation',
   ];
 
   /// If [d] is an inflected-form gloss (e.g. "plural of Temperatur",
   /// "genitive singular of Haus", "third-person singular present of
-  /// gehen"), splits it into the leading grammatical label and the base
-  /// word it points to, so the base word can be rendered as a tappable
-  /// lookup instead of dead text.
-  ({String prefix, String baseWord})? _parseFormOfDefinition(String d) {
+  /// gehen", "inflection of schön:"), splits it into the leading grammatical label,
+  /// the base word it points to, and any optional trailing qualifier.
+  ({String prefix, String baseWord, String? suffix})? _parseFormOfDefinition(String d) {
     final trimmed = d.trim();
     if (trimmed.isEmpty) return null;
 
+    final headword = (wordData['word']?.toString() ?? '').trim();
+
+    // Pattern 1: "inflection of <base>[: ...]"
+    final matchInflection = RegExp(
+      r'^(inflection\s+of\s+)([A-ZÄÖÜa-zäöüß][\wäöüÄÖÜß-]*)(?:[:\s\n]([\s\S]*))?$',
+      caseSensitive: false,
+    ).firstMatch(trimmed);
+    if (matchInflection != null) {
+      final baseWord = matchInflection.group(2)!.trim();
+      if (baseWord.isNotEmpty && baseWord.toLowerCase() != headword.toLowerCase()) {
+        final suffix = matchInflection.group(3)?.trim();
+        return (
+          prefix: matchInflection.group(1)!,
+          baseWord: baseWord,
+          suffix: (suffix != null && suffix.isNotEmpty) ? ': $suffix' : null,
+        );
+      }
+    }
+
+    // Pattern 2: "<prefix...> of <base>[: ...]"
     final match = RegExp(
-      r'^(.*\bof\s+)([A-ZÄÖÜa-zäöüß][\wäöüÄÖÜß-]*)[.:\s]*$',
+      r'^(.*\bof\s+)([A-ZÄÖÜa-zäöüß][\wäöüÄÖÜß-]*)(?:[:\s]([\s\S]*))?$',
       caseSensitive: false,
     ).firstMatch(trimmed);
     if (match == null) return null;
@@ -242,11 +266,15 @@ class WordHeaderCard extends StatelessWidget {
     if (!looksLikeFormOf) return null;
 
     final baseWord = match.group(2)!.trim();
-    final headword = (wordData['word']?.toString() ?? '').trim();
     if (baseWord.isEmpty || baseWord.toLowerCase() == headword.toLowerCase()) {
       return null;
     }
-    return (prefix: prefix, baseWord: baseWord);
+    final suffix = match.group(3)?.trim();
+    return (
+      prefix: prefix,
+      baseWord: baseWord,
+      suffix: (suffix != null && suffix.isNotEmpty) ? ': $suffix' : null,
+    );
   }
 
   String _extractSingleSentence(String rawText, String targetWord) {
@@ -467,6 +495,7 @@ class WordHeaderCard extends StatelessWidget {
                 constraints: const BoxConstraints(),
                 icon: Icon(Icons.volume_up_rounded, size: 20, color: genderColor),
                 onPressed: () {
+                  AppHaptics.light();
                   _ttsService.speak(buildSpeakText(wordData), lang: 'de-DE');
                 },
               ),
@@ -585,6 +614,14 @@ class WordHeaderCard extends StatelessWidget {
                                       style: defStyle,
                                     ),
                                   ),
+                                  if (formOf.suffix != null)
+                                    TextSpan(
+                                      text: ' ${formOf.suffix}',
+                                      style: defStyle.copyWith(
+                                        color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                        fontSize: (defStyle.fontSize ?? 14.5) * 0.92,
+                                      ),
+                                    ),
                                 ],
                               ),
                             );
@@ -678,7 +715,7 @@ class WordHeaderCard extends StatelessWidget {
           ),
         ],
 
-        // Vocabulary Status Bar (Study Deck & Known)
+        // Vocabulary Status Bar (In Deck, Known, Explore)
         if (showStatusPills) ...[
           const SizedBox(height: 16),
           VocabStatusPills(
@@ -689,6 +726,7 @@ class WordHeaderCard extends StatelessWidget {
                     ? VocabCategory.reviewLater
                     : null),
             onCategorySelected: onCategorySelected,
+            onExplore: onExplore,
           ),
         ],
       ],

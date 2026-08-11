@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'glance_word_sheet.dart';
+import '../services/haptic_service.dart';
 
 class InteractiveGermanText extends StatefulWidget {
   final String text;
@@ -72,6 +73,7 @@ class _InteractiveGermanTextState extends State<InteractiveGermanText> {
       if (word != null && word.isNotEmpty) {
         final recognizer = TapGestureRecognizer()
           ..onTap = () {
+            AppHaptics.selection();
             GlanceWordSheet.show(
               context,
               word: word,
