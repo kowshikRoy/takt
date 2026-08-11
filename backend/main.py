@@ -752,11 +752,11 @@ def get_media_info(url: str):
         if yt_meta.get('thumbnail'):
             thumbnail = yt_meta['thumbnail']
 
+    resolved_media_type = None
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             if info:
-                direct_url = info.get('url', url)
                 if info.get('title'):
                     title = info.get('title')
                 if info.get('thumbnail'):
@@ -764,11 +764,30 @@ def get_media_info(url: str):
                 subs_dict = info.get('subtitles') or {}
                 auto_subs_dict = info.get('automatic_captions') or {}
                 requested_subs = info.get('requested_subtitles') or {}
-                
+
+                # yt-dlp doesn't populate the top-level info['url'] for YouTube without an
+                # explicit format selector — `info.get('url', url)` silently falls back to the
+                # original page link almost every time this path runs, discarding the perfectly
+                # playable format list right there in info['formats']. Prefer a muxed (audio+
+                # video) format when available, then a plain audio format, and only fall back to
+                # the page URL when neither exists (a genuine "stream not found").
                 formats = info.get('formats', [])
                 audio_fmts = [f for f in formats if f.get('acodec') != 'none' and f.get('url')]
                 if audio_fmts:
                     audio_stream_url = audio_fmts[0]['url']
+
+                muxed_fmts = [
+                    f for f in formats
+                    if f.get('acodec') not in (None, 'none') and f.get('vcodec') not in (None, 'none') and f.get('url')
+                ]
+                if muxed_fmts:
+                    direct_url = muxed_fmts[-1]['url']
+                    resolved_media_type = 'video'
+                elif audio_stream_url:
+                    direct_url = audio_stream_url
+                    resolved_media_type = 'audio'
+                else:
+                    direct_url = info.get('url', url)
     except Exception as e:
         print(f"Error extracting metadata from yt-dlp: {e}")
 
@@ -778,6 +797,7 @@ def get_media_info(url: str):
     return {
         'url': direct_url,
         'audio_stream_url': audio_stream_url or direct_url,
+        'media_type': resolved_media_type,
         'title': title,
         'thumbnail': thumbnail,
         'subtitles': subs_dict,
@@ -1194,7 +1214,7 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
         subtitles = []
         audio_stream_url = None
         media_info = {}
-        innertube_media_type = None
+        resolved_media_type = None
         if innertube_data:
             if innertube_data.get('title') and innertube_data['title'] not in ['German Lesson', 'Media']:
                 title = innertube_data['title']
@@ -1203,7 +1223,7 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
             subtitles = innertube_data.get('subtitles') or []
             media_url = innertube_data['url']
             audio_stream_url = innertube_data.get('audio_stream_url')
-            innertube_media_type = innertube_data.get('media_type')
+            resolved_media_type = innertube_data.get('media_type')
         else:
             update_task_stage(task_id, "Extracting video title & thumbnail...", 35)
             media_info = await asyncio.to_thread(get_media_info, url)
@@ -1213,6 +1233,7 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
             if media_info.get('thumbnail'):
                 thumbnail = media_info['thumbnail']
             audio_stream_url = media_info.get('audio_stream_url')
+            resolved_media_type = media_info.get('media_type')
 
         try:
             # 2. Fetch direct CDN VTT subtitle URL extracted from get_media_info
@@ -1274,11 +1295,11 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
         except Exception as e:
             print(f"Could not fetch subtitles, falling back to transcription. Error: {e}")
 
-        # `innertube_media_type` reflects what `media_url` actually points to when InnerTube
-        # resolved a real playable stream (audio-only if no muxed video format was available) —
-        # only relevant when subtitles were already found and the Whisper/get_media_type path
-        # below never runs to determine it for us.
-        media_type = innertube_media_type or 'video'
+        # `resolved_media_type` reflects what `media_url` actually points to when InnerTube or
+        # yt-dlp resolved a real playable stream (audio-only if no muxed video format was
+        # available) — only relevant when subtitles were already found and the Whisper/
+        # get_media_type path below never runs to determine it for us.
+        media_type = resolved_media_type or 'video'
         if not subtitles:
             # 0. If the client holds its own Gemini key, pause here and let it transcribe
             #    directly instead of spending the server's shared Gemini quota.
@@ -1292,7 +1313,7 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
                     "media_url": media_url,
                     "media_info": media_info,
                     "audio_stream_url": audio_stream_url,
-                    "media_type": innertube_media_type,
+                    "media_type": resolved_media_type,
                 }
                 update_task_stage(task_id, "Waiting for on-device Gemini transcription...", 80)
                 tasks[task_id]["status"] = TaskStatus.AWAITING_CLIENT_TRANSCRIPTION
