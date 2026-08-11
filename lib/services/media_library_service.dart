@@ -26,6 +26,7 @@ class MediaLibraryService extends ChangeNotifier {
 
   final BackendService _backendService = BackendService();
   final Map<String, Timer> _pollingTimers = {};
+  DateTime? _lastPollingPersistTime;
   final Set<String> _transcribingTaskIds = {};
 
   List<Article> _importedArticles = [];
@@ -387,10 +388,18 @@ class MediaLibraryService extends ChangeNotifier {
     if (_pollingTimers.containsKey(taskId)) return;
 
     int pollAttempts = 0;
-    const maxPollAttempts = 80; // 80 * 3s = 4 minutes maximum polling
+    // 300 * 3s = 15 minutes maximum polling — long enough for the Whisper fallback on long
+    // videos and for the client-side BYOK transcription+TTS pipeline below.
+    const maxPollAttempts = 300;
     final normalized = normalizeMediaUrl(originalUrl);
 
     final timer = Timer.periodic(const Duration(seconds: 3), (t) async {
+      // While actively transcribing client-side with the user's own Gemini key, that work is
+      // already self-bounded by its own per-call timeouts and retries (see
+      // GeminiTranscriptionService) — don't let unrelated timer ticks racing ahead of it trip
+      // the overall timeout and abandon work that's still legitimately running.
+      if (_transcribingTaskIds.contains(taskId)) return;
+
       pollAttempts++;
       if (pollAttempts > maxPollAttempts) {
         t.cancel();
@@ -445,14 +454,18 @@ class MediaLibraryService extends ChangeNotifier {
         if (_transcribingTaskIds.contains(taskId)) return;
         _transcribingTaskIds.add(taskId);
 
-        if (index != -1) {
-          final current = _processedVideos[index];
-          _processedVideos[index] = ProcessedVideo(
+        void updateStage(String message) {
+          final i = _processedVideos.indexWhere(
+            (v) => v.taskId == taskId || v.id == taskId || normalizeMediaUrl(v.url) == normalized,
+          );
+          if (i == -1) return;
+          final current = _processedVideos[i];
+          _processedVideos[i] = ProcessedVideo(
             id: taskId,
             taskId: taskId,
             url: originalUrl,
             status: ProcessingStatus.transcribing,
-            stageMessage: 'Transcribing with your Gemini key...',
+            stageMessage: message,
             progressPercentage: progressPct > 0 ? progressPct : current.progressPercentage,
             subtitles: current.subtitles,
             videoUrl: current.videoUrl,
@@ -463,6 +476,8 @@ class MediaLibraryService extends ChangeNotifier {
           );
           notifyListeners();
         }
+
+        updateStage('Transcribing with your Gemini key...');
 
         try {
           final apiKey = await GeminiApiKeyStore.getKey();
@@ -489,7 +504,7 @@ class MediaLibraryService extends ChangeNotifier {
           final updatedTitle = current.title?.isNotEmpty == true ? current.title : (incomingTitle ?? current.title);
           final updatedThumbnail = incomingThumbnail ?? current.thumbnail;
 
-          if (current.stageMessage != stageMsg || 
+          if (current.stageMessage != stageMsg ||
               current.progressPercentage != progressPct ||
               current.title != updatedTitle ||
               current.thumbnail != updatedThumbnail) {
@@ -507,8 +522,18 @@ class MediaLibraryService extends ChangeNotifier {
               title: updatedTitle,
               category: current.category,
             );
+            // UI updates immediately via notifyListeners regardless; the full-library JSON
+            // write to disk is throttled since these are transient progress-percentage ticks
+            // (every ~3s while a video processes) — the server is the source of truth for
+            // task status, so losing a few seconds of progress display on an app kill is fine,
+            // and terminal states (completed/failed below) always persist immediately anyway.
             notifyListeners();
-            await _saveProcessedVideos();
+            final now = DateTime.now();
+            if (_lastPollingPersistTime == null ||
+                now.difference(_lastPollingPersistTime!) >= const Duration(seconds: 10)) {
+              _lastPollingPersistTime = now;
+              await _saveProcessedVideos();
+            }
           }
         }
       } else if (statusStr == 'completed') {

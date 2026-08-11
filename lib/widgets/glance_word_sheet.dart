@@ -101,6 +101,19 @@ class _GlanceWordSheetState extends State<GlanceWordSheet> {
         ? widget.detailsList!.first['pos']?.toString()
         : null;
 
+    // Paint something immediately with the cheap SQLite-only lookup, then upgrade in the
+    // background to the full context/pos-aware (WSD) result once it's ready — the sheet
+    // shouldn't block opening on the slow Wiktionary/NMT/WSD pipeline every time a word is
+    // tapped, but the final displayed sense should still reflect that context-aware lookup.
+    if (_detailsList.isEmpty) {
+      final fastDetails = await dictService.lookupWordFast(word);
+      if (mounted && fastDetails.isNotEmpty && _detailsList.isEmpty) {
+        setState(() {
+          _detailsList = List.from(fastDetails);
+        });
+      }
+    }
+
     final dbDetails = await dictService.lookupConsolidatedWord(
       word,
       pos: contextualPos,

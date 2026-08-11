@@ -161,10 +161,13 @@ class SrsRetentionMatrixCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           SizedBox(
-            width: 50,
+            width: 68,
             child: Text(
               '${stage.count} ($percent%)',
               textAlign: TextAlign.end,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,

@@ -83,8 +83,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mediaLibraryService = Provider.of<MediaLibraryService>(context);
-
     return DefaultTabController(
       length: 2,
       child: Builder(
@@ -120,12 +118,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final bool isDesktop = constraints.maxWidth > 700;
-                            return isDesktop
-                                ? _buildDesktopLayout(context, mediaLibraryService)
-                                : _buildMobileLayout(context, mediaLibraryService);
+                        // Scoped to just the Library tab's content — MediaLibraryService's
+                        // notifyListeners() fires every ~3s while a video is processing, and
+                        // this Consumer keeps that rebuild confined to this subtree instead of
+                        // the whole Scaffold (TabBar, FAB, and the Path tab included).
+                        Consumer<MediaLibraryService>(
+                          builder: (context, mediaLibraryService, _) {
+                            return LayoutBuilder(
+                              builder: (context, constraints) {
+                                final bool isDesktop = constraints.maxWidth > 700;
+                                return isDesktop
+                                    ? _buildDesktopLayout(context, mediaLibraryService)
+                                    : _buildMobileLayout(context, mediaLibraryService);
+                              },
+                            );
                           },
                         ),
                         const SkillTreeScreen(),

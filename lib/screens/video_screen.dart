@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
@@ -109,53 +106,15 @@ class _VideoScreenState extends State<VideoScreen>
   Set<String> _savedVocabIds = {};
   String _selectedVocabLevelFilter = 'All';
 
-  // Dialogue Audio Mode & Studio Audio Player
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  String? _localAudioFilePath;
-  bool _isPlayingStudioAudio = false;
+  // Dialogue Audio Mode — on-device TTS is the only synthesized-narration path now
+  // (Gemini studio audio generation was removed in favor of on-device voice).
   bool _isPlayingDialogueTts = false;
   bool _autoStopEachSentence = false;
 
-  // True once the real video/audio stream has genuinely failed to load (as opposed to
-  // simply not existing by design, e.g. an audio-only Gemini lesson with no video track).
+  // True once the real video/audio stream has genuinely failed to load, triggering the
+  // on-device TTS fallback so the lesson keeps going instead of going silent.
   bool _videoStreamFailed = false;
   bool _ttsFallbackTriggered = false;
-
-  Future<void> _checkAndDownloadStudioAudio() async {
-    final video = widget.processedVideo;
-    final url = _directVideoUrl;
-    if (url == null || url.isEmpty) return;
-
-    final isAudioUrl = url.contains('.wav') || url.contains('/audio/') || url.contains('.mp3') || video?.mediaType == 'audio';
-    if (!isAudioUrl) return;
-
-    try {
-      final docDir = await getApplicationDocumentsDirectory();
-      final localFile = File('${docDir.path}/gemini_audio_${video?.id ?? "cached"}.wav');
-
-      if (await localFile.exists() && (await localFile.length()) > 1000) {
-        if (mounted) {
-          setState(() {
-            _localAudioFilePath = localFile.path;
-          });
-        }
-        return;
-      }
-
-      // Download audio track once for permanent offline playback
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
-      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-        await localFile.writeAsBytes(response.bodyBytes);
-        if (mounted) {
-          setState(() {
-            _localAudioFilePath = localFile.path;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error caching local studio audio: $e');
-    }
-  }
 
   /// Where a fresh "Play" tap should resume from: right after whatever sentence was
   /// last spoken, or the beginning if nothing has played yet (or we already reached the end).
@@ -210,35 +169,16 @@ class _VideoScreenState extends State<VideoScreen>
   void _maybeStartTtsFallback() {
     if (_ttsFallbackTriggered) return;
     if (_subtitles.isEmpty) return;
-    if (_isPlayingDialogueTts || _isPlayingStudioAudio) return;
+    if (_isPlayingDialogueTts) return;
     _ttsFallbackTriggered = true;
     _startSequentialTts(startIndex: _dialogueResumeIndex);
   }
 
   Future<void> _toggleDialoguePlayback() async {
-    if (_isPlayingStudioAudio) {
-      await _audioPlayer.pause();
-    } else if (_isPlayingDialogueTts) {
+    if (_isPlayingDialogueTts) {
       _stopSequentialTts();
     } else {
-      // 1. Play real Gemini Studio Audio file if downloaded or available
-      if (_localAudioFilePath != null && File(_localAudioFilePath!).existsSync()) {
-        try {
-          await _audioPlayer.play(DeviceFileSource(_localAudioFilePath!));
-        } catch (_) {
-          _startSequentialTts(startIndex: _dialogueResumeIndex);
-        }
-      } else if (_directVideoUrl != null && (_directVideoUrl!.contains('/audio/') || _directVideoUrl!.contains('.wav'))) {
-        try {
-          await _audioPlayer.play(UrlSource(_directVideoUrl!));
-        } catch (e) {
-          debugPrint('AudioPlayer stream error: $e, falling back to on-device TTS');
-          _startSequentialTts(startIndex: _dialogueResumeIndex);
-        }
-      } else {
-        // 2. Fall back to on-device sequential TTS
-        _startSequentialTts(startIndex: _dialogueResumeIndex);
-      }
+      _startSequentialTts(startIndex: _dialogueResumeIndex);
     }
   }
 
@@ -270,35 +210,6 @@ class _VideoScreenState extends State<VideoScreen>
       duration: const Duration(milliseconds: 300),
     );
 
-    // Set up AudioPlayer listeners for Gemini Studio Audio
-    _audioPlayer.onPositionChanged.listen((pos) {
-      if (!mounted) return;
-      final currentTime = pos.inMilliseconds / 1000.0;
-
-      int foundIndex = -1;
-      for (int i = 0; i < _subtitles.length; i++) {
-        final cue = _subtitles[i];
-        if (currentTime >= cue.start && currentTime <= cue.end) {
-          foundIndex = i;
-          break;
-        }
-      }
-
-      if (foundIndex != -1 && foundIndex != _currentSubtitleIndex) {
-        setState(() {
-          _currentSubtitleIndex = foundIndex;
-        });
-        _scrollToCurrentSubtitle();
-      }
-    });
-
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (!mounted) return;
-      setState(() {
-        _isPlayingStudioAudio = state == PlayerState.playing;
-      });
-    });
-
     if (widget.processedVideo != null &&
         widget.processedVideo!.status == ProcessingStatus.completed) {
       _loadProcessedVideo();
@@ -316,17 +227,15 @@ class _VideoScreenState extends State<VideoScreen>
     // Extract Key Vocabulary from Subtitle Cues
     _extractKeyVocabulary();
 
-    // Check and download Gemini Studio Audio if available
-    _checkAndDownloadStudioAudio();
-
     final isWebPageUrl = _directVideoUrl != null &&
         (_directVideoUrl!.contains('youtube.com/watch') ||
          _directVideoUrl!.contains('youtu.be/') ||
          _directVideoUrl!.contains('youtube.com/shorts'));
 
+    // Some extracted streams are audio-only by nature of the source, not because of any
+    // studio narration step — still needs the plain-audio player rather than VideoPlayer.
     final isAudioUrl = _directVideoUrl != null &&
-        (_directVideoUrl!.contains('/audio/') ||
-         _directVideoUrl!.contains('.wav') ||
+        (_directVideoUrl!.contains('.wav') ||
          _directVideoUrl!.contains('.mp3') ||
          video.mediaType == 'audio');
 
@@ -596,7 +505,6 @@ class _VideoScreenState extends State<VideoScreen>
   void dispose() {
     _isPlayingDialogueTts = false;
     _ttsService.stop();
-    _audioPlayer.dispose();
     _videoPlayerController?.removeListener(_onVideoPlayerUpdate);
     _videoPlayerController?.dispose();
     _urlController.dispose();
@@ -752,14 +660,6 @@ class _VideoScreenState extends State<VideoScreen>
         Duration(milliseconds: (startTime * 1000).toInt()),
       );
       _videoPlayerController?.play();
-    } else if (_localAudioFilePath != null && File(_localAudioFilePath!).existsSync()) {
-      setState(() {
-        _currentSubtitleIndex = index ?? -1;
-      });
-      _scrollToCurrentSubtitle();
-      final seekMs = (startTime * 1000).toInt();
-      await _audioPlayer.seek(Duration(milliseconds: seekMs));
-      await _audioPlayer.resume();
     } else if (index != null && index >= 0 && index < _subtitles.length) {
       setState(() {
         _currentSubtitleIndex = index;
@@ -1074,9 +974,6 @@ class _VideoScreenState extends State<VideoScreen>
                             ),
                           );
                         } else {
-                          final isGeminiAudio = widget.processedVideo?.videoUrl?.contains('_dialogue.wav') == true ||
-                                                widget.processedVideo?.videoUrl?.contains('/audio/') == true ||
-                                                widget.processedVideo?.mediaType == 'audio';
                           return Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -1094,15 +991,13 @@ class _VideoScreenState extends State<VideoScreen>
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isGeminiAudio 
-                                        ? const Color(0xFF7C3AED).withValues(alpha: 0.25)
-                                        : Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
-                                    isGeminiAudio ? Icons.auto_awesome : Icons.graphic_eq_rounded,
+                                    Icons.graphic_eq_rounded,
                                     size: 24,
-                                    color: isGeminiAudio ? const Color(0xFFA78BFA) : Theme.of(context).colorScheme.primary,
+                                    color: Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -1116,24 +1011,20 @@ class _VideoScreenState extends State<VideoScreen>
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: isGeminiAudio 
-                                                  ? const Color(0xFF7C3AED).withValues(alpha: 0.25)
-                                                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                                               borderRadius: BorderRadius.circular(4),
                                               border: Border.all(
-                                                color: isGeminiAudio 
-                                                    ? const Color(0xFFA78BFA).withValues(alpha: 0.6)
-                                                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                                                 width: 0.8,
                                               ),
                                             ),
                                             child: Text(
-                                              isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'AUDIO STREAM',
+                                              'AUDIO STREAM',
                                               style: TextStyle(
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.w700,
                                                 letterSpacing: 0.5,
-                                                color: isGeminiAudio ? const Color(0xFFA78BFA) : Theme.of(context).colorScheme.primary,
+                                                color: Theme.of(context).colorScheme.primary,
                                               ),
                                             ),
                                           ),
@@ -1253,15 +1144,12 @@ class _VideoScreenState extends State<VideoScreen>
     final video = widget.processedVideo;
     final title = video?.title ?? 'German Dialogue';
     final thumbnail = video?.thumbnail;
-    final isGeminiAudio = video?.videoUrl?.contains('_dialogue.wav') == true ||
-                          video?.videoUrl?.contains('/audio/') == true ||
-                          video?.mediaType == 'audio';
-    // A genuine fallback (the real stream failed) gets its own badge/messaging,
-    // distinct from content that's audio-only by design (e.g. a Gemini Studio lesson).
+    // A genuine fallback (the real stream failed, now playing on-device TTS) gets its own
+    // badge/messaging, distinct from content that's audio-only by design.
     final isFallback = _videoStreamFailed;
-    final badgeColor = isFallback ? Colors.orangeAccent : (isGeminiAudio ? const Color(0xFFA78BFA) : colorScheme.primary);
-    final badgeIcon = isFallback ? Icons.record_voice_over_rounded : (isGeminiAudio ? Icons.auto_awesome : Icons.mic_none_rounded);
-    final badgeLabel = isFallback ? '🔊 ON-DEVICE VOICE' : (isGeminiAudio ? '✨ GEMINI STUDIO AUDIO' : 'GERMAN DIALOGUE');
+    final badgeColor = isFallback ? Colors.orangeAccent : colorScheme.primary;
+    final badgeIcon = isFallback ? Icons.record_voice_over_rounded : Icons.mic_none_rounded;
+    final badgeLabel = isFallback ? '🔊 ON-DEVICE VOICE' : 'GERMAN DIALOGUE';
 
     return Container(
       decoration: BoxDecoration(
@@ -1385,15 +1273,15 @@ class _VideoScreenState extends State<VideoScreen>
                       child: ElevatedButton.icon(
                         onPressed: _toggleDialoguePlayback,
                         icon: Icon(
-                          (_isPlayingStudioAudio || _isPlayingDialogueTts) ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          _isPlayingDialogueTts ? Icons.pause_rounded : Icons.play_arrow_rounded,
                           size: 16,
                         ),
                         label: Text(
-                          (_isPlayingStudioAudio || _isPlayingDialogueTts) ? 'Pause' : 'Play Audio',
+                          _isPlayingDialogueTts ? 'Pause' : 'Play Audio',
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isGeminiAudio ? const Color(0xFF7C3AED) : colorScheme.primary,
+                          backgroundColor: colorScheme.primary,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),

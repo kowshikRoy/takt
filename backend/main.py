@@ -1025,166 +1025,6 @@ def transcribe_youtube_with_gemini(url: str, api_key: str = None) -> tuple[list[
             print(f"Gemini ({model_name}) YouTube transcription error: {e}")
     return [], None
 
-def generate_dialogue_audio_with_gemini(dialogue_lines: list[str], output_wav_path: str, api_key: str = None) -> bool:
-    """
-    Generates studio German audio for the full dialogue script using Gemini 2.5 Flash TTS
-    with expressive voice acting directives. Long transcripts are split into sequential
-    chunks (the TTS preview model can't reliably narrate an unlimited script in one call)
-    and their raw PCM audio is concatenated into a single WAV file, so the studio audio
-    always covers every subtitle cue rather than silently cutting off partway through.
-    Includes automatic 429 exponential backoff retry per chunk.
-    """
-    key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not key or not dialogue_lines:
-        return False
-
-    chunk_size = 30
-    chunks = [dialogue_lines[i:i + chunk_size] for i in range(0, len(dialogue_lines), chunk_size)]
-
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={key}"
-    all_pcm_bytes = bytearray()
-
-    for chunk_index, chunk_lines in enumerate(chunks):
-        full_dialogue_text = "\n".join(chunk_lines)
-        prompt = (
-            "You are a professional native German voice actor. "
-            "Perform the following German conversation with authentic native pronunciation, lively conversational cadence, "
-            "expressive intonation, natural breathing pauses between sentences, and engaging warmth:\n\n"
-            f"{full_dialogue_text}"
-        )
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "text": prompt
-                        }
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "responseModalities": ["AUDIO"]
-            }
-        }
-
-        chunk_pcm = None
-        for attempt in range(3):
-            try:
-                print(f"Calling Gemini Studio TTS (chunk {chunk_index+1}/{len(chunks)}, attempt {attempt+1}/3, {len(chunk_lines)} dialogue lines)...")
-                res = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=240)
-                if res.status_code == 200:
-                    res_json = res.json()
-                    candidates = res_json.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        for part in parts:
-                            inline_data = part.get("inlineData", {})
-                            if inline_data.get("data"):
-                                chunk_pcm = base64.b64decode(inline_data["data"])
-                                break
-                    if chunk_pcm:
-                        break
-                    print(f"Gemini TTS chunk {chunk_index+1} returned no audio data.")
-                    break
-                elif res.status_code == 429:
-                    print(f"Gemini TTS rate limited (429) on chunk {chunk_index+1}, waiting 20s before retry (attempt {attempt+1}/3)...")
-                    time.sleep(20)
-                    continue
-                else:
-                    print(f"Gemini TTS returned status {res.status_code} on chunk {chunk_index+1}: {res.text[:200]}")
-                    break
-            except Exception as e:
-                print(f"Gemini TTS generation error on chunk {chunk_index+1} (attempt {attempt+1}): {e}")
-                time.sleep(5)
-
-        if not chunk_pcm:
-            print(f"Gemini Studio TTS failed on chunk {chunk_index+1}/{len(chunks)}; using {len(all_pcm_bytes)} bytes generated so far.")
-            break
-
-        all_pcm_bytes.extend(chunk_pcm)
-
-        # Space out sequential requests to respect the TTS preview model's low per-minute rate limit.
-        if chunk_index < len(chunks) - 1:
-            time.sleep(20)
-
-    if not all_pcm_bytes:
-        return False
-
-    # Write 24kHz 16-bit Mono WAV file
-    with wave.open(output_wav_path, "wb") as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(24000)
-        wav_file.writeframes(bytes(all_pcm_bytes))
-    print(f"Successfully generated Gemini Studio WAV audio ({len(all_pcm_bytes)} bytes, {len(chunks)} chunk(s)) at {output_wav_path}")
-    return True
-
-def align_subtitles_to_audio(subtitles: list[SubtitleCue], audio_path: str) -> list[SubtitleCue]:
-    """
-    Re-aligns subtitle cue start and end timestamps against the synthesized Gemini Studio audio track
-    using in-memory Whisper audio inference (<1.0s).
-    Preserves all original German text and synchronized English translations.
-    """
-    if not subtitles or not os.path.exists(audio_path):
-        return subtitles
-
-    try:
-        model = get_whisper_model()
-        segments, _ = model.transcribe(
-            audio_path,
-            language="de",
-            beam_size=1,
-            best_of=1,
-            vad_filter=True
-        )
-        whisper_cues = []
-        for s in segments:
-            txt = s.text.strip()
-            if txt:
-                whisper_cues.append({'start': round(s.start, 2), 'end': round(s.end, 2), 'text': txt})
-
-        if not whisper_cues:
-            return subtitles
-
-        print(f"Aligning {len(subtitles)} subtitle cues with {len(whisper_cues)} audio segments...")
-
-        # Case 1: Exact 1-to-1 segment count match
-        if len(whisper_cues) == len(subtitles):
-            aligned = []
-            for cue, w_cue in zip(subtitles, whisper_cues):
-                aligned.append(SubtitleCue(
-                    start=w_cue['start'],
-                    end=max(round(w_cue['start'] + 0.5, 2), w_cue['end']),
-                    original=cue.original,
-                    translated=cue.translated
-                ))
-            print(f"Direct 1-to-1 audio alignment completed ({len(aligned)} cues)!")
-            return aligned
-
-        # Case 2: Proportional text length distribution across real audio duration
-        total_audio_duration = max(whisper_cues[-1]['end'], 1.0)
-        total_char_count = max(sum(len(c.original) for c in subtitles), 1)
-
-        aligned = []
-        current_time = whisper_cues[0]['start']
-        for cue in subtitles:
-            cue_len = max(len(cue.original), 1)
-            duration_share = (cue_len / total_char_count) * (total_audio_duration - whisper_cues[0]['start'])
-            end_time = round(min(current_time + duration_share, total_audio_duration), 2)
-            aligned.append(SubtitleCue(
-                start=round(current_time, 2),
-                end=max(round(current_time + 0.5, 2), end_time),
-                original=cue.original,
-                translated=cue.translated
-            ))
-            current_time = end_time
-
-        print(f"Proportional audio alignment completed ({len(aligned)} cues over {total_audio_duration}s)!")
-        return aligned
-    except Exception as e:
-        print(f"Audio subtitle alignment error: {e}")
-        return subtitles
-
 def transcribe_and_translate(audio_path: str):
     """Transcribes German audio stream with Whisper using high-performance settings."""
     model = get_whisper_model()
@@ -1481,27 +1321,11 @@ async def process_media_task(task_id: str, url: str, client_can_transcribe: bool
 
 async def _finalize_media_task(task_id: str, url: str, subtitles: list[SubtitleCue], title: str | None,
                                 thumbnail: str | None, media_url: str | None, media_type: str, yt_meta: dict):
-    """Shared tail of media processing: studio TTS, thumbnail fallback, caching, and task completion.
-    Used both by the normal completion path and by the client-transcription resume path."""
+    """Shared tail of media processing: thumbnail fallback, caching, and task completion.
+    Used both by the normal completion path and by the client-transcription resume path.
+    Playback audio is always the original video/audio stream (or on-device TTS client-side as a
+    fallback when that stream fails) — no server-synthesized narration track."""
     cache_key = get_cache_key(url)
-
-    # Generate high-fidelity German Studio audio with Gemini 2.5 Flash TTS, covering the full transcript
-    if subtitles and (not media_url or 'youtube.com' in media_url or 'youtu.be' in media_url):
-        try:
-            update_task_stage(task_id, "Synthesizing German studio dialogue audio...", 92)
-            dialogue_lines = [s.original for s in subtitles if s.original.strip()]
-            audio_filename = f"{task_id}_dialogue.wav"
-            audio_path = os.path.join(CACHE_DIR, audio_filename)
-            if await asyncio.to_thread(generate_dialogue_audio_with_gemini, dialogue_lines, audio_path):
-                app_url = os.environ.get("SERVICE_URL") or "https://omniscribe-184475424927.europe-west4.run.app"
-                media_url = f"{app_url}/audio/{audio_filename}"
-                media_type = "audio"
-
-                # Re-align subtitle timestamps with the synthesized studio audio track
-                update_task_stage(task_id, "Synchronizing subtitles with studio audio...", 94)
-                subtitles = await asyncio.to_thread(align_subtitles_to_audio, subtitles, audio_path)
-        except Exception as tts_err:
-            print(f"Gemini Studio TTS synthesis skipped: {tts_err}")
 
     # Ensure thumbnail is high quality YouTube thumbnail if available
     if not thumbnail or 'picsum.photos' in str(thumbnail):
@@ -1618,13 +1442,6 @@ async def resume_media(request: ResumeMediaRequest, background_tasks: Background
     tasks[request.task_id]["status"] = TaskStatus.PROCESSING
     background_tasks.add_task(_resume_media_task, request.task_id, request.subtitles, request.title, pending)
     return {"ok": True}
-
-@app.get("/audio/{filename}")
-async def get_audio_file(filename: str):
-    file_path = os.path.join(CACHE_DIR, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Audio file not found")
-    return FileResponse(file_path, media_type="audio/wav")
 
 @app.get("/status/{task_id}", response_model=StatusResponse)
 async def get_status(task_id: str, wait_seconds: int = 1):
