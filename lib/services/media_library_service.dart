@@ -694,7 +694,12 @@ class MediaLibraryService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> importWebArticleInBackground(String url) async {
+  /// Fetches title/content/description/cover-image for [url] via the backend
+  /// extractor, falling back to a local regex-based scraper if that call fails
+  /// or times out. Shared by both first-time import and re-fetching an
+  /// already-imported article's content.
+  Future<({String title, String content, String description, String? coverImage})>
+      _fetchArticleContent(String url) async {
     Map<String, dynamic>? result;
     try {
       result = await _backendService.importFromUrl(url);
@@ -748,27 +753,76 @@ class MediaLibraryService extends ChangeNotifier {
       content = 'Could not extract article content automatically. URL: $url';
     }
 
+    final backendCoverImage = result?['cover_image_url'] as String?;
+    final coverImage = (backendCoverImage != null && backendCoverImage.startsWith('http'))
+        ? backendCoverImage
+        : null;
+
+    return (title: title, content: content, description: description, coverImage: coverImage);
+  }
+
+  Future<void> importWebArticleInBackground(String url) async {
+    final fetched = await _fetchArticleContent(url);
     final articleId = 'custom_${DateTime.now().millisecondsSinceEpoch}';
 
-    // Prefer the backend-extracted cover image (og:image/twitter:image/first
-    // <img>/favicon); fall back to a Picsum placeholder seeded by the
-    // article id, mirroring the backend's own get_picsum_thumbnail fallback
-    // used for video thumbnails.
-    final backendCoverImage = result?['cover_image_url'] as String?;
-    final imageUrl = (backendCoverImage != null && backendCoverImage.startsWith('http'))
-        ? backendCoverImage
-        : 'https://picsum.photos/seed/$articleId/400/225';
+    // Fall back to a Picsum placeholder seeded by the article id, mirroring
+    // the backend's own get_picsum_thumbnail fallback used for video thumbnails.
+    final imageUrl = fetched.coverImage ?? 'https://picsum.photos/seed/$articleId/400/225';
 
     final newArticle = Article(
       id: articleId,
-      title: title,
-      description: description,
+      title: fetched.title,
+      description: fetched.description,
       level: 'Imported',
       date: DateTime.now(),
       imageUrl: imageUrl,
+      sourceUrl: url,
     );
 
-    await addImportedArticle(newArticle, content);
+    await addImportedArticle(newArticle, fetched.content);
+  }
+
+  /// Re-fetches content for an already-imported article from its original
+  /// [articleId]'s stored `sourceUrl`, updating that same article entry in
+  /// place (title/description/cover image/content) rather than creating a
+  /// duplicate — useful after an extraction bug fix, or if a page's content
+  /// changed since it was first imported. No-op if the article has no
+  /// `sourceUrl` (e.g. a text-pasted story) or isn't found.
+  Future<bool> resubmitArticle(String articleId) async {
+    final index = _importedArticles.indexWhere((a) => a.id == articleId);
+    if (index == -1) return false;
+    final existing = _importedArticles[index];
+    final url = existing.sourceUrl;
+    if (url == null || url.trim().isEmpty) return false;
+
+    final fetched = await _fetchArticleContent(url);
+    final imageUrl = fetched.coverImage ?? existing.imageUrl;
+
+    final refreshed = Article(
+      id: existing.id,
+      title: fetched.title,
+      description: fetched.description,
+      level: existing.level,
+      date: existing.date,
+      imageUrl: imageUrl,
+      sourceUrl: url,
+    );
+
+    _importedArticles[index] = refreshed;
+    notifyListeners();
+    await _saveImportedArticles();
+    await saveCustomContent(articleId, fetched.content);
+
+    // The story reader caches per-paragraph on-device translation/analysis keyed
+    // by this same article id (see getCachedAnalysis/saveCachedAnalysis) and
+    // reads that cache before ever re-running translation. Since the id doesn't
+    // change on a resubmit, that cache would otherwise keep serving translations
+    // for the old (now-replaced) paragraph text — clear it so the reader
+    // re-translates the fresh content next time it's opened.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_analysisCachePrefix$articleId');
+
+    return true;
   }
 
   Future<void> addImportedArticle(Article article, String content) async {

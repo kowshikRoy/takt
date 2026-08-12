@@ -7,6 +7,7 @@ class CompactArticleCard extends StatelessWidget {
   final Article article;
   final VoidCallback onTap;
   final VoidCallback? onDelete;  // Optional delete callback
+  final VoidCallback? onResubmit;  // Optional refresh/resubmit callback
   final double width;
 
   const CompactArticleCard({
@@ -14,6 +15,7 @@ class CompactArticleCard extends StatelessWidget {
     required this.article,
     required this.onTap,
     this.onDelete,  // Optional
+    this.onResubmit,  // Optional
     this.width = 160,
   });
 
@@ -76,6 +78,31 @@ class CompactArticleCard extends StatelessWidget {
                           color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Resubmit/refresh button (if onResubmit provided)
+                if (onResubmit != null)
+                  Positioned(
+                    top: 4,
+                    right: onDelete != null ? 32 : 4,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: onResubmit,
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.refresh_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         ),
                       ),
                     ),

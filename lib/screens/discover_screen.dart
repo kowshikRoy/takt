@@ -379,10 +379,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: ListTile(
           title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
           subtitle: Text(article.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18),
-            tooltip: 'Delete article',
-            onPressed: () => _confirmDelete(context, article, mediaLibraryService),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (article.sourceUrl != null)
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  tooltip: 'Refresh content',
+                  onPressed: () => _handleResubmit(context, article, mediaLibraryService),
+                ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 18),
+                tooltip: 'Delete article',
+                onPressed: () => _confirmDelete(context, article, mediaLibraryService),
+              ),
+            ],
           ),
           onTap: () => _openReader(article),
         ),
@@ -764,6 +775,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             article: a,
             onTap: () => _openReader(a),
             onDelete: () => _confirmDelete(context, a, mediaLibraryService),
+            onResubmit: a.sourceUrl != null ? () => _handleResubmit(context, a, mediaLibraryService) : null,
           ),
         ),
       ),
@@ -1465,6 +1477,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _handleResubmit(BuildContext context, Article article, MediaLibraryService mediaLibraryService) async {
+    if (article.sourceUrl == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(content: Text('Refreshing "${article.title}"...'), duration: const Duration(seconds: 2)),
+    );
+    final ok = await mediaLibraryService.resubmitArticle(article.id);
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(ok ? 'Article refreshed.' : 'Could not refresh this article.'),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 

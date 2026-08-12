@@ -7,6 +7,10 @@ class Article {
   final DateTime date;
   final String imageUrl;
   final bool isLiked;
+  // The URL this article was imported from, if any (null for the built-in mock
+  // articles and text-pasted stories) — lets a user re-fetch fresh content for
+  // an already-imported article instead of only being able to delete it.
+  final String? sourceUrl;
 
   Article({
     required this.id,
@@ -16,6 +20,7 @@ class Article {
     required this.date,
     required this.imageUrl,
     this.isLiked = false,
+    this.sourceUrl,
   });
 
   Map<String, dynamic> toJson() {
@@ -26,6 +31,7 @@ class Article {
       'level': level,
       'date': date.toIso8601String(),
       'imageUrl': imageUrl,
+      'sourceUrl': sourceUrl,
     };
   }
 
@@ -37,6 +43,7 @@ class Article {
       level: json['level'] as String? ?? 'Imported',
       date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
       imageUrl: json['imageUrl'] as String? ?? '',
+      sourceUrl: json['sourceUrl'] as String?,
     );
   }
 }

@@ -34,6 +34,10 @@ try:
 except ImportError:
     BeautifulSoup = None
 try:
+    import trafilatura
+except ImportError:
+    trafilatura = None
+try:
     from langdetect import detect, detect_langs
 except ImportError:
     detect = None
@@ -1534,41 +1538,14 @@ def _start_self_ping_thread():
 async def startup_event():
     _start_self_ping_thread()
 
-def _extract_article(url: str) -> dict:
-    """Fetches a web page and extracts title/content/description/cover image.
-
-    Ported from the pre-FastAPI Flask backend (backend/app.py's original
-    /import_url) using BeautifulSoup + lxml for real HTML parsing, since the
-    Flutter client's local regex-based fallback scraper doesn't decode HTML
-    entities (mangles German umlauts like &uuml; instead of ü).
-    """
-    if BeautifulSoup is None:
-        raise HTTPException(status_code=500, detail="Article import is unavailable (beautifulsoup4 not installed)")
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-    }
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-    except requests.exceptions.Timeout:
-        raise HTTPException(status_code=408, detail="Request timeout - the website took too long to respond")
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {e}")
-
-    soup = BeautifulSoup(response.content, 'lxml')
-
-    for tag in soup(["script", "style", "nav", "header", "footer", "aside"]):
+def _extract_article_with_bs4(soup, url: str) -> tuple[str | None, str | None]:
+    """Legacy heuristic extraction (fixed selectors + blind nav/header/footer/aside
+    removal). Kept only as a fallback for pages trafilatura can't confidently parse —
+    this approach is prone to conflating an article's own semantic <header> (which can
+    legitimately contain the headline and lead paragraph) with page-chrome navigation,
+    silently dropping real content on sites structured that way."""
+    for tag in soup(["script", "style", "nav", "footer", "aside"]):
         tag.decompose()
-
-    cover_image_url = None
-    og_image = soup.find('meta', property='og:image')
-    if og_image and og_image.get('content'):
-        cover_image_url = og_image['content']
-    if not cover_image_url:
-        twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
-        if twitter_image and twitter_image.get('content'):
-            cover_image_url = twitter_image['content']
 
     title = None
     if soup.title and soup.title.string:
@@ -1589,12 +1566,95 @@ def _extract_article(url: str) -> dict:
     if not main_content:
         main_content = soup.find('body')
     if not main_content:
-        raise HTTPException(status_code=400, detail="Could not extract content from page")
+        return title, None
+
+    paragraphs = main_content.find_all('p')
+    content_parts = [p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 20]
+    if content_parts:
+        content = '\n\n'.join(content_parts)
+    else:
+        content = '\n\n'.join(line.strip() for line in main_content.get_text().split('\n') if line.strip())
+
+    return title, content
+
+
+def _extract_article(url: str) -> dict:
+    """Fetches a web page and extracts title/content/description/cover image.
+
+    Primary extraction uses trafilatura, which identifies the main article body by
+    scoring content blocks (text density, link density, tag weighting) rather than
+    following a fixed list of selectors and blindly deleting nav/header/footer/aside
+    tags site-wide — the latter approach breaks on pages that nest an article's own
+    headline+lead paragraph inside a semantic <header> within <article>, since it gets
+    deleted along with the real page-chrome header. Falls back to the legacy
+    BeautifulSoup heuristic below when trafilatura can't confidently extract anything
+    (e.g. unusual page structures it doesn't recognize).
+    """
+    if BeautifulSoup is None:
+        raise HTTPException(status_code=500, detail="Article import is unavailable (beautifulsoup4 not installed)")
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=408, detail="Request timeout - the website took too long to respond")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {e}")
+
+    title = None
+    content = None
+    cover_image_url = None
+
+    if trafilatura is not None:
+        try:
+            extracted_json = trafilatura.extract(
+                response.content,
+                url=url,
+                output_format='json',
+                with_metadata=True,
+                include_comments=False,
+                include_tables=False,
+                favor_precision=True,
+            )
+            if extracted_json:
+                data = json.loads(extracted_json)
+                title = (data.get('title') or '').strip() or None
+                content = (data.get('text') or '').strip() or None
+                cover_image_url = (data.get('image') or '').strip() or None
+        except Exception as e:
+            print(f"trafilatura extraction error for {url}: {e}")
+
+    soup = BeautifulSoup(response.content, 'lxml')
+
+    if not content or len(content) < 50:
+        fallback_title, fallback_content = _extract_article_with_bs4(soup, url)
+        title = title or fallback_title
+        content = content or fallback_content
+
+    if not content or len(content) < 50:
+        raise HTTPException(status_code=400, detail="Extracted content is too short or empty")
+
+    if not title:
+        if soup.title and soup.title.string:
+            title = soup.title.string
+        elif soup.find('h1'):
+            title = soup.find('h1').get_text()
 
     if not cover_image_url:
+        og_image = soup.find('meta', property='og:image')
+        if og_image and og_image.get('content'):
+            cover_image_url = og_image['content']
+    if not cover_image_url:
+        twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+        if twitter_image and twitter_image.get('content'):
+            cover_image_url = twitter_image['content']
+    if not cover_image_url:
         article_tag = soup.find('article')
-        search_area = article_tag if article_tag else main_content
-        first_img = search_area.find('img')
+        search_area = article_tag if article_tag else soup.find('body')
+        first_img = search_area.find('img') if search_area else None
         if first_img and first_img.get('src'):
             img_src = first_img['src']
             if img_src.startswith('//'):
@@ -1602,7 +1662,6 @@ def _extract_article(url: str) -> dict:
             elif not img_src.startswith('http'):
                 img_src = urljoin(url, img_src)
             cover_image_url = img_src
-
     if not cover_image_url:
         favicon_link = soup.find('link', rel=lambda x: x and 'icon' in x.lower() if x else False)
         if favicon_link and favicon_link.get('href'):
@@ -1615,16 +1674,10 @@ def _extract_article(url: str) -> dict:
         else:
             parsed_url = urlparse(url)
             cover_image_url = f"{parsed_url.scheme}://{parsed_url.netloc}/favicon.ico"
-
-    paragraphs = main_content.find_all('p')
-    content_parts = [p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 20]
-    if content_parts:
-        content = '\n\n'.join(content_parts)
-    else:
-        content = '\n\n'.join(line.strip() for line in main_content.get_text().split('\n') if line.strip())
-
-    if not content or len(content) < 50:
-        raise HTTPException(status_code=400, detail="Extracted content is too short or empty")
+    elif cover_image_url.startswith('//'):
+        cover_image_url = 'https:' + cover_image_url
+    elif not cover_image_url.startswith('http'):
+        cover_image_url = urljoin(url, cover_image_url)
 
     description = content[:200] + '...' if len(content) > 200 else content
 
