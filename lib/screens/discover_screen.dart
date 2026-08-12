@@ -376,26 +376,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(4.0),
-        child: ListTile(
-          title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          subtitle: Text(article.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (article.sourceUrl != null)
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  tooltip: 'Refresh content',
-                  onPressed: () => _handleResubmit(context, article, mediaLibraryService),
-                ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 18),
-                tooltip: 'Delete article',
-                onPressed: () => _confirmDelete(context, article, mediaLibraryService),
-              ),
-            ],
-          ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(4.0),
           onTap: () => _openReader(article),
+          onLongPress: () => _showArticleActionSheet(context, article, mediaLibraryService),
+          child: ListTile(
+            title: Text(article.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            subtitle: Text(article.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+            trailing: IconButton(
+              icon: const Icon(Icons.more_vert_rounded, size: 18),
+              tooltip: 'More options',
+              onPressed: () => _showArticleActionSheet(context, article, mediaLibraryService),
+            ),
+          ),
         ),
       ),
     );
@@ -774,8 +767,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           child: CompactArticleCard(
             article: a,
             onTap: () => _openReader(a),
-            onDelete: () => _confirmDelete(context, a, mediaLibraryService),
-            onResubmit: a.sourceUrl != null ? () => _handleResubmit(context, a, mediaLibraryService) : null,
+            onMore: () => _showArticleActionSheet(context, a, mediaLibraryService),
           ),
         ),
       ),
@@ -1253,6 +1245,172 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showArticleActionSheet(BuildContext context, Article article, MediaLibraryService mediaLibraryService) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        final colorScheme = Theme.of(sheetContext).colorScheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with thumbnail, title and URL
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: SizedBox(
+                        width: 48,
+                        height: 34,
+                        child: article.imageUrl.startsWith('http')
+                            ? CachedNetworkImage(
+                                imageUrl: article.imageUrl,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
+                              )
+                            : Image.asset(article.imageUrl, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            article.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          if (article.sourceUrl != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              article.sourceUrl!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 4),
+
+                // 1. Edit Title
+                ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  leading: const Icon(Icons.edit_outlined, size: 19),
+                  title: const Text('Edit Title', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showEditArticleTitleDialog(context, article, mediaLibraryService);
+                  },
+                ),
+
+                // 2. Copy Link (only if imported from a URL)
+                if (article.sourceUrl != null)
+                  ListTile(
+                    dense: true,
+                    visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                    leading: const Icon(Icons.copy_rounded, size: 19),
+                    title: const Text('Copy Link', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      Clipboard.setData(ClipboardData(text: article.sourceUrl!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Link copied to clipboard!'), duration: Duration(seconds: 2)),
+                      );
+                    },
+                  ),
+
+                // 3. Refresh Content (only if imported from a URL)
+                if (article.sourceUrl != null)
+                  ListTile(
+                    dense: true,
+                    visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                    leading: Icon(Icons.refresh_rounded, size: 19, color: colorScheme.primary),
+                    title: const Text('Refresh Content', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _handleResubmit(context, article, mediaLibraryService);
+                    },
+                  ),
+
+                // 4. Delete Article
+                ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  leading: Icon(Icons.delete_outline_rounded, size: 19, color: colorScheme.error),
+                  title: Text('Delete Article', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.error)),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _confirmDelete(context, article, mediaLibraryService);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditArticleTitleDialog(BuildContext context, Article article, MediaLibraryService mediaLibraryService) {
+    final controller = TextEditingController(text: article.title);
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Title', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Enter article title',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 2,
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.pop(dialogContext),
+            ),
+            FilledButton(
+              child: const Text('Save'),
+              onPressed: () {
+                final newTitle = controller.text.trim();
+                if (newTitle.isNotEmpty) {
+                  mediaLibraryService.updateArticleTitle(article.id, newTitle);
+                }
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Title updated!'), duration: Duration(seconds: 2)),
+                );
+              },
+            ),
+          ],
         );
       },
     );

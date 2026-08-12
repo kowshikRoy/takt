@@ -851,6 +851,24 @@ class MediaLibraryService extends ChangeNotifier {
     await saveCustomContent(article.id, content);
   }
 
+  Future<void> updateArticleTitle(String articleId, String title) async {
+    final index = _importedArticles.indexWhere((a) => a.id == articleId);
+    if (index == -1) return;
+    final current = _importedArticles[index];
+    _importedArticles[index] = Article(
+      id: current.id,
+      title: title,
+      description: current.description,
+      level: current.level,
+      date: current.date,
+      imageUrl: current.imageUrl,
+      isLiked: current.isLiked,
+      sourceUrl: current.sourceUrl,
+    );
+    notifyListeners();
+    await _saveImportedArticles();
+  }
+
   Future<void> deleteArticle(String id) async {
     _importedArticles.removeWhere((a) => a.id == id);
     _deletedArticleIds.add(id);

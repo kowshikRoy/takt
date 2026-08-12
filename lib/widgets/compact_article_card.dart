@@ -6,16 +6,14 @@ import '../models/article_model.dart';
 class CompactArticleCard extends StatelessWidget {
   final Article article;
   final VoidCallback onTap;
-  final VoidCallback? onDelete;  // Optional delete callback
-  final VoidCallback? onResubmit;  // Optional refresh/resubmit callback
+  final VoidCallback? onMore;  // Optional: opens the same long-press/3-dot action sheet media items use
   final double width;
 
   const CompactArticleCard({
     super.key,
     required this.article,
     required this.onTap,
-    this.onDelete,  // Optional
-    this.onResubmit,  // Optional
+    this.onMore,  // Optional
     this.width = 160,
   });
 
@@ -24,6 +22,7 @@ class CompactArticleCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onMore,
       child: Container(
         width: width,
         margin: const EdgeInsets.only(right: 16),
@@ -82,49 +81,25 @@ class CompactArticleCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                // Resubmit/refresh button (if onResubmit provided)
-                if (onResubmit != null)
-                  Positioned(
-                    top: 4,
-                    right: onDelete != null ? 32 : 4,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: onResubmit,
-                        borderRadius: BorderRadius.circular(4),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.refresh_rounded,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                // Delete button (if onDelete provided)
-                if (onDelete != null)
+                // 3-dot action button (if onMore provided) — same affordance as the media
+                // library's action sheet trigger, for a consistent long-press-or-tap UX.
+                if (onMore != null)
                   Positioned(
                     top: 4,
                     right: 4,
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: onDelete,
-                        borderRadius: BorderRadius.circular(4),
+                        onTap: onMore,
+                        borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(3),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
+                            color: Colors.black.withValues(alpha: 0.55),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.delete_outline,
+                            Icons.more_vert_rounded,
                             color: Colors.white,
                             size: 14,
                           ),
