@@ -562,6 +562,21 @@ class MediaLibraryService extends ChangeNotifier {
         final onDeviceAI = OnDeviceAIService();
         subtitles = await onDeviceAI.translateSubtitlesOnDevice(subtitles);
 
+        // Non-YouTube media is always transcribed server-side by Whisper (never Gemini), so it's
+        // the one path that benefits from a context-aware grammar cleanup pass. YouTube videos
+        // already go through Gemini transcription (server or client BYOK) which doesn't have the
+        // same per-segment mishearing issue, so skip them to avoid spending quota for no gain.
+        final isYoutube = originalUrl.contains('youtube.com') || originalUrl.contains('youtu.be');
+        if (!isYoutube) {
+          final apiKey = await GeminiApiKeyStore.getKey();
+          if (apiKey != null) {
+            final cleaned = await GeminiTranscriptionService.cleanupTranscript(subtitles, apiKey);
+            if (cleaned != null) {
+              subtitles = cleaned;
+            }
+          }
+        }
+
         if (index != -1) {
           final current = _processedVideos[index];
           final incomingTitle = (title != null && title.isNotEmpty && title != 'German Dialogue Lesson' && title != 'YouTube Lesson' && title != 'German Lesson') ? title : null;

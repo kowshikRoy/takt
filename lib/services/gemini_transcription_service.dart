@@ -156,6 +156,136 @@ class GeminiTranscriptionService {
     return GeminiTranscriptionResult.empty;
   }
 
+  // Flash-Lite first: this is a text-only grammar/context cleanup pass, not multimodal
+  // transcription, so it doesn't need Flash's heavier reasoning budget — and Flash-Lite carries
+  // a notably higher free-tier request quota, which matters since this runs per non-YouTube
+  // video import using the user's own key.
+  static const _cleanupModelsToTry = [
+    'gemini-flash-lite-latest',
+    'gemini-flash-latest',
+    'gemini-2.0-flash',
+  ];
+
+  static const _cleanupPrompt =
+      'You are correcting a German speech-to-text transcript produced by an automatic speech '
+      'recognition model. The ASR sometimes mishears words or produces grammatically odd '
+      'phrasing because it only looks at a few seconds of audio at a time. You can see the '
+      'whole transcript below, in order — use that full context to fix likely mishearings, '
+      'grammatical errors, and word choice so the German reads naturally and makes sense as a '
+      'continuous passage. Do NOT add, remove, or invent content beyond what is already there, '
+      'and do NOT change the meaning. Keep the same number of entries, in the same order. For '
+      'each entry, provide the corrected German text and an accurate English translation.\n'
+      'Respond ONLY with a valid JSON object matching this exact schema:\n'
+      '{\n'
+      '  "cues": [\n'
+      '    {"original": "corrected German text", "translated": "English translation"}\n'
+      '  ]\n'
+      '}\n'
+      'Return only the valid JSON, with exactly one entry per input line, in the same order.';
+
+  /// Runs a text-only Gemini pass over an already-transcribed subtitle list to fix
+  /// grammar/word-choice using full-passage context, and to fill in translations. Only the
+  /// `original`/`translated` text is touched — timestamps are reused as-is from [subtitles]
+  /// since Gemini isn't re-listening to the audio here. Returns null if the cleanup fails or the
+  /// model returns a mismatched number of entries (caller should keep the original subtitles).
+  static Future<List<SubtitleCue>?> cleanupTranscript(
+    List<SubtitleCue> subtitles,
+    String apiKey,
+  ) async {
+    if (subtitles.isEmpty) return null;
+
+    final inputLines = subtitles
+        .map((c) => {'original': c.original, 'translated': c.translated})
+        .toList();
+
+    for (final model in _cleanupModelsToTry) {
+      try {
+        final endpoint = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
+        );
+        final payload = {
+          'contents': [
+            {
+              'parts': [
+                {'text': '$_cleanupPrompt\n\nInput:\n${jsonEncode(inputLines)}'},
+              ],
+            },
+          ],
+          'generationConfig': {'responseMimeType': 'application/json'},
+        };
+
+        final res = await http
+            .post(
+              endpoint,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 60));
+
+        if (res.statusCode != 200) {
+          AppLogger.error(
+            'Gemini cleanup ($model) returned status ${res.statusCode}: ${res.body}',
+            tag: 'GeminiTranscriptionService',
+          );
+          continue;
+        }
+
+        final resJson = jsonDecode(utf8.decode(res.bodyBytes));
+        final candidates = (resJson['candidates'] as List?) ?? [];
+        if (candidates.isEmpty) continue;
+
+        var rawText =
+            (((candidates.first['content']?['parts'] as List?)?.first
+                        as Map<String, dynamic>?)?['text']
+                    as String? ??
+                '')
+                .trim();
+        if (rawText.startsWith('```json')) rawText = rawText.substring(7);
+        if (rawText.startsWith('```')) rawText = rawText.substring(3);
+        if (rawText.endsWith('```')) {
+          rawText = rawText.substring(0, rawText.length - 3);
+        }
+        rawText = rawText.trim();
+
+        final data = jsonDecode(rawText);
+        final rawCues = (data is Map<String, dynamic>) ? (data['cues'] as List?) ?? [] : [];
+
+        if (rawCues.length != subtitles.length) {
+          AppLogger.error(
+            'Gemini cleanup ($model) returned ${rawCues.length} cues, expected ${subtitles.length} — discarding.',
+            tag: 'GeminiTranscriptionService',
+          );
+          continue;
+        }
+
+        final cleaned = <SubtitleCue>[];
+        for (var i = 0; i < subtitles.length; i++) {
+          final item = rawCues[i];
+          if (item is! Map) {
+            cleaned.add(subtitles[i]);
+            continue;
+          }
+          final original = (item['original'] as String?)?.trim();
+          final translated = (item['translated'] as String?)?.trim();
+          cleaned.add(SubtitleCue(
+            start: subtitles[i].start,
+            end: subtitles[i].end,
+            original: (original != null && original.isNotEmpty) ? original : subtitles[i].original,
+            translated: (translated != null && translated.isNotEmpty) ? translated : subtitles[i].translated,
+          ));
+        }
+        return cleaned;
+      } catch (e) {
+        AppLogger.error(
+          'Gemini cleanup ($model) error',
+          error: e,
+          tag: 'GeminiTranscriptionService',
+        );
+      }
+    }
+    return null;
+  }
+
   static double? _asDouble(dynamic v) {
     if (v == null) return null;
     if (v is num) return v.toDouble();
