@@ -106,6 +106,12 @@ class _VideoScreenState extends State<VideoScreen>
   Set<String> _savedVocabIds = {};
   String _selectedVocabLevelFilter = 'All';
 
+  // Part-of-speech coloring for the transcript: cue index -> {lowercase word: pos
+  // category}, from the same on-device ML POS tagger used by the story reader
+  // (NativeNlpService / GermanPosTagger.kt), plus a batch gender lookup for nouns.
+  final Map<int, Map<String, String>> _subtitlePos = {};
+  Map<String, String> _subtitleWordGenders = {};
+
   // Dialogue Audio Mode — on-device TTS is the only synthesized-narration path now
   // (Gemini studio audio generation was removed in favor of on-device voice).
   bool _isPlayingDialogueTts = false;
@@ -226,6 +232,7 @@ class _VideoScreenState extends State<VideoScreen>
 
     // Extract Key Vocabulary from Subtitle Cues
     _extractKeyVocabulary();
+    _analyzeSubtitlesForPos();
 
     // True only when the backend genuinely couldn't resolve a playable stream and handed back
     // the plain youtube.com/youtu.be page link instead — VideoPlayer can't play that, so this
@@ -420,6 +427,54 @@ class _VideoScreenState extends State<VideoScreen>
         _keyVocabList = extracted;
         _savedVocabIds = savedSet;
         _isLoadingVocab = false;
+      });
+    }
+  }
+
+  /// Tags every subtitle line with on-device POS categories (same ML tagger the
+  /// story reader uses) so the transcript can color verbs/adjectives/adverbs like
+  /// it colors nouns by gender, instead of only the curated key-vocabulary subset.
+  Future<void> _analyzeSubtitlesForPos() async {
+    if (_subtitles.isEmpty) return;
+
+    final aiService = OnDeviceAIService();
+    final allWords = <String>{};
+    final Map<int, Map<String, String>> results = {};
+
+    for (int i = 0; i < _subtitles.length; i++) {
+      if (!mounted) return;
+      final text = _subtitles[i].original.trim();
+      if (text.isEmpty) continue;
+      try {
+        final analysis = await aiService.analyzeSentenceLocally(text);
+        final Map<String, String> lineMap = {};
+        for (final token in analysis.tokens) {
+          final key = token.word.toLowerCase().trim();
+          if (key.isEmpty) continue;
+          lineMap[key] = token.partOfSpeech.toLowerCase().trim();
+          if (lineMap[key] == 'noun') allWords.add(token.word);
+        }
+        results[i] = lineMap;
+      } catch (_) {
+        // Leave this line untagged — _buildTappableLine falls back to plain text.
+      }
+    }
+
+    Map<String, String> genders = {};
+    if (allWords.isNotEmpty) {
+      try {
+        genders = await DictionaryService().getGendersForWords(allWords.toList());
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      setState(() {
+        _subtitlePos
+          ..clear()
+          ..addAll(results);
+        _subtitleWordGenders = {
+          for (final entry in genders.entries) entry.key.toLowerCase().trim(): entry.value,
+        };
       });
     }
   }
@@ -1854,6 +1909,7 @@ class _VideoScreenState extends State<VideoScreen>
     bool isCurrentCue = false,
     double cueStart = 0,
     double cueEnd = 0,
+    Map<String, String>? posMap,
   }) {
     final words = text.split(' ');
     int activeWordIndex = -1;
@@ -1870,6 +1926,7 @@ class _VideoScreenState extends State<VideoScreen>
     }
 
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return RichText(
       text: TextSpan(
@@ -1877,6 +1934,27 @@ class _VideoScreenState extends State<VideoScreen>
           final wordIndex = entry.key;
           final word = entry.value;
           final isHighlighted = isCurrentCue && wordIndex == activeWordIndex;
+
+          // Part-of-speech coloring, same categories/colors as the story reader:
+          // nouns by gender, other content words (verb/adj/adv) by AppTheme.colorForPos.
+          Color? posColor;
+          if (posMap != null) {
+            final cleanWord = word.replaceAll(RegExp(r'[^\wäöüßÄÖÜ]'), '').toLowerCase();
+            final pos = posMap[cleanWord];
+            if (pos == 'noun') {
+              final gender = _subtitleWordGenders[cleanWord];
+              switch (gender) {
+                case 'm':
+                  posColor = isDark ? AppTheme.genderMascDark : AppTheme.genderMasc;
+                case 'f':
+                  posColor = isDark ? AppTheme.genderFemDark : AppTheme.genderFem;
+                case 'n':
+                  posColor = isDark ? AppTheme.genderNeuDark : AppTheme.genderNeu;
+              }
+            } else if (pos != null) {
+              posColor = AppTheme.colorForPos(pos, isDark: isDark);
+            }
+          }
 
           return WidgetSpan(
             child: GestureDetector(
@@ -1898,7 +1976,7 @@ class _VideoScreenState extends State<VideoScreen>
                           color: colorScheme.primary,
                           fontWeight: FontWeight.bold,
                         )
-                      : style,
+                      : (posColor != null ? style.copyWith(color: posColor, fontWeight: FontWeight.w600) : style),
                 ),
               ),
             ),
@@ -2974,6 +3052,7 @@ class _VideoScreenState extends State<VideoScreen>
                         isCurrentCue: isCurrent,
                         cueStart: cue.start,
                         cueEnd: cue.end,
+                        posMap: _subtitlePos[index],
                       ),
                       if (!_hideTranslations) ...[
                         const SizedBox(height: 6.0),

@@ -1961,6 +1961,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
               wordColor = isDark ? AppTheme.genderNeuDark : AppTheme.genderNeu;
             }
           }
+        } else if (_showGenderHighlighting && contextPos != null) {
+          // Part-of-speech coloring for other content words (verb/adjective/adverb) —
+          // same toggle as noun-gender coloring, just applied to the categories the
+          // ML POS tagger (NativeNlpService / GermanPosTagger.kt) returns beyond noun.
+          final posColor = AppTheme.colorForPos(contextPos, isDark: Theme.of(context).brightness == Brightness.dark);
+          if (posColor != null) {
+            wordColor = posColor;
+          }
         }
 
         final tappedData = _tappedWordNotifier.value;

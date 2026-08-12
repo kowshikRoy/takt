@@ -97,6 +97,38 @@ class AppTheme {
 
   static const Color genderPlural = Color(0xFFF9844A); // Retro Orange (from palette)
 
+  // Part-of-speech coloring for non-noun content words, filling in the rest of the
+  // same "retro rainbow" palette genderMasc/Fem/Neu/Plural already draw from — kept
+  // to just verb/adjective/adverb (the categories a learner actually studies) rather
+  // than coloring every function word (article/preposition/pronoun/etc.), which would
+  // turn ordinary paragraphs into visual noise for little pedagogical benefit.
+  static const Color posVerb = Color(0xFFF3722C); // Retro Orange-Red
+  static const Color posAdj = Color(0xFF577590);  // Retro Blue-Grey
+  static const Color posAdv = Color(0xFF4D908E);  // Retro Teal
+
+  static const Color posVerbDark = Color(0xFFFF9B6B); // Lighter Orange-Red for Dark Mode
+  static const Color posAdjDark = Color(0xFF8FB4CC);  // Lighter Blue-Grey for Dark Mode
+  static const Color posAdvDark = Color(0xFF7FC4C0);  // Lighter Teal for Dark Mode
+
+  /// Color for a token's part of speech, for POS categories worth visually
+  /// distinguishing beyond noun-gender coloring (see comment above). Returns null
+  /// for nouns (use the existing gender-color logic instead) and for function-word
+  /// categories that are deliberately left uncolored.
+  static Color? colorForPos(String? pos, {required bool isDark}) {
+    switch (pos?.toLowerCase().trim()) {
+      case 'verb':
+        return isDark ? posVerbDark : posVerb;
+      case 'adj':
+      case 'adjective':
+        return isDark ? posAdjDark : posAdj;
+      case 'adv':
+      case 'adverb':
+        return isDark ? posAdvDark : posAdv;
+      default:
+        return null;
+    }
+  }
+
   /// Returns harmonious CEFR badge colors (foreground, background, border)
   /// tailored for Light and Dark themes to avoid clashing with grammatical genders.
   static CefrBadgeColors getCefrColors(String level, {bool isDark = false}) {
