@@ -31,6 +31,7 @@ class _MainScaffoldState extends State<MainScaffold>
     _selectedIndex = widget.initialIndex;
     WidgetsBinding.instance.addObserver(this);
     VocabularyService().refreshAndRepairSavedWords();
+    VocabularyService().cleanupInflectedFormEntries();
   }
 
   @override

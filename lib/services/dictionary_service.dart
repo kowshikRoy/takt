@@ -1711,24 +1711,65 @@ class DictionaryService {
                 forms: forms,
               );
 
-              // Auto-save into My Library (VocabularyService) as wiktionary_fetched
+              // Auto-save into My Library (VocabularyService) as wiktionary_fetched.
+              // If the only definition we have is a synthesized "form of" gloss
+              // (e.g. "plural of Haus", "past participle of treffen") this word
+              // is purely an inflected form, not something worth its own study
+              // deck entry — save the base word's own real entry instead.
               try {
                 final vocabService = VocabularyService();
-                final existing = await vocabService.getSavedWordByWord(resolvedWord);
+                final isFormOfGloss = isGrammaticalJargon(definitions.first);
+                final trimmedBaseForm = baseForm?.trim();
+                final saveTargetWord = (isFormOfGloss &&
+                        trimmedBaseForm != null &&
+                        trimmedBaseForm.isNotEmpty &&
+                        trimmedBaseForm.toLowerCase() != resolvedWord.toLowerCase())
+                    ? trimmedBaseForm
+                    : resolvedWord;
+
+                final existing = await vocabService.getSavedWordByWord(saveTargetWord);
                 if (existing == null) {
-                  final newSaved = SavedWord(
-                    id: resolvedWord.toLowerCase().trim(),
-                    word: resolvedWord,
-                    baseForm: baseForm ?? resolvedWord,
-                    pos: pos,
-                    gender: gender,
-                    primaryDefinition: definitions.first,
-                    definitions: definitions,
-                    ipa: ipa,
-                    source: 'wiktionary_fetched',
-                    category: VocabCategory.learning,
-                  );
-                  await vocabService.upsertWord(newSaved, notify: false);
+                  if (saveTargetWord == resolvedWord) {
+                    if (!isFormOfGloss) {
+                      final newSaved = SavedWord(
+                        id: resolvedWord.toLowerCase().trim(),
+                        word: resolvedWord,
+                        baseForm: baseForm ?? resolvedWord,
+                        pos: pos,
+                        gender: gender,
+                        primaryDefinition: definitions.first,
+                        definitions: definitions,
+                        ipa: ipa,
+                        source: 'wiktionary_fetched',
+                        category: VocabCategory.learning,
+                      );
+                      await vocabService.upsertWord(newSaved, notify: false);
+                    }
+                    // Else: a form-of gloss with no resolvable base word — skip
+                    // rather than save a word whose only "definition" is jargon.
+                  } else {
+                    // Redirect to the base word's own local entry, if it has one.
+                    final baseResults = await lookupWordFast(saveTargetWord);
+                    if (baseResults.isNotEmpty) {
+                      final b = baseResults.first;
+                      final bDefs = (b['definitions'] as List?)?.whereType<String>().toList() ?? [];
+                      if (bDefs.isNotEmpty) {
+                        final baseSaved = SavedWord(
+                          id: saveTargetWord.toLowerCase().trim(),
+                          word: saveTargetWord,
+                          baseForm: saveTargetWord,
+                          pos: b['pos']?.toString(),
+                          gender: b['gender']?.toString(),
+                          primaryDefinition: bDefs.first,
+                          definitions: bDefs,
+                          ipa: b['ipa']?.toString(),
+                          source: 'wiktionary_fetched',
+                          category: VocabCategory.learning,
+                        );
+                        await vocabService.upsertWord(baseSaved, notify: false);
+                      }
+                    }
+                  }
                 }
               } catch (_) {}
 

@@ -708,6 +708,80 @@ class VocabularyService extends ChangeNotifier {
     return refreshAndRepairSavedWords();
   }
 
+  static final RegExp _formOfGlossBaseWord =
+      RegExp(r'\bof\s+([A-Za-zÄÖÜäöüß]+)\.?\s*$', caseSensitive: false);
+
+  /// One-time cleanup for saved words that only ever meant "this is an
+  /// inflected form of X" (definition text like "plural of Nachricht" or
+  /// "past participle of treffen") — these got auto-saved by an older bug in
+  /// DictionaryService's Wiktionary-fallback path, which saved whatever word
+  /// was looked up rather than its base form. For each one found: resolves
+  /// the base word (preferring the stored `baseForm` field, falling back to
+  /// parsing it out of the gloss text), saves the base word's own real
+  /// dictionary entry if it isn't already in the deck, then deletes the
+  /// inflected-form entry — via [removeWord], so it's tombstoned for cloud
+  /// sync and actually removed from Firebase too, not just locally.
+  Future<int> cleanupInflectedFormEntries() async {
+    final dictionaryService = DictionaryService();
+    final words = await getSavedWords();
+    int removedCount = 0;
+
+    for (final word in words) {
+      if (!dictionaryService.isGrammaticalJargon(word.primaryDefinition)) continue;
+
+      String? targetWord = word.baseForm?.trim();
+      if (targetWord == null || targetWord.isEmpty || targetWord.toLowerCase() == word.word.toLowerCase()) {
+        final match = _formOfGlossBaseWord.firstMatch(word.primaryDefinition);
+        targetWord = match?.group(1);
+      }
+
+      if (targetWord != null && targetWord.isNotEmpty && targetWord.toLowerCase() != word.word.toLowerCase()) {
+        try {
+          final existingBase = await getSavedWordByWord(targetWord);
+          if (existingBase == null) {
+            final baseResults = await dictionaryService.lookupWordFast(targetWord);
+            if (baseResults.isNotEmpty) {
+              final b = baseResults.first;
+              final bDefs = (b['definitions'] as List?)?.whereType<String>().toList() ?? [];
+              if (bDefs.isNotEmpty && !dictionaryService.isGrammaticalJargon(bDefs.first)) {
+                await upsertWord(
+                  SavedWord(
+                    id: targetWord.toLowerCase().trim(),
+                    word: targetWord,
+                    baseForm: targetWord,
+                    pos: b['pos']?.toString(),
+                    gender: b['gender']?.toString(),
+                    primaryDefinition: bDefs.first,
+                    definitions: bDefs,
+                    ipa: b['ipa']?.toString(),
+                    source: 'wiktionary_fetched',
+                    category: VocabCategory.learning,
+                  ),
+                  notify: false,
+                  triggerSync: false,
+                );
+              }
+            }
+          }
+        } catch (e) {
+          AppLogger.error(
+            "Failed to resolve base word '$targetWord' while cleaning up '${word.word}'",
+            error: e,
+            tag: 'VocabularyService',
+          );
+        }
+      }
+
+      await removeWord(word.id);
+      removedCount++;
+    }
+
+    if (removedCount > 0) {
+      await refreshCache();
+    }
+    return removedCount;
+  }
+
   Future<List<SavedWord>> getDueWords() async {
     if (kIsWeb) {
       final now = DateTime.now();
