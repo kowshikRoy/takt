@@ -10,6 +10,7 @@ import '../models/subtitle_cue.dart';
 import 'backend_service.dart';
 import 'gemini_api_key_store.dart';
 import 'gemini_transcription_service.dart';
+import 'story_generation_service.dart';
 import 'ondevice_ai_service.dart';
 import 'app_logger.dart';
 import 'sync_service.dart';
@@ -23,6 +24,7 @@ class MediaLibraryService extends ChangeNotifier {
   static const String _processedVideosKey = 'processed_videos';
   static const String _deletedMediaKeysKey = 'deleted_media_keys';
   static const String _deletedArticleIdsKey = 'deleted_article_ids';
+  static const String _generatedStoriesKey = 'generated_stories_v1';
 
   final BackendService _backendService = BackendService();
   final Map<String, Timer> _pollingTimers = {};
@@ -31,11 +33,13 @@ class MediaLibraryService extends ChangeNotifier {
 
   List<Article> _importedArticles = [];
   List<ProcessedVideo> _processedVideos = [];
+  List<Article> _generatedStories = [];
   Set<String> _deletedMediaKeys = {};
   Set<String> _deletedArticleIds = {};
 
   List<Article> get importedArticles => _importedArticles;
   List<ProcessedVideo> get processedVideos => _processedVideos;
+  List<Article> get generatedStories => _generatedStories;
 
   List<String> getDeletedMediaKeysForSync() => _deletedMediaKeys.toList();
   List<String> getDeletedArticleIdsForSync() => _deletedArticleIds.toList();
@@ -44,6 +48,7 @@ class MediaLibraryService extends ChangeNotifier {
     _loadDeletedKeys();
     _loadImportedArticles();
     _loadProcessedVideos();
+    _loadGeneratedStories();
     clearAllAnalysisCache();
   }
 
@@ -52,7 +57,40 @@ class MediaLibraryService extends ChangeNotifier {
     await _loadDeletedKeys();
     await _loadImportedArticles();
     await _loadProcessedVideos();
+    await _loadGeneratedStories();
     notifyListeners();
+  }
+
+  Future<void> _loadGeneratedStories() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? storiesJson = prefs.getString(_generatedStoriesKey);
+    if (storiesJson != null) {
+      final List<dynamic> decodedList = jsonDecode(storiesJson);
+      _generatedStories = decodedList
+          .map((item) => Article.fromJson(item as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveGeneratedStories() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedList =
+        jsonEncode(_generatedStories.map((article) => article.toJson()).toList());
+    await prefs.setString(_generatedStoriesKey, encodedList);
+  }
+
+  /// Adds freshly generated reading passages to the catalog (newest first) and
+  /// stores each one's body text the same way imported article content is
+  /// stored, so [StoryReaderScreen] can load it via [getCustomContent].
+  Future<void> addGeneratedStories(List<GeneratedStory> stories) async {
+    if (stories.isEmpty) return;
+    for (final story in stories) {
+      _generatedStories.insert(0, story.article);
+      await saveCustomContent(story.article.id, story.content);
+    }
+    notifyListeners();
+    await _saveGeneratedStories();
   }
 
   Future<void> _loadDeletedKeys() async {
@@ -96,16 +134,7 @@ class MediaLibraryService extends ChangeNotifier {
           .where((a) => !_deletedArticleIds.contains(a.id))
           .toList();
     } else {
-      _importedArticles = [
-        Article(
-          id: 'imp1',
-          title: 'My Favorite Recipe',
-          description: '',
-          level: 'Custom',
-          date: DateTime.now(),
-          imageUrl: 'assets/images/story_hair.png',
-        ),
-      ];
+      _importedArticles = [];
     }
     notifyListeners();
   }

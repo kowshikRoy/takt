@@ -19,6 +19,7 @@ import 'story_reader_screen.dart';
 import '../models/article_model.dart';
 import '../widgets/today_words_card.dart';
 import '../services/sync_service.dart';
+import '../services/media_library_service.dart';
 import '../services/book_guide_service.dart';
 import '../models/book_guide.dart';
 import '../theme/books_modernist_style.dart';
@@ -33,15 +34,6 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback? onOpenLearnTab;
 
   const HomeScreen({super.key, this.onOpenLearnTab});
-
-  static Article get _dailyLessonArticle => Article(
-        id: 'cl1',
-        title: 'Wüsten der Welt: Die Sahara',
-        description: 'Extremtemperaturen und faszinierende Dünenlandschaften.',
-        level: 'B1',
-        date: DateTime.now(),
-        imageUrl: 'assets/images/story_desert.png',
-      );
 
   @override
   Widget build(BuildContext context) {
@@ -378,8 +370,10 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildDailySessionCard(BuildContext context) {
-    return Consumer2<VocabularyService, ProfileService>(
-      builder: (context, vocabService, profileService, _) {
+    return Consumer3<VocabularyService, ProfileService, MediaLibraryService>(
+      builder: (context, vocabService, profileService, mediaLibraryService, _) {
+        final generatedStories = mediaLibraryService.generatedStories;
+        final Article? dailyLessonArticle = generatedStories.isNotEmpty ? generatedStories.first : null;
         final dueCount = vocabService.cachedDueCount;
         final savedCount = vocabService.cachedSavedCount;
 
@@ -505,11 +499,15 @@ class HomeScreen extends StatelessWidget {
                 // Task 2: German Reading Lesson
                 GestureDetector(
                   onTap: () {
+                    if (dailyLessonArticle == null) {
+                      onOpenLearnTab?.call();
+                      return;
+                    }
                     profileService.recordActivityToday(story: true);
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => StoryReaderScreen(
-                          article: _dailyLessonArticle,
+                          article: dailyLessonArticle,
                         ),
                       ),
                     );
@@ -530,9 +528,11 @@ class HomeScreen extends StatelessWidget {
                         size: 14,
                       ),
                     ),
-                    title: storyDone
-                        ? 'Lesson: Die Sahara (Read Today)'
-                        : 'Lesson: Die Sahara (Tap to Read)',
+                    title: dailyLessonArticle == null
+                        ? 'Lesson: Generate a story in Learn to start'
+                        : (storyDone
+                            ? 'Lesson: ${dailyLessonArticle.title} (Read Today)'
+                            : 'Lesson: ${dailyLessonArticle.title} (Tap to Read)'),
                     isCompleted: storyDone,
                     inkColor: inkColor,
                   ),

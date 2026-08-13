@@ -227,36 +227,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> with WidgetsBindi
     if (_loadedContent != null && _loadedContent!.isNotEmpty) {
       return _loadedContent!.split(RegExp(r'\n\s*\n')).where((p) => p.trim().isNotEmpty).toList();
     }
-    final articleId = widget.article?.id;
-    if (articleId == '1') {
-      return [
-        'In vielen Teilen von Lateinamerika ist langes Haar sehr wichtig. Menschen in kleinen Dörfern und großen Städten tragen es mit Stolz.',
-        'Für viele Kulturen repräsentiert langes Haar Kraft, Gesundheit und eine enge Verbindung zur Natur und den Vorfahren.',
-        'Beim alltäglichen Kämmen und Pflegen erzählen ältere Generationen traditionelle Geschichten an die jüngeren weiter.',
-        'Traditionelle Frisuren und Zöpfe haben oft symbolische Bedeutungen bei besonderen Festen und Feiern.',
-      ];
-    } else if (articleId == '2' || articleId == 'cl2') {
-      return [
-        'Sockenball ist ein beliebtes Spiel auf den Straßen von Kairo und ganz Ägypten.',
-        'Kinder und Jugendliche machen einen Ball aus alten Socken, etwas Papier und festem Klebeband.',
-        'Man braucht kein teures Stadion oder teure Sportschuhe, um gemeinsam viel Spaß zu haben.',
-        'Jeden Nachmittag treffen sich Freunde nach der Schule, um spannende Spiele auf der Straße zu spielen.',
-      ];
-    } else if (articleId == '3' || articleId == 'cl1') {
-      return [
-        'Wüsten sind faszinierende Landschaften mit extremen Temperaturen, die von glühender Hitze am Tag bis zu großer Kälte in der Nacht reichen.',
-        'Die Sahara ist die größte Trockenwüste der Erde und erstreckt sich über riesige Teile des afrikanischen Kontinents.',
-        'Trotz der Trockenheit haben sich viele Pflanzen und Tiere auf erstaunliche Weise an das raue Klima angepasst.',
-        'Wandernde Sanddünen verändern stetig die Form der Landschaft unter dem klaren, endlosen Himmel.',
-      ];
-    }
-    return [
-      'Es war ein kalter, nebliger Morgen. Hannah stand vor dem alten Haus ihrer Großmutter. Die Fenster waren dunkel und das Tor quietschte im Wind. Sie hatte Angst, aber sie musste hineingehen.',
-      'Langsam öffnete sie die schwere Eichentür. Der Flur roch nach Staub und alten Büchern. Auf dem kleinen Tisch im Flur lag etwas Glänzendes.',
-      'Hannah ging näher heran. Es war ein kleiner, goldener Schmetterling aus Metall.',
-      '"Warum liegt das hier?", flüsterte sie. Plötzlich hörte sie ein Geräusch aus dem ersten Stock. War sie wirklich allein?',
-      'Ihr Herz klopfte schneller. Sie nahm den Gegenstand und steckte ihn in ihre Tasche.'
-    ];
+    return const ['Content is not available for this story.'];
   }
 
   Future<void> _fetchContextualAnalysis() async {
