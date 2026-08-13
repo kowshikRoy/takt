@@ -2898,22 +2898,49 @@ class DictionaryService {
     } catch (_) {}
     return null;
   }
+  // Substrings distinctive enough to English cross-reference/inflection glosses
+  // (sourced straight from real Kaikki/Wiktionary dump entries — verb-conjugation
+  // glosses like "first-person singular preterite of X" and multi-case combos like
+  // "nominative/accusative plural of X" don't have a fixed prefix, hence `contains`
+  // rather than `startsWith` for most of these) that a bare `contains` check on an
+  // English dictionary definition won't realistically false-positive on.
+  static const List<String> _jargonSubstrings = [
+    'inflection of',
+    'past participle of',
+    'present participle of',
+    'plural of',
+    'singular of',
+    'imperative of',
+    'preterite of',
+    'indicative of',
+    'subjunctive of',
+    'degree of',
+    'form of',
+    'spelling of',
+    'initialism of',
+    'abbreviation of',
+    'clipping of',
+    'contraction of',
+    'misspelling of',
+  ];
+
+  // Matches a definition that *leads* with one or more case names (e.g.
+  // "dative plural of der", or the slash-joined "nominative/accusative
+  // neuter singular of der" — real Wiktionary data uses both formats).
+  // Deliberately anchored to the start: a bare `contains('accusative')`
+  // would also match legitimate verb definitions with a bracketed usage
+  // note like "to conflict [with mit (+ dative) 'with something']".
+  static final RegExp _leadingCaseGloss = RegExp(
+    r'^(nominative|genitive|dative|accusative)(/(nominative|genitive|dative|accusative))*\s',
+  );
+
   bool isGrammaticalJargon(String def) {
     final lower = def.trim().toLowerCase();
     return lower.startsWith('strong ') ||
         lower.startsWith('weak ') ||
         lower.startsWith('mixed ') ||
-        lower.startsWith('inflection of') ||
-        lower.startsWith('past participle of') ||
-        lower.startsWith('present participle of') ||
-        lower.startsWith('plural of') ||
-        lower.startsWith('genitive ') ||
-        lower.startsWith('dative ') ||
-        lower.startsWith('accusative ') ||
-        lower.startsWith('nominative ') ||
-        lower.contains('singular of') ||
-        lower.contains('plural of') ||
-        lower.contains('degree of');
+        _leadingCaseGloss.hasMatch(lower) ||
+        _jargonSubstrings.any(lower.contains);
   }
 
   Future<List<String>> cleanAndResolveDefinitions({
