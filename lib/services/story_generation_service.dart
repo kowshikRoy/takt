@@ -53,14 +53,21 @@ class StoryGenerationService {
     final levelPlan = List.generate(count, (i) => levels[i % levels.length]).join(', ');
     final buffer = StringBuffer()
       ..writeln(
-        'You are writing short German reading passages for language learners, spanning a mix '
-        'of topics such as: ${_topics.join(", ")}. Write $count DISTINCT passages, one per '
-        'CEFR level in this order: $levelPlan. Each passage must genuinely match its level:\n'
-        '- A1/A2: very simple vocabulary, short sentences, present tense mostly.\n'
-        '- B1/B2: everyday vocabulary, more varied tenses and clause structure.\n'
-        '- C1: sophisticated vocabulary and sentence structure.\n'
-        'Each passage should be 3-5 short paragraphs (separate paragraphs with a blank line). '
-        'Pick a different topic for each passage so the set feels varied, not repetitive.',
+        'You are writing German short stories for language learners — real narrative fiction '
+        'with characters, a setting, and a clear arc (a situation, some development, a resolution '
+        'or turn at the end), not a dry informational or encyclopedia-style passage. Draw '
+        'inspiration from a mix of themes such as: ${_topics.join(", ")}, but always tell it as a '
+        'STORY happening to someone, not a description of facts about the topic. Write $count '
+        'DISTINCT stories, one per CEFR level in this order: $levelPlan. Each story must '
+        'genuinely match its level:\n'
+        '- A1/A2: very simple vocabulary, short sentences, present tense mostly, but still a real '
+        'story with a beginning, middle, and end.\n'
+        '- B1/B2: everyday vocabulary, more varied tenses, dialogue, and clause structure.\n'
+        '- C1: sophisticated vocabulary, varied sentence structure, and nuance.\n'
+        'Each story should be substantial — at least 10-14 paragraphs long (separate paragraphs '
+        'with a blank line), long enough for a satisfying few-minutes read, not a short blurb. '
+        'Give each one a different setting, cast of characters, and topic so the set feels varied, '
+        'not repetitive.',
       );
     if (avoidTitles.isNotEmpty) {
       buffer.writeln(
@@ -127,7 +134,7 @@ class StoryGenerationService {
               headers: {'Content-Type': 'application/json'},
               body: jsonEncode(payload),
             )
-            .timeout(const Duration(seconds: 60));
+            .timeout(const Duration(seconds: 120));
 
         if (res.statusCode != 200) {
           AppLogger.error(
