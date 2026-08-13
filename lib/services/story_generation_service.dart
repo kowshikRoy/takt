@@ -203,11 +203,14 @@ class StoryGenerationService {
     return [];
   }
 
-  // Flash Image ("Nano Banana") first, with older preview/2.0 image-capable
-  // models as fallbacks in case a key's project doesn't yet have access to
-  // the newer one — same defensive fallback-chain pattern used everywhere
-  // else Gemini is called in this app.
+  // gemini-3.1-flash-image ("Nano Banana 2") first since it's the current
+  // flagship image model, falling back to gemini-2.5-flash-image (the older
+  // but still-supported "Nano Banana" generation) and then older preview/2.0
+  // image-capable models — same defensive fallback-chain pattern used
+  // everywhere else Gemini is called in this app, in case a given key's
+  // project doesn't yet have access to the newest model.
   static const _imageModelsToTry = [
+    'gemini-3.1-flash-image',
     'gemini-2.5-flash-image',
     'gemini-2.5-flash-image-preview',
     'gemini-2.0-flash-preview-image-generation',
@@ -269,8 +272,11 @@ class StoryGenerationService {
               ],
             },
           ],
+          // Some Gemini image models reject an IMAGE-only modality list on
+          // the REST generateContent endpoint — TEXT must be requested
+          // alongside it even though we only use the image part below.
           'generationConfig': {
-            'responseModalities': ['IMAGE'],
+            'responseModalities': ['TEXT', 'IMAGE'],
           },
         };
 

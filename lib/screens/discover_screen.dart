@@ -89,11 +89,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         await mediaLibraryService.addGeneratedStories(stories);
       }
       if (!silent && context.mounted) {
+        final withArt = stories.where((s) => s.article.imageUrl.startsWith('data:image')).length;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(stories.isNotEmpty
-                ? 'Added ${stories.length} new stories!'
-                : 'Could not generate stories right now — try again shortly.'),
+            content: Text(stories.isEmpty
+                ? 'Could not generate stories right now — try again shortly.'
+                : 'Added ${stories.length} new stories ($withArt with AI art)!'),
             duration: const Duration(seconds: 2),
           ),
         );
