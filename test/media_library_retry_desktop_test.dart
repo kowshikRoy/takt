@@ -15,10 +15,6 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
-    // DiscoverScreen's "Path" tab (SkillTreeScreen) is built eagerly by
-    // TabBarView even though this test only interacts with "Library", and
-    // it pulls in VocabularyService, which opens a real sqflite database —
-    // unavailable via platform channels in a plain widget test.
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   });
@@ -71,10 +67,6 @@ void main() {
         ),
       );
 
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      await tester.tap(find.text('Library'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

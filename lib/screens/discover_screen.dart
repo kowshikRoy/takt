@@ -16,7 +16,6 @@ import 'story_reader_screen.dart';
 import 'video_screen.dart';
 import 'create/text_input_screen.dart';
 import 'create/url_import_screen.dart';
-import 'skill_tree_screen.dart';
 import 'transcribed_media_grid_screen.dart';
 import '../theme/books_modernist_style.dart';
 import '../widgets/responsive_grid.dart';
@@ -123,66 +122,35 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Builder(
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      // Desktop already surfaces "Import" via the sidebar's Import Any
+      // Content banner — the FAB there would be a second button doing
+      // the exact same thing. Keep it only where it's the sole entry
+      // point: mobile.
+      floatingActionButton: Builder(
         builder: (context) {
-          final tabController = DefaultTabController.of(context);
-          return Scaffold(
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            // Desktop already surfaces "Import" via the sidebar's Import Any
-            // Content banner — the FAB there would be a second button doing
-            // the exact same thing. Keep it only where it's the sole entry
-            // point: mobile, and only on the Library tab.
-            floatingActionButton: AnimatedBuilder(
-              animation: tabController,
-              builder: (context, _) {
-                if (tabController.index != 0) return const SizedBox.shrink();
-                if (MediaQuery.sizeOf(context).width > 700) return const SizedBox.shrink();
-                return FloatingActionButton(
-                  onPressed: () => _showCreateOptions(context),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: const Icon(Icons.add, color: Colors.white),
-                );
-              },
-            ),
-            body: SafeArea(
-              child: Column(
-                children: [
-                  TabBar(
-                    tabs: const [Tab(text: 'Library'), Tab(text: 'Path')],
-                    labelColor: Theme.of(context).colorScheme.primary,
-                    unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-                    indicatorColor: Theme.of(context).colorScheme.primary,
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        // Scoped to just the Library tab's content — MediaLibraryService's
-                        // notifyListeners() fires every ~3s while a video is processing, and
-                        // this Consumer keeps that rebuild confined to this subtree instead of
-                        // the whole Scaffold (TabBar, FAB, and the Path tab included).
-                        Consumer<MediaLibraryService>(
-                          builder: (context, mediaLibraryService, _) {
-                            return LayoutBuilder(
-                              builder: (context, constraints) {
-                                final bool isDesktop = constraints.maxWidth > 700;
-                                return isDesktop
-                                    ? _buildDesktopLayout(context, mediaLibraryService)
-                                    : _buildMobileLayout(context, mediaLibraryService);
-                              },
-                            );
-                          },
-                        ),
-                        const SkillTreeScreen(),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          if (MediaQuery.sizeOf(context).width > 700) return const SizedBox.shrink();
+          return FloatingActionButton(
+            onPressed: () => _showCreateOptions(context),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            child: const Icon(Icons.add, color: Colors.white),
           );
         },
+      ),
+      body: SafeArea(
+        child: Consumer<MediaLibraryService>(
+          builder: (context, mediaLibraryService, _) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final bool isDesktop = constraints.maxWidth > 700;
+                return isDesktop
+                    ? _buildDesktopLayout(context, mediaLibraryService)
+                    : _buildMobileLayout(context, mediaLibraryService);
+              },
+            );
+          },
+        ),
       ),
     );
   }
