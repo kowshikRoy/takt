@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../models/article_model.dart';
+import 'article_thumbnail.dart';
 
 
 class ArticleCard extends StatelessWidget {
@@ -44,21 +44,7 @@ class ArticleCard extends StatelessWidget {
                 children: [
                   Container(
                     color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    child: article.imageUrl.startsWith('http')
-                        ? CachedNetworkImage(
-                            imageUrl: article.imageUrl,
-                            fit: BoxFit.cover,
-                            errorWidget: (context, url, error) {
-                              return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
-                            },
-                          )
-                        : Image.asset(
-                            article.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Image.asset('assets/images/story_desert.png', fit: BoxFit.cover);
-                            },
-                          ),
+                    child: ArticleThumbnail(imageUrl: article.imageUrl, fit: BoxFit.cover),
                   ),
                   if (onDelete != null)
                     Positioned(

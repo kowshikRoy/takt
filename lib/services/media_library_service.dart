@@ -80,6 +80,13 @@ class MediaLibraryService extends ChangeNotifier {
     await prefs.setString(_generatedStoriesKey, encodedList);
   }
 
+  // Generated thumbnails can be base64 data URIs a few hundred KB each, so
+  // an unbounded catalog would eventually bloat SharedPreferences (and hit
+  // web's localStorage cap) the more times a user taps "Generate More" —
+  // cap the catalog and evict the oldest stories (and their stored content)
+  // past that point.
+  static const _maxGeneratedStories = 24;
+
   /// Adds freshly generated reading passages to the catalog (newest first) and
   /// stores each one's body text the same way imported article content is
   /// stored, so [StoryReaderScreen] can load it via [getCustomContent].
@@ -88,6 +95,14 @@ class MediaLibraryService extends ChangeNotifier {
     for (final story in stories) {
       _generatedStories.insert(0, story.article);
       await saveCustomContent(story.article.id, story.content);
+    }
+    if (_generatedStories.length > _maxGeneratedStories) {
+      final evicted = _generatedStories.sublist(_maxGeneratedStories);
+      _generatedStories = _generatedStories.sublist(0, _maxGeneratedStories);
+      final prefs = await SharedPreferences.getInstance();
+      for (final article in evicted) {
+        await prefs.remove('$_customContentKeyPrefix${article.id}');
+      }
     }
     notifyListeners();
     await _saveGeneratedStories();

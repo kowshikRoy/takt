@@ -11,6 +11,7 @@ import '../models/processed_video.dart';
 import '../models/processing_status.dart';
 import '../widgets/article_card.dart';
 import '../widgets/compact_article_card.dart';
+import '../widgets/article_thumbnail.dart';
 import 'story_reader_screen.dart';
 import 'video_screen.dart';
 import 'create/text_input_screen.dart';
@@ -1360,13 +1361,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       child: SizedBox(
                         width: 48,
                         height: 34,
-                        child: article.imageUrl.startsWith('http')
-                            ? CachedNetworkImage(
-                                imageUrl: article.imageUrl,
-                                fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
-                              )
-                            : Image.asset(article.imageUrl, fit: BoxFit.cover),
+                        child: ArticleThumbnail(imageUrl: article.imageUrl, fit: BoxFit.cover),
                       ),
                     ),
                     const SizedBox(width: 12),

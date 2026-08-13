@@ -182,7 +182,9 @@ class StoryGenerationService {
           ));
         }
 
-        if (results.isNotEmpty) return results;
+        if (results.isNotEmpty) {
+          return _withGeneratedThumbnails(results, apiKey);
+        }
       } catch (e) {
         AppLogger.error(
           'Story generation ($model) error',
@@ -192,5 +194,118 @@ class StoryGenerationService {
       }
     }
     return [];
+  }
+
+  // Flash Image ("Nano Banana") first, with older preview/2.0 image-capable
+  // models as fallbacks in case a key's project doesn't yet have access to
+  // the newer one — same defensive fallback-chain pattern used everywhere
+  // else Gemini is called in this app.
+  static const _imageModelsToTry = [
+    'gemini-2.5-flash-image',
+    'gemini-2.5-flash-image-preview',
+    'gemini-2.0-flash-preview-image-generation',
+  ];
+
+  /// Best-effort: generates one AI illustration per story in parallel and
+  /// swaps it in for the cycling static-asset placeholder. Any story whose
+  /// image call fails (rate limit, no image access on this key, etc.) simply
+  /// keeps its placeholder — a missing thumbnail should never fail the whole
+  /// batch of otherwise-good generated text.
+  static Future<List<GeneratedStory>> _withGeneratedThumbnails(
+    List<GeneratedStory> stories,
+    String apiKey,
+  ) async {
+    final withImages = await Future.wait(stories.map((story) async {
+      final dataUri = await _generateThumbnailDataUri(
+        apiKey: apiKey,
+        title: story.article.title,
+        description: story.article.description,
+      );
+      if (dataUri == null) return story;
+      return GeneratedStory(
+        article: Article(
+          id: story.article.id,
+          title: story.article.title,
+          description: story.article.description,
+          level: story.article.level,
+          date: story.article.date,
+          imageUrl: dataUri,
+        ),
+        content: story.content,
+      );
+    }));
+    return withImages;
+  }
+
+  static Future<String?> _generateThumbnailDataUri({
+    required String apiKey,
+    required String title,
+    required String description,
+  }) async {
+    final prompt =
+        'Create a simple, friendly, flat-illustration style cover image (no text, no words, no '
+        'letters, no captions anywhere in the image) representing the theme of this short German '
+        'reading passage for language learners. Title: "$title". Summary: "$description". Wide '
+        'landscape composition, warm and appealing colors, clean and uncluttered, suitable as a '
+        'small article thumbnail.';
+
+    for (final model in _imageModelsToTry) {
+      try {
+        final endpoint = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
+        );
+        final payload = {
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt},
+              ],
+            },
+          ],
+          'generationConfig': {
+            'responseModalities': ['IMAGE'],
+          },
+        };
+
+        final res = await http
+            .post(
+              endpoint,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 45));
+
+        if (res.statusCode != 200) {
+          AppLogger.error(
+            'Thumbnail generation ($model) returned status ${res.statusCode}: ${res.body}',
+            tag: 'StoryGenerationService',
+          );
+          continue;
+        }
+
+        final resJson = jsonDecode(utf8.decode(res.bodyBytes));
+        final candidates = (resJson['candidates'] as List?) ?? [];
+        if (candidates.isEmpty) continue;
+
+        final parts = (candidates.first['content']?['parts'] as List?) ?? [];
+        for (final part in parts) {
+          if (part is! Map) continue;
+          final inline = part['inlineData'];
+          if (inline is! Map) continue;
+          final mimeType = (inline['mimeType'] as String?) ?? 'image/png';
+          final data = inline['data'] as String?;
+          if (data != null && data.isNotEmpty) {
+            return 'data:$mimeType;base64,$data';
+          }
+        }
+      } catch (e) {
+        AppLogger.error(
+          'Thumbnail generation ($model) error',
+          error: e,
+          tag: 'StoryGenerationService',
+        );
+      }
+    }
+    return null;
   }
 }
