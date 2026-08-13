@@ -2,6 +2,7 @@ import 'dart:math';
 import '../models/daily_challenge_question.dart';
 import '../models/saved_word.dart';
 import 'compound_service.dart';
+import 'connector_service.dart';
 import 'gender_practice_data_source.dart';
 import 'sentence_practice_service.dart';
 import 'vocabulary_service.dart';
@@ -15,6 +16,7 @@ class DailyChallengeService {
   final GenderPracticeDataSource _genderDataSource;
   final CompoundService _compoundService;
   final SentencePracticeService _sentenceService;
+  final ConnectorService _connectorService;
   final Random _random;
 
   /// Below this many saved words there usually aren't enough distinct definitions to
@@ -28,39 +30,47 @@ class DailyChallengeService {
     GenderPracticeDataSource? genderDataSource,
     CompoundService? compoundService,
     SentencePracticeService? sentenceService,
+    ConnectorService? connectorService,
     Random? random,
   })  : _vocabularyService = vocabularyService ?? VocabularyService(),
         _genderDataSource = genderDataSource ?? GenderPracticeDataSource(),
         _compoundService = compoundService ?? CompoundService(),
         _sentenceService = sentenceService ?? SentencePracticeService(),
+        _connectorService = connectorService ?? ConnectorService(),
         _random = random ?? Random();
 
-  /// Composes one mixed-type session. Default quota is 4 vocab / 2 gender / 2
-  /// compound / 2 sentence (targetSize 10); when the vocab or gender slice has
-  /// nothing to offer (new user, nothing due), those slots are redistributed to the
-  /// non-personalized compound/sentence slices instead of shipping a short session.
+  /// Composes one mixed-type session. Default quota is 3 vocab / 2 gender / 2
+  /// compound / 2 connector / 1 sentence (targetSize 10); when the vocab or gender
+  /// slice has nothing to offer (new user, nothing due), those slots are
+  /// redistributed across the three non-personalized slices (compound, connector,
+  /// sentence) instead of shipping a short session.
   Future<List<DailyChallengeQuestion>> buildSession({int targetSize = 10}) async {
-    final vocabQuota = (targetSize * 0.4).round();
+    final vocabQuota = (targetSize * 0.3).round();
     final genderQuota = (targetSize * 0.2).round();
     final compoundQuota = (targetSize * 0.2).round();
-    final sentenceQuota = targetSize - vocabQuota - genderQuota - compoundQuota;
+    final connectorQuota = (targetSize * 0.2).round();
+    final sentenceQuota = targetSize - vocabQuota - genderQuota - compoundQuota - connectorQuota;
 
     final vocabQuestions = await _buildVocabSlice(vocabQuota);
     final genderQuestions = await _buildGenderSlice(genderQuota);
 
-    // Redistribute any unmet vocab/gender quota to compound+sentence, which don't
-    // depend on the user having saved words or due reviews.
+    // Redistribute any unmet vocab/gender quota across compound+connector+sentence,
+    // which don't depend on the user having saved words or due reviews.
     final shortfall = (vocabQuota - vocabQuestions.length) + (genderQuota - genderQuestions.length);
-    final extraForCompound = (shortfall / 2).ceil();
-    final extraForSentence = shortfall - extraForCompound;
+    final extraForCompound = (shortfall / 3).ceil();
+    final remainderAfterCompound = shortfall - extraForCompound;
+    final extraForConnector = (remainderAfterCompound / 2).ceil();
+    final extraForSentence = remainderAfterCompound - extraForConnector;
 
     final compoundQuestions = await _buildCompoundSlice(compoundQuota + extraForCompound);
+    final connectorQuestions = await _buildConnectorSlice(connectorQuota + extraForConnector);
     final sentenceQuestions = _buildSentenceSlice(sentenceQuota + extraForSentence);
 
     final all = [
       ...vocabQuestions,
       ...genderQuestions,
       ...compoundQuestions,
+      ...connectorQuestions,
       ...sentenceQuestions,
     ]..shuffle(_random);
 
@@ -145,6 +155,16 @@ class DailyChallengeService {
       ));
     }
     return questions;
+  }
+
+  Future<List<ConnectorQuestion>> _buildConnectorSlice(int quota) async {
+    if (quota <= 0) return [];
+    await _connectorService.loadAssetConnectors();
+    final exercises = _connectorService.getAllExercises().toList()..shuffle(_random);
+    return exercises
+        .take(quota)
+        .map((e) => ConnectorQuestion(id: 'connector_${e.id}', exercise: e))
+        .toList();
   }
 
   List<SentenceCaseQuestion> _buildSentenceSlice(int quota) {

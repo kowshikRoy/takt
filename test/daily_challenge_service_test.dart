@@ -134,5 +134,34 @@ void main() {
       expect(ids.toSet().length, ids.length, reason: 'no exercise should repeat within one session');
       expect(sentenceQuestions.length, lessThanOrEqualTo(5), reason: 'the exercise bank only has 5 items total');
     });
+
+    test('redistribution reaches the connector slice too, not just compound and sentence', () async {
+      final service = DailyChallengeService();
+      final session = await service.buildSession(targetSize: 10);
+
+      expect(session.whereType<ConnectorQuestion>(), isNotEmpty);
+    });
+  });
+
+  group('DailyChallengeService.buildSession — connector slice', () {
+    test('every connector question has exactly 4 options including the correct answer, no duplicates', () async {
+      final service = DailyChallengeService();
+      final session = await service.buildSession();
+
+      for (final q in session.whereType<ConnectorQuestion>()) {
+        expect(q.exercise.options.length, 4);
+        expect(q.exercise.options, contains(q.exercise.correctAnswer));
+        expect(q.exercise.options.toSet().length, 4, reason: 'options must not contain duplicates');
+      }
+    });
+
+    test('connector slice has no duplicate exercises within one session', () async {
+      final service = DailyChallengeService();
+      final session = await service.buildSession(targetSize: 20); // deliberately oversized
+
+      final connectorQuestions = session.whereType<ConnectorQuestion>().toList();
+      final ids = connectorQuestions.map((q) => q.exercise.id).toList();
+      expect(ids.toSet().length, ids.length, reason: 'no exercise should repeat within one session');
+    });
   });
 }

@@ -106,6 +106,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
         await _genderDataSource.recordSrsReview(q.noun, isCorrect, countsAsEasy: _streak >= 3);
       case CompoundQuestion _:
       case SentenceCaseQuestion _:
+      case ConnectorQuestion _:
         break; // local scoring only, matching the standalone screens for these types
     }
 
@@ -233,6 +234,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
       GenderQuestion q => _buildGenderQuestion(context, q),
       CompoundQuestion q => _buildCompoundQuestion(context, q),
       SentenceCaseQuestion q => _buildSentenceQuestion(context, q),
+      ConnectorQuestion q => _buildConnectorQuestion(context, q),
     };
   }
 
@@ -478,6 +480,29 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     );
   }
 
+  Widget _buildConnectorQuestion(BuildContext context, ConnectorQuestion q) {
+    final exercise = q.exercise;
+    return Column(
+      children: [
+        _questionLabel(context, 'CONNECTORS & WORD ORDER'),
+        const SizedBox(height: 12),
+        Text(
+          exercise.promptEnglish,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+        ),
+        const SizedBox(height: 8),
+        Text('Pick the correct German sentence.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 32),
+        ...exercise.options.map((opt) => _buildOptionTile(context, opt, opt == exercise.correctAnswer)),
+        if (_isAnswered) ...[
+          const SizedBox(height: 12),
+          Text(exercise.tip, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 13)),
+        ],
+      ],
+    );
+  }
+
   Widget _buildBottomBar(BuildContext context) {
     return Positioned(
       bottom: 0,
@@ -522,6 +547,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
         return 'Compound words';
       case const (SentenceCaseQuestion):
         return 'Sentence case';
+      case const (ConnectorQuestion):
+        return 'Connectors & word order';
       default:
         return t.toString();
     }

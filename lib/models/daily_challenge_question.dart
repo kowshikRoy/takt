@@ -1,13 +1,15 @@
 import 'compound_word.dart';
+import 'connector_exercise.dart';
 import 'noun_question.dart';
 import 'saved_word.dart';
 import 'sentence_exercise.dart';
 
 /// One question in a Daily Challenge session. Wraps whichever existing per-module
-/// model (SavedWord, NounQuestion, CompoundWord, SentenceExercise) the question came
-/// from, rather than flattening everything into a generic prompt/options shape — the
-/// quiz screen switches on the concrete type to render each one with its module's own
-/// visual treatment and to dispatch the right SRS/scoring side effect on answer.
+/// model (SavedWord, NounQuestion, CompoundWord, SentenceExercise, ConnectorExercise)
+/// the question came from, rather than flattening everything into a generic
+/// prompt/options shape — the quiz screen switches on the concrete type to render
+/// each one with its module's own visual treatment and to dispatch the right
+/// SRS/scoring side effect on answer.
 sealed class DailyChallengeQuestion {
   final String id;
   const DailyChallengeQuestion({required this.id});
@@ -52,4 +54,12 @@ class SentenceCaseQuestion extends DailyChallengeQuestion {
   final SentenceExercise exercise;
 
   const SentenceCaseQuestion({required super.id, required this.exercise});
+}
+
+/// "Pick the correct German sentence" connector/word-order exercise, reusing
+/// ConnectorExercise as-is.
+class ConnectorQuestion extends DailyChallengeQuestion {
+  final ConnectorExercise exercise;
+
+  const ConnectorQuestion({required super.id, required this.exercise});
 }

@@ -1,0 +1,282 @@
+[
+  {
+    "id": "coord_aber",
+    "promptEnglish": "I like coffee, but I don't drink tea.",
+    "connector": "aber",
+    "category": "coordinating",
+    "options": [
+      "Ich mag Kaffee, aber ich trinke keinen Tee.",
+      "Ich mag Kaffee, aber ich keinen Tee trinke.",
+      "Ich mag Kaffee, dass ich trinke keinen Tee.",
+      "Ich mag Kaffee, obwohl ich trinke keinen Tee."
+    ],
+    "correctAnswer": "Ich mag Kaffee, aber ich trinke keinen Tee.",
+    "tip": "aber is coordinating — it doesn't change word order, the second clause stays normal Verb-Second."
+  },
+  {
+    "id": "coord_denn",
+    "promptEnglish": "She's staying home, because she is sick.",
+    "connector": "denn",
+    "category": "coordinating",
+    "options": [
+      "Sie bleibt zu Hause, denn sie ist krank.",
+      "Sie bleibt zu Hause, denn ist sie krank.",
+      "Sie bleibt zu Hause, weil sie ist krank.",
+      "Sie bleibt zu Hause, sondern sie ist krank."
+    ],
+    "correctAnswer": "Sie bleibt zu Hause, denn sie ist krank.",
+    "tip": "denn is coordinating, unlike weil — the verb stays in second position, it doesn't move to the end."
+  },
+  {
+    "id": "coord_und",
+    "promptEnglish": "I'm cooking dinner and my brother is setting the table.",
+    "connector": "und",
+    "category": "coordinating",
+    "options": [
+      "Ich koche das Abendessen und mein Bruder deckt den Tisch.",
+      "Ich koche das Abendessen und mein Bruder den Tisch deckt.",
+      "Ich koche das Abendessen, weil mein Bruder deckt den Tisch.",
+      "Ich koche das Abendessen und deckt mein Bruder den Tisch."
+    ],
+    "correctAnswer": "Ich koche das Abendessen und mein Bruder deckt den Tisch.",
+    "tip": "und is coordinating — each clause keeps its own normal Verb-Second word order."
+  },
+  {
+    "id": "coord_oder",
+    "promptEnglish": "We can go to the movies or we can stay home.",
+    "connector": "oder",
+    "category": "coordinating",
+    "options": [
+      "Wir können ins Kino gehen oder wir bleiben zu Hause.",
+      "Wir können ins Kino gehen oder wir zu Hause bleiben.",
+      "Wir können ins Kino gehen, aber wir bleiben zu Hause.",
+      "Wir können ins Kino gehen oder bleiben wir zu Hause."
+    ],
+    "correctAnswer": "Wir können ins Kino gehen oder wir bleiben zu Hause.",
+    "tip": "oder is coordinating — no verb movement, and no subject-verb inversion either."
+  },
+  {
+    "id": "coord_sondern",
+    "promptEnglish": "He isn't tired, but rather he's just bored.",
+    "connector": "sondern",
+    "category": "coordinating",
+    "options": [
+      "Er ist nicht müde, sondern er ist einfach nur gelangweilt.",
+      "Er ist nicht müde, sondern er einfach nur gelangweilt ist.",
+      "Er ist nicht müde, denn er ist einfach nur gelangweilt.",
+      "Er ist nicht müde, sondern ist er einfach nur gelangweilt."
+    ],
+    "correctAnswer": "Er ist nicht müde, sondern er ist einfach nur gelangweilt.",
+    "tip": "sondern corrects a negated statement ('not X, but rather Y') and, like all coordinating conjunctions, doesn't move the verb."
+  },
+  {
+    "id": "sub_weil",
+    "promptEnglish": "I'm learning German because I want to move to Berlin.",
+    "connector": "weil",
+    "category": "subordinating",
+    "options": [
+      "Ich lerne Deutsch, weil ich nach Berlin ziehen möchte.",
+      "Ich lerne Deutsch, weil ich möchte nach Berlin ziehen.",
+      "Ich lerne Deutsch, aber ich nach Berlin ziehen möchte.",
+      "Ich lerne Deutsch, weil ich nach Berlin möchte ziehen."
+    ],
+    "correctAnswer": "Ich lerne Deutsch, weil ich nach Berlin ziehen möchte.",
+    "tip": "weil is subordinating — it pushes the conjugated verb (möchte) all the way to the end of its clause."
+  },
+  {
+    "id": "sub_dass",
+    "promptEnglish": "I know that he is tired.",
+    "connector": "dass",
+    "category": "subordinating",
+    "options": [
+      "Ich weiß, dass er müde ist.",
+      "Ich weiß, dass er ist müde.",
+      "Ich weiß, weil er müde ist.",
+      "Ich weiß, dass müde er ist."
+    ],
+    "correctAnswer": "Ich weiß, dass er müde ist.",
+    "tip": "dass is subordinating, so the verb (ist) moves to the end — and dass introduces a fact, not a reason like weil does."
+  },
+  {
+    "id": "sub_wenn",
+    "promptEnglish": "We go for a walk when the sun shines.",
+    "connector": "wenn",
+    "category": "subordinating",
+    "options": [
+      "Wir gehen spazieren, wenn die Sonne scheint.",
+      "Wir gehen spazieren, wenn scheint die Sonne.",
+      "Wir gehen spazieren, dass die Sonne scheint.",
+      "Wir gehen spazieren, obwohl die Sonne scheint."
+    ],
+    "correctAnswer": "Wir gehen spazieren, wenn die Sonne scheint.",
+    "tip": "wenn is subordinating (verb to the end), and it fits a condition/time here — not a fact (dass) or a contrast (obwohl)."
+  },
+  {
+    "id": "sub_obwohl",
+    "promptEnglish": "He goes to work, although he is sick.",
+    "connector": "obwohl",
+    "category": "subordinating",
+    "options": [
+      "Er geht arbeiten, obwohl er krank ist.",
+      "Er geht arbeiten, obwohl er ist krank.",
+      "Er geht arbeiten, weil er krank ist.",
+      "Er geht arbeiten, wenn er krank ist."
+    ],
+    "correctAnswer": "Er geht arbeiten, obwohl er krank ist.",
+    "tip": "obwohl ('although') signals a contrast and sends the verb (ist) to the end of its clause."
+  },
+  {
+    "id": "sub_waehrend",
+    "promptEnglish": "My sister reads a book while I cook lunch.",
+    "connector": "während",
+    "category": "subordinating",
+    "options": [
+      "Meine Schwester liest ein Buch, während ich das Mittagessen koche.",
+      "Meine Schwester liest ein Buch, während ich koche das Mittagessen.",
+      "Meine Schwester liest ein Buch, weil ich das Mittagessen koche.",
+      "Meine Schwester liest ein Buch, obwohl ich das Mittagessen koche."
+    ],
+    "correctAnswer": "Meine Schwester liest ein Buch, während ich das Mittagessen koche.",
+    "tip": "während ('while') describes two things happening at once and sends the verb (koche) to the end."
+  },
+  {
+    "id": "sub_nachdem",
+    "promptEnglish": "We go to bed after we've brushed our teeth.",
+    "connector": "nachdem",
+    "category": "subordinating",
+    "options": [
+      "Wir gehen ins Bett, nachdem wir die Zähne geputzt haben.",
+      "Wir gehen ins Bett, nachdem wir haben die Zähne geputzt.",
+      "Wir gehen ins Bett, weil wir die Zähne geputzt haben.",
+      "Wir gehen ins Bett, nachdem wir die Zähne haben geputzt."
+    ],
+    "correctAnswer": "Wir gehen ins Bett, nachdem wir die Zähne geputzt haben.",
+    "tip": "With two-part verbs (geputzt haben), the conjugated part (haben) goes all the way to the end, after the participle."
+  },
+  {
+    "id": "adv_deshalb",
+    "promptEnglish": "It's raining, that's why I'm staying home.",
+    "connector": "deshalb",
+    "category": "adverbialInversion",
+    "options": [
+      "Es regnet, deshalb bleibe ich zu Hause.",
+      "Es regnet, deshalb ich bleibe zu Hause.",
+      "Es regnet, deshalb ich zu Hause bleibe.",
+      "Es regnet, obwohl ich bleibe zu Hause."
+    ],
+    "correctAnswer": "Es regnet, deshalb bleibe ich zu Hause.",
+    "tip": "deshalb takes position 1, so the verb (bleibe) comes right after it and the subject (ich) moves after the verb."
+  },
+  {
+    "id": "adv_trotzdem",
+    "promptEnglish": "It's raining, nevertheless we're going for a walk.",
+    "connector": "trotzdem",
+    "category": "adverbialInversion",
+    "options": [
+      "Es regnet, trotzdem gehen wir spazieren.",
+      "Es regnet, trotzdem wir gehen spazieren.",
+      "Es regnet, trotzdem wir spazieren gehen.",
+      "Es regnet, deshalb gehen wir spazieren."
+    ],
+    "correctAnswer": "Es regnet, trotzdem gehen wir spazieren.",
+    "tip": "trotzdem ('nevertheless') triggers verb-subject inversion just like deshalb — and it fits a contrast here, not a reason."
+  },
+  {
+    "id": "adv_ausserdem",
+    "promptEnglish": "The restaurant is expensive. Additionally, the food doesn't taste good.",
+    "connector": "außerdem",
+    "category": "adverbialInversion",
+    "options": [
+      "Das Restaurant ist teuer, außerdem schmeckt das Essen nicht gut.",
+      "Das Restaurant ist teuer, außerdem das Essen schmeckt nicht gut.",
+      "Das Restaurant ist teuer, außerdem das Essen nicht gut schmeckt.",
+      "Das Restaurant ist teuer, trotzdem schmeckt das Essen nicht gut."
+    ],
+    "correctAnswer": "Das Restaurant ist teuer, außerdem schmeckt das Essen nicht gut.",
+    "tip": "außerdem ('additionally') sits in position 1 and inverts verb and subject, same as deshalb/trotzdem."
+  },
+  {
+    "id": "adv_dann",
+    "promptEnglish": "First we buy the ingredients, then we cook dinner.",
+    "connector": "dann",
+    "category": "adverbialInversion",
+    "options": [
+      "Zuerst kaufen wir die Zutaten, dann kochen wir das Abendessen.",
+      "Zuerst kaufen wir die Zutaten, dann wir kochen das Abendessen.",
+      "Zuerst kaufen wir die Zutaten, dann wir das Abendessen kochen.",
+      "Zuerst kaufen wir die Zutaten, deshalb kochen wir das Abendessen."
+    ],
+    "correctAnswer": "Zuerst kaufen wir die Zutaten, dann kochen wir das Abendessen.",
+    "tip": "dann ('then') also occupies position 1 and inverts verb and subject — and it signals sequence, not cause."
+  },
+  {
+    "id": "corr_entweder_oder_1",
+    "promptEnglish": "We are traveling either by car or by train.",
+    "connector": "entweder...oder",
+    "category": "correlative",
+    "options": [
+      "Wir fahren entweder mit dem Auto oder mit dem Zug.",
+      "Wir fahren entweder mit dem Auto noch mit dem Zug.",
+      "Wir fahren sowohl mit dem Auto als auch mit dem Zug.",
+      "Wir entweder fahren mit dem Auto oder mit dem Zug."
+    ],
+    "correctAnswer": "Wir fahren entweder mit dem Auto oder mit dem Zug.",
+    "tip": "entweder pairs only with oder. sowohl...als auch means 'both...and', not 'either...or'."
+  },
+  {
+    "id": "corr_entweder_oder_2",
+    "promptEnglish": "Either you go to the party, or you stay home.",
+    "connector": "entweder...oder",
+    "category": "correlative",
+    "options": [
+      "Entweder gehst du zur Party, oder du bleibst zu Hause.",
+      "Entweder du gehst zur Party, oder du bleibst zu Hause.",
+      "Entweder gehst du zur Party, noch du bleibst zu Hause.",
+      "Oder gehst du zur Party, entweder du bleibst zu Hause."
+    ],
+    "correctAnswer": "Entweder gehst du zur Party, oder du bleibst zu Hause.",
+    "tip": "When entweder opens the sentence, it counts as position 1 too, so the verb (gehst) still comes right after it."
+  },
+  {
+    "id": "corr_sowohl_als_auch_1",
+    "promptEnglish": "She speaks both German and English.",
+    "connector": "sowohl...als auch",
+    "category": "correlative",
+    "options": [
+      "Sie spricht sowohl Deutsch als auch Englisch.",
+      "Sie spricht sowohl Deutsch noch Englisch.",
+      "Sie spricht entweder Deutsch oder Englisch.",
+      "Sie spricht sowohl als auch Deutsch Englisch."
+    ],
+    "correctAnswer": "Sie spricht sowohl Deutsch als auch Englisch.",
+    "tip": "sowohl pairs only with als auch. entweder...oder means 'either...or', a different meaning entirely."
+  },
+  {
+    "id": "corr_weder_noch",
+    "promptEnglish": "He drinks neither coffee nor tea.",
+    "connector": "weder...noch",
+    "category": "correlative",
+    "options": [
+      "Er trinkt weder Kaffee noch Tee.",
+      "Er trinkt weder Kaffee oder Tee.",
+      "Er trinkt entweder Kaffee noch Tee.",
+      "Er trinkt nicht weder Kaffee noch Tee."
+    ],
+    "correctAnswer": "Er trinkt weder Kaffee noch Tee.",
+    "tip": "weder pairs only with noch, and weder...noch already means 'neither...nor' — no extra nicht needed."
+  },
+  {
+    "id": "corr_zwar_aber",
+    "promptEnglish": "The car is indeed expensive, but it's very reliable.",
+    "connector": "zwar...aber",
+    "category": "correlative",
+    "options": [
+      "Das Auto ist zwar teuer, aber es ist sehr zuverlässig.",
+      "Das Auto ist zwar teuer, aber es sehr zuverlässig ist.",
+      "Das Auto ist zwar teuer, aber ist es sehr zuverlässig.",
+      "Das Auto zwar ist teuer, aber es ist sehr zuverlässig."
+    ],
+    "correctAnswer": "Das Auto ist zwar teuer, aber es ist sehr zuverlässig.",
+    "tip": "zwar sits after the verb (ist zwar), and aber — like all coordinating conjunctions — doesn't move or invert the verb."
+  }
+]
