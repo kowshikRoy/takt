@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -38,6 +39,17 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   final TtsService _ttsService = TtsService();
 
   List<Map<String, dynamic>> _searchResults = [];
+  Timer? _searchDebounce;
+  int _searchRequestToken = 0;
+  // Separate from `_isSearching` below, which (by existing, still-relied-on
+  // design elsewhere in this screen) stays true for the rest of the session
+  // once any search has run, as a "has an active search" gate — not a
+  // literal in-flight indicator. This one toggles true only while a search
+  // request is actually running, purely to drive a loading spinner so the
+  // screen doesn't look frozen while DictionaryService.search() is out
+  // (which can involve a live Wiktionary/NMT network fallback, not just a
+  // local DB query).
+  bool _isSearchLoading = false;
   List<Map<String, dynamic>> _masterDiscoverWords = DiscoveryService().pool;
   List<Map<String, dynamic>> _recentWords = [];
   Map<String, dynamic>? _selectedWord;
@@ -153,6 +165,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -209,6 +222,23 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     }
   }
 
+  /// TextField's onChanged — waits for typing to pause before actually
+  /// searching. Without this, every keystroke fired a full search
+  /// (including, for non-exact-match prefixes, a live Wiktionary/NMT network
+  /// fallback — see DictionaryService.search), so typing a word queued up a
+  /// dozen overlapping heavy lookups and the UI felt stuck until they drained.
+  void _onSearchTextChanged(String query) {
+    _searchDebounce?.cancel();
+    if (query.trim().isEmpty) {
+      // Clearing the field should feel instant, not wait out the debounce.
+      _onSearchChanged(query);
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      _onSearchChanged(query);
+    });
+  }
+
   void _onSearchChanged(String query) async {
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) {
@@ -219,10 +249,18 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       return;
     }
 
-    setState(() => _isSearching = true);
+    // Guards against a slower earlier search (e.g. one that fell through to
+    // a network fallback) resolving after a newer one and clobbering its
+    // results — only the most recently *started* search may apply its own.
+    final requestToken = ++_searchRequestToken;
+
+    setState(() {
+      _isSearching = true;
+      _isSearchLoading = true;
+    });
     final results = await _dictionaryService.search(cleanQuery);
 
-    if (mounted) {
+    if (mounted && requestToken == _searchRequestToken) {
       List<Map<String, dynamic>> filtered;
       if (_selectedPosFilter == 'all') {
         filtered = results;
@@ -240,38 +278,28 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       }
       setState(() {
         _searchResults = filtered;
+        _isSearchLoading = false;
       });
     }
   }
 
-  void _onResultSelected(Map<String, dynamic> result) async {
+  void _onResultSelected(Map<String, dynamic> result) {
     final resultWord = result['word']?.toString() ?? '';
     if (resultWord.isEmpty) return;
 
-    // 1. Look up by word string to ensure accurate match across database updates
-    var fullWord = await _dictionaryService.lookupWord(resultWord);
-
-    // 2. If not found by word and we have an ID, try by ID only if word matches
-    if (fullWord == null) {
-      final rawId = result['id'];
-      final intId = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
-      if (intId != null) {
-        final byId = await _dictionaryService.getWordDetails(intId);
-        if (byId != null && (byId['word']?.toString().toLowerCase() == resultWord.toLowerCase())) {
-          fullWord = byId;
-        }
-      }
-    }
-    fullWord ??= result;
-
+    // Navigate immediately with the data the search result already carries
+    // (word/pos/gender/ipa/definition) instead of re-fetching it here first —
+    // WordDetailScreen already shows wordData right away and independently
+    // re-fetches the full consolidated entry itself in the background
+    // (see its _fetchFullDetails), so doing that same heavy lookup here too,
+    // before navigating, was pure duplicate work that made tapping a result
+    // feel unresponsive for however long that lookup took.
     if (mounted) {
-      final selected = fullWord;
-      final wordStr = selected['word']?.toString() ?? resultWord;
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => WordDetailScreen(
-            word: wordStr,
-            wordData: selected,
+            word: resultWord,
+            wordData: result,
           ),
         ),
       );
@@ -909,8 +937,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        onChanged: _onSearchChanged,
+        onChanged: _onSearchTextChanged,
         onSubmitted: (query) {
+          _searchDebounce?.cancel();
           if (_searchResults.isNotEmpty) {
             _onResultSelected(_searchResults.first);
           } else if (query.trim().isNotEmpty) {
@@ -918,7 +947,20 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           }
         },
         decoration: InputDecoration(
-          prefixIcon: Icon(Icons.search_rounded, color: colorScheme.primary),
+          // Swaps to a spinner while a search is actually in flight — the
+          // debounce means there's a real gap between typing and results
+          // landing, and with nothing here the screen looked frozen for
+          // that stretch even though it was working.
+          prefixIcon: _isSearchLoading
+              ? Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary),
+                  ),
+                )
+              : Icon(Icons.search_rounded, color: colorScheme.primary),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
                   icon: Icon(
@@ -927,9 +969,11 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   ),
                   tooltip: 'Clear search',
                   onPressed: () {
+                    _searchDebounce?.cancel();
                     _searchController.clear();
                     setState(() {
                       _isSearching = false;
+                      _isSearchLoading = false;
                       _searchResults.clear();
                       _selectedWord = null;
                       _wordImageFuture = null;
