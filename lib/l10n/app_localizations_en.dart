@@ -308,6 +308,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subtitleSpeakingPracticeCard => 'Speech Shadowing';
 
   @override
+  String get titleMatchingPairs => 'Match Up';
+
+  @override
+  String get subtitleMatchingPairs => 'Word Pairs';
+
+  @override
   String get titleVocabGrowth => 'VOCABULARY GROWTH';
 
   @override

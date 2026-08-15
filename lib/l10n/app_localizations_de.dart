@@ -312,6 +312,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get subtitleSpeakingPracticeCard => 'Sprech-Shadowing';
 
   @override
+  String get titleMatchingPairs => 'Zuordnen';
+
+  @override
+  String get subtitleMatchingPairs => 'Wortpaare';
+
+  @override
   String get titleVocabGrowth => 'WORTSCHATZ-WACHSTUM';
 
   @override

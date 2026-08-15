@@ -674,6 +674,18 @@ abstract class AppLocalizations {
   /// **'Speech Shadowing'**
   String get subtitleSpeakingPracticeCard;
 
+  /// No description provided for @titleMatchingPairs.
+  ///
+  /// In en, this message translates to:
+  /// **'Match Up'**
+  String get titleMatchingPairs;
+
+  /// No description provided for @subtitleMatchingPairs.
+  ///
+  /// In en, this message translates to:
+  /// **'Word Pairs'**
+  String get subtitleMatchingPairs;
+
   /// No description provided for @titleVocabGrowth.
   ///
   /// In en, this message translates to:
