@@ -686,6 +686,18 @@ abstract class AppLocalizations {
   /// **'Word Pairs'**
   String get subtitleMatchingPairs;
 
+  /// No description provided for @titleGrammarDrills.
+  ///
+  /// In en, this message translates to:
+  /// **'Grammar Drills'**
+  String get titleGrammarDrills;
+
+  /// No description provided for @subtitleGrammarDrills.
+  ///
+  /// In en, this message translates to:
+  /// **'Cases, Verbs & Pronouns'**
+  String get subtitleGrammarDrills;
+
   /// No description provided for @titleVocabGrowth.
   ///
   /// In en, this message translates to:

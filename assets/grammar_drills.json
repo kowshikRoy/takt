@@ -1,0 +1,226 @@
+[
+  {
+    "id": "verbConjugation",
+    "title": "Verb Conjugation",
+    "description": "Fill in the correctly conjugated present-tense form of each verb.",
+    "sheets": [
+      {
+        "id": "verbConjugation_1",
+        "title": "Sheet 1: Present Tense",
+        "questions": [
+          {
+            "id": "vc_1",
+            "prompt": "Ich ___ jeden Morgen Kaffee.",
+            "blanks": [{"correctAnswer": "trinke", "hint": "trinken"}]
+          },
+          {
+            "id": "vc_2",
+            "prompt": "Du ___ sehr schnell.",
+            "blanks": [{"correctAnswer": "läufst", "hint": "laufen"}]
+          },
+          {
+            "id": "vc_3",
+            "prompt": "Er ___ in Berlin.",
+            "blanks": [{"correctAnswer": "wohnt", "hint": "wohnen"}]
+          },
+          {
+            "id": "vc_4",
+            "prompt": "Wir ___ am Wochenende Fußball.",
+            "blanks": [{"correctAnswer": "spielen", "hint": "spielen"}]
+          },
+          {
+            "id": "vc_5",
+            "prompt": "Ihr ___ immer zu spät.",
+            "blanks": [{"correctAnswer": "kommt", "hint": "kommen"}]
+          },
+          {
+            "id": "vc_6",
+            "prompt": "Meine Freunde ___ viele Bücher.",
+            "blanks": [{"correctAnswer": "lesen", "hint": "lesen"}]
+          },
+          {
+            "id": "vc_7",
+            "prompt": "___ du mir bitte?",
+            "blanks": [{"correctAnswer": "Hilfst", "hint": "helfen"}]
+          },
+          {
+            "id": "vc_8",
+            "prompt": "Meine Schwester ___ jeden Tag Klavier.",
+            "blanks": [{"correctAnswer": "spielt", "hint": "spielen"}]
+          },
+          {
+            "id": "vc_9",
+            "prompt": "Ich ___ heute Abend einen Film.",
+            "blanks": [{"correctAnswer": "schaue", "hint": "schauen"}]
+          },
+          {
+            "id": "vc_10",
+            "prompt": "Wann ___ der Zug?",
+            "blanks": [{"correctAnswer": "fährt", "hint": "fahren"}]
+          },
+          {
+            "id": "vc_11",
+            "prompt": "Was ___ du am liebsten?",
+            "blanks": [{"correctAnswer": "isst", "hint": "essen"}]
+          },
+          {
+            "id": "vc_12",
+            "prompt": "Ich ___ heute sehr müde.",
+            "blanks": [{"correctAnswer": "bin", "hint": "sein"}]
+          },
+          {
+            "id": "vc_13",
+            "prompt": "Ich ___ ein neues Auto.",
+            "blanks": [{"correctAnswer": "habe", "hint": "haben"}]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "casesPrepositions",
+    "title": "Cases & Prepositions",
+    "description": "Choose the article or preposition that correctly completes each sentence.",
+    "sheets": [
+      {
+        "id": "casesPrepositions_1",
+        "title": "Sheet 1: Articles & Prepositions",
+        "questions": [
+          {
+            "id": "cp_1",
+            "prompt": "Ich sehe ___ Mann.",
+            "blanks": [{"correctAnswer": "den", "options": ["den", "dem", "der", "die"]}]
+          },
+          {
+            "id": "cp_2",
+            "prompt": "Ich gebe ___ Frau das Buch.",
+            "blanks": [{"correctAnswer": "der", "options": ["der", "die", "den", "dem"]}]
+          },
+          {
+            "id": "cp_3",
+            "prompt": "Das ist das Auto ___ Lehrers.",
+            "blanks": [{"correctAnswer": "des", "options": ["des", "dem", "den", "der"]}]
+          },
+          {
+            "id": "cp_4",
+            "prompt": "Wir fahren mit ___ Zug.",
+            "blanks": [{"correctAnswer": "dem", "options": ["dem", "den", "der", "des"]}]
+          },
+          {
+            "id": "cp_5",
+            "prompt": "Ich warte auf ___ Bus.",
+            "blanks": [{"correctAnswer": "den", "options": ["den", "dem", "der", "das"]}]
+          },
+          {
+            "id": "cp_6",
+            "prompt": "Das Kind spielt mit ___ Ball.",
+            "blanks": [{"correctAnswer": "dem", "options": ["dem", "den", "der", "das"]}]
+          },
+          {
+            "id": "cp_7",
+            "prompt": "Sie hilft ___ Kindern.",
+            "blanks": [{"correctAnswer": "den", "options": ["den", "die", "der", "das"]}]
+          },
+          {
+            "id": "cp_8",
+            "prompt": "Das ist die Tasche ___ Frau.",
+            "blanks": [{"correctAnswer": "der", "options": ["der", "die", "den", "dem"]}]
+          },
+          {
+            "id": "cp_9",
+            "prompt": "Ich fahre durch ___ Stadt.",
+            "blanks": [{"correctAnswer": "die", "options": ["die", "der", "den", "das"]}]
+          },
+          {
+            "id": "cp_10",
+            "prompt": "Er kommt aus ___ Schweiz.",
+            "blanks": [{"correctAnswer": "der", "options": ["der", "die", "den", "dem"]}]
+          },
+          {
+            "id": "cp_11",
+            "prompt": "Das Bild hängt über ___ Sofa.",
+            "blanks": [{"correctAnswer": "dem", "options": ["dem", "den", "der", "das"]}]
+          },
+          {
+            "id": "cp_12",
+            "prompt": "Wir sprechen über ___ Film.",
+            "blanks": [{"correctAnswer": "den", "options": ["den", "dem", "der", "das"]}]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "pronouns",
+    "title": "Pronouns",
+    "description": "Pick the pronoun that correctly completes each sentence.",
+    "sheets": [
+      {
+        "id": "pronouns_1",
+        "title": "Sheet 1: Personal Pronouns",
+        "questions": [
+          {
+            "id": "pr_1",
+            "prompt": "___ bin müde.",
+            "blanks": [{"correctAnswer": "Ich", "options": ["Ich", "Du", "Er", "Wir"]}]
+          },
+          {
+            "id": "pr_2",
+            "prompt": "Meine Eltern arbeiten viel. ___ sind oft müde.",
+            "blanks": [{"correctAnswer": "Sie", "options": ["Sie", "Er", "Wir", "Ich"]}]
+          },
+          {
+            "id": "pr_3",
+            "prompt": "___ bist mein bester Freund.",
+            "blanks": [{"correctAnswer": "Du", "options": ["Du", "Ich", "Er", "Ihr"]}]
+          },
+          {
+            "id": "pr_4",
+            "prompt": "Das ist mein Bruder. ___ wohnt in München.",
+            "blanks": [{"correctAnswer": "Er", "options": ["Er", "Sie", "Es", "Wir"]}]
+          },
+          {
+            "id": "pr_5",
+            "prompt": "Wir haben einen Hund. ___ heißt Bello.",
+            "blanks": [{"correctAnswer": "Er", "options": ["Er", "Sie", "Es", "Wir"]}]
+          },
+          {
+            "id": "pr_6",
+            "prompt": "Habt ___ heute Zeit für mich?",
+            "blanks": [{"correctAnswer": "ihr", "options": ["ihr", "du", "sie", "wir"]}]
+          },
+          {
+            "id": "pr_7",
+            "prompt": "Kannst ___ mir helfen?",
+            "blanks": [{"correctAnswer": "du", "options": ["du", "ihr", "er", "sie"]}]
+          },
+          {
+            "id": "pr_8",
+            "prompt": "Ich sehe ___ jeden Tag in der Schule.",
+            "blanks": [{"correctAnswer": "ihn", "options": ["ihn", "er", "ihm", "sie"]}]
+          },
+          {
+            "id": "pr_9",
+            "prompt": "Ich danke ___ für die Hilfe.",
+            "blanks": [{"correctAnswer": "dir", "options": ["dir", "du", "dich", "dein"]}]
+          },
+          {
+            "id": "pr_10",
+            "prompt": "Das ist für ___.",
+            "blanks": [{"correctAnswer": "dich", "options": ["dich", "du", "dir", "dein"]}]
+          },
+          {
+            "id": "pr_11",
+            "prompt": "Ich gebe ___ das Geschenk.",
+            "blanks": [{"correctAnswer": "ihr", "options": ["ihr", "sie", "ihre", "ihren"]}]
+          },
+          {
+            "id": "pr_12",
+            "prompt": "Ich lade ___ zu meinem Geburtstag ein.",
+            "blanks": [{"correctAnswer": "euch", "options": ["euch", "ihr", "eure", "euren"]}]
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -314,6 +314,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subtitleMatchingPairs => 'Word Pairs';
 
   @override
+  String get titleGrammarDrills => 'Grammar Drills';
+
+  @override
+  String get subtitleGrammarDrills => 'Cases, Verbs & Pronouns';
+
+  @override
   String get titleVocabGrowth => 'VOCABULARY GROWTH';
 
   @override

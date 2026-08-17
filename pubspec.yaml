@@ -105,6 +105,7 @@ flutter:
     - assets/books/netzwerk-a2/unit_02.json
     - assets/compound_words.json
     - assets/connector_exercises.json
+    - assets/grammar_drills.json
     - assets/speaking/shadowing_sentences.json
     - assets/grammar/
     - assets/phrases/
