@@ -1,5 +1,98 @@
 [
   {
+    "id": "tensesMoods",
+    "title": "Tenses & Moods",
+    "description": "Fill in the correct Perfekt-tense (past-tense) verb forms.",
+    "sheets": [
+      {
+        "id": "tensesMoods_1",
+        "title": "Sheet 1: Perfekt Tense",
+        "questions": [
+          {
+            "id": "tm_1",
+            "prompt": "Ich ___ gestern Pizza ___.",
+            "blanks": [
+              {"correctAnswer": "habe", "hint": "haben"},
+              {"correctAnswer": "gegessen", "hint": "essen"}
+            ]
+          },
+          {
+            "id": "tm_2",
+            "prompt": "Du ___ das Buch schon ___.",
+            "blanks": [
+              {"correctAnswer": "hast", "hint": "haben"},
+              {"correctAnswer": "gelesen", "hint": "lesen"}
+            ]
+          },
+          {
+            "id": "tm_3",
+            "prompt": "Er ___ nach Berlin ___.",
+            "blanks": [
+              {"correctAnswer": "ist", "hint": "sein"},
+              {"correctAnswer": "gefahren", "hint": "fahren"}
+            ]
+          },
+          {
+            "id": "tm_4",
+            "prompt": "Wir ___ den Film ___.",
+            "blanks": [
+              {"correctAnswer": "haben", "hint": "haben"},
+              {"correctAnswer": "gesehen", "hint": "sehen"}
+            ]
+          },
+          {
+            "id": "tm_5",
+            "prompt": "Ihr ___ spät nach Hause ___.",
+            "blanks": [
+              {"correctAnswer": "seid", "hint": "sein"},
+              {"correctAnswer": "gekommen", "hint": "kommen"}
+            ]
+          },
+          {
+            "id": "tm_6",
+            "prompt": "Sie ___ viel Wasser ___.",
+            "blanks": [
+              {"correctAnswer": "haben", "hint": "haben"},
+              {"correctAnswer": "getrunken", "hint": "trinken"}
+            ]
+          },
+          {
+            "id": "tm_7",
+            "prompt": "Ich ___ gut ___.",
+            "blanks": [
+              {"correctAnswer": "habe", "hint": "haben"},
+              {"correctAnswer": "geschlafen", "hint": "schlafen"}
+            ]
+          },
+          {
+            "id": "tm_8",
+            "prompt": "Du ___ mir sehr ___.",
+            "blanks": [
+              {"correctAnswer": "hast", "hint": "haben"},
+              {"correctAnswer": "geholfen", "hint": "helfen"}
+            ]
+          },
+          {
+            "id": "tm_9",
+            "prompt": "Wir ___ das Auto ___.",
+            "blanks": [
+              {"correctAnswer": "haben", "hint": "haben"},
+              {"correctAnswer": "gekauft", "hint": "kaufen"}
+            ]
+          },
+          {
+            "id": "tm_10",
+            "prompt": "Sie ___ früh ___.",
+            "blanks": [
+              {"correctAnswer": "hat", "hint": "haben"},
+              {"correctAnswer": "gearbeitet", "hint": "arbeiten"}
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "verbConjugation",
     "title": "Verb Conjugation",
     "description": "Fill in the correctly conjugated present-tense form of each verb.",
@@ -151,6 +244,195 @@
     ]
   },
   {
+    "id": "nounsArticles",
+    "title": "Nouns & Articles",
+    "description": "Pick the article that matches each noun's gender, case, or plural form.",
+    "sheets": [
+      {
+        "id": "nounsArticles_1",
+        "title": "Sheet 1: Articles & Plurals",
+        "questions": [
+          {
+            "id": "na_1",
+            "prompt": "___ Hund ist braun.",
+            "blanks": [{"correctAnswer": "Der", "options": ["Der", "Die", "Das", "Den"]}]
+          },
+          {
+            "id": "na_2",
+            "prompt": "___ Katze schläft.",
+            "blanks": [{"correctAnswer": "Die", "options": ["Die", "Der", "Das", "Den"]}]
+          },
+          {
+            "id": "na_3",
+            "prompt": "___ Kind spielt im Garten.",
+            "blanks": [{"correctAnswer": "Das", "options": ["Das", "Der", "Die", "Den"]}]
+          },
+          {
+            "id": "na_4",
+            "prompt": "Ich habe ___ Bruder.",
+            "blanks": [{"correctAnswer": "einen", "options": ["einen", "eine", "ein", "einem"]}]
+          },
+          {
+            "id": "na_5",
+            "prompt": "Das ist ___ Auto.",
+            "blanks": [{"correctAnswer": "ein", "options": ["ein", "eine", "einen", "einem"]}]
+          },
+          {
+            "id": "na_6",
+            "prompt": "Sie hat ___ Schwester.",
+            "blanks": [{"correctAnswer": "eine", "options": ["eine", "einen", "ein", "einer"]}]
+          },
+          {
+            "id": "na_7",
+            "prompt": "___ Bücher liegen auf dem Tisch.",
+            "blanks": [{"correctAnswer": "Die", "options": ["Die", "Der", "Das", "Den"]}]
+          },
+          {
+            "id": "na_8",
+            "prompt": "Aus 'Haus' und 'Tür' wird das Kompositum '___'.",
+            "blanks": [{"correctAnswer": "Haustür", "options": ["Haustür", "Türhaus", "Hausestür", "Türenhaus"]}]
+          },
+          {
+            "id": "na_9",
+            "prompt": "Der Plural von 'Buch' ist '___'.",
+            "blanks": [{"correctAnswer": "Bücher", "options": ["Bücher", "Buche", "Buchs", "Buchen"]}]
+          },
+          {
+            "id": "na_10",
+            "prompt": "Der Plural von 'Kind' ist '___'.",
+            "blanks": [{"correctAnswer": "Kinder", "options": ["Kinder", "Kinds", "Kinde", "Kindern"]}]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "adjectives",
+    "title": "Adjectives",
+    "description": "Choose the correct adjective ending, comparative, or superlative form.",
+    "sheets": [
+      {
+        "id": "adjectives_1",
+        "title": "Sheet 1: Endings & Comparison",
+        "questions": [
+          {
+            "id": "adj_1",
+            "prompt": "Das ist ein ___ Auto.",
+            "blanks": [{"correctAnswer": "schnelles", "options": ["schnelles", "schneller", "schnelle", "schnellen"]}]
+          },
+          {
+            "id": "adj_2",
+            "prompt": "Ich habe einen ___ Hund.",
+            "blanks": [{"correctAnswer": "kleinen", "options": ["kleinen", "kleines", "kleiner", "kleine"]}]
+          },
+          {
+            "id": "adj_3",
+            "prompt": "Die ___ Frau lächelt.",
+            "blanks": [{"correctAnswer": "freundliche", "options": ["freundliche", "freundlicher", "freundliches", "freundlichen"]}]
+          },
+          {
+            "id": "adj_4",
+            "prompt": "Berlin ist ___ als München.",
+            "blanks": [{"correctAnswer": "größer", "options": ["größer", "größter", "groß", "am größten"]}]
+          },
+          {
+            "id": "adj_5",
+            "prompt": "Das ist der ___ Berg der Welt.",
+            "blanks": [{"correctAnswer": "höchste", "options": ["höchste", "höher", "hoch", "höchst"]}]
+          },
+          {
+            "id": "adj_6",
+            "prompt": "Mein Auto ist ___ als deins.",
+            "blanks": [{"correctAnswer": "schneller", "options": ["schneller", "schnellste", "schnell", "am schnellsten"]}]
+          },
+          {
+            "id": "adj_7",
+            "prompt": "Das ist das ___ Haus in der Stadt.",
+            "blanks": [{"correctAnswer": "älteste", "options": ["älteste", "älter", "alt", "am ältesten"]}]
+          },
+          {
+            "id": "adj_8",
+            "prompt": "Er trägt einen ___ Mantel.",
+            "blanks": [{"correctAnswer": "warmen", "options": ["warmen", "warmes", "warmer", "warme"]}]
+          },
+          {
+            "id": "adj_9",
+            "prompt": "Wir wohnen in einem ___ Haus.",
+            "blanks": [{"correctAnswer": "großen", "options": ["großen", "großes", "große", "großer"]}]
+          },
+          {
+            "id": "adj_10",
+            "prompt": "Das ist die ___ Idee.",
+            "blanks": [{"correctAnswer": "beste", "options": ["beste", "besser", "gut", "am besten"]}]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "numbers",
+    "title": "Numbers",
+    "description": "Spell out the German word for each number.",
+    "sheets": [
+      {
+        "id": "numbers_1",
+        "title": "Sheet 1: Cardinal Numbers",
+        "questions": [
+          {
+            "id": "num_1",
+            "prompt": "Schreibe die Zahl: 5",
+            "blanks": [{"correctAnswer": "fünf"}]
+          },
+          {
+            "id": "num_2",
+            "prompt": "Schreibe die Zahl: 12",
+            "blanks": [{"correctAnswer": "zwölf"}]
+          },
+          {
+            "id": "num_3",
+            "prompt": "Schreibe die Zahl: 20",
+            "blanks": [{"correctAnswer": "zwanzig"}]
+          },
+          {
+            "id": "num_4",
+            "prompt": "Schreibe die Zahl: 3",
+            "blanks": [{"correctAnswer": "drei"}]
+          },
+          {
+            "id": "num_5",
+            "prompt": "Schreibe die Zahl: 8",
+            "blanks": [{"correctAnswer": "acht"}]
+          },
+          {
+            "id": "num_6",
+            "prompt": "Schreibe die Zahl: 25",
+            "blanks": [{"correctAnswer": "fünfundzwanzig"}]
+          },
+          {
+            "id": "num_7",
+            "prompt": "Schreibe die Zahl: 100",
+            "blanks": [{"correctAnswer": "hundert"}]
+          },
+          {
+            "id": "num_8",
+            "prompt": "Schreibe die Zahl: 1000",
+            "blanks": [{"correctAnswer": "tausend"}]
+          },
+          {
+            "id": "num_9",
+            "prompt": "Montag ist der ___ Tag der Woche.",
+            "blanks": [{"correctAnswer": "erste", "hint": "1."}]
+          },
+          {
+            "id": "num_10",
+            "prompt": "Dienstag ist der ___ Tag der Woche.",
+            "blanks": [{"correctAnswer": "zweite", "hint": "2."}]
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "pronouns",
     "title": "Pronouns",
     "description": "Pick the pronoun that correctly completes each sentence.",
@@ -218,6 +500,288 @@
             "id": "pr_12",
             "prompt": "Ich lade ___ zu meinem Geburtstag ein.",
             "blanks": [{"correctAnswer": "euch", "options": ["euch", "ihr", "eure", "euren"]}]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "adverbs",
+    "title": "Adverbs",
+    "description": "Pick the temporal, local, causal, or modal adverb that fits.",
+    "sheets": [
+      {
+        "id": "adverbs_1",
+        "title": "Sheet 1: Adverb Choice",
+        "questions": [
+          {
+            "id": "adv_1",
+            "prompt": "Ich gehe ___ ins Kino.",
+            "blanks": [{"correctAnswer": "heute", "options": ["heute", "hier", "deshalb", "langsam"]}]
+          },
+          {
+            "id": "adv_2",
+            "prompt": "Das Buch liegt ___.",
+            "blanks": [{"correctAnswer": "hier", "options": ["hier", "heute", "deshalb", "schnell"]}]
+          },
+          {
+            "id": "adv_3",
+            "prompt": "Es regnet, ___ bleibe ich zu Hause.",
+            "blanks": [{"correctAnswer": "deshalb", "options": ["deshalb", "heute", "hier", "gern"]}]
+          },
+          {
+            "id": "adv_4",
+            "prompt": "Sie singt sehr ___.",
+            "blanks": [{"correctAnswer": "schön", "options": ["schön", "dort", "morgen", "deshalb"]}]
+          },
+          {
+            "id": "adv_5",
+            "prompt": "Wir treffen uns ___.",
+            "blanks": [{"correctAnswer": "morgen", "options": ["morgen", "dort", "gern", "leider"]}]
+          },
+          {
+            "id": "adv_6",
+            "prompt": "Er wohnt ___.",
+            "blanks": [{"correctAnswer": "dort", "options": ["dort", "heute", "deshalb", "oft"]}]
+          },
+          {
+            "id": "adv_7",
+            "prompt": "Ich esse ___ Pizza.",
+            "blanks": [{"correctAnswer": "gern", "options": ["gern", "dort", "morgen", "deshalb"]}]
+          },
+          {
+            "id": "adv_8",
+            "prompt": "Sie kommt ___ zu spät.",
+            "blanks": [{"correctAnswer": "immer", "options": ["immer", "dort", "gern", "deshalb"]}]
+          },
+          {
+            "id": "adv_9",
+            "prompt": "Das Wetter ist schlecht, ___ bleiben wir drinnen.",
+            "blanks": [{"correctAnswer": "deshalb", "options": ["deshalb", "gern", "dort", "heute"]}]
+          },
+          {
+            "id": "adv_10",
+            "prompt": "Er fährt ___ mit dem Bus.",
+            "blanks": [{"correctAnswer": "oft", "options": ["oft", "dort", "gern", "heute"]}]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "conjunctions",
+    "title": "Conjunctions",
+    "description": "Choose the conjunction that correctly links the clauses.",
+    "sheets": [
+      {
+        "id": "conjunctions_1",
+        "title": "Sheet 1: Coordinating & Subordinating",
+        "questions": [
+          {
+            "id": "conj_1",
+            "prompt": "Ich bleibe zu Hause, ___ ich krank bin.",
+            "blanks": [{"correctAnswer": "weil", "options": ["weil", "aber", "und", "oder"]}]
+          },
+          {
+            "id": "conj_2",
+            "prompt": "Ich mag Tee, ___ ich trinke lieber Kaffee.",
+            "blanks": [{"correctAnswer": "aber", "options": ["aber", "weil", "dass", "wenn"]}]
+          },
+          {
+            "id": "conj_3",
+            "prompt": "Ich weiß, ___ er müde ist.",
+            "blanks": [{"correctAnswer": "dass", "options": ["dass", "weil", "ob", "aber"]}]
+          },
+          {
+            "id": "conj_4",
+            "prompt": "___ es regnet, bleibe ich drinnen.",
+            "blanks": [{"correctAnswer": "Wenn", "options": ["Wenn", "Weil", "Dass", "Aber"]}]
+          },
+          {
+            "id": "conj_5",
+            "prompt": "Möchtest du Tee ___ Kaffee?",
+            "blanks": [{"correctAnswer": "oder", "options": ["oder", "und", "aber", "dass"]}]
+          },
+          {
+            "id": "conj_6",
+            "prompt": "Ich kaufe Brot ___ Milch.",
+            "blanks": [{"correctAnswer": "und", "options": ["und", "oder", "aber", "weil"]}]
+          },
+          {
+            "id": "conj_7",
+            "prompt": "Ich weiß nicht, ___ er kommt.",
+            "blanks": [{"correctAnswer": "ob", "options": ["ob", "dass", "weil", "wenn"]}]
+          },
+          {
+            "id": "conj_8",
+            "prompt": "Er ist müde, ___ er hat schlecht geschlafen.",
+            "blanks": [{"correctAnswer": "denn", "options": ["denn", "weil", "dass", "ob"]}]
+          },
+          {
+            "id": "conj_9",
+            "prompt": "___ ich Zeit habe, komme ich vorbei.",
+            "blanks": [{"correctAnswer": "Wenn", "options": ["Wenn", "Dass", "Weil", "Ob"]}]
+          },
+          {
+            "id": "conj_10",
+            "prompt": "Sie lernt Deutsch, ___ sie nach Berlin ziehen möchte.",
+            "blanks": [{"correctAnswer": "weil", "options": ["weil", "aber", "und", "ob"]}]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sentenceConstruction",
+    "title": "Sentence Construction",
+    "description": "Practice word order — verb position, negation, and questions.",
+    "sheets": [
+      {
+        "id": "sentenceConstruction_1",
+        "title": "Sheet 1: Word Order & Negation",
+        "questions": [
+          {
+            "id": "sc_1",
+            "prompt": "Ich habe ___ Zeit.",
+            "blanks": [{"correctAnswer": "keine", "options": ["keine", "nicht", "kein", "nichts"]}]
+          },
+          {
+            "id": "sc_2",
+            "prompt": "Ich verstehe das ___.",
+            "blanks": [{"correctAnswer": "nicht", "options": ["nicht", "keine", "kein", "nie"]}]
+          },
+          {
+            "id": "sc_3",
+            "prompt": "Er kommt ___ zur Party.",
+            "blanks": [{"correctAnswer": "nicht", "options": ["nicht", "keine", "kein", "nichts"]}]
+          },
+          {
+            "id": "sc_4",
+            "prompt": "Das ist ___ gutes Buch.",
+            "blanks": [{"correctAnswer": "kein", "options": ["kein", "keine", "nicht", "nichts"]}]
+          },
+          {
+            "id": "sc_5",
+            "prompt": "Sie hat ___ Auto.",
+            "blanks": [{"correctAnswer": "kein", "options": ["kein", "keine", "keinen", "nicht"]}]
+          },
+          {
+            "id": "sc_6",
+            "prompt": "Ich habe ___ Bruder.",
+            "blanks": [{"correctAnswer": "keinen", "options": ["keinen", "keine", "kein", "nicht"]}]
+          },
+          {
+            "id": "sc_7",
+            "prompt": "___ gehe ich ins Kino.",
+            "blanks": [{"correctAnswer": "Heute", "options": ["Heute", "Ich heute", "Heute ich", "Gehe heute"]}]
+          },
+          {
+            "id": "sc_8",
+            "prompt": "Warum ___ du so traurig?",
+            "blanks": [{"correctAnswer": "bist", "options": ["bist", "du bist", "bist du", "ist"]}]
+          },
+          {
+            "id": "sc_9",
+            "prompt": "Wo ___ du?",
+            "blanks": [{"correctAnswer": "wohnst", "options": ["wohnst", "du wohnst", "wohnst du", "wohnt"]}]
+          },
+          {
+            "id": "sc_10",
+            "prompt": "___ du mir helfen?",
+            "blanks": [{"correctAnswer": "Kannst", "options": ["Kannst", "Du kannst", "Kannst du", "Kann"]}]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "passiveVoice",
+    "title": "Passive Voice",
+    "description": "Fill in the werden-conjugation and past participle for present passive.",
+    "sheets": [
+      {
+        "id": "passiveVoice_1",
+        "title": "Sheet 1: Present Passive",
+        "questions": [
+          {
+            "id": "pv_1",
+            "prompt": "Das Auto ___ ___.",
+            "blanks": [
+              {"correctAnswer": "wird", "hint": "werden"},
+              {"correctAnswer": "repariert", "hint": "reparieren"}
+            ]
+          },
+          {
+            "id": "pv_2",
+            "prompt": "Die Aufgabe ___ ___.",
+            "blanks": [
+              {"correctAnswer": "wird", "hint": "werden"},
+              {"correctAnswer": "gelöst", "hint": "lösen"}
+            ]
+          },
+          {
+            "id": "pv_3",
+            "prompt": "Der Brief ___ schon ___.",
+            "blanks": [
+              {"correctAnswer": "wird", "hint": "werden"},
+              {"correctAnswer": "geschrieben", "hint": "schreiben"}
+            ]
+          },
+          {
+            "id": "pv_4",
+            "prompt": "Die Fenster ___ ___.",
+            "blanks": [
+              {"correctAnswer": "werden", "hint": "werden"},
+              {"correctAnswer": "geöffnet", "hint": "öffnen"}
+            ]
+          },
+          {
+            "id": "pv_5",
+            "prompt": "Das Essen ___ ___.",
+            "blanks": [
+              {"correctAnswer": "wird", "hint": "werden"},
+              {"correctAnswer": "gekocht", "hint": "kochen"}
+            ]
+          },
+          {
+            "id": "pv_6",
+            "prompt": "Die Bücher ___ ___.",
+            "blanks": [
+              {"correctAnswer": "werden", "hint": "werden"},
+              {"correctAnswer": "gelesen", "hint": "lesen"}
+            ]
+          },
+          {
+            "id": "pv_7",
+            "prompt": "Das Haus ___ ___.",
+            "blanks": [
+              {"correctAnswer": "wird", "hint": "werden"},
+              {"correctAnswer": "gebaut", "hint": "bauen"}
+            ]
+          },
+          {
+            "id": "pv_8",
+            "prompt": "Die Kinder ___ ___.",
+            "blanks": [
+              {"correctAnswer": "werden", "hint": "werden"},
+              {"correctAnswer": "gelobt", "hint": "loben"}
+            ]
+          },
+          {
+            "id": "pv_9",
+            "prompt": "Die Musik ___ laut ___.",
+            "blanks": [
+              {"correctAnswer": "wird", "hint": "werden"},
+              {"correctAnswer": "gespielt", "hint": "spielen"}
+            ]
+          },
+          {
+            "id": "pv_10",
+            "prompt": "Die Briefe ___ ___.",
+            "blanks": [
+              {"correctAnswer": "werden", "hint": "werden"},
+              {"correctAnswer": "gesendet", "hint": "senden"}
+            ]
           }
         ]
       }

@@ -11,11 +11,7 @@ void main() {
   });
 
   void expectValidTopics(List<GrammarDrillTopic> topics) {
-    expect(topics.map((t) => t.id).toSet(), {
-      GrammarDrillTopicId.verbConjugation,
-      GrammarDrillTopicId.casesPrepositions,
-      GrammarDrillTopicId.pronouns,
-    });
+    expect(topics.map((t) => t.id).toSet(), GrammarDrillTopicId.values.toSet());
 
     for (final topic in topics) {
       expect(topic.sheets, isNotEmpty, reason: '${topic.id} should have at least one sheet');

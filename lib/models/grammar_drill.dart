@@ -1,7 +1,15 @@
 enum GrammarDrillTopicId {
+  tensesMoods,
   verbConjugation,
   casesPrepositions,
+  nounsArticles,
+  adjectives,
+  numbers,
   pronouns,
+  adverbs,
+  conjunctions,
+  sentenceConstruction,
+  passiveVoice,
 }
 
 class GrammarDrillBlank {

@@ -33,12 +33,28 @@ class _GrammarDrillsScreenState extends State<GrammarDrillsScreen> {
 
   IconData _iconForTopic(GrammarDrillTopicId id) {
     switch (id) {
+      case GrammarDrillTopicId.tensesMoods:
+        return Icons.history_rounded;
       case GrammarDrillTopicId.verbConjugation:
         return Icons.sync_alt_rounded;
       case GrammarDrillTopicId.casesPrepositions:
         return Icons.rule_rounded;
+      case GrammarDrillTopicId.nounsArticles:
+        return Icons.label_outline_rounded;
+      case GrammarDrillTopicId.adjectives:
+        return Icons.tune_rounded;
+      case GrammarDrillTopicId.numbers:
+        return Icons.pin_rounded;
       case GrammarDrillTopicId.pronouns:
         return Icons.person_outline_rounded;
+      case GrammarDrillTopicId.adverbs:
+        return Icons.bolt_rounded;
+      case GrammarDrillTopicId.conjunctions:
+        return Icons.link_rounded;
+      case GrammarDrillTopicId.sentenceConstruction:
+        return Icons.reorder_rounded;
+      case GrammarDrillTopicId.passiveVoice:
+        return Icons.swap_horiz_rounded;
     }
   }
 
