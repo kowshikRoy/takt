@@ -77,7 +77,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
   }
 
   Color _getCaseColorLight(GrammaticalCase gCase) {
-    return _getCaseColor(gCase).withOpacity(0.2);
+    return _getCaseColor(gCase).withValues(alpha: 0.2);
   }
 
   @override
@@ -114,7 +114,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                             value: progress,
                             backgroundColor: Theme.of(
                               context,
-                            ).dividerColor.withOpacity(0.3),
+                            ).dividerColor.withValues(alpha: 0.3),
                             color: Theme.of(context).colorScheme.primary,
                             minHeight: 12,
                           ),
@@ -210,7 +210,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
                               ? _getCaseColorLight(exercise.targetCase)
                               : Theme.of(
                                   context,
-                                ).colorScheme.primary.withOpacity(0.05),
+                                ).colorScheme.primary.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(4),
                           border: _isChecked && _isCorrect
                               ? Border.all(
@@ -491,7 +491,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
 
     if (isTarget) {
       borderColor = targetColor ?? Theme.of(context).dividerColor;
-      bgColor = (targetColor ?? Colors.transparent).withOpacity(0.1);
+      bgColor = (targetColor ?? Colors.transparent).withValues(alpha: 0.1);
       textColor = targetColor ?? Theme.of(context).colorScheme.onSurface;
       if (isWrong) {
         // Strikethrough or shake effect visualization (static here)
@@ -525,7 +525,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
       height: 48, // Slightly reduced height
       decoration: BoxDecoration(
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           width: 2,
           style: BorderStyle.solid,
         ),
@@ -548,7 +548,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
       },
       style: OutlinedButton.styleFrom(
         backgroundColor: isSelected
-            ? Theme.of(context).colorScheme.primary.withOpacity(0.05)
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05)
             : Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         side: BorderSide(

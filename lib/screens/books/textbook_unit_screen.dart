@@ -1575,7 +1575,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                hasSelection ? selected! : '________',
+                                hasSelection ? selected : '________',
                                 style: BooksModernist.body(
                                   size: 12.5,
                                   weight: FontWeight.w700,
@@ -2321,7 +2321,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(20),
       itemCount: grammarList.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      separatorBuilder: (_, _) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final g = grammarList[index];
         return Container(
@@ -2385,7 +2385,7 @@ class _TextbookUnitScreenState extends State<TextbookUnitScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(20),
       itemCount: redemittelList.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 18),
+      separatorBuilder: (_, _) => const SizedBox(height: 18),
       itemBuilder: (context, index) {
         final cat = redemittelList[index];
         return Container(

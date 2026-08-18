@@ -156,7 +156,7 @@ class _MainScaffoldState extends State<MainScaffold>
                     child: ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       itemCount: items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      separatorBuilder: (_, _) => const SizedBox(height: 6),
                       itemBuilder: (context, index) {
                         final isSelected = _selectedIndex == index;
                         final item = items[index];
@@ -358,7 +358,7 @@ class _MainScaffoldState extends State<MainScaffold>
           color: Theme.of(context).cardColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),

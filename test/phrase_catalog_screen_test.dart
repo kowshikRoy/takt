@@ -4,15 +4,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:takt/l10n/app_localizations.dart';
 import 'package:takt/models/german_phrase.dart';
 import 'package:takt/screens/phrases/phrase_catalog_screen.dart';
-import 'package:takt/screens/phrases/phrase_practice_screen.dart';
 import 'package:takt/services/phrase_service.dart';
-import 'package:takt/services/profile_service.dart';
-import 'package:takt/services/sound_service.dart';
-import 'package:takt/services/tts_service.dart';
 import 'package:takt/widgets/phrase_card.dart';
 import 'package:takt/widgets/phrase_detail_sheet.dart';
 

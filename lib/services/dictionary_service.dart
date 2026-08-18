@@ -2590,8 +2590,8 @@ class DictionaryService {
       'definitions': defs,
       'definition': defs.isNotEmpty ? defs.first : word.primaryDefinition,
       'forms': forms,
-      if (plural != null) 'plural': plural,
-      if (freqRank != null) 'freq_rank': freqRank,
+      'plural': ?plural,
+      'freq_rank': ?freqRank,
       if (dictData?['context_matched_sense_index'] != null)
         'context_matched_sense_index': dictData!['context_matched_sense_index'],
       'source': effectiveSource,

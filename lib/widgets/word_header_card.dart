@@ -9,7 +9,6 @@ import '../services/goethe_curriculum_service.dart';
 import '../services/haptic_service.dart';
 import 'vocab_status_pills.dart';
 import 'noun_headword_title.dart';
-import 'edit_word_dialog.dart';
 import 'base_form_tooltip_link.dart';
 
 class WordHeaderCard extends StatelessWidget {

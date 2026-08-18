@@ -51,7 +51,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   // local DB query).
   bool _isSearchLoading = false;
   List<Map<String, dynamic>> _masterDiscoverWords = DiscoveryService().pool;
-  List<Map<String, dynamic>> _recentWords = [];
+  final List<Map<String, dynamic>> _recentWords = [];
   Map<String, dynamic>? _selectedWord;
   Future<String?>? _wordImageFuture;
 
@@ -749,7 +749,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: 4),
           itemCount: _searchResults.length,
-        separatorBuilder: (_, __) => Divider(
+        separatorBuilder: (_, _) => Divider(
           height: 1,
           color: colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
@@ -761,12 +761,15 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           final freq = item['freq_rank'];
 
           Color dotColor = colorScheme.primary;
-          if (gender == 'm' || gender == 'masculine')
+          if (gender == 'm' || gender == 'masculine') {
             dotColor = AppTheme.genderMasc;
-          if (gender == 'f' || gender == 'feminine')
+          }
+          if (gender == 'f' || gender == 'feminine') {
             dotColor = AppTheme.genderFem;
-          if (gender == 'n' || gender == 'neuter')
+          }
+          if (gender == 'n' || gender == 'neuter') {
             dotColor = AppTheme.genderNeu;
+          }
 
           final isSelected = _selectedWord?['id'] == item['id'];
 
@@ -855,7 +858,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: _recentWords.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final item = _recentWords[index];
               final word = item['word']?.toString() ?? '';
@@ -863,12 +866,15 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
               final isSelected = _selectedWord?['id'] == item['id'];
 
               Color dotColor = colorScheme.primary;
-              if (gender == 'm' || gender == 'masculine')
+              if (gender == 'm' || gender == 'masculine') {
                 dotColor = AppTheme.genderMasc;
-              if (gender == 'f' || gender == 'feminine')
+              }
+              if (gender == 'f' || gender == 'feminine') {
                 dotColor = AppTheme.genderFem;
-              if (gender == 'n' || gender == 'neuter')
+              }
+              if (gender == 'n' || gender == 'neuter') {
                 dotColor = AppTheme.genderNeu;
+              }
 
               return InkWell(
                 onTap: () => _onResultSelected(item),

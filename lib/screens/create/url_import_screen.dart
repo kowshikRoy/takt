@@ -292,7 +292,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: recentVideos.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, idx) {
                         final video = recentVideos[idx];
                         final isFailed = video.status == ProcessingStatus.failed;
@@ -329,7 +329,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                                     CachedNetworkImage(
                                       imageUrl: video.thumbnailUrl,
                                       fit: BoxFit.cover,
-                                      errorWidget: (_, __, ___) => Container(
+                                      errorWidget: (_, _, _) => Container(
                                         color: isFailed
                                             ? colorScheme.error.withValues(alpha: 0.12)
                                             : colorScheme.primary.withValues(alpha: 0.12),
@@ -486,7 +486,7 @@ class _UrlImportScreenState extends State<UrlImportScreen> {
                         child: CachedNetworkImage(
                           imageUrl: video.thumbnailUrl,
                           fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
+                          errorWidget: (_, _, _) => Container(color: Colors.grey.shade800),
                         ),
                       ),
                     ),

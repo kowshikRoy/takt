@@ -210,7 +210,7 @@ class _EditWordDialogState extends State<EditWordDialog> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedPos,
+                    initialValue: _selectedPos,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: "Part of Speech",
@@ -233,7 +233,7 @@ class _EditWordDialogState extends State<EditWordDialog> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: DropdownButtonFormField<String?>(
-                      value: _selectedGender,
+                      initialValue: _selectedGender,
                       isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: "Gender / Article",

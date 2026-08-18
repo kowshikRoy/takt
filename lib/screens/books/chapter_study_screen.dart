@@ -121,7 +121,7 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemCount: vocabList.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final item = vocabList[index];
               return _buildVocabCard(context, item);
@@ -146,7 +146,7 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +155,7 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: badgeColor.withOpacity(0.15),
+                color: badgeColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -204,7 +204,7 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: dialogues.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final d = dialogues[index];
         return _buildDialogueCard(context, d);
@@ -221,7 +221,7 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,7 +231,7 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.12),
+                  color: colorScheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -267,7 +267,7 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: redemittel.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      separatorBuilder: (_, _) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final group = redemittel[index];
         return Container(
@@ -276,7 +276,7 @@ class _ChapterStudyScreenState extends State<ChapterStudyScreen>
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
           child: Column(

@@ -28,7 +28,7 @@ class _TextInputScreenState extends State<TextInputScreen> {
     final newArticle = Article(
       id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
       title: _titleController.text,
-      description: _contentController.text.substring(0, _contentController.text.length > 50 ? 50 : _contentController.text.length) + '...',
+      description: '${_contentController.text.substring(0, _contentController.text.length > 50 ? 50 : _contentController.text.length)}...',
       level: 'Custom',
       date: DateTime.now(),
       imageUrl: 'assets/images/story_desert.png', // Use placeholder for now

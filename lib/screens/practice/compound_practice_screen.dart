@@ -855,7 +855,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
           colors: [Colors.white, const Color(0xFFF8FAFC)],
         ),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
         boxShadow: const [
           BoxShadow(
             color: Color.fromRGBO(0, 0, 0, 0.1),
@@ -962,7 +962,7 @@ class _CompoundPracticeScreenState extends State<CompoundPracticeScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 20),

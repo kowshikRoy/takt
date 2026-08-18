@@ -10,7 +10,6 @@ import '../../services/gamification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/capped_width.dart';
 import '../../widgets/word_header_card.dart';
-import '../../widgets/noun_headword_title.dart';
 import '../word_detail_screen.dart';
 
 class VocabularyPracticeScreen extends StatefulWidget {

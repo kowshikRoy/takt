@@ -394,14 +394,18 @@ class _GenderPracticeScreenState extends State<GenderPracticeScreen> {
         : null;
 
     String modeLabel = 'Adaptive Deck';
-    if (_selectedDeckMode == GenderQuizDeckMode.levelA1)
+    if (_selectedDeckMode == GenderQuizDeckMode.levelA1) {
       modeLabel = 'A1 (Top 500)';
-    if (_selectedDeckMode == GenderQuizDeckMode.levelA2)
+    }
+    if (_selectedDeckMode == GenderQuizDeckMode.levelA2) {
       modeLabel = 'A2 (Top 1500)';
-    if (_selectedDeckMode == GenderQuizDeckMode.levelB1)
+    }
+    if (_selectedDeckMode == GenderQuizDeckMode.levelB1) {
       modeLabel = 'B1 (Top 5000)';
-    if (_selectedDeckMode == GenderQuizDeckMode.mySavedDeck)
+    }
+    if (_selectedDeckMode == GenderQuizDeckMode.mySavedDeck) {
       modeLabel = 'Saved Deck';
+    }
 
     return Column(
       children: [

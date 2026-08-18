@@ -3,8 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/saved_word.dart';
 import '../services/vocabulary_service.dart';
 import '../services/dictionary_service.dart';
-import '../services/tts_service.dart';
-import '../theme/app_theme.dart';
 import '../screens/word_detail_screen.dart';
 import 'word_header_card.dart';
 import 'package:flutter/services.dart';

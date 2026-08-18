@@ -432,7 +432,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                             Image.network(
                               video.thumbnail!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              errorBuilder: (_, _, _) => Container(
                                 color: isFailed
                                     ? colorScheme.error.withValues(alpha: 0.12)
                                     : colorScheme.primary.withValues(alpha: 0.12),
@@ -974,7 +974,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       CachedNetworkImage(
                         imageUrl: video.thumbnailUrl,
                         fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           color: isFailed
                               ? colorScheme.error.withValues(alpha: 0.12)
                               : colorScheme.primary.withValues(alpha: 0.12),
@@ -1184,7 +1184,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         child: CachedNetworkImage(
                           imageUrl: video.thumbnailUrl,
                           fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800),
+                          errorWidget: (_, _, _) => Container(color: Colors.grey.shade800),
                         ),
                       ),
                     ),

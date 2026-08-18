@@ -92,14 +92,12 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
           } else {
             _wordDetails = full;
           }
-        } else if (_wordDetails == null) {
-          _wordDetails = {
+        } else _wordDetails ??= {
             'word': widget.word,
             'pos': '',
             'gender': '',
             'definitions': [],
           };
-        }
         _wordImageFuture = _dictionaryService.getWordImageUrl(
           widget.word,
           pos: _wordDetails?['pos']?.toString(),

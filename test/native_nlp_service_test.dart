@@ -2,7 +2,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:takt/services/native_nlp_service.dart';
 import 'package:takt/services/dictionary_service.dart';
-import 'package:takt/services/ondevice_ai_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
