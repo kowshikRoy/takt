@@ -16,6 +16,7 @@ import 'story_reader_screen.dart';
 import 'video_screen.dart';
 import 'create/text_input_screen.dart';
 import 'create/url_import_screen.dart';
+import 'create/image_extraction_input_screen.dart';
 import 'transcribed_media_grid_screen.dart';
 import '../theme/books_modernist_style.dart';
 import '../widgets/responsive_grid.dart';
@@ -1790,6 +1791,33 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const TextInputScreen()));
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4.0),
+                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 0.8),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(4.0),
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: Icon(Icons.image_search_rounded, color: colorScheme.tertiary, size: 20),
+                  ),
+                  title: const Text('Import from Image', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Paste or link a photo of vocab, a textbook page, or notes', style: TextStyle(fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ImageExtractionInputScreen()));
                   },
                 ),
               ),
