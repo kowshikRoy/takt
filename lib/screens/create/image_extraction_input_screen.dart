@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 import '../../models/image_extraction_result.dart';
 import '../../services/gemini_api_key_store.dart';
@@ -28,22 +30,61 @@ class _ImageExtractionInputScreenState extends State<ImageExtractionInputScreen>
     super.dispose();
   }
 
+  Future<void> _pickImageFromGallery() async {
+    setState(() => _errorMessage = null);
+    try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(source: ImageSource.gallery);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      final mimeType = file.mimeType ?? (file.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
+      setState(() {
+        _pickedImageBytes = bytes;
+        _pickedMimeType = mimeType;
+        _urlController.clear();
+      });
+    } catch (e) {
+      setState(() => _errorMessage = 'Could not pick image: $e');
+    }
+  }
+
   Future<void> _pasteFromClipboard() async {
     setState(() => _errorMessage = null);
     try {
       final reader = await ClipboardReader.readClipboard();
       Uint8List? bytes;
       String mimeType = 'image/png';
-      if (reader.hasValue(Formats.png)) {
-        bytes = await reader.readValue(Formats.png);
+      if (reader.canProvide(Formats.png)) {
+        await reader.getFile(Formats.png, (file) async {
+          bytes = await file.readAll();
+        });
         mimeType = 'image/png';
-      } else if (reader.hasValue(Formats.jpeg)) {
-        bytes = await reader.readValue(Formats.jpeg);
+      } else if (reader.canProvide(Formats.jpeg)) {
+        await reader.getFile(Formats.jpeg, (file) async {
+          bytes = await file.readAll();
+        });
         mimeType = 'image/jpeg';
+      } else if (reader.canProvide(Formats.webp)) {
+        await reader.getFile(Formats.webp, (file) async {
+          bytes = await file.readAll();
+        });
+        mimeType = 'image/webp';
+      } else if (reader.canProvide(Formats.gif)) {
+        await reader.getFile(Formats.gif, (file) async {
+          bytes = await file.readAll();
+        });
+        mimeType = 'image/gif';
       }
 
       if (bytes == null) {
-        setState(() => _errorMessage = 'No image found on clipboard. Copy an image first.');
+        // Fallback: check if standard system clipboard has a text URL/data URI or image link copied
+        final data = await Clipboard.getData(Clipboard.kTextPlain);
+        if (data?.text != null && data!.text!.trim().startsWith('http')) {
+          _urlController.text = data.text!.trim();
+          setState(() {});
+          return;
+        }
+        setState(() => _errorMessage = 'No image found on clipboard. You can also tap "Choose Photo from Gallery" below.');
         return;
       }
       setState(() {
@@ -164,6 +205,19 @@ class _ImageExtractionInputScreenState extends State<ImageExtractionInputScreen>
                     label: const Text('Paste Image from Clipboard'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _pickImageFromGallery,
+                    icon: const Icon(Icons.photo_library_rounded),
+                    label: const Text('Choose Photo from Gallery'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: colorScheme.secondaryContainer,
+                      foregroundColor: colorScheme.onSecondaryContainer,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                     ),
                   ),

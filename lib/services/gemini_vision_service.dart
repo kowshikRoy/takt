@@ -5,11 +5,9 @@ import '../models/image_extraction_result.dart';
 import 'app_logger.dart';
 
 /// Client-side (BYOK) analysis of a photo/screenshot of German study material —
-/// a vocabulary list, flashcards, a grammar table, a textbook page, a dialogue,
+/// a vocabulary list, flashcards, a grammar table, a textbook exercise, a dialogue,
 /// a sign/menu, or handwritten notes. The format is unknown in advance, so the
-/// prompt asks Gemini to adaptively extract whatever is present. Same
-/// direct-to-Gemini pattern as [GeminiTranscriptionService]/[StoryGenerationService]
-/// — no OmniScribe backend involved, runs entirely on the user's own key.
+/// prompt asks Gemini to adaptively extract whatever is present in a single API call.
 class GeminiVisionService {
   GeminiVisionService._();
 
@@ -22,43 +20,57 @@ class GeminiVisionService {
   static const _prompt =
       'You are an expert German-language learning assistant analyzing a photograph or '
       'screenshot of study material. The image could be ANY of: a vocabulary list, '
-      'flashcards, a grammar table/conjugation chart, a textbook page, a dialogue or '
+      'flashcards, a grammar table/conjugation chart, a textbook page/exercise, a dialogue or '
       'story excerpt, a sign/menu/label with German text, or handwritten notes. The '
       'format is unknown in advance — infer it from the image itself.\n\n'
-      'Extract BOTH of the following whenever present (an image often contains both):\n'
+      'Extract ALL of the following whenever present (an image often contains several):\n'
       '1. Individual vocabulary items (words/phrases worth adding to a flashcard deck), '
-      'each with its German form, gender (if a noun), part of speech, an English '
-      'translation, and — if the image shows one — an example sentence.\n'
-      '2. Any continuous German prose (a dialogue, story, paragraph, sign text, or '
-      'caption) that could stand alone as reading practice, transcribed verbatim '
-      'preserving line breaks/paragraph structure where meaningful.\n\n'
-      'If the image contains only one of the two (e.g. a bare word list with no '
-      'prose, or a story with no vocabulary called out), leave the other field an '
-      'empty array / null — do not invent content that is not in the image.\n\n'
+      'each with its German form (dictionary/infinitive form, e.g., "helfen" rather than "Ich helfe"), '
+      'gender (if a noun: "m", "f", or "n"), part of speech, English translation, and example sentence.\n'
+      '2. Fill-in-the-blank or grammar exercise items if the image contains an exercise '
+      '(e.g. numbered sentences with blanks like "Ich helfe _____ Mann.", multiple-choice questions, case drills). '
+      'For each sentence item in the exercise, extract:\n'
+      '   - "id": item number or identifier (e.g. "1", "2")\n'
+      '   - "text": sentence with "_____" or "..." representing the blank\n'
+      '   - "answer": the correct German word/article/conjugation that fills the blank (e.g. "dem", "den")\n'
+      '   - "explanation": a clear, helpful 1-2 sentence explanation in English of why this answer is correct (e.g. "helfen requires the dative case. Mann is masculine, so the definite article is dem.")\n'
+      '   Also extract all possible options/pool choices in "options" (e.g. ["dem", "den", "das", "die", "der"]).\n'
+      '3. Any continuous German prose (a dialogue, story, paragraph, sign text, or caption) that could stand alone as reading practice.\n\n'
       'If the image contains no legible German text at all, return '
-      '{"content_type": "none", "vocabulary": [], "lesson_text": null, "notes": "..."}\n\n'
+      '{"content_type": "none", "vocabulary": [], "exercise": null, "lesson_text": null, "notes": "..."}\n\n'
       'Respond ONLY with valid JSON matching this exact schema:\n'
       '{\n'
-      '  "content_type": "vocab_list" | "flashcards" | "grammar_table" | "textbook_page"\n'
+      '  "content_type": "exercise" | "vocab_list" | "flashcards" | "grammar_table" | "textbook_page"\n'
       '                   | "dialogue" | "sign_or_menu" | "handwritten_notes" | "mixed" | "none",\n'
-      '  "title": "A short descriptive title for this content",\n'
+      '  "title": "A short descriptive title for this content (e.g. Akkusativ oder Dativ)",\n'
       '  "vocabulary": [\n'
       '    {\n'
-      '      "word": "Tisch",\n'
-      '      "gender": "m",\n'
-      '      "pos": "noun",\n'
-      '      "translation": "table",\n'
-      '      "example_sentence": "Der Tisch steht im Wohnzimmer."\n'
+      '      "word": "helfen",\n'
+      '      "gender": null,\n'
+      '      "pos": "verb",\n'
+      '      "translation": "to help",\n'
+      '      "example_sentence": "Ich helfe dem Mann."\n'
       '    }\n'
       '  ],\n'
+      '  "exercise": {\n'
+      '    "title": "Exercise Title",\n'
+      '    "instruction": "Short instruction (e.g. Wählen Sie die richtige Form)",\n'
+      '    "options": ["den", "dem", "das", "die", "der"],\n'
+      '    "statements": [\n'
+      '      {\n'
+      '        "id": "1",\n'
+      '        "text": "Ich helfe _____ Mann.",\n'
+      '        "answer": "dem",\n'
+      '        "explanation": "helfen always takes the dative case. Mann is masculine, and the masculine dative definite article is dem."\n'
+      '      }\n'
+      '    ]\n'
+      '  },\n'
       '  "lesson_text": "Continuous German passage text here, or null if none present.",\n'
-      '  "notes": "Optional short note about ambiguity, illegible portions, or format."\n'
+      '  "notes": "Optional short note summarizing the exercise topic or content."\n'
       '}\n'
       'Return only the valid JSON.';
 
-  /// Downloads image bytes for the URL-input path. Runs client-side (not via the
-  /// backend), so a cross-origin image on Flutter web may fail with a CORS error —
-  /// acceptable here since the primary target is the native app.
+  /// Downloads image bytes for the URL-input path.
   static Future<(Uint8List, String)> fetchImageBytes(String url) async {
     final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
@@ -138,7 +150,9 @@ class GeminiVisionService {
 
         final normalized = _normalize(data);
         final result = ImageExtractionResult.fromJson(normalized);
-        if (result.vocabulary.isNotEmpty || (result.lessonText?.isNotEmpty ?? false)) {
+        if (result.vocabulary.isNotEmpty ||
+            result.hasExercise ||
+            (result.lessonText?.isNotEmpty ?? false)) {
           return result;
         }
       } catch (e) {
@@ -152,8 +166,7 @@ class GeminiVisionService {
     return null;
   }
 
-  /// Tolerates key-name drift in Gemini's response, same defensive normalization
-  /// used elsewhere in the app's Gemini-parsing code.
+  /// Tolerates key-name drift in Gemini's response, defensive normalization
   static Map<String, dynamic> _normalize(Map<String, dynamic> data) {
     final rawVocab = (data['vocabulary'] as List?) ?? [];
     final vocabulary = <Map<String, dynamic>>[];
@@ -173,10 +186,46 @@ class GeminiVisionService {
     final lessonText =
         (data['lesson_text'] ?? data['story'] ?? data['passage'] ?? '').toString().trim();
 
+    Map<String, dynamic>? exerciseMap;
+    if (data['exercise'] is Map) {
+      final rawEx = data['exercise'] as Map<String, dynamic>;
+      final rawStatements = (rawEx['statements'] ?? rawEx['questions'] ?? rawEx['items']) as List? ?? [];
+      final statements = <Map<String, dynamic>>[];
+      for (var i = 0; i < rawStatements.length; i++) {
+        final s = rawStatements[i];
+        if (s is! Map) continue;
+        final text = (s['text'] ?? s['sentence'] ?? s['question'] ?? '').toString().trim();
+        final answer = (s['answer'] ?? s['correct_answer'] ?? s['solution'] ?? '').toString().trim();
+        final explanation = (s['explanation'] ?? s['reason'] ?? s['note'] ?? '').toString().trim();
+        if (text.isEmpty && answer.isEmpty) continue;
+        statements.add({
+          'id': s['id']?.toString() ?? '${i + 1}',
+          'text': text,
+          'answer': answer,
+          if (explanation.isNotEmpty) 'explanation': explanation,
+        });
+      }
+
+      final rawOptions = (rawEx['options'] ?? rawEx['pool'] ?? rawEx['choices']) as List? ?? [];
+      final options = rawOptions.map((o) => o.toString().trim()).where((o) => o.isNotEmpty).toList();
+
+      if (statements.isNotEmpty) {
+        exerciseMap = {
+          'title': rawEx['title'] ?? data['title'] ?? 'Exercise',
+          'instruction': rawEx['instruction'] ?? 'Fill in the blanks.',
+          'options': options.isNotEmpty
+              ? options
+              : statements.map((s) => s['answer'] as String).toSet().toList(),
+          'statements': statements,
+        };
+      }
+    }
+
     return {
-      'content_type': data['content_type'] ?? 'unknown',
+      'content_type': data['content_type'] ?? (exerciseMap != null ? 'exercise' : 'unknown'),
       'title': data['title'] ?? 'Extracted from Image',
       'vocabulary': vocabulary,
+      'exercise': exerciseMap,
       'lesson_text': lessonText.isEmpty ? null : lessonText,
       'notes': data['notes'],
     };
