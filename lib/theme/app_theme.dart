@@ -129,6 +129,42 @@ class AppTheme {
     }
   }
 
+  /// Resolves standard color for German grammatical gender (der/die/das/plural).
+  static Color colorForGender(String? gender, {bool isDark = false, Color? defaultColor}) {
+    final g = gender?.toLowerCase().trim();
+    if (g == 'm' || g == 'masc' || g == 'masculine' || g == 'der') {
+      return isDark ? genderMascDark : genderMasc;
+    }
+    if (g == 'f' || g == 'fem' || g == 'feminine' || g == 'die') {
+      return isDark ? genderFemDark : genderFem;
+    }
+    if (g == 'n' || g == 'neu' || g == 'neuter' || g == 'das') {
+      return isDark ? genderNeuDark : genderNeu;
+    }
+    if (g == 'p' || g == 'pl' || g == 'plural') {
+      return genderPlural;
+    }
+    return defaultColor ?? (isDark ? Colors.white70 : Colors.black87);
+  }
+
+  /// Resolves standard color for German grammatical case.
+  static Color colorForCase(String? grammaticalCase, {bool isDark = false}) {
+    final c = grammaticalCase?.toLowerCase().trim();
+    if (c == 'nom' || c == 'nominative' || c == 'nominativ') {
+      return isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB); // Blue
+    }
+    if (c == 'acc' || c == 'accusative' || c == 'akkusativ') {
+      return isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626); // Red
+    }
+    if (c == 'dat' || c == 'dative' || c == 'dativ') {
+      return isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706); // Amber / Yellow
+    }
+    if (c == 'gen' || c == 'genitive' || c == 'genitiv') {
+      return isDark ? const Color(0xFF34D399) : const Color(0xFF059669); // Green
+    }
+    return isDark ? Colors.white70 : Colors.black87;
+  }
+
   /// Returns harmonious CEFR badge colors (foreground, background, border)
   /// tailored for Light and Dark themes to avoid clashing with grammatical genders.
   static CefrBadgeColors getCefrColors(String level, {bool isDark = false}) {
@@ -614,5 +650,21 @@ class AppTheme {
 
       dividerColor: colorScheme.outlineVariant,
     );
+  }
+}
+
+extension GermanThemeExtension on BuildContext {
+  Color genderColor(String? gender, {Color? defaultColor}) {
+    final isDark = Theme.of(this).brightness == Brightness.dark;
+    return AppTheme.colorForGender(
+      gender,
+      isDark: isDark,
+      defaultColor: defaultColor ?? Theme.of(this).colorScheme.primary,
+    );
+  }
+
+  Color caseColor(String? grammaticalCase) {
+    final isDark = Theme.of(this).brightness == Brightness.dark;
+    return AppTheme.colorForCase(grammaticalCase, isDark: isDark);
   }
 }

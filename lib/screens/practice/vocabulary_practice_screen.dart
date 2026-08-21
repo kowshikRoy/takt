@@ -68,32 +68,44 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
         _showAnswer = false;
         _isLoading = false;
       });
-      _preloadExamples();
+      _preloadWindow(0);
     }
   }
 
-  Future<void> _preloadExamples() async {
-    for (final word in _dueWords) {
+  Future<void> _preloadWindow(int centerIndex) async {
+    if (_dueWords.isEmpty) return;
+    final start = (centerIndex - 1).clamp(0, _dueWords.length);
+    final end = (centerIndex + 4).clamp(0, _dueWords.length);
+    if (start >= end) return;
+
+    final targetWords = _dueWords.sublist(start, end);
+    final futures = <Future<void>>[];
+
+    for (final word in targetWords) {
       final lower = word.word.toLowerCase().trim();
       if (!_wordDetailsCache.containsKey(lower)) {
-        final hydrated = await _dictionaryService.hydrateSavedWord(word);
-        if (mounted) {
-          setState(() {
-            _wordDetailsCache[lower] = hydrated;
-          });
-        }
+        futures.add(() async {
+          final hydrated = await _dictionaryService.hydrateSavedWord(word);
+          _wordDetailsCache[lower] = hydrated;
+        }());
       }
-      if (word.contextSentence == null || word.contextSentence!.isEmpty) {
-        if (!_exampleCache.containsKey(lower)) {
+      if ((word.contextSentence == null || word.contextSentence!.isEmpty) &&
+          !_exampleCache.containsKey(lower)) {
+        futures.add(() async {
           final examples = await _dictionaryService.getExamplesForWord(
             word.word,
           );
-          if (examples.isNotEmpty && mounted) {
-            setState(() {
-              _exampleCache[lower] = examples.first;
-            });
+          if (examples.isNotEmpty) {
+            _exampleCache[lower] = examples.first;
           }
-        }
+        }());
+      }
+    }
+
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
+      if (mounted) {
+        setState(() {});
       }
     }
   }
@@ -127,14 +139,12 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
         _showAnswer = false;
         _currentIndex++;
       });
+      _preloadWindow(_currentIndex);
     }
   }
 
   Color _getGenderColor(String? gender) {
-    if (gender == 'masculine' || gender == 'm') return AppTheme.genderMasc;
-    if (gender == 'feminine' || gender == 'f') return AppTheme.genderFem;
-    if (gender == 'neuter' || gender == 'n') return AppTheme.genderNeu;
-    return Colors.indigo;
+    return AppTheme.colorForGender(gender, defaultColor: Colors.indigo);
   }
 
   Future<void> _confirmRemoveCurrentWord(
@@ -405,71 +415,83 @@ class _VocabularyPracticeScreenState extends State<VocabularyPracticeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // 1. Headword on its own dedicated row scaled cleanly via FittedBox
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        word.word,
+                        style: (theme.textTheme.headlineLarge ??
+                                const TextStyle(fontSize: AppFontSize.display))
+                            .copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: inkColor,
+                          letterSpacing: 0.2,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // 2. Subtitle row: POS badge + IPA + Speaker Icon
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Flexible(
-                          child: Text(
-                            word.word,
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: inkColor,
+                        if (wordData['pos'] != null &&
+                            wordData['pos'].toString().trim().isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
                             ),
-                            textAlign: TextAlign.center,
+                            decoration: BoxDecoration(
+                              color: inkColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(3),
+                              border: Border.all(
+                                color: inkColor.withValues(alpha: 0.18),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              wordData['pos'].toString().trim().toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
+                                color: inkColor.withValues(alpha: 0.8),
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
+                          const SizedBox(width: 8),
+                        ],
+                        if (word.ipa != null && word.ipa!.isNotEmpty) ...[
+                          Text(
+                            word.ipa!,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: inkColor.withValues(alpha: 0.6),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
                         IconButton(
-                          onPressed: () =>
-                              _ttsService.speak(word.word, lang: 'de-DE'),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          onPressed: () {
+                            AppHaptics.light();
+                            _ttsService.speak(word.word, lang: 'de-DE');
+                          },
                           icon: Icon(
                             Icons.volume_up_rounded,
                             color: genderColor,
-                            size: 24,
+                            size: 20,
                           ),
                           tooltip: 'Play pronunciation',
                         ),
                       ],
                     ),
-
-                    if (wordData['pos'] != null && wordData['pos'].toString().trim().isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: inkColor.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(3),
-                          border: Border.all(
-                            color: inkColor.withValues(alpha: 0.18),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          wordData['pos'].toString().trim().toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
-                            color: inkColor.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    if (word.ipa != null && word.ipa!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        word.ipa!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: inkColor.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
 
                     const SizedBox(height: 12),
 

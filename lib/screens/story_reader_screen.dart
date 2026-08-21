@@ -17,58 +17,13 @@ import '../models/saved_word.dart';
 import '../widgets/glance_word_sheet.dart';
 import '../theme/books_modernist_style.dart';
 import '../widgets/capped_width.dart';
+import '../models/contextual_vocab_item.dart';
+export '../models/contextual_vocab_item.dart' show KeyStoryVocab, ContextualVocabItem;
 
 class _TappedWordData {
   final String word;
   final int paragraphIndex;
   _TappedWordData(this.word, this.paragraphIndex);
-}
-
-class KeyStoryVocab {
-  final String word;
-  final String? baseForm;
-  final String? pos;
-  final String? gender;
-  final String primaryDefinition;
-  final String? ipa;
-  final int paragraphIndex;
-  final String paragraphOriginal;
-  final String paragraphTranslated;
-  final int? freqRank;
-
-  KeyStoryVocab({
-    required this.word,
-    this.baseForm,
-    this.pos,
-    this.gender,
-    required this.primaryDefinition,
-    this.ipa,
-    required this.paragraphIndex,
-    required this.paragraphOriginal,
-    required this.paragraphTranslated,
-    this.freqRank,
-  });
-
-  String get fullWordWithArticle {
-    final g = gender?.toLowerCase();
-    if (g == 'm' || g == 'masc' || g == 'masculine' || g == 'der') return 'der $word';
-    if (g == 'f' || g == 'fem' || g == 'feminine' || g == 'die') return 'die $word';
-    if (g == 'n' || g == 'neu' || g == 'neuter' || g == 'das') return 'das $word';
-    return word;
-  }
-
-  String get article {
-    final g = gender?.toLowerCase();
-    if (g == 'm' || g == 'masc' || g == 'masculine' || g == 'der') return 'der';
-    if (g == 'f' || g == 'fem' || g == 'feminine' || g == 'die') return 'die';
-    if (g == 'n' || g == 'neu' || g == 'neuter' || g == 'das') return 'das';
-    return '';
-  }
-
-  String get difficultyLabel => DictionaryService.getCefrLevel(
-        freqRank,
-        fallback: word.length > 8 ? 'B2' : (word.length > 6 ? 'B1' : (word.length > 4 ? 'A2' : 'A1')),
-      );
 }
 
 class StoryReaderScreen extends StatefulWidget {

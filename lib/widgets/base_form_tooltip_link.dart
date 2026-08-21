@@ -1,18 +1,23 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../services/dictionary_service.dart';
 import '../services/haptic_service.dart';
 import '../screens/word_detail_screen.dart';
 
-/// Renders [baseWord] highlighted (bold + primary color + dotted underline)
-/// alongside its bracketed meaning inline (e.g. "Haus (house, building)").
-/// Tapping it triggers haptic feedback and opens the word's full dictionary entry.
+/// Renders an interactive inflected-form definition line:
+/// e.g. "plural of " + highlighted [baseWord] + " (meaning)" + optional [suffix].
+/// Tapping the base word triggers haptic feedback and opens its full dictionary entry.
 class BaseFormTooltipLink extends StatefulWidget {
   final String baseWord;
+  final String prefix;
+  final String? suffix;
   final TextStyle style;
 
   const BaseFormTooltipLink({
     super.key,
     required this.baseWord,
+    this.prefix = '',
+    this.suffix,
     required this.style,
   });
 
@@ -24,16 +29,33 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
   static final Map<String, String> _meaningCache = {};
 
   String? _meaning;
+  late final TapGestureRecognizer _tapRecognizer;
 
   @override
   void initState() {
     super.initState();
+    _tapRecognizer = TapGestureRecognizer()..onTap = _handleTap;
     final key = widget.baseWord.toLowerCase().trim();
     if (_meaningCache.containsKey(key)) {
       _meaning = _meaningCache[key];
     } else {
       _fetchMeaning();
     }
+  }
+
+  @override
+  void dispose() {
+    _tapRecognizer.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    AppHaptics.selection();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WordDetailScreen(word: widget.baseWord),
+      ),
+    );
   }
 
   @override
@@ -77,11 +99,47 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
       }
       String? found;
       if (results.isNotEmpty) {
-        final defs = results.first['definitions'];
-        if (defs is List && defs.isNotEmpty) {
-          found = defs.first.toString();
-        } else if (results.first['definition'] != null) {
-          found = results.first['definition'].toString();
+        for (final r in results) {
+          final defs = r['definitions'];
+          if (defs is List) {
+            for (final d in defs) {
+              final dStr = d.toString().trim();
+              final lower = dStr.toLowerCase();
+              if (dStr.isNotEmpty &&
+                  !lower.startsWith('plural of') &&
+                  !lower.startsWith('inflection of') &&
+                  !lower.startsWith('nominative') &&
+                  !lower.startsWith('genitive') &&
+                  !lower.startsWith('dative') &&
+                  !lower.startsWith('accusative') &&
+                  !lower.startsWith('participle of') &&
+                  !lower.startsWith('comparative of') &&
+                  !lower.startsWith('superlative of') &&
+                  !lower.startsWith('first-person') &&
+                  !lower.startsWith('second-person') &&
+                  !lower.startsWith('third-person') &&
+                  !lower.startsWith('past participle')) {
+                found = dStr;
+                break;
+              }
+            }
+          }
+          if (found != null) break;
+          if (r['definition'] != null) {
+            final dStr = r['definition'].toString().trim();
+            final lower = dStr.toLowerCase();
+            if (dStr.isNotEmpty &&
+                !lower.startsWith('plural of') &&
+                !lower.startsWith('inflection of') &&
+                !lower.startsWith('nominative') &&
+                !lower.startsWith('genitive') &&
+                !lower.startsWith('dative') &&
+                !lower.startsWith('accusative') &&
+                !lower.startsWith('participle of')) {
+              found = dStr;
+              break;
+            }
+          }
         }
       }
       if (found != null && found.isNotEmpty) {
@@ -95,49 +153,66 @@ class _BaseFormTooltipLinkState extends State<BaseFormTooltipLink> {
     } catch (_) {}
   }
 
+  bool _isValidMeaning(String? m) {
+    if (m == null || m.isEmpty || m == 'No definition found.') return false;
+    final lower = m.toLowerCase().trim();
+    if (lower.startsWith('plural of') ||
+        lower.startsWith('inflection of') ||
+        lower.startsWith('nominative') ||
+        lower.startsWith('genitive') ||
+        lower.startsWith('dative') ||
+        lower.startsWith('accusative') ||
+        lower.startsWith('participle of') ||
+        lower.contains('of ${widget.baseWord.toLowerCase()}')) {
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final highlightColor = colorScheme.primary;
 
-    return GestureDetector(
-      onTap: () {
-        AppHaptics.selection();
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => WordDetailScreen(word: widget.baseWord),
+    return Text.rich(
+      TextSpan(
+        style: widget.style,
+        children: [
+          if (widget.prefix.isNotEmpty)
+            TextSpan(text: widget.prefix),
+          TextSpan(
+            text: widget.baseWord,
+            style: widget.style.copyWith(
+              fontWeight: FontWeight.bold,
+              color: highlightColor,
+              decoration: TextDecoration.underline,
+              decorationStyle: TextDecorationStyle.dotted,
+              decorationColor: highlightColor.withValues(alpha: 0.6),
+              decorationThickness: 1.8,
+            ),
+            recognizer: _tapRecognizer,
           ),
-        );
-      },
-      child: Text.rich(
-        TextSpan(
-          children: [
+          if (_isValidMeaning(_meaning)) ...[
             TextSpan(
-              text: widget.baseWord,
+              text: ' (${_cleanShortMeaning(_meaning!)})',
               style: widget.style.copyWith(
-                fontWeight: FontWeight.bold,
-                color: highlightColor,
-                decoration: TextDecoration.underline,
-                decorationStyle: TextDecorationStyle.dotted,
-                decorationColor: highlightColor.withValues(alpha: 0.6),
-                decorationThickness: 1.8,
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface.withValues(alpha: 0.72),
               ),
             ),
-            if (_meaning != null &&
-                _meaning!.isNotEmpty &&
-                _meaning != 'No definition found.') ...[
-              TextSpan(
-                text: ' (${_cleanShortMeaning(_meaning!)})',
-                style: widget.style.copyWith(
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w500,
-                  color: colorScheme.onSurface.withValues(alpha: 0.72),
-                ),
-              ),
-            ],
           ],
-        ),
+          if (widget.suffix != null && widget.suffix!.isNotEmpty) ...[
+            TextSpan(
+              text: ' ${widget.suffix}',
+              style: widget.style.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                fontSize: (widget.style.fontSize ?? 14.5) * 0.92,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

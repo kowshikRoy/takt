@@ -24,6 +24,7 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold>
     with WidgetsBindingObserver {
   late int _selectedIndex;
+  late final List<Widget> _screens;
 
   @override
   void initState() {
@@ -32,6 +33,12 @@ class _MainScaffoldState extends State<MainScaffold>
     WidgetsBinding.instance.addObserver(this);
     VocabularyService().refreshAndRepairSavedWords();
     VocabularyService().cleanupInflectedFormEntries();
+    _screens = [
+      HomeScreen(onOpenLearnTab: () => _onItemTapped(1)),
+      const DiscoverScreen(),
+      DictionaryScreen(onBackToHome: () => _onItemTapped(0)),
+      const ProfileScreen(),
+    ];
   }
 
   @override
@@ -47,13 +54,6 @@ class _MainScaffoldState extends State<MainScaffold>
       SyncService().syncNow();
     }
   }
-
-  List<Widget> get _screens => [
-    HomeScreen(onOpenLearnTab: () => _onItemTapped(1)),
-    const DiscoverScreen(),
-    DictionaryScreen(onBackToHome: () => _onItemTapped(0)),
-    const ProfileScreen(),
-  ];
 
   void _onItemTapped(int index) {
     if (_selectedIndex != index) {
@@ -341,7 +341,10 @@ class _MainScaffoldState extends State<MainScaffold>
                     constraints: BoxConstraints(
                       maxWidth: windowClass.isAtLeastLarge ? 1400 : 1100,
                     ),
-                    child: _screens[_selectedIndex],
+                    child: IndexedStack(
+                      index: _selectedIndex,
+                      children: _screens,
+                    ),
                   ),
                 ),
               ),
@@ -352,7 +355,10 @@ class _MainScaffoldState extends State<MainScaffold>
     }
 
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,

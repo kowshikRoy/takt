@@ -21,50 +21,8 @@ import 'package:takt/config.dart';
 import 'package:takt/widgets/glance_word_sheet.dart';
 import 'package:takt/l10n/app_localizations.dart';
 import 'package:takt/theme/breakpoints.dart';
-
-class KeyMediaVocab {
-  final String word;
-  final String? baseForm;
-  final String? pos;
-  final String? gender;
-  final String primaryDefinition;
-  final String? ipa;
-  final int cueIndex;
-  final double cueStartTime;
-  final String cueOriginal;
-  final String cueTranslated;
-  final int? freqRank;
-  final String difficultyLabel;
-  final int occurrences;
-  final int relevanceScore;
-
-  KeyMediaVocab({
-    required this.word,
-    this.baseForm,
-    this.pos,
-    this.gender,
-    required this.primaryDefinition,
-    this.ipa,
-    required this.cueIndex,
-    required this.cueStartTime,
-    required this.cueOriginal,
-    required this.cueTranslated,
-    this.freqRank,
-    this.difficultyLabel = 'B1',
-    this.occurrences = 1,
-    this.relevanceScore = 50,
-  });
-
-  String get article {
-    final g = (gender ?? '').toLowerCase();
-    if (g == 'm' || g == 'masculine') return 'der';
-    if (g == 'f' || g == 'feminine') return 'die';
-    if (g == 'n' || g == 'neuter') return 'das';
-    return '';
-  }
-
-  String get fullWordWithArticle => article.isNotEmpty ? '$article $word' : word;
-}
+import 'package:takt/models/contextual_vocab_item.dart';
+export 'package:takt/models/contextual_vocab_item.dart' show KeyMediaVocab, ContextualVocabItem;
 
 class VideoScreen extends StatefulWidget {
   final ProcessedVideo? processedVideo;

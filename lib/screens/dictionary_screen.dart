@@ -14,6 +14,7 @@ import '../services/discovery_service.dart';
 import '../widgets/vocab_status_pills.dart';
 import '../widgets/word_edit_sheet.dart';
 import '../widgets/base_form_tooltip_link.dart';
+import '../widgets/sense_badge_chip.dart';
 import 'word_detail_screen.dart';
 
 class DictionaryScreen extends StatefulWidget {
@@ -1673,8 +1674,6 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                         idx,
                         contextMatchedIndex: contextMatchedIdx,
                       );
-                      final isDark = Theme.of(context).brightness == Brightness.dark;
-
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
@@ -1708,65 +1707,17 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                           style: defStyle,
                                         );
                                       }
-                                      return Text.rich(
-                                        TextSpan(
-                                          style: defStyle,
-                                          children: [
-                                            TextSpan(text: formOf.prefix),
-                                            WidgetSpan(
-                                              alignment: PlaceholderAlignment.baseline,
-                                              baseline: TextBaseline.alphabetic,
-                                              child: BaseFormTooltipLink(
-                                                baseWord: formOf.baseWord,
-                                                style: defStyle,
-                                              ),
-                                            ),
-                                            if (formOf.suffix != null)
-                                              TextSpan(
-                                                text: ' ${formOf.suffix}',
-                                                style: defStyle.copyWith(
-                                                  color: colorScheme.onSurface.withValues(alpha: 0.7),
-                                                  fontSize: (defStyle.fontSize ?? 14.5) * 0.92,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
+                                      return BaseFormTooltipLink(
+                                        prefix: formOf.prefix,
+                                        baseWord: formOf.baseWord,
+                                        suffix: formOf.suffix,
+                                        style: defStyle,
                                       );
                                     }),
                                   ),
                                   if (badges.isNotEmpty) ...[
                                     const SizedBox(width: 8),
-                                    Wrap(
-                                      spacing: 4,
-                                      runSpacing: 4,
-                                      crossAxisAlignment: WrapCrossAlignment.center,
-                                      children: badges.map((b) {
-                                        Color tagColor = Colors.grey;
-                                        if (b['type'] == 'primary') tagColor = Colors.teal;
-                                        if (b['type'] == 'context') tagColor = Colors.indigo;
-                                        if (b['type'] == 'colloquial') tagColor = Colors.amber.shade800;
-                                        if (b['type'] == 'figurative') tagColor = Colors.deepPurple;
-                                        if (b['type'] == 'specialized') tagColor = Colors.blue.shade700;
-                                        if (b['type'] == 'archaic') tagColor = Colors.brown;
-
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: tagColor.withValues(alpha: isDark ? 0.16 : 0.08),
-                                            borderRadius: BorderRadius.circular(3),
-                                            border: Border.all(color: tagColor.withValues(alpha: 0.35), width: 0.6),
-                                          ),
-                                          child: Text(
-                                            b['label']!,
-                                            style: TextStyle(
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.bold,
-                                              color: tagColor,
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
+                                    SenseBadgeWrap(badges: badges),
                                   ],
                                 ],
                               ),

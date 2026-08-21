@@ -4,6 +4,7 @@ import '../../services/sentence_practice_service.dart';
 import '../../services/sound_service.dart';
 import '../../services/haptic_service.dart';
 import '../../services/profile_service.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/capped_width.dart';
 
 class SentencePracticeScreen extends StatefulWidget {
@@ -64,16 +65,7 @@ class _SentencePracticeScreenState extends State<SentencePracticeScreen> {
   }
 
   Color _getCaseColor(GrammaticalCase gCase) {
-    switch (gCase) {
-      case GrammaticalCase.nominative:
-        return Colors.blue;
-      case GrammaticalCase.accusative:
-        return const Color(0xFFF87171); // Red
-      case GrammaticalCase.dative:
-        return const Color(0xFFFACC15); // Yellow
-      case GrammaticalCase.genitive:
-        return Colors.green;
-    }
+    return AppTheme.colorForCase(gCase.name);
   }
 
   Color _getCaseColorLight(GrammaticalCase gCase) {
