@@ -359,58 +359,128 @@ class _MainScaffoldState extends State<MainScaffold>
         index: _selectedIndex,
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
-            ),
-          ],
+      bottomNavigationBar: _buildModernistBottomBar(context),
+    );
+  }
+
+  Widget _buildModernistBottomBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final navItems = [
+      (
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home_rounded,
+        label: l10n?.navHome ?? 'Home',
+      ),
+      (
+        icon: Icons.school_outlined,
+        selectedIcon: Icons.school_rounded,
+        label: l10n?.navLearn ?? 'Learn',
+      ),
+      (
+        icon: Icons.menu_book_outlined,
+        selectedIcon: Icons.menu_book_rounded,
+        label: l10n?.navDictionary ?? 'Dictionary',
+      ),
+      (
+        icon: Icons.person_outline_rounded,
+        selectedIcon: Icons.person_rounded,
+        label: l10n?.navProfile ?? 'Profile',
+      ),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1917) : const Color(0xFFFAF6F0),
+        border: Border(
+          top: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: isDark ? 0.3 : 0.45),
+            width: 0.8,
+          ),
         ),
-        child: SafeArea(
-          top: false,
-          bottom: true,
-          child: BottomNavigationBar(
-            elevation: 0,
-            currentIndex: _selectedIndex,
-            onTap: _onItemTapped,
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.transparent,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Theme.of(context).unselectedWidgetColor,
-            showUnselectedLabels: true,
-            selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-            ),
-            items: [
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.home),
-                label: AppLocalizations.of(context)?.navHome ?? 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.school),
-                label: AppLocalizations.of(context)?.navLearn ?? 'Learn',
-              ),
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.menu_book_rounded),
-                label: AppLocalizations.of(context)?.navDictionary ?? 'Dictionary',
-              ),
-              BottomNavigationBarItem(
-                icon: const Icon(Icons.person),
-                label: AppLocalizations.of(context)?.navProfile ?? 'Profile',
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          height: 64,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(navItems.length, (index) {
+              final item = navItems[index];
+              final isSelected = _selectedIndex == index;
+
+              return Expanded(
+                child: InkWell(
+                  onTap: () => _onItemTapped(index),
+                  splashColor: colorScheme.primary.withValues(alpha: 0.08),
+                  highlightColor: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeInOut,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            isSelected ? item.selectedIcon : item.icon,
+                            size: 22,
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeInOut,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                            letterSpacing: 0.2,
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
+                          child: Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
         ),
       ),
     );
+  }
   }
 }

@@ -21,6 +21,7 @@ import 'story_reader_screen.dart';
 import '../models/article_model.dart';
 import '../widgets/today_words_card.dart';
 import '../services/sync_service.dart';
+import '../services/haptic_service.dart';
 import '../services/media_library_service.dart';
 import '../services/book_guide_service.dart';
 import '../models/book_guide.dart';
@@ -1559,7 +1560,14 @@ class HomeScreen extends StatelessWidget {
       child: SizedBox(
         height: 155,
         child: InkWell(
-          onTap: onTap,
+          onTap: onTap != null
+              ? () {
+                  AppHaptics.light();
+                  onTap();
+                }
+              : null,
+          splashColor: rustAccent.withValues(alpha: 0.1),
+          highlightColor: rustAccent.withValues(alpha: 0.05),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -1575,8 +1583,8 @@ class HomeScreen extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: rustAccent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(3),
-                        border: Border.all(color: rustAccent.withValues(alpha: 0.3)),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: rustAccent.withValues(alpha: 0.28)),
                       ),
                       child: Icon(icon, color: rustAccent, size: 18),
                     ),
